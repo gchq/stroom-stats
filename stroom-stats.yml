@@ -1,5 +1,5 @@
 name: stroom-stats
-root: ~/git_work-welchman/stroom-stats/
+root: ~/git_work/stroom-stats/
 
 windows:
   - shell:
