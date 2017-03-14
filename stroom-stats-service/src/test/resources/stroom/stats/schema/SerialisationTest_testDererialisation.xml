@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<statistics xmlns="statistics:3" >
+    <!-- count stat with multiple identifiers contributing to the stat event -->
+    <statistic>
+        <name>ExampleCountStat</name>        
+        <time>2016-12-20T10:11:12.123Z</time>    
+        <count>2</count>    
+        <tags>
+            <tag name="department" value="HR"/>
+            <tag name="user" value="jbloggs"/>
+        </tags>    
+        <identifiers>
+            <compoundIdentifier>
+                <longIdentifier name="streamId">1</longIdentifier>
+                <longIdentifier name="eventId">1</longIdentifier>
+            </compoundIdentifier>            
+            <compoundIdentifier>
+                <longIdentifier name="streamId">2</longIdentifier>
+                <longIdentifier name="eventId">1</longIdentifier>
+            </compoundIdentifier>            
+        </identifiers>    
+    </statistic>
+    <!-- count stat with an identifier made from a string part and a long part -->
+    <statistic>
+        <name>ExampleCountStat</name>        
+        <time>2016-12-20T11:11:12.123Z</time>    
+        <count>1</count>    
+        <tags>
+            <tag name="department" value="IT"/>
+            <tag name="user" value="jdoe"/>
+        </tags>    
+        <identifiers>
+            <compoundIdentifier>
+                <stringIdentifier name="uuid">db49f0d1-a483-4011-a47e-3dbfb809cd28</stringIdentifier>
+                <longIdentifier name="seqNo">3</longIdentifier>
+            </compoundIdentifier>            
+        </identifiers>    
+    </statistic>
+    <!-- value stat with no identifiers -->
+    <statistic>
+        <name>ExampleValueStat</name>        
+        <time>2016-12-20T11:11:12.123Z</time>    
+        <value>99.9</value>    
+        <tags>
+            <tag name="rack" value="rack1"/>
+            <tag name="host" value="somedomain.somehost"/>
+        </tags>    
+    </statistic>
+</statistics>

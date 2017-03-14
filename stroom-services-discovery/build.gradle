@@ -1,0 +1,23 @@
+plugins {
+    id 'com.github.johnrengelman.shadow' version '1.2.3'
+}
+
+apply plugin: 'application'
+mainClassName = 'stroom.services.discovery.cli.StroomServiceRegisterer'
+
+dependencies {
+    compile "com.beust:jcommander:1.48"
+    compile libs.curator_framework
+    compile libs.curator_service_discovery
+}
+
+// This configures a manifest so we don't need to specify a class to run, we can just say `java -jar this.jar`.
+jar {
+    manifest {
+        attributes "Main-Class": "$mainClassName"
+    }
+
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}

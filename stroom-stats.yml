@@ -1,0 +1,14 @@
+name: stroom-stats
+root: ~/git_work-welchman/stroom-stats/
+
+windows:
+  - shell:
+      layout: main-vertical
+      panes:
+        - 
+        - cd ~/git_work/stroom-resources
+        - cd ~/git_work/stroom
+  - vim: vim build.gradle ./*/build.gradle
+  - mysql: sleep 10 && mysql -h"127.0.0.1" -P"3306" -u"stroomuser" -p"stroompassword1" stroom
+  - zkCli: sleep 10 && docker exec -it zookeeper bash -c "/opt/zookeeper/bin/zkCli.sh"
+

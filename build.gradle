@@ -1,0 +1,123 @@
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '3.3'
+}
+
+//Dependency versions used by multiple dependencies
+def stroomVersion = "6.0-beta.1-SNAPSHOT"
+def stroomMessagingVersion = "1.0-SNAPSHOT"
+def dropwizardVersion = "1.0.5"
+def slf4jVersion = "1.7.21"
+def logbackVersion = "1.1.8"
+def hbaseVersion = "1.2.0"
+def curatorVersion = "2.11.1"
+//0.10.2.0 is available but seems to have issues with spring_kafka_test
+def kafkaVersion = "0.10.1.1"
+
+//3rd Party libs
+ext.libs = [
+    stroomQueryApi: "stroom:stroom-query-api:$stroomVersion",
+    stroomExpressions: "stroom:stroom-expression:$stroomVersion",
+    stroomUtil: "stroom:stroom-util:$stroomVersion",
+
+    slf4j_api: "org.slf4j:slf4j-api:$slf4jVersion", 
+    log4j_over_slf4j: "org.slf4j:log4j-over-slf4j:$slf4jVersion", 
+    jcl_over_slf4j: "org.slf4j:jcl-over-slf4j:$slf4jVersion",
+
+    assertj: "org.assertj:assertj-core:3.6.2",
+    curator_framework: 'org.apache.curator:curator-framework:2.11.1',
+    curator_recipies: 'org.apache.curator:curator-recipes:2.11.1',
+    curator_service_discovery: 'org.apache.curator:curator-x-discovery:2.11.1',
+    byte_buddy: "net.bytebuddy:byte-buddy:1.5.8",
+    commons_lang: "commons-lang:commons-lang:2.6",
+    curator_recipies: "org.apache.curator:curator-recipes:$curatorVersion",
+    curator_test: "org.apache.curator:curator-test:$curatorVersion",
+    dropwizard_core: "io.dropwizard:dropwizard-core:$dropwizardVersion",
+    dropwizard_hibernate: "io.dropwizard:dropwizard-hibernate:$dropwizardVersion",
+    dropwizard_testing: "io.dropwizard:dropwizard-testing:$dropwizardVersion",
+    dropwizard_client: "io.dropwizard:dropwizard-client:$dropwizardVersion",
+    dropwizard_auth_jwt: "com.github.toastshaman:dropwizard-auth-jwt:1.0.2-0",
+    dropwizard_jobs_core: "de.spinscale.dropwizard:dropwizard-jobs-core:2.0.1",
+    ehcache: "org.ehcache:ehcache:3.2.0",
+    guava: "com.google.guava:guava:14.0",
+    guice: "com.google.inject:guice:4.0",
+    hbase_shaded_client: "org.apache.hbase:hbase-shaded-client:$hbaseVersion",
+    javaslang: 'io.javaslang:javaslang:2.0.5',
+    joda_time: 'joda-time:joda-time:2.9.4',
+    junit: "junit:junit:4.12", 
+    kafka_clients: "org.apache.kafka:kafka-clients:$kafkaVersion",
+    kafka_streams: "org.apache.kafka:kafka-streams:$kafkaVersion",
+    kryo: "com.esotericsoftware:kryo-shaded:4.0.0",
+    logback_classic: "ch.qos.logback:logback-classic:$logbackVersion",
+    logback_core: "ch.qos.logback:logback-core:$logbackVersion",
+    mockito_core: "org.mockito:mockito-core:2.+",
+    mysql_connector: "mysql:mysql-connector-java:5.1.40",
+    //instead of spring_kafka_test could use 'org.apache.kafka:kafka-streams-examples'
+
+    spring_kafka_test: "org.springframework.kafka:spring-kafka-test:1.1.3.RELEASE"
+] 
+
+apply plugin: 'idea'
+
+//apply from: "properties.gradle"
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'maven-publish'
+    apply plugin: 'idea'
+
+    group 'stroom'
+    version '1.0-SNAPSHOT'
+    sourceCompatibility = 1.8
+
+    repositories {
+        jcenter()
+        mavenLocal()
+        maven {
+            url "http://repository.cloudera.com/artifactory/cloudera-repos/"
+        }
+    }
+
+    // This task lets us publish source. Useful for debugging.
+    task sourceJar(type: Jar){
+        from sourceSets.main.allJava
+        classifier 'sources'
+    }
+
+    dependencies {
+        //Use Logback for logging
+        compile libs.slf4j_api
+        compile libs.log4j_over_slf4j
+        compile libs.jcl_over_slf4j
+        compile libs.logback_classic
+        compile libs.logback_core
+
+        testCompile libs.mockito_core
+        testCompile libs.junit
+        testCompile libs.assertj
+    }
+}
+
+project(':stroom-stats-service') {
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                artifactId 'stats-service'
+                from components.java
+                artifact sourceJar
+            }
+        }
+    }
+}
+
+project(':stroom-stats-api') {
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                artifactId 'stats-api'
+                from components.java
+                artifact sourceJar
+            }
+        }
+    }
+}

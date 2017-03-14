@@ -1,0 +1,54 @@
+//plugins {
+    //id 'com.github.johnrengelman.shadow' version '1.2.3'
+//}
+
+dependencies {
+    //compile 'stroom:stroom-query-api:5.0-beta.9-SNAPSHOT'
+    //compile 'stroom:stroom-query-api:$rootProject.ext.stroomVersion'
+    compile libs.stroomQueryApi
+    compile project(':stroom-stats-hbase-filter')
+    compile project(':stroom-stats-model')
+    compile project(':stroom-stats-util')
+    compile project(':stroom-stats-tasking')
+
+    compile libs.dropwizard_hibernate
+
+    testCompile project(':stroom-stats-util')
+    testCompile project(':stroom-stats-model')
+    testCompile project(':stroom-stats-mocks')
+
+    //3rd party libs
+    compile libs.guice
+
+    //TODO the cdh version of hbase-shaded-client contains javax.ws.rs which conflicts with dropwiz
+    //the vanilla apache version doesn't so appears to work ok
+    //compile ('org.apache.hbase:hbase-shaded-client:1.2.0-cdh5.9.1') {
+    compile (libs.hbase_shaded_client) {
+        exclude group:'org.slf4j', module:'slf4j-log4j12'
+        exclude group:'log4j', module:'log4j'
+        //exclude group:'javax.ws.rs', module:'jsr311-api'
+    }
+    //compile ('org.apache.hbase:hbase-common:1.2.0-cdh5.9.1') {
+        //exclude group:'org.slf4j', module:'slf4j-log4j12'
+        //exclude group:'log4j', module:'log4j'
+    //}
+
+    //testCompile ('org.apache.hbase:hbase-testing-util:1.2.0-cdh5.9.1') {
+        //exclude group:'org.slf4j', module:'slf4j-log4j12'
+        //exclude group:'log4j', module:'log4j'
+    //}
+
+    compile libs.commons_lang
+    compile libs.ehcache
+    compile libs.guava
+    compile libs.kryo
+
+    testCompile libs.commons_lang
+}
+
+//shadowJar {
+    //// If we don't relocate Jersey 1.0 packages they will conflict with anything that needs Jersey 2.0, e.g. Dropwizard.
+    //relocate 'com.sun.jersey', 'shadow.com.sun.jersey'
+    //relocate 'javax.ws.rs', 'shadow.javax.ws.rs'
+//}
+

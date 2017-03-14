@@ -1,0 +1,62 @@
+
+
+/*
+ * Copyright 2017 Crown Copyright
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License along
+ * with this library; if not, write to the Free Software Foundation, Inc., 59
+ * Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ *
+ *
+ */
+
+package stroom.stats.common;
+
+import org.junit.Assert;
+import org.junit.Test;
+import stroom.stats.api.StatisticTag;
+import stroom.stats.common.rollup.RollUpBitMask;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class TestRollUpBitMaskUtil {
+    @Test
+    public void testFromSortedTagList() {
+        final List<StatisticTag> tagList = new ArrayList<StatisticTag>();
+        tagList.add(new StatisticTag("Tag0", "someValue"));
+        tagList.add(new StatisticTag("Tag1", RollUpBitMask.ROLL_UP_TAG_VALUE));
+        tagList.add(new StatisticTag("Tag2", "someValue"));
+        tagList.add(new StatisticTag("Tag3", RollUpBitMask.ROLL_UP_TAG_VALUE));
+
+        final RollUpBitMask rowKeyBitMap = RollUpBitMaskUtil.fromSortedTagList(tagList);
+
+        Assert.assertEquals("000000000001010", rowKeyBitMap.toString());
+    }
+
+    @Test
+    public void testFromSortedTagListEmptyList() {
+        final List<StatisticTag> tagList = new ArrayList<StatisticTag>();
+
+        final RollUpBitMask rowKeyBitMap = RollUpBitMaskUtil.fromSortedTagList(tagList);
+
+        Assert.assertEquals("000000000000000", rowKeyBitMap.toString());
+    }
+
+    @Test
+    public void testFromSortedTagListNullList() {
+        final RollUpBitMask rowKeyBitMap = RollUpBitMaskUtil.fromSortedTagList(null);
+
+        Assert.assertEquals("000000000000000", rowKeyBitMap.toString());
+    }
+}

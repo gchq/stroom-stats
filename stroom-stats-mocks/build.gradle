@@ -1,0 +1,4 @@
+dependencies {
+    compile project(':stroom-stats-util')
+    compile project(':stroom-stats-model')
+}

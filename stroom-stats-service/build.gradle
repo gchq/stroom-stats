@@ -1,0 +1,111 @@
+plugins {
+    id "net.ltgt.errorprone" version "0.0.8"
+    id 'com.github.johnrengelman.shadow' version '1.2.3'
+}
+
+apply plugin: 'application'
+mainClassName = 'stroom.stats.App'
+
+jar {
+    manifest {
+        attributes(
+                "Implementation-Title": "stroom-stats",
+                "Implementation-Version": version,
+                "Main-Class" : "stroom.stats.App"
+        )
+    }
+}
+
+shadowJar {
+    // A transformer to merges files in META-INF/services
+    mergeServiceFiles()
+}
+
+dependencies {
+    //Project dependencies
+    compile project(':stroom-stats-api')
+    compile project(':stroom-stats-hbase-client')
+    compile project(':stroom-stats-util')
+
+    testCompile project(':stroom-stats-mocks')
+
+    // TODO: add HBase-client dependency here, be sure to include the 'all' classifier
+    //compile 'stroom:stats:1.0-SNAPSHOT:all'
+
+    //Non-project stroom dependencies
+    //compile 'stroom:stroom-query-api:5.0-beta.9-SNAPSHOT'
+    compile libs.stroomQueryApi
+    compile libs.stroomUtil
+    //compile 'stroom:stroom-expression:5.0-beta.9-SNAPSHOT'
+    compile (libs.stroomExpressions) {
+        exclude group:'org.slf4j', module:'slf4j-log4j12'
+    }
+
+    //Third party dependencies
+    compile (libs.curator_recipies) {
+        exclude group:'org.slf4j', module:'slf4j-log4j12'
+        exclude group:'log4j', module:'log4j'
+    }
+    compile libs.dropwizard_auth_jwt
+    compile libs.dropwizard_core
+    compile libs.dropwizard_hibernate
+    compile libs.dropwizard_jobs_core
+    compile libs.ehcache
+    compile libs.guice
+    compile libs.javaslang
+    compile libs.kafka_clients
+    compile (libs.kafka_streams) {
+        exclude group:'org.slf4j', module:'slf4j-log4j12'
+        exclude group:'log4j', module:'log4j'
+    }
+    compile libs.kryo
+    compile libs.mysql_connector
+    compile libs.slf4j_api
+    compile 'stroom:stroom-query-api:6.0-beta.1-SNAPSHOT'
+    compile libs.curator_service_discovery
+
+    testCompile libs.byte_buddy
+    testCompile libs.dropwizard_testing
+    testCompile libs.dropwizard_client
+    testCompile libs.curator_test
+    testCompile libs.spring_kafka_test
+    testCompile 'io.github.lukehutch:fast-classpath-scanner:2.0.17'
+}
+
+run {
+    args 'server', './config_dev.yml'
+}
+
+sourceSets {
+    // This lets us use different directories for our integration tests.
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integration-test/java')
+        }
+        resources.srcDir file('src/integration-test/resources')
+    }
+}
+
+configurations {
+    // This means our integration tests get all the dependencies from our tests and we don't need to specify them twice.
+    integrationTestCompile.extendsFrom testCompile
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+// This task lets us run the actual integration tests.
+task integrationTest(type: Test) {
+    testClassesDir = sourceSets.integrationTest.output.classesDir
+    classpath = sourceSets.integrationTest.runtimeClasspath
+}
+
+// These lines pull the integration test task into our build process.
+check.dependsOn integrationTest
+integrationTest.mustRunAfter test
+
+// This means the reports from our integration tests won't over-write the reports from our unit tests.
+tasks.withType(Test) {
+    reports.html.destination = file("${reporting.baseDir}/${name}")
+}
+

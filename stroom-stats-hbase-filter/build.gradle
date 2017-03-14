@@ -1,0 +1,27 @@
+plugins {
+    id 'com.github.johnrengelman.shadow' version '1.2.3'
+}
+
+dependencies {
+    compile project(':stroom-stats-model')
+    compile project(':stroom-stats-util')
+    //testCompile project(':stroom-stats-util')
+
+    //Will be provided by the HBase region server when deployed on it
+    //TODO the cdh version of hbase-shaded-client contains javax.ws.rs which conflicts with dropwiz
+    //the vanilla apache version doesn't so appears to work ok
+    //compileOnly ('org.apache.hbase:hbase-shaded-client:1.2.0-cdh5.9.1') {
+    compileOnly (libs.hbase_shaded_client) {
+        exclude group:'org.slf4j', module:'slf4j-log4j12'
+        exclude group:'log4j', module:'log4j'
+        //exclude group:'javax.ws.rs', module:'jsr311-api'
+    }
+    //compile ('org.apache.hbase:hbase-common:1.2.0-cdh5.9.1') {
+        //exclude group:'org.slf4j', module:'slf4j-log4j12'
+        //exclude group:'log4j', module:'log4j'
+    //}
+
+    compile libs.guava
+    compile libs.commons_lang
+    compile libs.kryo
+}

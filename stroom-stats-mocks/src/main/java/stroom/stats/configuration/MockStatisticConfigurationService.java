@@ -1,0 +1,79 @@
+/*
+ * Copyright 2017 Crown Copyright
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License along
+ * with this library; if not, write to the Free Software Foundation, Inc., 59
+ * Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ *
+ *
+ */
+
+package stroom.stats.configuration;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
+
+/**
+ * Simple implementation to hold in memory {@link StatisticConfiguration} entities for
+ * use in other services
+ */
+public class MockStatisticConfigurationService implements StatisticConfigurationService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MockStatisticConfigurationService.class);
+
+    private final ConcurrentMap<String, StatisticConfiguration> nameToStatConfMap = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, StatisticConfiguration> uuidToStatConfMap = new ConcurrentHashMap<>();
+
+    @Override
+    public List<StatisticConfiguration> fetchAll() {
+        return nameToStatConfMap.values().stream().collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<StatisticConfiguration> fetchStatisticConfigurationByName(final String name) {
+        return Optional.ofNullable(nameToStatConfMap.get(name));
+    }
+
+    @Override
+    public Optional<StatisticConfiguration> fetchStatisticConfigurationByUuid(final String uuid) {
+        return Optional.ofNullable(uuidToStatConfMap.get(uuid));
+    }
+
+    /**
+     * For use in tests for pre-creating a {@link StatisticConfiguration} for subsequent extraction
+     */
+    public synchronized MockStatisticConfigurationService addStatisticConfiguration(final StatisticConfiguration statisticConfiguration) {
+
+        String name = statisticConfiguration.getName();
+        String uuid = statisticConfiguration.getUuid();
+
+        if (nameToStatConfMap.get(name) != null) {
+            throw new RuntimeException(String.format("StatisticConfiguration with name %s already exists", name));
+        }
+        if (uuidToStatConfMap.get(uuid) != null) {
+            throw new RuntimeException(String.format("StatisticConfiguration with uuid %s already exists", uuid));
+        }
+
+        nameToStatConfMap.put(name, statisticConfiguration);
+        uuidToStatConfMap.put(uuid, statisticConfiguration);
+
+        return this;
+    }
+
+}

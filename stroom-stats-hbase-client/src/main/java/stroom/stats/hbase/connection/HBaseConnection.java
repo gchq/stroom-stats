@@ -1,0 +1,141 @@
+
+
+/*
+ * Copyright 2017 Crown Copyright
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License along
+ * with this library; if not, write to the Free Software Foundation, Inc., 59
+ * Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ *
+ *
+ */
+
+package stroom.stats.hbase.connection;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Table;
+import stroom.stats.hbase.HBaseStatisticConstants;
+import stroom.stats.hbase.exception.HBaseException;
+import stroom.stats.properties.StroomPropertyService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import java.io.IOException;
+
+/**
+ * Singleton instance to hold the HBaseConfiguration object which contains the connection to HBase.
+ * <p>
+ * A dependency on this class will result in a connection being made to Zookeeper
+ */
+@Singleton
+public class HBaseConnection {
+    private final Configuration configuration;
+    private final boolean autoCreateTables;
+    // private final HTablePool pool;
+
+    // This is a connection object that should be shared by all processes that
+    // need to talk to HBase
+    // It takes the overhead of opening the connection to ZooKeeper and the
+    // region server so code only needs to
+    // request a new HTableInterface from it using getTable
+    private final Connection sharedClusterConnection;
+
+    // HBase property names for configuring HBase
+    private static final String HBASE_ZOOKEEPER_QUORUM_PROPERTY_NAME = "hbase.zookeeper.quorum";
+    private static final String HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME = "hbase.zookeeper.property.clientPort";
+    private static final String HBASE_RPC_TIMEOUT_MS_PROPERTY_NAME = "hbase.rpc.timeout";
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(HBaseConnection.class);
+
+    @Inject
+    public HBaseConnection(final StroomPropertyService propertyService) {
+
+        final String quorum = propertyService.getPropertyOrThrow(
+                HBaseStatisticConstants.HBASE_ZOOKEEPER_QUORUM_PROPERTY_NAME);
+
+        LOGGER.info("Initialising HBaseTableConfiguration to quorum: {}", quorum);
+
+        configuration = HBaseConfiguration.create();
+
+        // if you want the local hbase instance rather than the ref cluster
+        // comment these two out
+        configuration.set(HBASE_ZOOKEEPER_QUORUM_PROPERTY_NAME, quorum);
+
+        configuration.set(HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME,
+                propertyService.getPropertyOrThrow(HBaseStatisticConstants.HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME));
+
+        configuration.set(HBASE_RPC_TIMEOUT_MS_PROPERTY_NAME,
+                propertyService.getPropertyOrThrow(HBaseStatisticConstants.HBASE_RPC_TIMEOUT_MS_PROPERTY_NAME));
+
+        autoCreateTables = true;
+
+        try {
+            sharedClusterConnection = ConnectionFactory.createConnection(configuration);
+        } catch (final IOException e) {
+            throw new HBaseException("Unable to open a connection to HBase", e);
+        }
+
+        LOGGER.info("HBaseTableConfiguration initialised");
+    }
+
+    /**
+     * Alternative constructor for when you already have an hbase connection
+     * object you want to use
+     */
+    public HBaseConnection(final Connection connection) {
+        this.sharedClusterConnection = connection;
+        this.configuration = connection.getConfiguration();
+        autoCreateTables = true;
+    }
+
+    public Configuration getConfiguration() {
+        return configuration;
+    }
+
+    public boolean isAutoCreateTables() {
+        return autoCreateTables;
+    }
+
+    public Table getTable(final TableName tableName) {
+        // return pool.getTable(tableName.getName());
+        try {
+            return sharedClusterConnection.getTable(tableName);
+        } catch (final IOException e) {
+            throw new HBaseException(
+                    "Unable get an HTable from the shared connection for table name " + tableName.getNameAsString(), e);
+        }
+    }
+
+    public Connection getConnection() {
+        return sharedClusterConnection;
+    }
+
+    //TODO Need alternative implementation of shutdown hook
+//    @StroomShutdown(priority = 5)
+    public void shutdown() {
+        try {
+            final Connection connection = getConnection();
+            if (connection != null) {
+                connection.close();
+            }
+        } catch (final IOException e) {
+            throw new HBaseException("Unable close HBase connection", e);
+        }
+    }
+}
