@@ -37,7 +37,7 @@ public final class TopicNameFactory {
     }
 
     public static String getIntervalTopicName(final String prefix, final EventStoreTimeIntervalEnum interval) {
-        return prefix + "-" + interval.shortName();
+        return prefix + DELIMITER + interval.shortName();
     }
 
     public static String getIntervalTopicName(final String prefix, final StatisticType statisticType, final EventStoreTimeIntervalEnum interval) {

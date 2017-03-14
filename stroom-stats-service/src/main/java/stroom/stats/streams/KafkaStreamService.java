@@ -18,6 +18,8 @@
 
 package stroom.stats.streams;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
 import org.slf4j.Logger;
@@ -114,7 +116,7 @@ public class KafkaStreamService {
         startFlatMapProcessing();
 
         //TODO commented out until it is in a working state
-        //startAggregationProcessing();
+        startAggregationProcessing();
     }
 
     private void startFlatMapProcessing() {
@@ -214,9 +216,13 @@ public class KafkaStreamService {
 
         LOGGER.info("Building processor {}", appId);
 
-        String inputTopic = TopicNameFactory.getIntervalTopicName(PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval);
+        String topicPrefix = stroomPropertyService.getPropertyOrThrow(PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX);
+
+        String inputTopic = TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, interval);
+
         Optional<String> nextIntervalTopic = EventStoreTimeIntervalHelper.getNextBiggest(interval)
-                .map(optNewInterval -> TopicNameFactory.getIntervalTopicName(PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, optNewInterval));
+                .map(newInterval ->
+                        TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, newInterval));
 
         Map<String, Object> props = new HashMap<>();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, appId);
@@ -237,7 +243,18 @@ public class KafkaStreamService {
 //
 //        aggregationProcessor.start();
         Map<String, Object> consumerProps = new HashMap<>();
+        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, stroomPropertyService.getPropertyOrThrow(PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
+        consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+
         Map<String, Object> producerProps = new HashMap<>();
+        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, stroomPropertyService.getPropertyOrThrow(PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
+        producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
+        producerProps.put(ProducerConfig.RETRIES_CONFIG, 0);
+        producerProps.put(ProducerConfig.LINGER_MS_CONFIG, 10);
+        producerProps.put(ProducerConfig.BATCH_SIZE_CONFIG,
+                stroomPropertyService.getIntProperty(
+                        StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000));
+        producerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 50_000_000);
 
         statisticsAggregationProcessor.startProcessor(
                 consumerProps,
