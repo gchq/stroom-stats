@@ -137,6 +137,16 @@ public class StatKey {
         return new StatKey(statName, rollupMask, interval, newTimeMs, tagValues);
     }
 
+    /**
+     * Shallow copy of this instance except the timeMs value is truncated down to the new interval
+     * and the interval is changed to the new interval
+     */
+    public StatKey cloneAndTruncateTimeToInterval(final EventStoreTimeIntervalEnum newInterval) {
+        Preconditions.checkArgument(newInterval.compareTo(this.interval) > 1);
+        long newTimeMs = interval.roundTimeToColumnInterval(timeMs);
+        return new StatKey(statName, rollupMask, newInterval, newTimeMs, tagValues);
+    }
+
     public byte[] getBytes() {
         int length = STATIC_PART_LENGTH + (tagValues.size() * TAG_VALUE_PAIR_LENGTH);
         ByteBuffer byteBuffer = ByteBuffer.allocate(length);

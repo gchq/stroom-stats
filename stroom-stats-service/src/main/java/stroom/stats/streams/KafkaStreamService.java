@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
 import stroom.stats.config.Config;
 import stroom.stats.config.ZookeeperConfig;
+import stroom.stats.hbase.EventStoreTimeIntervalHelper;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.CountAggregate;
@@ -39,6 +40,7 @@ import javax.inject.Singleton;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  *This is the coordinator for the streams applications
@@ -129,10 +131,9 @@ public class KafkaStreamService {
 
     private void startAggregationProcessing() {
 
-        //TODO either we have a single Count processor subscribing to all interval topics
-        //or one Count processor per interval topic.  The latter means more tuning control.
-        //Will use one for now (i.e. one per stat type)
-
+        //TODO currently each processor will spawn a thread to consume from the appropriate topic,
+        //so 8 threads.  Long term we will want finer control, e.g. more threads for Count stats
+        //and more for the finer granularities
         for (StatisticType statisticType : StatisticType.values()) {
             for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
                 LOGGER.info("Starting aggregation processor for type {} and interval {}", statisticType, interval);
@@ -207,13 +208,15 @@ public class KafkaStreamService {
         return flatMapProcessor;
     }
 
-    private KafkaStreams startAggregationProcessor(final StatisticType statisticType, final EventStoreTimeIntervalEnum interval) {
+    private void startAggregationProcessor(final StatisticType statisticType, final EventStoreTimeIntervalEnum interval) {
 
         String appId = getName(PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX, statisticType);
 
         LOGGER.info("Building processor {}", appId);
 
-        String permsTopic = TopicNameFactory.getIntervalTopicName(PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval);
+        String inputTopic = TopicNameFactory.getIntervalTopicName(PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval);
+        Optional<String> nextIntervalTopic = EventStoreTimeIntervalHelper.getNextBiggest(interval)
+                .map(optNewInterval -> TopicNameFactory.getIntervalTopicName(PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, optNewInterval));
 
         Map<String, Object> props = new HashMap<>();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, appId);
@@ -225,18 +228,24 @@ public class KafkaStreamService {
 
         StreamsConfig streamsConfig = buildStreamsConfig(appId, props);
 
-        KafkaStreams aggregationProcessor = statisticsAggregationProcessor.buildStream(
-                streamsConfig,
-                permsTopic,
-                statTypeToStatAggregateTypeMap.get(statisticType));
+//        KafkaStreams aggregationProcessor = statisticsAggregationProcessor.buildStream(
+//                streamsConfig,
+//                permsTopic,
+//                statTypeToStatAggregateTypeMap.get(statisticType));
+//
+//        aggregationProcessor.setUncaughtExceptionHandler(buildUncaughtExceptionHandler(appId));
+//
+//        aggregationProcessor.start();
+        Map<String, Object> consumerProps = new HashMap<>();
+        Map<String, Object> producerProps = new HashMap<>();
 
-        aggregationProcessor.setUncaughtExceptionHandler(buildUncaughtExceptionHandler(appId));
-
-        aggregationProcessor.start();
-
-        LOGGER.info("Started processor {} for input topic {}", appId, permsTopic);
-
-        return aggregationProcessor;
+        statisticsAggregationProcessor.startProcessor(
+                consumerProps,
+                producerProps,
+                inputTopic,
+                nextIntervalTopic,
+                statisticType,
+                interval);
 
     }
 

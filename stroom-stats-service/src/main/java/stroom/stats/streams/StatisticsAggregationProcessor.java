@@ -20,11 +20,12 @@
 
 package stroom.stats.streams;
 
-import org.apache.kafka.clients.consumer.ConsumerConfig;
+import com.google.common.base.Preconditions;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
@@ -43,6 +44,7 @@ import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.streams.aggregation.AggregatedEvent;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatKeySerde;
@@ -50,15 +52,25 @@ import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 class StatisticsAggregationProcessor {
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatisticsAggregationProcessor.class);
+
+    public static final String PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE = "stroom.stats.aggregation.minBatchSize";
+    public static final String PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS = "stroom.stats.aggregation.maxFlushIntervalMs";
 
     private final StatisticsService statisticsService;
     private final StroomPropertyService stroomPropertyService;
@@ -140,44 +152,68 @@ class StatisticsAggregationProcessor {
 
 
 
-    public void startProcessor(final ConsumerConfig consumerConfig,
-                               final ProducerConfig producerConfig,
+    public void startProcessor(final Map<String, Object> consumerConfig,
+                               final Map<String, Object> producerConfig,
                                final String inputTopic,
-                               final String nextIntervalTopic,
+                               final Optional<String> nextIntervalTopic,
                                final StatisticType statisticType,
-                               final EventStoreTimeIntervalEnum aggregationInterval,
-                               final Class<? extends StatAggregate> statAggregateType) {
+                               final EventStoreTimeIntervalEnum aggregationInterval) {
 
         Serde<StatKey> statKeySerde = StatKeySerde.instance();
         Serde<StatAggregate> statAggregateSerde = StatAggregateSerde.instance();
 
+
+        int maxEventIds = stroomPropertyService.getIntProperty(StatAggregate.PROP_KEY_MAX_AGGREGATED_EVENT_IDS, Integer.MAX_VALUE);
+        int maxFlushIntervalMs = stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 60_000);
+        long minBatchSize = stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 1_000);
+
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
-            KafkaConsumer<StatKey, StatAggregate> kafkaConsumer = new KafkaConsumer<>(consumerConfig.originals(),
+            KafkaConsumer<StatKey, StatAggregate> kafkaConsumer = new KafkaConsumer<>(consumerConfig,
                     statKeySerde.deserializer(),
                     statAggregateSerde.deserializer());
 
-            //Subscribe to all perm topics for this stat type
-//            List<String> topics = ROLLUP_TOPICS_MAP.entrySet().stream()
-//                    .flatMap(entry -> entry.getValue().stream())
-//                    .collect(Collectors.toList());
-
             LOGGER.info("Starting consumer for type {}, interval {}, inputTopic {}, nextIntervalTopic",
-                    statisticType, aggregationInterval, inputTopic, nextIntervalTopic);
+                    statisticType, aggregationInterval, inputTopic, nextIntervalTopic.orElse("Empty"));
+
+            //TODO need to share this between all interval/statTypes as it is thread-safe and config should be consistent
+            KafkaProducer<StatKey, StatAggregate> kafkaProducer = null;
+            if (nextIntervalTopic.isPresent()) {
+                kafkaProducer = new KafkaProducer<>(producerConfig,
+                        statKeySerde.serializer(),
+                        statAggregateSerde.serializer());
+            }
+
+            LOGGER.info("Starting consumer/producer for type {}, interval {}, inputTopic {}, nextIntervalTopic",
+                    statisticType, aggregationInterval, inputTopic, nextIntervalTopic.orElse("Empty"));
+
             kafkaConsumer.subscribe(Collections.singletonList(inputTopic));
 
-            List<ConsumerRecord<StatKey, StatAggregate>> buffer = new ArrayList<>();
+            StatAggregator statAggregator = new StatAggregator((int) (minBatchSize * 1.2), maxEventIds, aggregationInterval);
+
+            final Instant lastCommitTime = Instant.now();
 
             try {
                 while (true) {
                     try {
                         ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(1000);
 
-                        //TODO WIP
-
+                        LOGGER.trace(() -> String.format("Received %s records from topic %s", records.count(), inputTopic));
 
                         for (ConsumerRecord<StatKey, StatAggregate> record : records) {
+                            statAggregator.add(record.key(), record.value());
+                        }
 
+                        //flush if the aggregator is too big or it has been too long since the last flush
+                        if (statAggregator.size() >= minBatchSize || Duration.between(lastCommitTime, Instant.now()).toMillis() > maxFlushIntervalMs) {
+
+                            //
+                            flushToStatStore(statisticType, statAggregator);
+                            if (nextIntervalTopic.isPresent()) {
+                                flushToTopic(statAggregator, nextIntervalTopic.get(), kafkaProducer);
+                            }
+                            statAggregator.clear();
+                            kafkaConsumer.commitSync();
                         }
                     } catch (Exception e) {
                         LOGGER.error("Error while polling with stat type {}", statisticType, e);
@@ -187,8 +223,27 @@ class StatisticsAggregationProcessor {
                 kafkaConsumer.close();
             }
         });
-
     }
+
+
+    private void flushToStatStore(final StatisticType statisticType, final StatAggregator statAggregator) {
+        List<AggregatedEvent> aggregatedEvents = statAggregator.getAll();
+        statisticsService.putAggregatedEvents(statisticType, statAggregator.getAggregationInterval(), aggregatedEvents);
+    }
+
+    private void flushToTopic(final StatAggregator statAggregator,
+                              final String topic,
+                              final KafkaProducer<StatKey, StatAggregate> producer) {
+        Preconditions.checkNotNull(statAggregator);
+        Preconditions.checkNotNull(producer);
+
+        statAggregator.stream()
+                .map(aggregatedEvent -> new ProducerRecord<>(topic, aggregatedEvent.getStatKey(), aggregatedEvent.getStatAggregate()))
+                .forEach(producer::send);
+
+        producer.flush();
+    }
+
 
 
     StatAggregate aggregate(final StatKey statKey, final StatAggregate originalValue, final StatAggregate cumulativeAggregate) {
@@ -203,6 +258,55 @@ class StatisticsAggregationProcessor {
                         throw new RuntimeException(String.format("Unable to create a new instance of %s", statAggregateType.getName()), e);
                     }
         };
+    }
+
+    private static class StatAggregator {
+        private final Map<StatKey, StatAggregate> buffer;
+        private final int maxEventIds;
+        private final EventStoreTimeIntervalEnum aggregationInterval;
+
+        public StatAggregator(final int expectedSize, final int maxEventIds, final EventStoreTimeIntervalEnum aggregationInterval) {
+            //initial size to avoid it rehashing
+            this.buffer = new HashMap<>((int)Math.ceil(expectedSize / 0.75));
+            this.maxEventIds = maxEventIds;
+            this.aggregationInterval = aggregationInterval;
+        }
+
+        public void add(final StatKey statKey, final StatAggregate statAggregate){
+            statKey.cloneAndTruncateTimeToInterval(aggregationInterval);
+
+            //aggregate the passed aggregate and key into the existing aggregates
+            buffer.merge(
+                    statKey,
+                    statAggregate,
+                    (existingAgg, newAgg) -> existingAgg.aggregate(newAgg, maxEventIds));
+        }
+
+        public int size() {
+            return buffer.size();
+        }
+
+        public void clear() {
+            buffer.clear();
+        }
+
+        public EventStoreTimeIntervalEnum getAggregationInterval() {
+            return aggregationInterval;
+        }
+
+        public Set<Map.Entry<StatKey, StatAggregate>> entrySet() {
+            return buffer.entrySet();
+        }
+
+
+        public Stream<AggregatedEvent> stream() {
+            return buffer.entrySet().stream()
+                    .map(entry -> new AggregatedEvent(entry.getKey(), entry.getValue()));
+
+        }
+        public List<AggregatedEvent> getAll() {
+            return stream().collect(Collectors.toList());
+        }
     }
 
     private static class AggregationTransformer implements Transformer<StatKey, StatAggregate, KeyValue<StatKey, StatAggregate>> {

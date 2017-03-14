@@ -86,6 +86,38 @@ public class TestStatKey {
     }
 
     @Test
+    public void cloneAndTruncateTimeToInterval() throws Exception {
+
+        StatKey statKey = buildStatKey();
+
+
+        EventStoreTimeIntervalEnum expectedInterval = EventStoreTimeIntervalEnum.DAY;
+
+        StatKey statKey2 = statKey.cloneAndTruncateTimeToInterval(expectedInterval);
+
+        Assertions.assertThat(statKey2.getInterval()).isEqualTo(expectedInterval);
+        Assertions.assertThat(statKey2.getInterval()).isNotEqualTo(statKey.getInterval());
+
+        Assertions.assertThat(statKey2.getTimeMs()).isNotEqualTo(statKey.getTimeMs());
+        Assertions.assertThat(statKey2.getTimeMs()).isEqualTo(time.toInstant(ZoneOffset.UTC).truncatedTo(ChronoUnit.DAYS).toEpochMilli());
+
+        //Tags unchanged
+        Assertions.assertThat(statKey2.getTagValues().get(0).getTag()).isEqualTo(statKey.getTagValues().get(0).getTag());
+        Assertions.assertThat(statKey2.getTagValues().get(1).getTag()).isEqualTo(statKey.getTagValues().get(1).getTag());
+        Assertions.assertThat(statKey2.getTagValues().get(2).getTag()).isEqualTo(statKey.getTagValues().get(2).getTag());
+
+        //values unchanged
+        Assertions.assertThat(statKey2.getTagValues().get(0).getValue()).isEqualTo(statKey.getTagValues().get(0).getValue());
+        Assertions.assertThat(statKey2.getTagValues().get(1).getValue()).isEqualTo(statKey.getTagValues().get(1).getValue());
+        Assertions.assertThat(statKey2.getTagValues().get(2).getValue()).isEqualTo(statKey.getTagValues().get(2).getValue());
+
+        //other props unchanged
+        Assertions.assertThat(statKey2.getStatName()).isEqualTo(statKey.getStatName());
+        Assertions.assertThat(statKey2.getRollupMask()).isEqualTo(statKey.getRollupMask());
+
+    }
+
+    @Test
     public void cloneAndRollUpTags() throws Exception {
 
         StatKey statKey = buildStatKey();
