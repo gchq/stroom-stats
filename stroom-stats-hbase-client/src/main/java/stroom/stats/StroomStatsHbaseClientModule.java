@@ -42,10 +42,7 @@ import stroom.stats.hbase.aggregator.InMemoryEventStoreIdPool;
 import stroom.stats.hbase.aggregator.InMemoryEventStoreIdPoolImpl;
 import stroom.stats.hbase.table.HBaseTableFactory;
 import stroom.stats.hbase.table.TableFactory;
-import stroom.stats.hbase.uid.UniqueId;
 import stroom.stats.hbase.uid.UniqueIdCache;
-import stroom.stats.hbase.uid.UniqueIdCacheImpl;
-import stroom.stats.hbase.uid.UniqueIdProvider;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.server.common.StatisticConfigurationValidatorImpl;
 import stroom.stats.task.TaskManagerImpl;
@@ -73,10 +70,9 @@ public class StroomStatsHbaseClientModule extends AbstractModule {
         bind(TaskManager.class).to(TaskManagerImpl.class);
 
         //providers
-        bind(UniqueId.class).toProvider(UniqueIdProvider.class);
+        bind(UniqueIdCache.class).toProvider(HBaseTableFactory.class).asEagerSingleton();
 
         //singletons
-        bind(UniqueIdCache.class).to(UniqueIdCacheImpl.class).asEagerSingleton();
         bind(TableFactory.class).to(HBaseTableFactory.class).asEagerSingleton();
     }
 

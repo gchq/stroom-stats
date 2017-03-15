@@ -24,6 +24,8 @@ package stroom.stats.hbase;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.TimeAgnosticStatisticEvent;
 import stroom.stats.common.RollUpBitMaskUtil;
@@ -48,6 +50,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class SimpleRowKeyBuilder implements RowKeyBuilder {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SimpleRowKeyBuilder.class);
+
     private final UniqueIdCache uniqueIdCache;
     private final EventStoreTimeIntervalEnum timeInterval;
 
@@ -62,6 +66,7 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
      *            and column qualifiers.
      */
     public SimpleRowKeyBuilder(final UniqueIdCache uniqueIdCache, final EventStoreTimeIntervalEnum timeInterval) {
+        LOGGER.info("Initialising SimpleRowKeyBuilder");
         this.uniqueIdCache = uniqueIdCache;
         this.timeInterval = timeInterval;
     }

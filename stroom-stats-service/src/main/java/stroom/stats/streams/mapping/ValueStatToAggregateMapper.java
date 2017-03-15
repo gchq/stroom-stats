@@ -48,6 +48,7 @@ public class ValueStatToAggregateMapper extends AbstractStatisticMapper {
                                       final StroomPropertyService stroomPropertyService) {
 
         super(uniqueIdCache, stroomPropertyService);
+        LOGGER.info("Initialising {}", this.getClass().getCanonicalName());
         this.uniqueIdCache = uniqueIdCache;
         this.stroomPropertyService = stroomPropertyService;
     }

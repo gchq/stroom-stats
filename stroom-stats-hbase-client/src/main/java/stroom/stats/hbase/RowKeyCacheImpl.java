@@ -66,10 +66,13 @@ public class RowKeyCacheImpl implements RowKeyCache {
 
     private static class RowKeyLoaderWriter extends AbstractReadOnlyCacheLoaderWriter<TimeAgnosticStatisticEvent, TimeAgnosticRowKey> {
 
+        private static final Logger LOGGER = LoggerFactory.getLogger(RowKeyLoaderWriter.class);
+
         private final UniqueIdCache uniqueIdCache;
 
         @Inject
         public RowKeyLoaderWriter(final UniqueIdCache uniqueIdCache) {
+            LOGGER.info("Initialising RowKeyLoaderWriter");
             this.uniqueIdCache = uniqueIdCache;
         }
 

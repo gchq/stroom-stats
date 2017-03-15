@@ -22,24 +22,30 @@
 
 package stroom.stats.hbase.table;
 
+import stroom.stats.cache.CacheFactory;
 import stroom.stats.hbase.connection.HBaseConnection;
+import stroom.stats.hbase.uid.UID;
+import stroom.stats.hbase.uid.UniqueId;
 import stroom.stats.hbase.uid.UniqueIdCache;
+import stroom.stats.hbase.uid.UniqueIdCacheImpl;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.task.api.TaskManager;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
+import javax.inject.Provider;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public class HBaseTableFactory implements TableFactory {
+public class HBaseTableFactory implements TableFactory, Provider<UniqueIdCache> {
     private final Map<EventStoreTimeIntervalEnum, HBaseEventStoreTable> eventStoreTables;
     private final HBaseUniqueIdForwardMapTable uniqueIdForwardMapTable;
     private final HBaseUniqueIdReverseMapTable uniqueIdReverseMapTable;
+    private final UniqueIdCache uniqueIdCache;
 
     private final TaskManager taskManager;
     private final StroomPropertyService propertyService;
@@ -56,12 +62,21 @@ public class HBaseTableFactory implements TableFactory {
 
     @Inject
     public HBaseTableFactory(final TaskManager taskManager, final StroomPropertyService propertyService,
-                             final HBaseConnection hBaseConnection, final UniqueIdCache uniqueIdCache) {
+                             final HBaseConnection hBaseConnection, final CacheFactory cacheFactory) {
         LOGGER.info(() -> String.format("Initialising: %s", this.getClass().getCanonicalName()));
 
         this.taskManager = taskManager;
         this.propertyService = propertyService;
         this.hBaseConnection = hBaseConnection;
+
+        uniqueIdForwardMapTable = HBaseUniqueIdForwardMapTable.getInstance(hBaseConnection);
+        allTables.add(uniqueIdForwardMapTable);
+
+        uniqueIdReverseMapTable = HBaseUniqueIdReverseMapTable.getInstance(hBaseConnection);
+        allTables.add(uniqueIdReverseMapTable);
+
+        UniqueId uniqueId = new UniqueId(uniqueIdForwardMapTable, uniqueIdReverseMapTable, UID.UID_ARRAY_LENGTH);
+        uniqueIdCache = new UniqueIdCacheImpl(uniqueId, cacheFactory);
 
         eventStoreTables = new EnumMap<>(
                 EventStoreTimeIntervalEnum.class);
@@ -73,13 +88,6 @@ public class HBaseTableFactory implements TableFactory {
         }
 
         allTables.addAll(eventStoreTables.values());
-
-        uniqueIdForwardMapTable = HBaseUniqueIdForwardMapTable.getInstance(hBaseConnection);
-        allTables.add(uniqueIdForwardMapTable);
-
-        uniqueIdReverseMapTable = HBaseUniqueIdReverseMapTable.getInstance(hBaseConnection);
-        allTables.add(uniqueIdReverseMapTable);
-
     }
 
     @Override
@@ -117,5 +125,10 @@ public class HBaseTableFactory implements TableFactory {
     public void shutdown() {
         // Call each of the registered shutdown functions
         shutdownFunctions.forEach((shutdownFunc) -> shutdownFunc.accept(hBaseConnection));
+    }
+
+    @Override
+    public UniqueIdCache get() {
+        return uniqueIdCache;
     }
 }

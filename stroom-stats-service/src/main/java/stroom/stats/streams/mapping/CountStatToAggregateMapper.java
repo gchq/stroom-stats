@@ -47,6 +47,8 @@ public class CountStatToAggregateMapper extends AbstractStatisticMapper {
     public CountStatToAggregateMapper(UniqueIdCache uniqueIdCache,
                                       StroomPropertyService stroomPropertyService) {
         super(uniqueIdCache, stroomPropertyService);
+        LOGGER.info("Initialising {}", this.getClass().getCanonicalName());
+
         this.uniqueIdCache = uniqueIdCache;
         this.stroomPropertyService = stroomPropertyService;
     }

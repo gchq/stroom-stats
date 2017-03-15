@@ -46,11 +46,11 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
     private final Cache<String, UID> nameToUidCache;
     private final Cache<UID, String> uidToNameCache;
 
-    @Inject
-    public UniqueIdCacheImpl(final UniqueId uniqueId, final CacheFactory cacheFactory,
-                             final NameToUidLoaderWriter nameToUidLoaderWriter,
-                             final UidToNameLoaderWriter uidToNameLoaderWriter) {
+    public UniqueIdCacheImpl(final UniqueId uniqueId, final CacheFactory cacheFactory) {
         this.uniqueId = uniqueId;
+
+        NameToUidLoaderWriter nameToUidLoaderWriter = new NameToUidLoaderWriter(uniqueId);
+        UidToNameLoaderWriter uidToNameLoaderWriter = new UidToNameLoaderWriter(uniqueId);
 
         this.nameToUidCache = cacheFactory.getOrCreateCache(NAME_TO_UID_CACHE_NAME, String.class, UID.class, Optional.of(nameToUidLoaderWriter));
         this.uidToNameCache = cacheFactory.getOrCreateCache(UID_TO_NAME_CACHE_NAME, UID.class, String.class, Optional.of(uidToNameLoaderWriter));
