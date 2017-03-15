@@ -60,6 +60,7 @@ public class UniqueId {
     private final int width;
     private final long maxId;
 
+
     public UniqueId(final UniqueIdForwardMapTable forwardMapTable, final UniqueIdReverseMapTable reverseMapTable,
                     final int width) {
         this.forwardMapTable = forwardMapTable;

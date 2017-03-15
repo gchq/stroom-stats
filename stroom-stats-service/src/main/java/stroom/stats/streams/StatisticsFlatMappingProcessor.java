@@ -62,6 +62,7 @@ class StatisticsFlatMappingProcessor {
     private final StroomPropertyService stroomPropertyService;
     private final StatisticsMarshaller statisticsMarshaller;
 
+    //TODO probably should be called ...ProcessorBuilder as it is not a processor but the builder of one
     @Inject
     StatisticsFlatMappingProcessor(final StatisticConfigurationService statisticConfigurationService,
                                    final StroomPropertyService stroomPropertyService,

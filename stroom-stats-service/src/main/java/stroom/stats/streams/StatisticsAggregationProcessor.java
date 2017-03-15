@@ -86,79 +86,12 @@ class StatisticsAggregationProcessor {
     private final StroomPropertyService stroomPropertyService;
     private final int maxEventIds;
 
-    //TODO probably should be called ...ProcessorBuilder as it is not a processor but the builder of one
     @Inject
     public StatisticsAggregationProcessor(final StatisticsService statisticsService, final StroomPropertyService stroomPropertyService) {
         this.statisticsService = statisticsService;
         this.stroomPropertyService = stroomPropertyService;
         maxEventIds = stroomPropertyService.getIntProperty(StatAggregate.PROP_KEY_MAX_AGGREGATED_EVENT_IDS, Integer.MAX_VALUE);
     }
-
-
-//    KafkaStreams buildStream(final StreamsConfig streamsConfig,
-//                             final String inputTopic,
-//                             final Class<? extends StatAggregate> statAggregateType) {
-//
-//        //TODO This means changing this prop will require an app restart
-//        final int maxEventIds = stroomPropertyService.getIntProperty(StatAggregate.PROP_KEY_MAX_AGGREGATED_EVENT_IDS, Integer.MAX_VALUE);
-//
-//        Serde<StatKey> statKeySerde = StatKeySerde.instance();
-//        Serde<StatAggregate> statAggregateSerde = StatAggregateSerde.instance();
-//
-//        KStreamBuilder builder = new KStreamBuilder();
-//        KStream<StatKey, StatAggregate> inputStream = builder.stream(statKeySerde, statAggregateSerde, inputTopic);
-//
-//        Initializer<StatAggregate> aggregateInitializer = createAggregateInitializer(statAggregateType);
-//
-//        //TODO This needs configuring in properties, probably on a per interval basis so short intervals have a longer time
-//        //window duration.
-//        //
-//        //These time windows have ZERO relation to the interval time buckets. We are simple aggregating our messages
-//        //by their keys which have already been truncated down to a time interval into suitably sized (time wise) buckets
-//        //Thus if we get N messages in time T with the same statKey, we will get a single statAggregate composed from
-//        //N original values. In this case the original value is already of type StatAggregate to confuse matters
-//        TimeWindows timeWindows = TimeWindows.of(1000);
-//        Windows<TimeWindow> windows = timeWindows.until(0);
-//
-//        String aggregateStoreName = inputTopic + "-aggregateStore";
-//        StateStoreSupplier aggregateStore = Stores.create(aggregateStoreName)
-//                .withKeys(statKeySerde)
-//                .withValues(statAggregateSerde)
-//                .inMemory()
-//                .build();
-//
-////        KStream<Windowed<StatKey>, StatAggregate> windowedAggregates = inputStream
-////                .selectKey((statKey, statAggregate) -> statKey.cloneAndTruncateTimeToInterval())
-////                .transform()
-////                .groupByKey(statKeySerde, statAggregateSerde)
-////                .aggregate(
-////                        aggregateInitializer,
-////                        this::aggregate,
-////                        windows,
-////                        statAggregateSerde,
-////                        "statAggregatesBatches")
-////                .toStream();
-//
-////        windowedAggregates
-//
-//        /*
-//        processor 2 (one instance per time interval - S/M/H/D)
-//            .stream
-//            .selectKey() //k=name/tagvalues/type/truncatedTime/currentBucket v=aggregate, map the key only - truncate the time to the current bucket
-//            .aggregateByKey //aggregate within a tumbling window (period configured per bucket size, maybe)
-//            .through //add the current aggregates to a topic (one per stat type and interval) for load into hbase
-//            .filter() //currentBucket != largest bucket, to stop further processing
-//            .selectKey() //k=name/tagvalues/type/truncatedTime/nextBucket v=aggregate, map the key - move bucket to next biggest
-//            .to() //put on topic for this bucket size
-//
-//         */
-//
-//
-//
-//
-//
-//        return null;
-//    }
 
     public void startProcessor(final Map<String, Object> consumerProps,
                                final Map<String, Object> producerProps,
@@ -265,6 +198,72 @@ class StatisticsAggregationProcessor {
 
         producer.flush();
     }
+
+//    KafkaStreams buildStream(final StreamsConfig streamsConfig,
+//                             final String inputTopic,
+//                             final Class<? extends StatAggregate> statAggregateType) {
+//
+//        //TODO This means changing this prop will require an app restart
+//        final int maxEventIds = stroomPropertyService.getIntProperty(StatAggregate.PROP_KEY_MAX_AGGREGATED_EVENT_IDS, Integer.MAX_VALUE);
+//
+//        Serde<StatKey> statKeySerde = StatKeySerde.instance();
+//        Serde<StatAggregate> statAggregateSerde = StatAggregateSerde.instance();
+//
+//        KStreamBuilder builder = new KStreamBuilder();
+//        KStream<StatKey, StatAggregate> inputStream = builder.stream(statKeySerde, statAggregateSerde, inputTopic);
+//
+//        Initializer<StatAggregate> aggregateInitializer = createAggregateInitializer(statAggregateType);
+//
+//        //TODO This needs configuring in properties, probably on a per interval basis so short intervals have a longer time
+//        //window duration.
+//        //
+//        //These time windows have ZERO relation to the interval time buckets. We are simple aggregating our messages
+//        //by their keys which have already been truncated down to a time interval into suitably sized (time wise) buckets
+//        //Thus if we get N messages in time T with the same statKey, we will get a single statAggregate composed from
+//        //N original values. In this case the original value is already of type StatAggregate to confuse matters
+//        TimeWindows timeWindows = TimeWindows.of(1000);
+//        Windows<TimeWindow> windows = timeWindows.until(0);
+//
+//        String aggregateStoreName = inputTopic + "-aggregateStore";
+//        StateStoreSupplier aggregateStore = Stores.create(aggregateStoreName)
+//                .withKeys(statKeySerde)
+//                .withValues(statAggregateSerde)
+//                .inMemory()
+//                .build();
+//
+////        KStream<Windowed<StatKey>, StatAggregate> windowedAggregates = inputStream
+////                .selectKey((statKey, statAggregate) -> statKey.cloneAndTruncateTimeToInterval())
+////                .transform()
+////                .groupByKey(statKeySerde, statAggregateSerde)
+////                .aggregate(
+////                        aggregateInitializer,
+////                        this::aggregate,
+////                        windows,
+////                        statAggregateSerde,
+////                        "statAggregatesBatches")
+////                .toStream();
+//
+////        windowedAggregates
+//
+//        /*
+//        processor 2 (one instance per time interval - S/M/H/D)
+//            .stream
+//            .selectKey() //k=name/tagvalues/type/truncatedTime/currentBucket v=aggregate, map the key only - truncate the time to the current bucket
+//            .aggregateByKey //aggregate within a tumbling window (period configured per bucket size, maybe)
+//            .through //add the current aggregates to a topic (one per stat type and interval) for load into hbase
+//            .filter() //currentBucket != largest bucket, to stop further processing
+//            .selectKey() //k=name/tagvalues/type/truncatedTime/nextBucket v=aggregate, map the key - move bucket to next biggest
+//            .to() //put on topic for this bucket size
+//
+//         */
+//
+//
+//
+//
+//
+//        return null;
+//    }
+
 
 
 

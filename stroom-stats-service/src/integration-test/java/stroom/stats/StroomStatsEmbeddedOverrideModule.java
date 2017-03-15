@@ -52,18 +52,23 @@ import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.properties.StroomPropertyService;
 
+import java.util.Optional;
+
 public class StroomStatsEmbeddedOverrideModule extends AbstractModule {
 
     private final TableFactory mockTableFactory = Mockito.mock(TableFactory.class);
-    private final StatisticsService mockStatisticsService = Mockito.mock(StatisticsService.class, Mockito.withSettings().verboseLogging());
+    private final StatisticsService mockStatisticsService;
     private final CuratorFramework mockCuratorFramework = Mockito.mock(CuratorFramework.class);
 
     private final MockStatisticConfigurationService mockStatisticConfigurationService = new MockStatisticConfigurationService();
 
     private final MockStroomPropertyService mockStroomPropertyService;
 
-    public StroomStatsEmbeddedOverrideModule(final MockStroomPropertyService mockStroomPropertyService) {
+    public StroomStatsEmbeddedOverrideModule(final MockStroomPropertyService mockStroomPropertyService, final Optional<StatisticsService> mockStatisticsService) {
         this.mockStroomPropertyService = mockStroomPropertyService;
+        this.mockStatisticsService = mockStatisticsService.orElseGet(() -> Mockito.mock(StatisticsService.class));
+
+
     }
 
     @Override

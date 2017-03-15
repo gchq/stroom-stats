@@ -66,6 +66,8 @@ public class EventStore {
      */
     public EventStore(final UniqueIdCache uidCache, final EventStoreTimeIntervalEnum interval,
                       final TableFactory tableFactory, final StroomPropertyService propertyService) {
+        LOGGER.info("Initialising EventSore for interval {}", interval);
+
         this.eventStoreTable = tableFactory.getEventStoreTable(interval);
         this.timeInterval = interval;
         this.propertyService = propertyService;

@@ -75,7 +75,7 @@ public class EventStores {
                        final TableFactory tableFactory,
                        final StroomPropertyService propertyService) throws IOException {
 
-        LOGGER.debug("Initialising: {}", this.getClass().getCanonicalName());
+        LOGGER.info("Initialising: {}", this.getClass().getCanonicalName());
 
         this.eventStoresPutAggregator = eventStoresPutAggregator;
         this.tableFactory = tableFactory;

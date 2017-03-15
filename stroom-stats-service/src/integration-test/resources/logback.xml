@@ -28,13 +28,10 @@
         </encoder>
     </appender>
 
-    <logger name="stroom.services.discovery.cli" level="info" />
+    <logger name="stroom.stats" level="debug" />
 
-    <!-- We want everything else to be quiet, so our messages are clear -->
-    <logger name="org.apache" level="ERROR"/>
-
-
-    <root level="info">
+    <!-- stop all the noise from kafka/zookeeper-->
+    <root level="debug">
         <appender-ref ref="STDOUT" />
     </root>
 </configuration>

@@ -30,14 +30,12 @@ import stroom.stats.task.api.TaskManager;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
-import javax.inject.Singleton;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-@Singleton
 public class HBaseTableFactory implements TableFactory {
     private final Map<EventStoreTimeIntervalEnum, HBaseEventStoreTable> eventStoreTables;
     private final HBaseUniqueIdForwardMapTable uniqueIdForwardMapTable;
@@ -59,7 +57,7 @@ public class HBaseTableFactory implements TableFactory {
     @Inject
     public HBaseTableFactory(final TaskManager taskManager, final StroomPropertyService propertyService,
                              final HBaseConnection hBaseConnection, final UniqueIdCache uniqueIdCache) {
-        LOGGER.debug(() -> String.format("Initialising: {}", this.getClass().getCanonicalName()));
+        LOGGER.info(() -> String.format("Initialising: %s", this.getClass().getCanonicalName()));
 
         this.taskManager = taskManager;
         this.propertyService = propertyService;
