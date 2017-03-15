@@ -55,7 +55,7 @@ import stroom.stats.properties.StroomPropertyService;
 public class StroomStatsEmbeddedOverrideModule extends AbstractModule {
 
     private final TableFactory mockTableFactory = Mockito.mock(TableFactory.class);
-    private final StatisticsService mockStatisticsService = Mockito.mock(StatisticsService.class);
+    private final StatisticsService mockStatisticsService = Mockito.mock(StatisticsService.class, Mockito.withSettings().verboseLogging());
     private final CuratorFramework mockCuratorFramework = Mockito.mock(CuratorFramework.class);
 
     private final MockStatisticConfigurationService mockStatisticConfigurationService = new MockStatisticConfigurationService();

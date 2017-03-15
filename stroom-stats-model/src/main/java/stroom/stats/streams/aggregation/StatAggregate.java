@@ -43,8 +43,10 @@ public abstract class StatAggregate {
 
     void aggregateEventIds(final StatAggregate other, final int maxEventIds) {
         //limit the number of event Ids we hold to prevent noisy events creating massive aggregates
-        int addCount = maxEventIds - eventIds.size();
-        eventIds.addAll(other.eventIds.subList(0, addCount));
+        if (other.eventIds.size() > 0) {
+            int addCount = maxEventIds - eventIds.size();
+            eventIds.addAll(other.eventIds.subList(0, Math.min(other.eventIds.size(), addCount)));
+        }
     }
 
     public List<MultiPartIdentifier> getEventIds() {

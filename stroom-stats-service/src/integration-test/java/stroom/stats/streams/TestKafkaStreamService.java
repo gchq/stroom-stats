@@ -64,6 +64,7 @@ import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatKeySerde;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.xml.StatisticsMarshaller;
+import stroom.util.thread.ThreadUtil;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.DatatypeConfigurationException;
@@ -208,6 +209,8 @@ public class TestKafkaStreamService {
 
         //no bad events
         assertThat(badEvents).hasSize(expectedBadMsgCount);
+
+        ThreadUtil.sleep(5_000);
     }
 
     @Test

@@ -29,9 +29,9 @@ import java.util.List;
 public class CountAggregate extends StatAggregate {
     long aggregatedCount = 0L;
 
-    @SuppressWarnings("unused") //needed for aggregate initialisation in the streams
-    public CountAggregate() {
+    public CountAggregate(final long aggregatedCount) {
         super();
+        this.aggregatedCount = aggregatedCount;
     }
 
     public CountAggregate(final List<MultiPartIdentifier> eventIds, final long aggregatedCount) {

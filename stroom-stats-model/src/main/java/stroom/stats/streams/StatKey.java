@@ -125,7 +125,16 @@ public class StatKey {
      */
     public StatKey cloneAndIncrementInterval() {
         EventStoreTimeIntervalEnum newInterval = EventStoreTimeIntervalHelper.getNextBiggest(interval).orElseThrow(() ->
-        new RuntimeException(String.format("Cannot increment current interval %s as it is the biggest interval", interval.toString())));
+                new RuntimeException(String.format("Cannot increment current interval %s as it is the biggest interval", interval.toString())));
+        return new StatKey(statName, rollupMask, newInterval, timeMs, tagValues);
+    }
+
+    /**
+     * Shallow copy of this except the interval is changed for the next biggest. Will throw a {@link RuntimeException}
+     * if it is already the biggest.
+     */
+    public StatKey cloneAndChangeInterval(EventStoreTimeIntervalEnum newInterval) {
+        Preconditions.checkNotNull(newInterval);
         return new StatKey(statName, rollupMask, newInterval, timeMs, tagValues);
     }
 
@@ -142,7 +151,8 @@ public class StatKey {
      * and the interval is changed to the new interval
      */
     public StatKey cloneAndTruncateTimeToInterval(final EventStoreTimeIntervalEnum newInterval) {
-        Preconditions.checkArgument(newInterval.compareTo(this.interval) > 1);
+        Preconditions.checkArgument(newInterval.compareTo(this.interval) > 1,
+                "newInterval %s should be larger than interval %s", interval, newInterval);
         long newTimeMs = interval.roundTimeToColumnInterval(timeMs);
         return new StatKey(statName, rollupMask, newInterval, newTimeMs, tagValues);
     }

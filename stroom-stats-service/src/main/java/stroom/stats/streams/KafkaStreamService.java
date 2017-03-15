@@ -210,29 +210,29 @@ public class KafkaStreamService {
         return flatMapProcessor;
     }
 
-    private void startAggregationProcessor(final StatisticType statisticType, final EventStoreTimeIntervalEnum interval) {
+    private void startAggregationProcessor(
+            final StatisticType statisticType,
+            final EventStoreTimeIntervalEnum interval) {
 
-        String appId = getName(PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX, statisticType);
-
-        LOGGER.info("Building processor {}", appId);
+        LOGGER.info("Configuring Aggregation Processor for statType {} and interval {}", statisticType, interval);
 
         String topicPrefix = stroomPropertyService.getPropertyOrThrow(PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX);
 
         String inputTopic = TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, interval);
 
-        Optional<String> nextIntervalTopic = EventStoreTimeIntervalHelper.getNextBiggest(interval)
-                .map(newInterval ->
+        Optional<EventStoreTimeIntervalEnum> optNextInterval = EventStoreTimeIntervalHelper.getNextBiggest(interval);
+        Optional<String> optNextIntervalTopic = optNextInterval.map(newInterval ->
                         TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, newInterval));
 
-        Map<String, Object> props = new HashMap<>();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, appId);
+//        Map<String, Object> props = new HashMap<>();
+//        props.put(StreamsConfig.APPLICATION_ID_CONFIG, appId);
 
-        //TODO need to specify number of threads in the yml as it could be box specific
-        //plus configure it on a per processor basis
-        int streamThreads = stroomPropertyService.getIntProperty(PROP_KEY_KAFKA_STREAM_THREADS, 1);
-        props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, streamThreads);
+//        //TODO need to specify number of threads in the yml as it could be box specific
+//        //plus configure it on a per processor basis
+//        int streamThreads = stroomPropertyService.getIntProperty(PROP_KEY_KAFKA_STREAM_THREADS, 1);
+//        props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, streamThreads);
 
-        StreamsConfig streamsConfig = buildStreamsConfig(appId, props);
+//        StreamsConfig streamsConfig = buildStreamsConfig(appId, props);
 
 //        KafkaStreams aggregationProcessor = statisticsAggregationProcessor.buildStream(
 //                streamsConfig,
@@ -242,12 +242,17 @@ public class KafkaStreamService {
 //        aggregationProcessor.setUncaughtExceptionHandler(buildUncaughtExceptionHandler(appId));
 //
 //        aggregationProcessor.start();
+
+        //Configure the consumers
         Map<String, Object> consumerProps = new HashMap<>();
-        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, stroomPropertyService.getPropertyOrThrow(PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
+        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                stroomPropertyService.getPropertyOrThrow(PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
         consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
 
+        //Configure the producers
         Map<String, Object> producerProps = new HashMap<>();
-        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, stroomPropertyService.getPropertyOrThrow(PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
+        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                stroomPropertyService.getPropertyOrThrow(PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
         producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
         producerProps.put(ProducerConfig.RETRIES_CONFIG, 0);
         producerProps.put(ProducerConfig.LINGER_MS_CONFIG, 10);
@@ -260,7 +265,8 @@ public class KafkaStreamService {
                 consumerProps,
                 producerProps,
                 inputTopic,
-                nextIntervalTopic,
+                optNextInterval,
+                optNextIntervalTopic,
                 statisticType,
                 interval);
 
