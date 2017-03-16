@@ -83,9 +83,6 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
     public String getName(final UID uniqueId) {
         Preconditions.checkNotNull(uniqueId, "A null uniqueId is not valid");
 
-        // have to wrap the byte[] so that we get a equals/hashcode that looks
-        // at the content rather than the instance
-        // TODO Consider using Bytes.mapKey instead
         final String name = Try.of(() -> uidToNameCache.get(uniqueId))
                 .getOrElseThrow(() -> new RuntimeException(String.format(
                     "uniqueId %s should exist in the cache, something may have gone wrong with self population",
@@ -113,7 +110,6 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
     private static class NameToUidLoaderWriter extends AbstractReadOnlyCacheLoaderWriter<String, UID> {
         private final UniqueId uniqueId;
 
-        @Inject
         public NameToUidLoaderWriter(final UniqueId uniqueId) {
             this.uniqueId = uniqueId;
         }
@@ -135,7 +131,6 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
     private static class UidToNameLoaderWriter extends AbstractReadOnlyCacheLoaderWriter<UID, String> {
         private final UniqueId uniqueId;
 
-        @Inject
         public UidToNameLoaderWriter(final UniqueId uniqueId) {
             this.uniqueId = uniqueId;
         }

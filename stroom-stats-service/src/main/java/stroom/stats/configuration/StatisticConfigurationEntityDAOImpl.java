@@ -22,6 +22,7 @@ package stroom.stats.configuration;
 
 import io.dropwizard.hibernate.AbstractDAO;
 import io.dropwizard.hibernate.UnitOfWork;
+import org.hibernate.HibernateException;
 import org.hibernate.SessionFactory;
 import org.hibernate.criterion.Restrictions;
 import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
@@ -63,7 +64,12 @@ public class StatisticConfigurationEntityDAOImpl extends AbstractDAO<StatisticCo
 
     @Override
     public List<StatisticConfigurationEntity> loadAll() {
-        List<StatisticConfigurationEntity> entities = super.criteria().list();
+        List<StatisticConfigurationEntity> entities = null;
+        try {
+            entities = super.criteria().list();
+        } catch (HibernateException e) {
+            throw new RuntimeException("Error loading all statisticConfiguration entities", e);
+        }
         entities.forEach(entity -> {
             statisticConfigurationEntityMarshaller.unmarshal(entity);
         });

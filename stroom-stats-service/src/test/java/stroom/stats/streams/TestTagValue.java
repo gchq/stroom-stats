@@ -81,6 +81,16 @@ public class TestTagValue {
         assertThat(tagValue1).isEqualTo(tagValue3);
     }
 
+    @Test
+    public void testHashCode() {
+        UID tag3 = UID.from(new byte[] {0,0,0,1});
+        UID value3 = UID.from(new byte[] {0,0,0,2});
+        TagValue tagValue3 = new TagValue(tag3, value3);
+
+        assertThat(tagValue1.hashCode()).isEqualTo(tagValue3.hashCode());
+        assertThat(tagValue1.hashCode()).isNotEqualTo(tagValue2.hashCode());
+    }
+
 //    @Test
 //    public void compareTo_tag2bigger() {
 //        byte[] bTag1 = {0,0,0,1};

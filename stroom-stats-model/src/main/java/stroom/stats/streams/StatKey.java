@@ -31,6 +31,7 @@ import stroom.stats.util.logging.LambdaLogger;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -89,6 +90,14 @@ public class StatKey {
     }
 
 
+    public StatKey(final UID statName,
+                   final RollUpBitMask rollupMask,
+                   final EventStoreTimeIntervalEnum interval,
+                   final long timeMs,
+                   final TagValue... tagValues) {
+
+       this(statName, rollupMask, interval, timeMs, Arrays.asList(tagValues));
+    }
     /**
      * Spawns a new {@link StatKey} based on the values of this but with some of
      * the tag values rolled up and a new {@link RollUpBitMask}. The new tag values
