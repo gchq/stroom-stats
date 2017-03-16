@@ -126,8 +126,8 @@ class StatisticsAggregationProcessor {
                         statAggregateSerde.serializer());
             }
 
-            LOGGER.info("Starting consumer/producer for type {}, interval {}, inputTopic {}, nextIntervalTopic",
-                    statisticType, aggregationInterval, inputTopic, nextIntervalTopic.orElse("Empty"));
+            LOGGER.info("Starting consumer/producer for {}, {}, {} -> {}",
+                    statisticType, aggregationInterval, inputTopic, nextIntervalTopic.orElse("None"));
 
             kafkaConsumer.subscribe(Collections.singletonList(inputTopic));
 

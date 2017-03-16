@@ -46,7 +46,7 @@ import org.mockito.Mockito;
 import stroom.stats.api.StatisticsService;
 import stroom.stats.configuration.MockStatisticConfigurationService;
 import stroom.stats.configuration.StatisticConfigurationService;
-import stroom.stats.hbase.table.TableFactory;
+import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.MockStroomPropertyService;
@@ -56,7 +56,7 @@ import java.util.Optional;
 
 public class StroomStatsEmbeddedOverrideModule extends AbstractModule {
 
-    private final TableFactory mockTableFactory = Mockito.mock(TableFactory.class);
+    private final EventStoreTableFactory mockEventStoreTableFactory = Mockito.mock(EventStoreTableFactory.class);
     private final StatisticsService mockStatisticsService;
     private final CuratorFramework mockCuratorFramework = Mockito.mock(CuratorFramework.class);
 
@@ -79,7 +79,7 @@ public class StroomStatsEmbeddedOverrideModule extends AbstractModule {
         //TODO For the moment, just a mock that does nothing. In furture will either need
         //to capture calls made to it for asserts or be replaced with the HBaseTestingUtility
         //if that can be made to work with the hbase-shaded-client
-        bind(TableFactory.class).toInstance(mockTableFactory);
+        bind(EventStoreTableFactory.class).toInstance(mockEventStoreTableFactory);
 
 
         //TODO need to replace this with a proper mock, or expose this mock somehow to allow capturing of input

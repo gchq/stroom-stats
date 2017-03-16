@@ -32,7 +32,7 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.hbase.aggregator.EventStoresPutAggregator;
 import stroom.stats.hbase.structure.AddEventOperation;
 import stroom.stats.hbase.structure.CellQualifier;
-import stroom.stats.hbase.table.TableFactory;
+import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.server.common.AbstractStatisticsService;
@@ -57,7 +57,7 @@ public class EventStores {
 
     private final UniqueIdCache uidCache;
     private final EventStoresPutAggregator eventStoresPutAggregator;
-    private final TableFactory tableFactory;
+    private final EventStoreTableFactory eventStoreTableFactory;
     private final StroomPropertyService propertyService;
 
     //Map to hold an EventStore per granularity
@@ -72,13 +72,13 @@ public class EventStores {
     public EventStores(final RowKeyCache rowKeyCache,
                        final UniqueIdCache uniqueIdCache,
                        final EventStoresPutAggregator eventStoresPutAggregator,
-                       final TableFactory tableFactory,
+                       final EventStoreTableFactory eventStoreTableFactory,
                        final StroomPropertyService propertyService) throws IOException {
 
         LOGGER.info("Initialising: {}", this.getClass().getCanonicalName());
 
         this.eventStoresPutAggregator = eventStoresPutAggregator;
-        this.tableFactory = tableFactory;
+        this.eventStoreTableFactory = eventStoreTableFactory;
         this.propertyService = propertyService;
 
         this.uidCache = uniqueIdCache;
@@ -136,7 +136,7 @@ public class EventStores {
     }
 
     private void addStore(final EventStoreTimeIntervalEnum interval) {
-        final EventStore eventStore = new EventStore(this.uidCache, interval, tableFactory, this.propertyService);
+        final EventStore eventStore = new EventStore(this.uidCache, interval, eventStoreTableFactory, this.propertyService);
 
         // add the event store to the map of stores in use
         eventStoreMap.put(interval, eventStore);

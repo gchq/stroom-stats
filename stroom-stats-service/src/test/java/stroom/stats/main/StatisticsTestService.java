@@ -87,11 +87,8 @@ import stroom.stats.hbase.SimpleRowKeyBuilder;
 import stroom.stats.hbase.connection.HBaseConnection;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.ValueCellValue;
-import stroom.stats.hbase.table.EventStoreColumnFamily;
-import stroom.stats.hbase.table.HBaseEventStoreTable;
-import stroom.stats.hbase.table.HBaseTable;
-import stroom.stats.hbase.table.HBaseUniqueIdForwardMapTable;
-import stroom.stats.hbase.table.TableFactory;
+import stroom.stats.hbase.table.*;
+import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.hbase.util.bytes.ByteArrayUtils;
@@ -131,7 +128,7 @@ public final class StatisticsTestService {
     private static final Random RANDOM = new Random();
 
     private CacheManager statCacheManager;
-    private TableFactory tableFactory;
+    private EventStoreTableFactory eventStoreTableFactory;
     private UniqueIdCache uniqueIdCache;
     private StatisticConfigurationService statisticConfigurationService;
     private EventStores eventStores;
@@ -143,7 +140,7 @@ public final class StatisticsTestService {
 
     @Inject
     public StatisticsTestService(final CacheManager statCacheManager,
-                                 final TableFactory tableFactory,
+                                 final EventStoreTableFactory eventStoreTableFactory,
                                  final UniqueIdCache uniqueIdCache,
                                  final StatisticConfigurationService statisticConfigurationService,
                                  final EventStores eventStores,
@@ -151,7 +148,7 @@ public final class StatisticsTestService {
                                  final StroomPropertyService propertyService,
                                  final HBaseConnection hBaseConnection) {
         this.statCacheManager = statCacheManager;
-        this.tableFactory = tableFactory;
+        this.eventStoreTableFactory = eventStoreTableFactory;
         this.uniqueIdCache = uniqueIdCache;
         this.statisticConfigurationService = statisticConfigurationService;
         this.eventStores = eventStores;
@@ -876,7 +873,7 @@ public final class StatisticsTestService {
 
     public void scanUIDTable() throws IOException {
         // TableConfiguration tableConfiguration = getTableConfiguration();
-        final HBaseUniqueIdForwardMapTable uidTable = HBaseUniqueIdForwardMapTable.getInstance(hBaseConnection);
+        final HBaseUniqueIdForwardMapTable uidTable = new HBaseUniqueIdForwardMapTable(hBaseConnection);
 
         // UniqueIdCache uniqueIdCache = getUinqueIdCache(tableConfiguration);
 

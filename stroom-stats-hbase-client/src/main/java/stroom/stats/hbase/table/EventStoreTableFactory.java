@@ -24,12 +24,11 @@ package stroom.stats.hbase.table;
 
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
-import java.util.List;
 
-public interface TableFactory {
+public interface EventStoreTableFactory {
     /**
      * Returns a cached instance of an EventStoreTable with an implementation
-     * dependent on the TableFactory instance used.
+     * dependent on the EventStoreTableFactory instance used.
      *
      * @param timeinterval
      *            The time interval to create or get the EventStoreTable for
@@ -37,24 +36,4 @@ public interface TableFactory {
      */
     EventStoreTable getEventStoreTable(EventStoreTimeIntervalEnum timeinterval);
 
-    /**
-     * Returns a cached instance of a UniqueIdForwardMapTable with an
-     * implementation dependent on the TableFactory instance used.
-     *
-     * @return A cached UniqueIdForwardMapTable instance
-     */
-    UniqueIdForwardMapTable getUniqueIdForwardMapTable();
-
-    /**
-     * Returns a cached instance of a UniqueIdForwardMapTable with an
-     * implementation dependent on the TableFactory instance used.
-     *
-     * @return A cached UniqueIdForwardMapTable instance
-     */
-    UniqueIdReverseMapTable getUniqueIdReverseMapTable();
-
-    /**
-     * @return A list of all the {@link GenericTable} instances
-     */
-    List<GenericTable> getAllTables();
 }

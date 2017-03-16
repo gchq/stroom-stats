@@ -24,14 +24,14 @@ package stroom.stats.hbase.scheduler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.hbase.table.HBaseTableFactory;
+import stroom.stats.hbase.table.HBaseEventStoreTableFactory;
 import stroom.stats.properties.StroomPropertyService;
 
 import javax.inject.Inject;
 import java.util.concurrent.Semaphore;
 
 public class HBasePutBufferFlushScheduler {
-    private final HBaseTableFactory hBaseTableFactory;
+    private final HBaseEventStoreTableFactory hBaseTableFactory;
     private final StroomPropertyService propertyService;
 
     // semaphore to prevent multiple cron scheduled jobs from running at once
@@ -40,7 +40,7 @@ public class HBasePutBufferFlushScheduler {
     private static final Logger LOGGER = LoggerFactory.getLogger(HBasePutBufferFlushScheduler.class);
 
     @Inject
-    public HBasePutBufferFlushScheduler(final HBaseTableFactory hBaseTableFactory,
+    public HBasePutBufferFlushScheduler(final HBaseEventStoreTableFactory hBaseTableFactory,
                                         final StroomPropertyService propertyService) {
         this.hBaseTableFactory = hBaseTableFactory;
         this.propertyService = propertyService;

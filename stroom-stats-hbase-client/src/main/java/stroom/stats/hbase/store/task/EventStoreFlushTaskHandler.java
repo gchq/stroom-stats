@@ -31,7 +31,7 @@ import stroom.stats.hbase.structure.CountRowData;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.ValueCellValue;
 import stroom.stats.hbase.table.EventStoreTable;
-import stroom.stats.hbase.table.TableFactory;
+import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.util.bytes.ByteArrayWrapper;
 import stroom.stats.task.api.AbstractTaskHandler;
 import stroom.stats.task.api.VoidResult;
@@ -57,14 +57,14 @@ public class EventStoreFlushTaskHandler extends AbstractTaskHandler<EventStoreFl
 //    @Resource
 //    private TaskMonitor taskMonitor;
     @Resource
-    private TableFactory tableFactory;
+    private EventStoreTableFactory eventStoreTableFactory;
 
     public EventStoreFlushTaskHandler() {
     }
 
     @Inject
-    public EventStoreFlushTaskHandler(final TableFactory tableFactory) {
-        this.tableFactory = tableFactory;
+    public EventStoreFlushTaskHandler(final EventStoreTableFactory eventStoreTableFactory) {
+        this.eventStoreTableFactory = eventStoreTableFactory;
     }
 
     @Override
@@ -82,7 +82,7 @@ public class EventStoreFlushTaskHandler extends AbstractTaskHandler<EventStoreFl
             LOGGER.debug(() -> String.format("Flushing statistics (count=%s) for store: %s", total, store.getTimeInterval()));
 //            taskMonitor.info("Flushing statistics (count=%s)", total);
 
-            final EventStoreTable eventStoreTable = tableFactory.getEventStoreTable(store.getTimeInterval());
+            final EventStoreTable eventStoreTable = eventStoreTableFactory.getEventStoreTable(store.getTimeInterval());
 
             try {
                 if (store instanceof ConcurrentInMemoryEventStoreCount) {

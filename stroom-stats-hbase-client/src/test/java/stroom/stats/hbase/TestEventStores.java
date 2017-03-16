@@ -41,11 +41,8 @@ import stroom.stats.configuration.MockStatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.hbase.aggregator.EventStoresPutAggregator;
 import stroom.stats.hbase.structure.AddEventOperation;
-import stroom.stats.hbase.table.EventStoreTable;
-import stroom.stats.hbase.table.GenericTable;
-import stroom.stats.hbase.table.TableFactory;
-import stroom.stats.hbase.table.UniqueIdForwardMapTable;
-import stroom.stats.hbase.table.UniqueIdReverseMapTable;
+import stroom.stats.hbase.table.*;
+import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.server.common.AbstractStatisticsService;
@@ -71,7 +68,7 @@ public class TestEventStores {
 
     private final MockStroomPropertyService mockPropertyService = new MockStroomPropertyService();
 
-    private final MockTableFactory mockTableFactory = new MockTableFactory();
+    private final MockEventStoreTableFactory mockTableFactory = new MockEventStoreTableFactory();
 
     @Before
     public void setup() throws IOException {
@@ -220,24 +217,9 @@ public class TestEventStores {
         return rolledUpStatisticEvent;
     }
 
-    public static class MockTableFactory implements TableFactory {
+    public static class MockEventStoreTableFactory implements EventStoreTableFactory {
         @Override
         public EventStoreTable getEventStoreTable(final EventStoreTimeIntervalEnum timeinterval) {
-            return null;
-        }
-
-        @Override
-        public UniqueIdForwardMapTable getUniqueIdForwardMapTable() {
-            return null;
-        }
-
-        @Override
-        public UniqueIdReverseMapTable getUniqueIdReverseMapTable() {
-            return null;
-        }
-
-        @Override
-        public List<GenericTable> getAllTables() {
             return null;
         }
     }

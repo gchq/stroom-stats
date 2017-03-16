@@ -22,92 +22,61 @@
 
 package stroom.stats.hbase.table;
 
-import stroom.stats.cache.CacheFactory;
 import stroom.stats.hbase.connection.HBaseConnection;
-import stroom.stats.hbase.uid.UID;
-import stroom.stats.hbase.uid.UniqueId;
 import stroom.stats.hbase.uid.UniqueIdCache;
-import stroom.stats.hbase.uid.UniqueIdCacheImpl;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.task.api.TaskManager;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
-import javax.inject.Provider;
+import javax.inject.Singleton;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public class HBaseTableFactory implements TableFactory, Provider<UniqueIdCache> {
-    private final Map<EventStoreTimeIntervalEnum, HBaseEventStoreTable> eventStoreTables;
-    private final HBaseUniqueIdForwardMapTable uniqueIdForwardMapTable;
-    private final HBaseUniqueIdReverseMapTable uniqueIdReverseMapTable;
-    private final UniqueIdCache uniqueIdCache;
+@Singleton
+public class HBaseEventStoreTableFactory implements EventStoreTableFactory {
 
+    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(HBaseEventStoreTableFactory.class);
+
+    private final Map<EventStoreTimeIntervalEnum, HBaseEventStoreTable> eventStoreTables;
     private final TaskManager taskManager;
     private final StroomPropertyService propertyService;
-    private final HBaseConnection hBaseConnection;
 
-    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(HBaseTableFactory.class);
+    private final HBaseConnection hBaseConnection;
 
     // A list of functions (provided by tables this factory produces) to be
     // called when Stroom shuts down. This is needed as the tables are not spring
     // beans and therefore can't have the shutdown hook
     private final List<Consumer<HBaseConnection>> shutdownFunctions = new ArrayList<>();
 
-    private final List<HBaseTable> allTables = new ArrayList<>();
-
     @Inject
-    public HBaseTableFactory(final TaskManager taskManager, final StroomPropertyService propertyService,
-                             final HBaseConnection hBaseConnection, final CacheFactory cacheFactory) {
+    public HBaseEventStoreTableFactory(final TaskManager taskManager,
+                                       final StroomPropertyService propertyService,
+                                       final HBaseConnection hBaseConnection,
+                                       final UniqueIdCache uniqueIdCache) {
+
         LOGGER.info(() -> String.format("Initialising: %s", this.getClass().getCanonicalName()));
 
         this.taskManager = taskManager;
         this.propertyService = propertyService;
         this.hBaseConnection = hBaseConnection;
 
-        uniqueIdForwardMapTable = HBaseUniqueIdForwardMapTable.getInstance(hBaseConnection);
-        allTables.add(uniqueIdForwardMapTable);
-
-        uniqueIdReverseMapTable = HBaseUniqueIdReverseMapTable.getInstance(hBaseConnection);
-        allTables.add(uniqueIdReverseMapTable);
-
-        UniqueId uniqueId = new UniqueId(uniqueIdForwardMapTable, uniqueIdReverseMapTable, UID.UID_ARRAY_LENGTH);
-        uniqueIdCache = new UniqueIdCacheImpl(uniqueId, cacheFactory);
-
-        eventStoreTables = new EnumMap<>(
-                EventStoreTimeIntervalEnum.class);
+        eventStoreTables = new EnumMap<>(EventStoreTimeIntervalEnum.class);
 
         // set up an event store table object for each time interval that we
         // use
         for (final EventStoreTimeIntervalEnum timeIntervalEnum : EventStoreTimeIntervalEnum.values()) {
             addEventStoreTable(timeIntervalEnum, uniqueIdCache);
         }
-
-        allTables.addAll(eventStoreTables.values());
     }
 
     @Override
     public EventStoreTable getEventStoreTable(final EventStoreTimeIntervalEnum timeInterval) {
         return (EventStoreTable) eventStoreTables.get(timeInterval);
-    }
-
-    @Override
-    public UniqueIdForwardMapTable getUniqueIdForwardMapTable() {
-        return (UniqueIdForwardMapTable) uniqueIdForwardMapTable;
-    }
-
-    @Override
-    public UniqueIdReverseMapTable getUniqueIdReverseMapTable() {
-        return (UniqueIdReverseMapTable) uniqueIdReverseMapTable;
-    }
-
-    @Override
-    public List<GenericTable> getAllTables() {
-        return new ArrayList<>(allTables);
     }
 
     private void addEventStoreTable(final EventStoreTimeIntervalEnum timeInterval, final UniqueIdCache uniqueIdCache) {
@@ -127,8 +96,4 @@ public class HBaseTableFactory implements TableFactory, Provider<UniqueIdCache> 
         shutdownFunctions.forEach((shutdownFunc) -> shutdownFunc.accept(hBaseConnection));
     }
 
-    @Override
-    public UniqueIdCache get() {
-        return uniqueIdCache;
-    }
 }

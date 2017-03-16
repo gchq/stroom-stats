@@ -35,7 +35,7 @@ import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.hbase.connection.HBaseConnection;
 import stroom.stats.hbase.table.EventStoreTable;
 import stroom.stats.hbase.table.GenericTable;
-import stroom.stats.hbase.table.TableFactory;
+import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.table.UniqueIdForwardMapTable;
 import stroom.stats.hbase.table.UniqueIdReverseMapTable;
 import stroom.stats.hbase.uid.UniqueIdCache;
@@ -54,7 +54,7 @@ import java.util.Set;
 public class TestEventStore {
     EventStoreForTesting eventStore;
     MockEventStoreTable mockEventStoreTable;
-    MockTableFactory mockTableFactory;
+    MockEventStoreTableFactory mockTableFactory;
 
     @Test
     public void testPurgeStatisticDataSourceDataOneDataSourceNoTagsSecondStore() {
@@ -206,7 +206,7 @@ public class TestEventStore {
     private void buildEventStore(final EventStoreTimeIntervalEnum interval, final String currentTime,
             final int retainedIntervalCount) {
         mockEventStoreTable = new MockEventStoreTable();
-        mockTableFactory = new MockTableFactory(mockEventStoreTable);
+        mockTableFactory = new MockEventStoreTableFactory(mockEventStoreTable);
 
         final MockStroomPropertyService propertyService = new MockStroomPropertyService();
         propertyService.setProperty(HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX
@@ -224,8 +224,8 @@ public class TestEventStore {
         private final String now;
 
         public EventStoreForTesting(final UniqueIdCache uidCache, final EventStoreTimeIntervalEnum interval,
-                                    final TableFactory tableFactory, final StroomPropertyService propertyService, final String currentTime) {
-            super(uidCache, interval, tableFactory, propertyService);
+                                    final EventStoreTableFactory eventStoreTableFactory, final StroomPropertyService propertyService, final String currentTime) {
+            super(uidCache, interval, eventStoreTableFactory, propertyService);
             this.now = currentTime;
         }
 
@@ -235,10 +235,10 @@ public class TestEventStore {
         }
     }
 
-    private static class MockTableFactory implements TableFactory {
+    private static class MockEventStoreTableFactory implements EventStoreTableFactory {
         private final EventStoreTable eventStoreTable;
 
-        public MockTableFactory(final EventStoreTable eventStoreTable) {
+        public MockEventStoreTableFactory(final EventStoreTable eventStoreTable) {
             this.eventStoreTable = eventStoreTable;
         }
 
@@ -246,22 +246,6 @@ public class TestEventStore {
         public EventStoreTable getEventStoreTable(final EventStoreTimeIntervalEnum timeinterval) {
             return eventStoreTable;
         }
-
-        @Override
-        public UniqueIdForwardMapTable getUniqueIdForwardMapTable() {
-            return null;
-        }
-
-        @Override
-        public UniqueIdReverseMapTable getUniqueIdReverseMapTable() {
-            return null;
-        }
-
-        @Override
-        public List<GenericTable> getAllTables() {
-            throw new UnsupportedOperationException("Not used by this mock");
-        }
-
     }
 
     private static class PurgeArgsObject {

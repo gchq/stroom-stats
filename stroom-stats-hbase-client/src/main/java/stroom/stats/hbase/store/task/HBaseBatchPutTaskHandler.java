@@ -25,7 +25,7 @@ package stroom.stats.hbase.store.task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.hbase.structure.CountRowData;
-import stroom.stats.hbase.table.TableFactory;
+import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.task.api.AbstractTaskHandler;
 import stroom.stats.task.api.VoidResult;
@@ -42,11 +42,11 @@ public class HBaseBatchPutTaskHandler extends AbstractTaskHandler<HBaseBatchPutT
 
 //    private TaskMonitor taskMonitor;
 
-    private TableFactory tableFactory;
+    private EventStoreTableFactory eventStoreTableFactory;
 
     @Inject
-    public HBaseBatchPutTaskHandler(final TableFactory tableFactory) {
-        this.tableFactory = tableFactory;
+    public HBaseBatchPutTaskHandler(final EventStoreTableFactory eventStoreTableFactory) {
+        this.eventStoreTableFactory = eventStoreTableFactory;
     }
 
     @Override
@@ -65,7 +65,7 @@ public class HBaseBatchPutTaskHandler extends AbstractTaskHandler<HBaseBatchPutT
 
             // this is a HBase specific task so use the concrete class rather
             // than the interface
-//            final HBaseEventStoreTable eventStoreTable = (HBaseEventStoreTable) tableFactory
+//            final HBaseEventStoreTable eventStoreTable = (HBaseEventStoreTable) eventStoreTableFactory
 //                    .getEventStoreTable(timeInterval);
 //
 //            try {

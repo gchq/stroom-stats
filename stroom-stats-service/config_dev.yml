@@ -24,10 +24,10 @@ server:
         port: 8085
 
 logging:
-    level: INFO
+    level: WARN
     loggers:
+        stroom.stats: DEBUG
         org.eclipse.jetty: INFO
-        stroom.messaging.kafka: INFO
 
 zookeeper:
     # The quorum of zookeeper hosts to connect to

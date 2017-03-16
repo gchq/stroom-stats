@@ -31,7 +31,7 @@ import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.hbase.table.EventStoreTable;
-import stroom.stats.hbase.table.TableFactory;
+import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -65,10 +65,10 @@ public class EventStore {
      *                 should be configured with
      */
     public EventStore(final UniqueIdCache uidCache, final EventStoreTimeIntervalEnum interval,
-                      final TableFactory tableFactory, final StroomPropertyService propertyService) {
+                      final EventStoreTableFactory eventStoreTableFactory, final StroomPropertyService propertyService) {
         LOGGER.info("Initialising EventSore for interval {}", interval);
 
-        this.eventStoreTable = tableFactory.getEventStoreTable(interval);
+        this.eventStoreTable = eventStoreTableFactory.getEventStoreTable(interval);
         this.timeInterval = interval;
         this.propertyService = propertyService;
         this.purgeRetentionPeriodsPropertyKey = HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX

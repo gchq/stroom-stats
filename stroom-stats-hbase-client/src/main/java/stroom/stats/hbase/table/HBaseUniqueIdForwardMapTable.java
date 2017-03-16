@@ -34,6 +34,7 @@ import stroom.stats.hbase.util.bytes.ByteArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.util.Optional;
 
 /**
@@ -59,13 +60,10 @@ public class HBaseUniqueIdForwardMapTable extends HBaseTable implements UniqueId
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseUniqueIdForwardMapTable.class);
 
-    private HBaseUniqueIdForwardMapTable(final HBaseConnection hBaseConnection) {
+    @Inject
+    public HBaseUniqueIdForwardMapTable(final HBaseConnection hBaseConnection) {
         super(hBaseConnection);
         init();
-    }
-
-    public static HBaseUniqueIdForwardMapTable getInstance(final HBaseConnection hBaseConnection) {
-        return new HBaseUniqueIdForwardMapTable(hBaseConnection);
     }
 
     @Override

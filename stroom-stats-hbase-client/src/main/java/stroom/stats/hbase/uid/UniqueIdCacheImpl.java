@@ -46,6 +46,7 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
     private final Cache<String, UID> nameToUidCache;
     private final Cache<UID, String> uidToNameCache;
 
+    @Inject
     public UniqueIdCacheImpl(final UniqueId uniqueId, final CacheFactory cacheFactory) {
         this.uniqueId = uniqueId;
 

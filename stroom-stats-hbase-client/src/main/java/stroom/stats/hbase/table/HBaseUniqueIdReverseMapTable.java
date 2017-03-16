@@ -37,6 +37,7 @@ import stroom.stats.hbase.util.bytes.ByteArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.util.Optional;
 
 /**
@@ -74,13 +75,10 @@ public class HBaseUniqueIdReverseMapTable extends HBaseTable implements UniqueId
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseUniqueIdReverseMapTable.class);
 
-    private HBaseUniqueIdReverseMapTable(final HBaseConnection hBaseConnection) {
+    @Inject
+    public HBaseUniqueIdReverseMapTable(final HBaseConnection hBaseConnection) {
         super(hBaseConnection);
         init();
-    }
-
-    public static HBaseUniqueIdReverseMapTable getInstance(final HBaseConnection hBaseConnection) {
-        return new HBaseUniqueIdReverseMapTable(hBaseConnection);
     }
 
     @Override
