@@ -24,14 +24,11 @@ package stroom.stats.hbase.uid;
 import com.google.common.base.Preconditions;
 import javaslang.control.Try;
 import org.ehcache.Cache;
-import org.ehcache.spi.loaderwriter.BulkCacheLoadingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.cache.AbstractReadOnlyCacheLoaderWriter;
 import stroom.stats.cache.CacheFactory;
 
 import javax.inject.Inject;
-import java.util.Map;
 import java.util.Optional;
 
 public class UniqueIdCacheImpl implements UniqueIdCache {
@@ -106,44 +103,4 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
         throw new UnsupportedOperationException("TODO, ehCache v3.2 doesn't seem to support this");
     }
 
-    private static class NameToUidLoaderWriter extends AbstractReadOnlyCacheLoaderWriter<String, UID> {
-        private final UniqueId uniqueId;
-
-        public NameToUidLoaderWriter(final UniqueId uniqueId) {
-            this.uniqueId = uniqueId;
-        }
-
-        @Override
-        public UID load(final String name) throws Exception {
-            return UID.from(Optional.ofNullable(uniqueId.getId(name))
-                    .orElseThrow(() -> new Exception(String.format("Name %s does not exist it uid table", name)))
-                    .get());
-        }
-
-        @Override
-        public Map<String, UID> loadAll(final Iterable<? extends String> keys) throws BulkCacheLoadingException, Exception {
-            throw new UnsupportedOperationException("LoadAll is not currently supported on this cache");
-        }
-
-    }
-
-    private static class UidToNameLoaderWriter extends AbstractReadOnlyCacheLoaderWriter<UID, String> {
-        private final UniqueId uniqueId;
-
-        public UidToNameLoaderWriter(final UniqueId uniqueId) {
-            this.uniqueId = uniqueId;
-        }
-
-        @Override
-        public String load(final UID uid) throws Exception {
-            return Optional.ofNullable(uniqueId.getName(uid.getUidBytes()))
-                    .orElseThrow(() -> new Exception(String.format("UID %s does not exist in the uid table", uid.toAllForms())))
-                    .get();
-        }
-
-        @Override
-        public Map<UID, String> loadAll(final Iterable<? extends UID> keys) throws BulkCacheLoadingException, Exception {
-            throw new UnsupportedOperationException("LoadAll is not currently supported on this cache");
-        }
-    }
 }
