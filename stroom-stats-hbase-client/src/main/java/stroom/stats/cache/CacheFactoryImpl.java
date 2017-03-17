@@ -58,7 +58,10 @@ public final class CacheFactoryImpl implements CacheFactory {
                         CacheConfigurationBuilder<K, V> builder = cacheConfigurationService.newCacheConfigurationBuilder(
                                 cacheName, keyType, valueType);
 
-                        optLoaderWriter.ifPresent(builder::withLoaderWriter);
+                        if (optLoaderWriter.isPresent()) {
+                            //withLoaderWriter returns a new instance of builder
+                            builder = builder.withLoaderWriter(optLoaderWriter.get());
+                        }
                         cache = cacheManager.createCache(cacheName, builder.build());
                     } catch (Exception e) {
                         throw new RuntimeException(String.format(

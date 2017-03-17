@@ -39,6 +39,8 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 public class HBaseDataLoadIT extends AbstractAppIT {
 
     @Test
@@ -56,6 +58,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //Put time in the statName to allow us to re-run the test without an empty HBase
         String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString();
         UID statName = uniqueIdCache.getOrCreateId(statNameStr);
+        assertThat(statName).isNotNull();
 
         UID tag1 = uniqueIdCache.getOrCreateId("tag1");
         UID tag1val1 = uniqueIdCache.getOrCreateId("tag1val1");

@@ -25,6 +25,7 @@ import org.ehcache.spi.loaderwriter.CacheLoaderWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.util.Map;
 import java.util.Optional;
 
@@ -33,6 +34,7 @@ class UidToNameLoaderWriter implements CacheLoaderWriter<UID, String> {
 
     private final UniqueId uniqueId;
 
+    @Inject
     public UidToNameLoaderWriter(final UniqueId uniqueId) {
         this.uniqueId = uniqueId;
     }

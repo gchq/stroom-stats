@@ -146,7 +146,7 @@ public class UniqueId {
                 // the reverseMap table with the same name value but different
                 // UIDs.
 
-                // TODO Some form of back ground process to periodically check
+                // TODO Some form of background process to periodically check
                 // that each entry in the reverseMap table has a corresponding
                 // entry in the forwardMap table and if it doesn't delete it as
                 // it is an orphan.

@@ -65,7 +65,7 @@ public class CacheConfigurationServiceImpl implements CacheConfigurationService 
         expiryFunctionMap.put(PROP_KEY_SUFFIX_TIME_TO_LIVE_SECS, (builder, value) ->
                 builder.withExpiry(Expirations.timeToLiveExpiration(Duration.of(value, TimeUnit.SECONDS))));
 
-        //Gotcha - a called to .heap(value) always returns a brand new builder so if
+        //Gotcha - a call to .heap(value) always returns a brand new builder so if
         //.heap wasn't called first then any existing builds would be lost
         entriesFunctionMap.put(PROP_KEY_SUFFIX_MAX_ENTRIES_HEAP, (builder, value) ->
                 builder.heap(value, EntryUnit.ENTRIES));
@@ -92,6 +92,7 @@ public class CacheConfigurationServiceImpl implements CacheConfigurationService 
     public <K, V> CacheConfigurationBuilder<K, V> newCacheConfigurationBuilder(final String cacheName,
                                                                                final Class<K> keyType,
                                                                                final Class<V> valueType) {
+
         LOGGER.info("Configuring cache with name {}, keyType {}, valueType {}", cacheName, keyType.getCanonicalName(), valueType.getCanonicalName());
         //using atomic ref to get round resourcePoolsBuilder chaining with immutable builders
         final AtomicReference<ResourcePoolsBuilder> resourcePoolsBuilderRef = new AtomicReference<>(ResourcePoolsBuilder.newResourcePoolsBuilder());

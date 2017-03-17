@@ -25,6 +25,7 @@ import org.ehcache.spi.loaderwriter.CacheLoaderWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.util.Map;
 import java.util.Optional;
 
@@ -33,12 +34,15 @@ class NameToUidLoaderWriter implements CacheLoaderWriter<String, UID> {
 
     private final UniqueId uniqueId;
 
+    @Inject
     public NameToUidLoaderWriter(final UniqueId uniqueId) {
         this.uniqueId = uniqueId;
     }
 
     @Override
     public UID load(final String name) throws Exception {
+        LOGGER.trace("load called on name {}", name);
+
         return UID.from(Optional.ofNullable(uniqueId.getId(name))
                 .orElseThrow(() -> new Exception(String.format("Name %s does not exist it uid table", name)))
                 .get());
