@@ -62,17 +62,20 @@ public class TestUniqueIdCacheImpl {
 
         MockUniqueId mockUniqueId = new MockUniqueId();
 
+        NameToUidLoaderWriter nameToUidLoaderWriter = new NameToUidLoaderWriter(mockUniqueId);
+        UidToNameLoaderWriter uidToNameLoaderWriter = new UidToNameLoaderWriter(mockUniqueId);
+
         //build some caches to back UniqueIdCacheImpl
         CacheManager cacheManager = CacheManagerBuilder.newCacheManagerBuilder()
                 .withCache(UniqueIdCacheImpl.NAME_TO_UID_CACHE_NAME,
                         CacheConfigurationBuilder.newCacheConfigurationBuilder(String.class, UID.class,
                                 ResourcePoolsBuilder.heap(1000))
-                                .withLoaderWriter(new NameToUidLoaderWriter(mockUniqueId))
+                                .withLoaderWriter(nameToUidLoaderWriter)
                                 .build())
                 .withCache(UniqueIdCacheImpl.UID_TO_NAME_CACHE_NAME,
                         CacheConfigurationBuilder.newCacheConfigurationBuilder(UID.class, String.class,
                                 ResourcePoolsBuilder.heap(1000))
-                                .withLoaderWriter(new UidToNameLoaderWriter(mockUniqueId))
+                                .withLoaderWriter(uidToNameLoaderWriter)
                                 .build())
                 .build(true);
 
@@ -94,7 +97,8 @@ public class TestUniqueIdCacheImpl {
                 any())
         ).thenReturn(uidToNameCache);
 
-        uniqueIdCache = new UniqueIdCacheImpl(mockUniqueId, mockCacheFactory);
+        //use null loaderwriters as they would only be passed to the cacheFactory which we are mocking
+        uniqueIdCache = new UniqueIdCacheImpl(mockUniqueId, mockCacheFactory, nameToUidLoaderWriter, uidToNameLoaderWriter);
     }
 
     @Test
