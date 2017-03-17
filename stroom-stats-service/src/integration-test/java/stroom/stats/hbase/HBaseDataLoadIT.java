@@ -31,10 +31,18 @@ import org.hibernate.criterion.Restrictions;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.query.api.DocRef;
+import stroom.query.api.ExpressionItem;
+import stroom.query.api.ExpressionOperator;
+import stroom.query.api.ExpressionTerm;
+import stroom.query.api.Query;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
+import stroom.stats.common.StatisticDataPoint;
+import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.rollup.RollUpBitMask;
+import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.configuration.StatisticRollUpType;
@@ -49,10 +57,12 @@ import stroom.stats.streams.aggregation.AggregatedEvent;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.test.StatisticConfigurationEntityBuilder;
+import stroom.stats.util.DateUtil;
 
 import java.io.Serializable;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -110,13 +120,34 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 new TagValue(tag1, tag1val1),
                 new TagValue(tag2, tag2val1));
 
-        StatAggregate statAggregate = new CountAggregate(100L);
+        long statValue = 100L;
+
+        StatAggregate statAggregate = new CountAggregate(statValue);
 
         AggregatedEvent aggregatedEvent = new AggregatedEvent(statKey, statAggregate);
 
         aggregatedEvents.add(aggregatedEvent);
 
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
+
+        ExpressionItem dateExpression = new ExpressionTerm(
+                StatisticConfiguration.FIELD_NAME_DATE_TIME,
+                ExpressionTerm.Condition.BETWEEN,
+                String.format("%s,%s",
+                        DateUtil.createNormalDateTimeString(Instant.now().minus(1, ChronoUnit.HOURS).toEpochMilli()),
+                        DateUtil.createNormalDateTimeString(Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli())));
+
+        Query query = new Query(
+                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateExpression));
+
+        StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(query, statisticConfigurationEntity);
+
+        assertThat(statisticDataSet).isNotNull();
+        assertThat(statisticDataSet).size().isEqualTo(1);
+        StatisticDataPoint statisticDataPoint = statisticDataSet.getStatisticDataPoints().stream().findFirst().get();
+        assertThat(statisticDataPoint.getCount()).isEqualTo(statValue);
+        assertThat(statisticDataPoint.getTags()).size().isEqualTo(statKey.getTagValues().size());
     }
 
 

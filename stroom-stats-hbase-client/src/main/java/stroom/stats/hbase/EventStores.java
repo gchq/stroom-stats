@@ -266,8 +266,10 @@ public class EventStores {
         final EventStoreTimeIntervalEnum bestFitBasedOnRetention = bestFitStore.getTimeInterval();
 
         LOGGER.info("Using event store [{}] for search.  Best fit based on: period - [{}], data source - [{}] & retention - [{}]",
-                bestFitStore.getTimeInterval().longName(), bestFitBasedOnPeriod.longName(),
-                bestFitBasedOnDataSource.longName(), bestFitBasedOnRetention.longName());
+                bestFitStore.getTimeInterval().longName(),
+                bestFitBasedOnPeriod.longName(),
+                bestFitBasedOnDataSource.longName(),
+                bestFitBasedOnRetention.longName());
 
         return bestFitStore;
     }

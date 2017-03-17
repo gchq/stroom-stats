@@ -96,8 +96,8 @@ public abstract class AbstractStatisticsService implements StatisticsService {
 //        }
 //    }
 
-    protected static FindEventCriteria buildCriteria(final Query query, final StatisticConfiguration dataSource) {
-        LOGGER.trace(() -> String.format("buildCriteria called for statistic %s", dataSource.getName()));
+    protected static FindEventCriteria buildCriteria(final Query query, final StatisticConfiguration statisticConfiguration) {
+        LOGGER.trace(() -> String.format("buildCriteria called for statisticConfiguration ", statisticConfiguration));
 
         // object looks a bit like this
         // AND
@@ -191,11 +191,11 @@ public abstract class AbstractStatisticsService implements StatisticsService {
         }
 
         if (!rolledUpFieldNames.isEmpty()) {
-            if (dataSource.getRollUpType().equals(StatisticRollUpType.NONE)) {
+            if (statisticConfiguration.getRollUpType().equals(StatisticRollUpType.NONE)) {
                 throw new UnsupportedOperationException(
                         "Query contains rolled up terms but the Statistic Data Source does not support any roll-ups");
-            } else if (dataSource.getRollUpType().equals(StatisticRollUpType.CUSTOM)) {
-                if (!dataSource.isRollUpCombinationSupported(rolledUpFieldNames)) {
+            } else if (statisticConfiguration.getRollUpType().equals(StatisticRollUpType.CUSTOM)) {
+                if (!statisticConfiguration.isRollUpCombinationSupported(rolledUpFieldNames)) {
                     throw new UnsupportedOperationException(String.format(
                             "The query contains a combination of rolled up fields %s that is not in the list of custom roll-ups for the statistic data source",
                             rolledUpFieldNames));
@@ -212,12 +212,12 @@ public abstract class AbstractStatisticsService implements StatisticsService {
         final FilterTermsTree filterTermsTree = FilterTermsTreeBuilder
                 .convertExpresionItemsTree(topLevelExpressionOperator, blackListedFieldNames);
 
-        final FindEventCriteria criteria = FindEventCriteria.builder(new Period(range.getFrom(), range.getTo()), dataSource.getName())
+        final FindEventCriteria criteria = FindEventCriteria.builder(new Period(range.getFrom(), range.getTo()), statisticConfiguration.getName())
                 .setFilterTermsTree(filterTermsTree)
                 .setRolledUpFieldNames(rolledUpFieldNames)
                 .build();
 
-        LOGGER.info(String.format("Searching statistics store with criteria: {}", criteria));
+        LOGGER.info("Searching statistics store with criteria: {}", criteria);
         return criteria;
     }
 
