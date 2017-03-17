@@ -32,18 +32,18 @@ import java.util.Optional;
 class NameToUidLoaderWriter implements CacheLoaderWriter<String, UID> {
     private static final Logger LOGGER = LoggerFactory.getLogger(NameToUidLoaderWriter.class);
 
-    private final UniqueId uniqueId;
+    private final UniqueIdGenerator uniqueIdGenerator;
 
     @Inject
-    public NameToUidLoaderWriter(final UniqueId uniqueId) {
-        this.uniqueId = uniqueId;
+    public NameToUidLoaderWriter(final UniqueIdGenerator uniqueIdGenerator) {
+        this.uniqueIdGenerator = uniqueIdGenerator;
     }
 
     @Override
     public UID load(final String name) throws Exception {
         LOGGER.trace("load called on name {}", name);
 
-        return UID.from(Optional.ofNullable(uniqueId.getId(name))
+        return UID.from(Optional.ofNullable(uniqueIdGenerator.getId(name))
                 .orElseThrow(() -> new Exception(String.format("Name %s does not exist it uid table", name)))
                 .get());
     }

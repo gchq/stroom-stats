@@ -19,7 +19,7 @@
 
 /*
  * This class is a modified form of OpenTSDB's (https://github.com/OpenTSDB/opentsdb)
- * UniqueId.java class.
+ * UniqueIdGenerator.java class.
  */
 
 package stroom.stats.hbase.uid;
@@ -34,8 +34,9 @@ import stroom.stats.hbase.util.bytes.UnsignedBytes;
 
 import java.util.Optional;
 
-public class UniqueId {
-    private static final Logger LOGGER = LoggerFactory.getLogger(UniqueId.class);
+public class UniqueIdGenerator {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(UniqueIdGenerator.class);
 
     /**
      * How many times do we try to assign an ID before giving up.
@@ -47,9 +48,8 @@ public class UniqueId {
     private final int width;
     private final long maxId;
 
-
-    public UniqueId(final UniqueIdForwardMapTable forwardMapTable, final UniqueIdReverseMapTable reverseMapTable,
-                    final int width) {
+    public UniqueIdGenerator(final UniqueIdForwardMapTable forwardMapTable, final UniqueIdReverseMapTable reverseMapTable,
+                             final int width) {
         this.forwardMapTable = forwardMapTable;
         this.reverseMapTable = reverseMapTable;
         this.width = width;

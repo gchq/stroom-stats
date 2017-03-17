@@ -60,7 +60,7 @@ public class TestUniqueIdCacheImpl {
     @Before
     public void setup() {
 
-        MockUniqueId mockUniqueId = new MockUniqueId();
+        MockUniqueIdGenerator mockUniqueId = new MockUniqueIdGenerator();
 
         NameToUidLoaderWriter nameToUidLoaderWriter = new NameToUidLoaderWriter(mockUniqueId);
         UidToNameLoaderWriter uidToNameLoaderWriter = new UidToNameLoaderWriter(mockUniqueId);
@@ -142,15 +142,15 @@ public class TestUniqueIdCacheImpl {
 
     //partial mock to act like the forward and reverse mapping tables
     //this mock will be fronted by caches in UniqueIdCacheImpl
-    private static class MockUniqueId extends UniqueId {
+    private static class MockUniqueIdGenerator extends UniqueIdGenerator {
 
-        private static final Logger LOGGER = LoggerFactory.getLogger(MockUniqueId.class);
+        private static final Logger LOGGER = LoggerFactory.getLogger(MockUniqueIdGenerator.class);
 
         private final AtomicInteger idSequence = new AtomicInteger(0);
         private final ConcurrentMap<UID, String> idToNameMap = new ConcurrentHashMap<>();
         private final ConcurrentMap<String, byte[]> nameToIdMap = new ConcurrentHashMap<>();
 
-        public MockUniqueId() {
+        public MockUniqueIdGenerator() {
             super(null, null, UID.UID_ARRAY_LENGTH);
         }
 

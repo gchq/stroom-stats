@@ -32,16 +32,16 @@ import java.util.Optional;
 class UidToNameLoaderWriter implements CacheLoaderWriter<UID, String> {
     private static final Logger LOGGER = LoggerFactory.getLogger(UidToNameLoaderWriter.class);
 
-    private final UniqueId uniqueId;
+    private final UniqueIdGenerator uniqueIdGenerator;
 
     @Inject
-    public UidToNameLoaderWriter(final UniqueId uniqueId) {
-        this.uniqueId = uniqueId;
+    public UidToNameLoaderWriter(final UniqueIdGenerator uniqueIdGenerator) {
+        this.uniqueIdGenerator = uniqueIdGenerator;
     }
 
     @Override
     public String load(final UID uid) throws Exception {
-        return Optional.ofNullable(uniqueId.getName(uid.getUidBytes()))
+        return Optional.ofNullable(uniqueIdGenerator.getName(uid.getUidBytes()))
                 .orElseThrow(() -> new Exception(String.format("UID %s does not exist in the uid table", uid.toAllForms())))
                 .get();
     }

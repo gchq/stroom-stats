@@ -37,18 +37,18 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
     static final String NAME_TO_UID_CACHE_NAME = "nameToUidCache";
     static final String UID_TO_NAME_CACHE_NAME = "uidToNameCache";
 
-    private final UniqueId uniqueId;
+    private final UniqueIdGenerator uniqueIdGenerator;
 
     private final Cache<String, UID> nameToUidCache;
     private final Cache<UID, String> uidToNameCache;
 
     @Inject
-    public UniqueIdCacheImpl(final UniqueId uniqueId,
+    public UniqueIdCacheImpl(final UniqueIdGenerator uniqueIdGenerator,
                              final CacheFactory cacheFactory,
                              final NameToUidLoaderWriter nameToUidLoaderWriter,
                              final UidToNameLoaderWriter uidToNameLoaderWriter) {
 
-        this.uniqueId = uniqueId;
+        this.uniqueIdGenerator = uniqueIdGenerator;
 
         this.nameToUidCache = cacheFactory.getOrCreateCache(NAME_TO_UID_CACHE_NAME, String.class, UID.class, Optional.of(nameToUidLoaderWriter));
         this.uidToNameCache = cacheFactory.getOrCreateCache(UID_TO_NAME_CACHE_NAME, UID.class, String.class, Optional.of(uidToNameLoaderWriter));
@@ -63,7 +63,7 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
                     //not in cache or table so create it in the tables
                     //in the event that another thread does this as well then getOrCreateId will handle
                     //thread safety issues
-                    UID newUid = UID.from(uniqueId.getOrCreateId(name));
+                    UID newUid = UID.from(uniqueIdGenerator.getOrCreateId(name));
                     //add the new K/V to both caches as we have the values and chances are somebody else will need them
                     uidToNameCache.put(newUid, name);
                     nameToUidCache.put(name, newUid);
@@ -79,16 +79,16 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
 
     @Override
     public String getName(final UID uniqueId) {
-        Preconditions.checkNotNull(uniqueId, "A null uniqueId is not valid");
+        Preconditions.checkNotNull(uniqueId, "A null uniqueIdGenerator is not valid");
 
         final String name = Try.of(() -> uidToNameCache.get(uniqueId))
                 .getOrElseThrow(() -> new RuntimeException(String.format(
-                    "uniqueId %s should exist in the cache, something may have gone wrong with self population",
+                    "uniqueIdGenerator %s should exist in the cache, something may have gone wrong with self population",
                         uniqueId.toAllForms())));
 
         if (name == null) {
             throw new RuntimeException(String.format(
-                    "uniqueId %s has a null value associated with it in the cache, something has gone wrong with the UID cache/tables as all UIDs should have a name",
+                    "uniqueIdGenerator %s has a null value associated with it in the cache, something has gone wrong with the UID cache/tables as all UIDs should have a name",
                     uniqueId.toAllForms()));
         }
 
@@ -97,7 +97,7 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
 
     @Override
     public int getWidth() {
-        return uniqueId.getWidth();
+        return uniqueIdGenerator.getWidth();
     }
 
     @Override

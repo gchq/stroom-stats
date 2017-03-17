@@ -40,7 +40,7 @@ import stroom.stats.hbase.aggregator.EventStoresThreadFlushAggregatorImpl;
 import stroom.stats.hbase.aggregator.InMemoryEventStoreIdPool;
 import stroom.stats.hbase.aggregator.InMemoryEventStoreIdPoolImpl;
 import stroom.stats.hbase.table.*;
-import stroom.stats.hbase.uid.UniqueId;
+import stroom.stats.hbase.uid.UniqueIdGenerator;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.hbase.uid.UniqueIdCacheImpl;
 import stroom.stats.hbase.uid.UniqueIdProvider;
@@ -74,7 +74,7 @@ public class StroomStatsHbaseClientModule extends AbstractModule {
         bind(UniqueIdReverseMapTable.class).to(HBaseUniqueIdReverseMapTable.class);
 
         //providers
-        bind(UniqueId.class).toProvider(UniqueIdProvider.class).asEagerSingleton();
+        bind(UniqueIdGenerator.class).toProvider(UniqueIdProvider.class).asEagerSingleton();
 
         //singletons
         bind(EventStoreTableFactory.class).to(HBaseEventStoreTableFactory.class).asEagerSingleton();

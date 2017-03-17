@@ -33,7 +33,7 @@ public class TestUniqueId {
     public void testConvertToUid() throws Exception {
         final long val = 867L;
 
-        final byte[] bytes867 = UniqueId.convertToUid(val, BYTE_ARRAY_WIDTH);
+        final byte[] bytes867 = UniqueIdGenerator.convertToUid(val, BYTE_ARRAY_WIDTH);
 
         final byte[] expected = UnsignedBytes.toBytes(BYTE_ARRAY_WIDTH, val);
 
@@ -44,9 +44,9 @@ public class TestUniqueId {
     public void testGetNextUid() throws Exception {
         final long val = 867L;
 
-        final byte[] bytes867 = UniqueId.convertToUid(val, BYTE_ARRAY_WIDTH);
+        final byte[] bytes867 = UniqueIdGenerator.convertToUid(val, BYTE_ARRAY_WIDTH);
 
-        final byte[] bytes868 = UniqueId.getNextUid(bytes867, BYTE_ARRAY_WIDTH);
+        final byte[] bytes868 = UniqueIdGenerator.getNextUid(bytes867, BYTE_ARRAY_WIDTH);
 
         final long nextVal = UnsignedBytes.get(bytes868, 0, BYTE_ARRAY_WIDTH);
 
@@ -57,9 +57,9 @@ public class TestUniqueId {
     public void testGetPrevUid() throws Exception {
         final long val = 867L;
 
-        final byte[] bytes867 = UniqueId.convertToUid(val, BYTE_ARRAY_WIDTH);
+        final byte[] bytes867 = UniqueIdGenerator.convertToUid(val, BYTE_ARRAY_WIDTH);
 
-        final byte[] bytes866 = UniqueId.getPrevUid(bytes867, BYTE_ARRAY_WIDTH);
+        final byte[] bytes866 = UniqueIdGenerator.getPrevUid(bytes867, BYTE_ARRAY_WIDTH);
 
         final long nextVal = UnsignedBytes.get(bytes866, 0, BYTE_ARRAY_WIDTH);
 

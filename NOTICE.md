@@ -6,7 +6,7 @@ This software project uses libraries which fall under several licences. The purp
 
 See the file [LICENCE.txt](./LICENCE.txt) for licensing information for this project.
 
-The design of fundamental parts of Stroom Stats (particularly the table design, row key structure and unique ID concept) were heavily based on that of [OpenTSDB](https://github.com/OpenTSDB/opentsdb). Stroom Stats uses a modified version of OpenTSDB's UniqueId class. It is for these reasons that Stroom Stats is released under the LGPL licence to match OpenTSDB.
+The design of fundamental parts of Stroom Stats (particularly the table design, row key structure and unique ID concept) were heavily based on that of [OpenTSDB](https://github.com/OpenTSDB/opentsdb). Stroom Stats uses a modified version of OpenTSDB's UniqueId class, named in Stroom-Stats as UniqueIdGenerator. It is for these reasons that Stroom Stats is released under the LGPL licence to match OpenTSDB.
 
 The table below includes licences for all Maven dependencies. 
 
