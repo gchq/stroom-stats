@@ -59,11 +59,12 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
 
         return Try.of(() -> nameToUidCache.get(name))
                 .getOrElse(() -> {
-                    //not in cache or table so create it
+                    //not in cache or table so create it in the tables
                     //in the event that another thread does this as well then getOrCreateId will handle
                     //thread safety issues
                     UID newUid = UID.from(uniqueId.getOrCreateId(name));
-                    //add the new K/V to the cache as chances are somebody else will need them
+                    //add the new K/V to both caches as we have the values and chances are somebody else will need them
+                    uidToNameCache.put(newUid, name);
                     nameToUidCache.put(name, newUid);
                     return newUid;
                 });

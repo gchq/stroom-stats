@@ -22,10 +22,14 @@ package stroom.stats.cache;
 import org.ehcache.spi.loaderwriter.BulkCacheLoadingException;
 import org.ehcache.spi.loaderwriter.BulkCacheWritingException;
 import org.ehcache.spi.loaderwriter.CacheLoaderWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 public abstract class AbstractReadOnlyCacheLoaderWriter<K, V> implements CacheLoaderWriter<K, V> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractReadOnlyCacheLoaderWriter.class);
 
     public abstract V load(final K key) throws Exception;
 
@@ -33,21 +37,25 @@ public abstract class AbstractReadOnlyCacheLoaderWriter<K, V> implements CacheLo
 
     @Override
     public void write(final K key, final V value) throws Exception {
+        LOGGER.debug("write called on key {} and value {}", key, value);
         throw new UnsupportedOperationException("CRUD operations are not currently supported on this cache");
     }
 
     @Override
     public void writeAll(final Iterable<? extends Map.Entry<? extends K, ? extends V>> entries) throws BulkCacheWritingException, Exception {
+        LOGGER.debug("writeAll called");
         throw new UnsupportedOperationException("CRUD operations are not currently supported on this cache");
     }
 
     @Override
     public void delete(final K key) throws Exception {
+        LOGGER.debug("delete called on key {}", key);
         throw new UnsupportedOperationException("CRUD operations are not currently supported on this cache");
     }
 
     @Override
     public void deleteAll(final Iterable<? extends K> keys) throws BulkCacheWritingException, Exception {
+        LOGGER.debug("deleteAll called");
         throw new UnsupportedOperationException("CRUD operations are not currently supported on this cache");
     }
 }

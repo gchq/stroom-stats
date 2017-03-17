@@ -19,6 +19,13 @@
 
 package stroom.stats.hbase.uid;
 
+import javaslang.control.Try;
+import org.ehcache.Cache;
+import org.ehcache.CacheManager;
+import org.ehcache.config.builders.CacheConfigurationBuilder;
+import org.ehcache.config.builders.CacheManagerBuilder;
+import org.ehcache.config.builders.ResourcePoolsBuilder;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -29,42 +36,108 @@ import org.slf4j.LoggerFactory;
 import stroom.stats.cache.CacheFactory;
 import stroom.stats.hbase.util.bytes.UnsignedBytes;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.when;
+
 public class TestUniqueIdCacheImpl {
 
     @Rule
-    private MockitoRule rule = MockitoJUnit.rule();
+    public MockitoRule rule = MockitoJUnit.rule();
 
     @Mock
     private CacheFactory mockCacheFactory;
 
-    @Test
-    public void getOrCreateId() throws Exception {
+    private UniqueIdCache uniqueIdCache;
 
-//        when(mockCacheFactory.getOrCreateCache(argThat(matches(UniqueIdCacheImpl.NAME_TO_UID_CACHE_NAME)))
-//        UniqueIdCache uniqueIdCache = new UniqueIdCacheImpl(
-//                new MockUniqueId(),
-//
-//        )
+    @Before
+    public void setup() {
 
+        MockUniqueId mockUniqueId = new MockUniqueId();
 
+        //build some caches to back UniqueIdCacheImpl
+        CacheManager cacheManager = CacheManagerBuilder.newCacheManagerBuilder()
+                .withCache(UniqueIdCacheImpl.NAME_TO_UID_CACHE_NAME,
+                        CacheConfigurationBuilder.newCacheConfigurationBuilder(String.class, UID.class,
+                                ResourcePoolsBuilder.heap(1000))
+                                .withLoaderWriter(new NameToUidLoaderWriter(mockUniqueId))
+                                .build())
+                .withCache(UniqueIdCacheImpl.UID_TO_NAME_CACHE_NAME,
+                        CacheConfigurationBuilder.newCacheConfigurationBuilder(UID.class, String.class,
+                                ResourcePoolsBuilder.heap(1000))
+                                .withLoaderWriter(new UidToNameLoaderWriter(mockUniqueId))
+                                .build())
+                .build(true);
+
+        Cache<String, UID> nameToUidCache = cacheManager.getCache(UniqueIdCacheImpl.NAME_TO_UID_CACHE_NAME, String.class, UID.class);
+        Cache<UID, String> uidToNameCache = cacheManager.getCache(UniqueIdCacheImpl.UID_TO_NAME_CACHE_NAME, UID.class, String.class);
+
+        //Get the mock cacheFactory to return our new caches when called
+        when(mockCacheFactory.getOrCreateCache(
+                eq(UniqueIdCacheImpl.NAME_TO_UID_CACHE_NAME),
+                eq(String.class),
+                eq(UID.class),
+                any())
+        ).thenReturn(nameToUidCache);
+
+        when(mockCacheFactory.getOrCreateCache(
+                eq(UniqueIdCacheImpl.UID_TO_NAME_CACHE_NAME),
+                eq(UID.class),
+                eq(String.class),
+                any())
+        ).thenReturn(uidToNameCache);
+
+        uniqueIdCache = new UniqueIdCacheImpl(mockUniqueId, mockCacheFactory);
     }
 
     @Test
-    public void getUniqueId() throws Exception {
+    public void getOrCreateId_getUniqueId_getName() throws Exception {
 
+
+        String statNameStr = this.getClass().getName() + "-testGetOrCreateId-" + Instant.now().toString();
+        //get the id for a name that will not exist, thus creating the mapping
+        UID id = uniqueIdCache.getOrCreateId(statNameStr);
+
+        assertThat(id).isNotNull();
+        assertThat(id.getUidBytes()).hasSize(UID.UID_ARRAY_LENGTH);
+
+        String name = uniqueIdCache.getName(id);
+
+        //ensure the reverse map is also present
+        assertThat(name).isEqualTo(statNameStr);
+
+        //now get the id for the same string which was created above
+        UID id2 = uniqueIdCache.getOrCreateId(statNameStr);
+
+        assertThat(id2).isEqualTo(id);
+
+        //now get the id for the same string using getId
+        Try<UID> id3 = uniqueIdCache.getUniqueId(statNameStr);
+
+        assertThat(id3.isSuccess()).isTrue();
+        assertThat(id3.get()).isEqualTo(id);
     }
 
     @Test
-    public void getName() throws Exception {
+    public void getUniqueId_notExists() throws Exception {
 
+        //try and get an id for a name that will not exist
+        String statNameStr = this.getClass().getName() + "-testGetId-" + Instant.now().toString();
+        Try<UID> id = uniqueIdCache.getUniqueId(statNameStr);
+
+        assertThat(id.isFailure()).isTrue();
     }
 
-    //partial mock
+
+    //partial mock to act like the forward and reverse mapping tables
+    //this mock will be fronted by caches in UniqueIdCacheImpl
     private static class MockUniqueId extends UniqueId {
 
         private static final Logger LOGGER = LoggerFactory.getLogger(MockUniqueId.class);

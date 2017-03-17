@@ -29,8 +29,8 @@
 
     <logger name="stroom.stats" level="debug" />
 
-    <!-- stop all the noise from kafka/zookeeper-->
-    <root level="debug">
+    <root level="warn">
         <appender-ref ref="STDOUT" />
     </root>
+
 </configuration>

@@ -20,12 +20,17 @@
 package stroom.stats.hbase.uid;
 
 import org.ehcache.spi.loaderwriter.BulkCacheLoadingException;
-import stroom.stats.cache.AbstractReadOnlyCacheLoaderWriter;
+import org.ehcache.spi.loaderwriter.BulkCacheWritingException;
+import org.ehcache.spi.loaderwriter.CacheLoaderWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Optional;
 
-class NameToUidLoaderWriter extends AbstractReadOnlyCacheLoaderWriter<String, UID> {
+class NameToUidLoaderWriter implements CacheLoaderWriter<String, UID> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(NameToUidLoaderWriter.class);
+
     private final UniqueId uniqueId;
 
     public NameToUidLoaderWriter(final UniqueId uniqueId) {
@@ -43,5 +48,30 @@ class NameToUidLoaderWriter extends AbstractReadOnlyCacheLoaderWriter<String, UI
     public Map<String, UID> loadAll(final Iterable<? extends String> keys) throws BulkCacheLoadingException, Exception {
         throw new UnsupportedOperationException("LoadAll is not currently supported on this cache");
     }
+
+    @Override
+    public void write(final String key, final UID value) throws Exception {
+        LOGGER.trace("write called on key {} and value {}", key, value);
+        //do nothing as the key/value will already have been written to the tables by this point by UniqueIdCacheImpl
+    }
+
+    @Override
+    public void writeAll(final Iterable<? extends Map.Entry<? extends String, ? extends UID>> entries) throws BulkCacheWritingException, Exception {
+        LOGGER.trace("writeAll called");
+        throw new UnsupportedOperationException("CRUD operations are not currently supported on this cache");
+    }
+
+    @Override
+    public void delete(final String key) throws Exception {
+        LOGGER.trace("delete called on key {}", key);
+        throw new UnsupportedOperationException("CRUD operations are not currently supported on this cache");
+    }
+
+    @Override
+    public void deleteAll(final Iterable<? extends String> keys) throws BulkCacheWritingException, Exception {
+        LOGGER.trace("deleteAll called");
+        throw new UnsupportedOperationException("CRUD operations are not currently supported on this cache");
+    }
+
 
 }
