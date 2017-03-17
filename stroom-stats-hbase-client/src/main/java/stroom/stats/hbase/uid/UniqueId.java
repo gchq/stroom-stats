@@ -37,14 +37,13 @@
 package stroom.stats.hbase.uid;
 
 import org.apache.hadoop.hbase.util.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import stroom.stats.hbase.exception.HBaseException;
 import stroom.stats.hbase.table.UniqueIdForwardMapTable;
 import stroom.stats.hbase.table.UniqueIdReverseMapTable;
 import stroom.stats.hbase.util.bytes.UnsignedBytes;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Optional;
 
 public class UniqueId {
@@ -71,7 +70,7 @@ public class UniqueId {
         LOGGER.debug("Max id for is {}", maxId);
     }
 
-    public Optional<byte[]> getId(final String name) throws IOException {
+    public Optional<byte[]> getId(final String name) {
         final byte[] nameKey = Bytes.toBytes(name);
         return forwardMapTable.getId(nameKey);
     }
