@@ -41,6 +41,11 @@ public final class TransformerFactoryFactory {
                 LOGGER.info(SYSPROP_NOT_SET);
 
                 System.setProperty(SYSPROP_TRANSFORMER_FACTORY, SAXON_TRANSFORMER_FACTORY);
+                final StringBuilder sb = new StringBuilder();
+                sb.append(SYSPROP_SET_TO);
+                sb.append(SAXON_TRANSFORMER_FACTORY);
+                sb.append(END);
+                LOGGER.info(sb.toString());
             } else {
                 final StringBuilder sb = new StringBuilder();
                 sb.append(SYSPROP_SET_TO);

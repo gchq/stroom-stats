@@ -69,6 +69,7 @@ dependencies {
     testCompile libs.dropwizard_client
     testCompile libs.curator_test
     testCompile libs.spring_kafka_test
+    testCompile libs.saxon
     testCompile 'io.github.lukehutch:fast-classpath-scanner:2.0.17'
 }
 

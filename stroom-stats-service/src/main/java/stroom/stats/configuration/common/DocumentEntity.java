@@ -21,13 +21,13 @@
 
 package stroom.stats.configuration.common;
 
+
 import javax.persistence.Column;
+import javax.persistence.FetchType;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import javax.persistence.MappedSuperclass;
 
-/**
- * Modified version of Stroom's DocumentEntity, removing the folder member variable
- * as the concept of a folder has no meaning in stroom-stats
- */
 @MappedSuperclass
 public abstract class DocumentEntity extends NamedEntity implements Document {
     public static final String UUID = SQLNameConstants.UUID;
@@ -35,6 +35,7 @@ public abstract class DocumentEntity extends NamedEntity implements Document {
     private static final long serialVersionUID = -6752797140242673318L;
 
     private String uuid;
+    private Folder folder;
 
     @Override
     @Column(name = UUID, unique = true, nullable = false)
@@ -50,5 +51,15 @@ public abstract class DocumentEntity extends NamedEntity implements Document {
     public void clearPersistence() {
         super.clearPersistence();
         uuid = null;
+    }
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = Folder.FOREIGN_KEY)
+    public Folder getFolder() {
+        return folder;
+    }
+
+    public void setFolder(final Folder folder) {
+        this.folder = folder;
     }
 }

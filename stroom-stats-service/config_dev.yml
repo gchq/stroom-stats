@@ -12,6 +12,8 @@ database:
     properties:
         charSet: UTF-8
         hibernate.dialect: org.hibernate.dialect.MySQLInnoDBDialect
+        #set to false for compatibility with stroom's legacy hibernate 4 configuration and schema
+        hibernate.id.new_generator_mappings: false
 
 jwtTokenSecret: bd678197-a88e-499c-b03b-62c3dd7dfd2d
 

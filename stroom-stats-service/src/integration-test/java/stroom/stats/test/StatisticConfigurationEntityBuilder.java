@@ -27,8 +27,10 @@ import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticConfigurationEntityData;
 import stroom.stats.configuration.StatisticField;
 import stroom.stats.configuration.StatisticRollUpType;
+import stroom.stats.configuration.common.Folder;
 
 import java.util.Arrays;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class StatisticConfigurationEntityBuilder {
@@ -51,6 +53,12 @@ public class StatisticConfigurationEntityBuilder {
         statisticConfigurationEntity.setStatisticType(statisticType);
         statisticConfigurationEntity.setPrecision(precision);
         statisticConfigurationEntity.setRollUpType(statisticRollUpType);
+        statisticConfigurationEntity.setUuid(UUID.randomUUID().toString());
+
+        //Use the same folder for all entities
+        Folder folder = Folder.create(null, "RootFolder");
+        folder.setUuid(UUID.randomUUID().toString());
+        statisticConfigurationEntity.setFolder(folder);
 
         statisticConfigurationEntityData = new StatisticConfigurationEntityData();
         statisticConfigurationEntity.setStatisticDataSourceDataObject(statisticConfigurationEntityData);
