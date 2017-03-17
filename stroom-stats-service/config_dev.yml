@@ -27,7 +27,7 @@ logging:
     level: WARN
     loggers:
         stroom.stats: DEBUG
-        org.ehcache: DEBUG
+        org.ehcache: INFO
         org.eclipse.jetty: INFO
 
 zookeeper:
