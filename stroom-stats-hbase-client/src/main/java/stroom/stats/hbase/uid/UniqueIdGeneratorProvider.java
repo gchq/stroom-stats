@@ -29,17 +29,17 @@ import javax.inject.Provider;
 import javax.inject.Singleton;
 
 @Singleton
-public class UniqueIdProvider implements Provider<UniqueIdGenerator> {
+public class UniqueIdGeneratorProvider implements Provider<UniqueIdGenerator> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(UniqueIdProvider.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(UniqueIdGeneratorProvider.class);
 
     private final UniqueIdGenerator uniqueIdGenerator;
 
     @Inject
-    public UniqueIdProvider(final UniqueIdForwardMapTable uniqueIdForwardMapTable,
-                            final UniqueIdReverseMapTable uniqueIdReverseMapTable) {
+    public UniqueIdGeneratorProvider(final UniqueIdForwardMapTable uniqueIdForwardMapTable,
+                                     final UniqueIdReverseMapTable uniqueIdReverseMapTable) {
 
-        this.uniqueIdGenerator = new UniqueIdGenerator(uniqueIdForwardMapTable, uniqueIdReverseMapTable, UID.UID_ARRAY_LENGTH);
+        this.uniqueIdGenerator = new HBaseUniqueIdGenerator(uniqueIdForwardMapTable, uniqueIdReverseMapTable, UID.UID_ARRAY_LENGTH);
     }
 
 

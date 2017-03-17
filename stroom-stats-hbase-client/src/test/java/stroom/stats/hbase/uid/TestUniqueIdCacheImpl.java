@@ -34,7 +34,6 @@ import org.mockito.junit.MockitoRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.cache.CacheFactory;
-import stroom.stats.hbase.util.bytes.UnsignedBytes;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -142,17 +141,13 @@ public class TestUniqueIdCacheImpl {
 
     //partial mock to act like the forward and reverse mapping tables
     //this mock will be fronted by caches in UniqueIdCacheImpl
-    private static class MockUniqueIdGenerator extends UniqueIdGenerator {
+    private static class MockUniqueIdGenerator implements UniqueIdGenerator {
 
         private static final Logger LOGGER = LoggerFactory.getLogger(MockUniqueIdGenerator.class);
 
         private final AtomicInteger idSequence = new AtomicInteger(0);
         private final ConcurrentMap<UID, String> idToNameMap = new ConcurrentHashMap<>();
         private final ConcurrentMap<String, byte[]> nameToIdMap = new ConcurrentHashMap<>();
-
-        public MockUniqueIdGenerator() {
-            super(null, null, UID.UID_ARRAY_LENGTH);
-        }
 
         @Override
         public Optional<byte[]> getId(String name) {
@@ -182,17 +177,13 @@ public class TestUniqueIdCacheImpl {
             return Optional.ofNullable(idToNameMap.get(UID.from(id)));
         }
 
-        private byte[] generateNewId() {
-            return convertToUid(idSequence.incrementAndGet(), UID.UID_ARRAY_LENGTH);
+        @Override
+        public int getWidth() {
+            return UID.UID_ARRAY_LENGTH;
         }
 
-
-        public static byte[] convertToUid(final long id, final int width) {
-            final byte[] uid = new byte[width];
-
-            UnsignedBytes.put(uid, 0, width, id);
-
-            return uid;
+        private byte[] generateNewId() {
+            return UniqueIdGenerator.convertToUid(idSequence.incrementAndGet(), UID.UID_ARRAY_LENGTH);
         }
     }
 

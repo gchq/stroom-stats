@@ -22,6 +22,7 @@ package stroom.stats.hbase;
 import com.google.inject.Injector;
 import org.junit.Test;
 import stroom.stats.AbstractAppIT;
+import stroom.stats.hbase.uid.HBaseUniqueIdGenerator;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdGenerator;
 
@@ -35,7 +36,7 @@ public class UniqueIdIT extends AbstractAppIT {
     @Test
     public void testGetOrCreateId() {
         Injector injector = getApp().getInjector();
-        UniqueIdGenerator uniqueIdGenerator = injector.getInstance(UniqueIdGenerator.class);
+        UniqueIdGenerator uniqueIdGenerator = injector.getInstance(HBaseUniqueIdGenerator.class);
 
         String statNameStr = this.getClass().getName() + "-testGetOrCreateId-" + Instant.now().toString();
         //get the id for a name that will not exist, thus creating the mapping
@@ -63,7 +64,7 @@ public class UniqueIdIT extends AbstractAppIT {
     @Test
     public void testGetId_notExists() {
         Injector injector = getApp().getInjector();
-        UniqueIdGenerator uniqueIdGenerator = injector.getInstance(UniqueIdGenerator.class);
+        UniqueIdGenerator uniqueIdGenerator = injector.getInstance(HBaseUniqueIdGenerator.class);
 
         //try and get an id for a name that will not exist
         String statNameStr = this.getClass().getName() + "-testGetId-" + Instant.now().toString();
