@@ -20,12 +20,7 @@
 package stroom.stats.hbase;
 
 import com.google.inject.Injector;
-import javaslang.control.Try;
-import org.hibernate.HibernateException;
-import org.hibernate.Session;
 import org.hibernate.SessionFactory;
-import org.hibernate.Transaction;
-import org.hibernate.context.internal.ManagedSessionContext;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +39,6 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.configuration.common.Folder;
 import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
@@ -54,9 +48,8 @@ import stroom.stats.streams.TagValue;
 import stroom.stats.streams.aggregation.AggregatedEvent;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
-import stroom.stats.test.GenericDAO;
 import stroom.stats.test.StatisticConfigurationEntityBuilder;
-import stroom.stats.test.WriteOnlyStatisticConfigurationEntityDAO;
+import stroom.stats.test.StatisticConfigurationEntityHelper;
 import stroom.stats.util.DateUtil;
 
 import java.time.Instant;
@@ -64,7 +57,6 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -76,7 +68,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     UniqueIdCache uniqueIdCache = injector.getInstance(UniqueIdCache.class);
     StatisticConfigurationService statisticConfigurationService = injector.getInstance(StatisticConfigurationService.class);
     SessionFactory sessionFactory = injector.getInstance(SessionFactory.class);
-    WriteOnlyStatisticConfigurationEntityDAO writeOnlyStatisticConfigurationEntityDAO = new WriteOnlyStatisticConfigurationEntityDAO(sessionFactory, injector.getInstance(StatisticConfigurationEntityMarshaller.class));
+    StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller = injector.getInstance(StatisticConfigurationEntityMarshaller.class);
 
     @Test
     public void test() {
@@ -92,7 +84,9 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //Put time in the statName to allow us to re-run the test without an empty HBase
         String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString();
         String tag1Str = "tag1";
+        String tag1Val1Str = tag1Str + "val1";
         String tag2Str = "tag2";
+        String tag2Val1Str = tag2Str + "val1";
 
         StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
                 statNameStr,
@@ -102,15 +96,18 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 .addFields(tag1Str, tag2Str)
                 .build();
 
-        addStatConfig(statisticConfigurationEntity);
+        StatisticConfigurationEntityHelper.addStatConfig(
+                sessionFactory,
+                statisticConfigurationEntityMarshaller,
+                statisticConfigurationEntity);
 
         UID statName = uniqueIdCache.getOrCreateId(statNameStr);
         assertThat(statName).isNotNull();
 
         UID tag1 = uniqueIdCache.getOrCreateId(tag1Str);
-        UID tag1val1 = uniqueIdCache.getOrCreateId("tag1val1");
+        UID tag1val1 = uniqueIdCache.getOrCreateId(tag1Val1Str);
         UID tag2 = uniqueIdCache.getOrCreateId(tag2Str);
-        UID tag2val1 = uniqueIdCache.getOrCreateId("tag2val1");
+        UID tag2val1 = uniqueIdCache.getOrCreateId(tag1Val1Str);
 
         StatKey statKey = new StatKey( statName,
                 rollUpBitMask,
@@ -129,16 +126,26 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
 
-        ExpressionItem dateExpression = new ExpressionTerm(
+        ExpressionItem dateTerm = new ExpressionTerm(
                 StatisticConfiguration.FIELD_NAME_DATE_TIME,
                 ExpressionTerm.Condition.BETWEEN,
                 String.format("%s,%s",
                         DateUtil.createNormalDateTimeString(Instant.now().minus(1, ChronoUnit.HOURS).toEpochMilli()),
                         DateUtil.createNormalDateTimeString(Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli())));
 
+        ExpressionItem tag1Term = new ExpressionTerm(
+                tag1Str,
+                ExpressionTerm.Condition.EQUALS,
+                tag1Val1Str);
+
+        ExpressionItem tag2Term = new ExpressionTerm(
+                tag1Str,
+                ExpressionTerm.Condition.EQUALS,
+                tag2Val1Str);
+
         Query query = new Query(
                 new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
-                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateExpression));
+                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, tag1Term, tag2Term));
 
         StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(query, statisticConfigurationEntity);
 
@@ -151,40 +158,6 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
 
 
-    private Try<StatisticConfigurationEntity> addStatConfig(StatisticConfigurationEntity statisticConfigurationEntity) {
-
-
-        try (Session session = sessionFactory.openSession()){
-            ManagedSessionContext.bind(session);
-            Transaction transaction = session.beginTransaction();
-            Folder folder = statisticConfigurationEntity.getFolder();
-
-            try {
-                GenericDAO<Folder> folderDAO = new GenericDAO<>(sessionFactory);
-
-                Optional<Folder> optPersistedFolder = folderDAO.getByName(folder.getName());
-                if (!optPersistedFolder.isPresent()) {
-                    LOGGER.debug("Folder {} doesn't exist so creating it", folder.getName());
-                    optPersistedFolder = Optional.of(folderDAO.persist(folder));
-                    LOGGER.debug("Created folder {} with id {}", optPersistedFolder.get().getName(), optPersistedFolder.get().getId());
-                } else {
-                    LOGGER.debug("Folder {} already exists with id {}", optPersistedFolder.get().getName(), optPersistedFolder.get().getId());
-                }
-
-                statisticConfigurationEntity.setFolder(optPersistedFolder.get());
-
-            } catch (HibernateException e) {
-                LOGGER.debug("Failed to create folder entity with msg: {}", e.getMessage(), e);
-            }
-
-            StatisticConfigurationEntity persistedStatConfEntity = writeOnlyStatisticConfigurationEntityDAO.persist(statisticConfigurationEntity);
-
-            transaction.commit();
-            return Try.success(persistedStatConfEntity);
-        } catch (Exception e) {
-            return Try.failure(e);
-        }
-    }
 
 
 }
