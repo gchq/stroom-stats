@@ -20,14 +20,12 @@
 package stroom.stats.hbase;
 
 import com.google.inject.Injector;
-import io.dropwizard.hibernate.AbstractDAO;
 import javaslang.control.Try;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.context.internal.ManagedSessionContext;
-import org.hibernate.criterion.Restrictions;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,10 +54,11 @@ import stroom.stats.streams.TagValue;
 import stroom.stats.streams.aggregation.AggregatedEvent;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
+import stroom.stats.test.GenericDAO;
 import stroom.stats.test.StatisticConfigurationEntityBuilder;
+import stroom.stats.test.WriteOnlyStatisticConfigurationEntityDAO;
 import stroom.stats.util.DateUtil;
 
-import java.io.Serializable;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -77,7 +76,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     UniqueIdCache uniqueIdCache = injector.getInstance(UniqueIdCache.class);
     StatisticConfigurationService statisticConfigurationService = injector.getInstance(StatisticConfigurationService.class);
     SessionFactory sessionFactory = injector.getInstance(SessionFactory.class);
-    CustomStatConfDAO customStatConfDAO = new CustomStatConfDAO(sessionFactory, injector.getInstance(StatisticConfigurationEntityMarshaller.class));
+    WriteOnlyStatisticConfigurationEntityDAO writeOnlyStatisticConfigurationEntityDAO = new WriteOnlyStatisticConfigurationEntityDAO(sessionFactory, injector.getInstance(StatisticConfigurationEntityMarshaller.class));
 
     @Test
     public void test() {
@@ -178,7 +177,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 LOGGER.debug("Failed to create folder entity with msg: {}", e.getMessage(), e);
             }
 
-            StatisticConfigurationEntity persistedStatConfEntity = customStatConfDAO.persist(statisticConfigurationEntity);
+            StatisticConfigurationEntity persistedStatConfEntity = writeOnlyStatisticConfigurationEntityDAO.persist(statisticConfigurationEntity);
 
             transaction.commit();
             return Try.success(persistedStatConfEntity);
@@ -187,60 +186,5 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         }
     }
 
-
-    private static class CustomStatConfDAO extends AbstractDAO<StatisticConfigurationEntity> {
-
-        private final StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller;
-
-        /**
-         * Creates a new DAO with a given session provider.
-         *
-         * @param sessionFactory a session provider
-         */
-        public CustomStatConfDAO(final SessionFactory sessionFactory, final StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller) {
-            super(sessionFactory);
-            this.statisticConfigurationEntityMarshaller = statisticConfigurationEntityMarshaller;
-        }
-
-        @Override
-        protected StatisticConfigurationEntity persist(final StatisticConfigurationEntity entity) throws HibernateException {
-            return super.persist(statisticConfigurationEntityMarshaller.marshal(entity));
-        }
-    }
-
-    private static class  GenericDAO<T> extends AbstractDAO<T> {
-
-        /**
-         * Creates a new DAO with a given session provider.
-         *
-         * @param sessionFactory a session provider
-         */
-        public GenericDAO(final SessionFactory sessionFactory) {
-            super(sessionFactory);
-        }
-
-        @Override
-        protected T persist(final T entity) throws HibernateException {
-            return super.persist(entity);
-        }
-
-        @Override
-        protected T get(final Serializable id) {
-            return super.get(id);
-        }
-
-        public Optional<T> getByName(final String name) {
-            List entities = super.criteria()
-                    .add(Restrictions.eq("name", name))
-                    .list();
-            if (entities == null || entities.size() == 0) {
-                return Optional.empty();
-            } else if (entities.size() > 1) {
-                throw new RuntimeException(String.format("Name %s was not unique, %s entities found", name, entities.size()));
-            } else {
-                return Optional.of((T) entities.get(0));
-            }
-        }
-    }
 
 }
