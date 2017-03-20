@@ -83,6 +83,11 @@ subprojects {
         classifier 'sources'
     }
 
+}
+
+//Configure common dependencies for all subProjects except the hbase filter
+configure (subprojects - project(':stroom-stats-hbase-filter')) {
+
     dependencies {
         //Use Logback for logging
         compile libs.slf4j_api
