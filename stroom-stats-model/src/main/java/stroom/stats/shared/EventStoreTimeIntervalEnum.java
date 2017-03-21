@@ -177,15 +177,15 @@ public enum EventStoreTimeIntervalEnum {
     }
 
 
-    public long roundTimeToColumnInterval(final long timestampMillis) {
-        return roundTimeToInterval(timestampMillis, this.columnInterval);
+    public long truncateTimeToColumnInterval(final long timestampMillis) {
+        return truncateTimeToInterval(timestampMillis, this.columnInterval);
     }
 
-    public long roundTimeToRowKeyInterval(final long timestampMillis) {
-        return roundTimeToInterval(timestampMillis, this.rowKeyInterval);
+    public long truncateTimeToRowKeyInterval(final long timestampMillis) {
+        return truncateTimeToInterval(timestampMillis, this.rowKeyInterval);
     }
 
-    private long roundTimeToInterval(final long timestampMillis, final long intervalMillis) {
+    private long truncateTimeToInterval(final long timestampMillis, final long intervalMillis) {
         return ((long)(timestampMillis / intervalMillis)) * intervalMillis;
     }
 

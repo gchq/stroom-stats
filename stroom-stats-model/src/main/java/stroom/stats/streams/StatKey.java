@@ -83,7 +83,7 @@ public class StatKey {
         this.statName = statName;
         this.rollupMask = rollupMask;
         this.interval = interval;
-        this.timeMs = interval.roundTimeToColumnInterval(timeMs);
+        this.timeMs = interval.truncateTimeToColumnInterval(timeMs);
         this.tagValues = tagValues;
         this.hashCode = buildHashCode();
     }
@@ -150,7 +150,7 @@ public class StatKey {
      * Shallow copy of this instance except the timeMs value is truncated down to the nearest interval
      */
     public StatKey cloneAndTruncateTimeToInterval() {
-        long newTimeMs = interval.roundTimeToColumnInterval(timeMs);
+        long newTimeMs = interval.truncateTimeToColumnInterval(timeMs);
         return new StatKey(statName, rollupMask, interval, newTimeMs, tagValues);
     }
 
@@ -161,7 +161,7 @@ public class StatKey {
     public StatKey cloneAndTruncateTimeToInterval(final EventStoreTimeIntervalEnum newInterval) {
         Preconditions.checkArgument(newInterval.compareTo(this.interval) > 1,
                 "newInterval %s should be larger than interval %s", interval, newInterval);
-        long newTimeMs = interval.roundTimeToColumnInterval(timeMs);
+        long newTimeMs = interval.truncateTimeToColumnInterval(timeMs);
         return new StatKey(statName, rollupMask, newInterval, newTimeMs, tagValues);
     }
 

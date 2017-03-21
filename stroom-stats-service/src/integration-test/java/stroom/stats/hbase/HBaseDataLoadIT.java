@@ -53,6 +53,7 @@ import stroom.stats.test.StatisticConfigurationEntityHelper;
 import stroom.stats.util.DateUtil;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -78,7 +79,8 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         StatisticType statisticType = StatisticType.COUNT;
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.MINUTE;
         RollUpBitMask rollUpBitMask = RollUpBitMask.ZERO_MASK;
-        long timeMs = ZonedDateTime.now().toInstant().toEpochMilli();
+        long timeMs = interval.truncateTimeToColumnInterval(ZonedDateTime.now().toInstant().toEpochMilli());
+        LOGGER.info("Time: {}", ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeMs), ZoneOffset.UTC));
         List<AggregatedEvent> aggregatedEvents = new ArrayList<>();
 
         //Put time in the statName to allow us to re-run the test without an empty HBase
@@ -130,8 +132,8 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 StatisticConfiguration.FIELD_NAME_DATE_TIME,
                 ExpressionTerm.Condition.BETWEEN,
                 String.format("%s,%s",
-                        DateUtil.createNormalDateTimeString(Instant.now().minus(1, ChronoUnit.HOURS).toEpochMilli()),
-                        DateUtil.createNormalDateTimeString(Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli())));
+                        DateUtil.createNormalDateTimeString(Instant.now().minus(10, ChronoUnit.MINUTES).toEpochMilli()),
+                        DateUtil.createNormalDateTimeString(Instant.now().plus(10, ChronoUnit.MINUTES).toEpochMilli())));
 
         ExpressionItem tag1Term = new ExpressionTerm(
                 tag1Str,

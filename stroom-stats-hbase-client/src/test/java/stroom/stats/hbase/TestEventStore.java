@@ -33,10 +33,7 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.hbase.connection.HBaseConnection;
 import stroom.stats.hbase.table.EventStoreTable;
-import stroom.stats.hbase.table.GenericTable;
 import stroom.stats.hbase.table.EventStoreTableFactory;
-import stroom.stats.hbase.table.UniqueIdForwardMapTable;
-import stroom.stats.hbase.table.UniqueIdReverseMapTable;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.properties.StroomPropertyService;
@@ -285,6 +282,11 @@ public class TestEventStore {
             masks.clear();
             times.clear();
 
+        }
+
+        @Override
+        public EventStoreTimeIntervalEnum getInterval() {
+            throw new UnsupportedOperationException("Not used by this mock");
         }
 
         public List<PurgeArgsObject> getPurgeArgs() {

@@ -27,9 +27,8 @@ import stroom.stats.common.Period;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.hbase.structure.CellQualifier;
-import stroom.stats.hbase.structure.ValueCellValue;
 import stroom.stats.hbase.uid.UniqueIdCache;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.AggregatedEvent;
 
 import java.util.List;
@@ -45,17 +44,6 @@ public interface EventStoreTable extends GenericTable {
      */
     void addAggregatedEvents(final StatisticType statisticType, final List<AggregatedEvent> aggregatedEvents);
 
-    /**
-     * Adds 1 to the value in the cell defined by the passed cellQualifier. Does
-     * an increment on cell, incrementing it by 1. Increment operation is atomic
-     * so should be safe from other threads. The add operation is buffered for
-     * performance.
-     *
-     * @param countRowData
-     *            The cell to add to the data store
-     * @param isForcedFlushToDisk
-     *            Writes the count directly to the data store without buffering
-     */
     //TODO remove
 //    void bufferedAddCount(final CountRowData countRowData, final boolean isForcedFlushToDisk);
 
@@ -63,22 +51,6 @@ public interface EventStoreTable extends GenericTable {
     //TODO remove
 //    void addMultipleCounts(final Map<RowKey, List<CountCellIncrementHolder>> rowChanges);
 
-    /**
-     * Aggregates the passed value object into the cell with qualifier
-     * cellQualifier. The value is added to the existing cell value, the counter
-     * in the cell is incremented and the min/max
-     *
-     * The value cells contain a composite value that is made up of a count and
-     * the current aggregated value (see {@link ValueCellValue}). Adding a value
-     * increments that count by one and adds to the existing aggregated value.
-     *
-     * @param cellQualifier
-     *            The cell qualifier to determine where the value is put
-     * @param valueCellValue
-     *            The value object containing the possibly already aggregated
-     *            values
-     */
-    //TODO remove
 //    void addValue(CellQualifier cellQualifier, ValueCellValue valueCellValue);
 
     StatisticDataSet getStatisticsData(final UniqueIdCache uniqueIdCache,
@@ -153,4 +125,6 @@ public interface EventStoreTable extends GenericTable {
 //    int getAvailableBatchPutTaskPermits();
 
     long getCellsPutCount(StatisticType statisticType);
+
+    EventStoreTimeIntervalEnum getInterval();
 }

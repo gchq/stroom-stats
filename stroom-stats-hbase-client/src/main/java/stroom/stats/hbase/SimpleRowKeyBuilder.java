@@ -175,7 +175,7 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
         // build the cell qualifier rounding the event time to granularity of
         // the column interval
         final CellQualifier cellQualifier = new CellQualifier(rowKey, columnQualifier,
-                this.timeInterval.roundTimeToColumnInterval(timeMs));
+                this.timeInterval.truncateTimeToColumnInterval(timeMs));
 
         return cellQualifier;
     }
@@ -231,7 +231,7 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
                 currRowKey.getTagValuePairs());
 
         return new CellQualifier(newRowKey, newColumnQualifier,
-                newTimeInterval.roundTimeToColumnInterval(currCellQualifier.getFullTimestamp()));
+                newTimeInterval.truncateTimeToColumnInterval(currCellQualifier.getFullTimestamp()));
     }
 
     public static CellQualifier convertCellQualifier(final RowKey rowKey, final byte[] columnQualifier,

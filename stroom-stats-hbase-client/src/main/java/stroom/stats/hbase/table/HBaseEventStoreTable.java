@@ -151,6 +151,11 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
 
     @Override
+    public EventStoreTimeIntervalEnum getInterval() {
+        return timeInterval;
+    }
+
+    @Override
     public void addAggregatedEvents(final StatisticType statisticType, final List<AggregatedEvent> aggregatedEvents) {
 
         switch (statisticType) {

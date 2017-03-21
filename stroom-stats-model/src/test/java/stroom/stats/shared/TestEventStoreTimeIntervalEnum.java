@@ -22,19 +22,24 @@
 package stroom.stats.shared;
 
 import com.google.common.primitives.Bytes;
+import javaslang.Tuple2;
 import org.assertj.core.api.Assertions;
-import org.junit.Assert;
 import org.junit.Test;
+import stroom.stats.util.DateUtil;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class TestEventStoreTimeIntervalEnum {
     @Test
     public void testFromColumnInterval() throws Exception {
         for (final EventStoreTimeIntervalEnum intervalEnum : EventStoreTimeIntervalEnum.values()) {
-            Assert.assertEquals(intervalEnum,
+            assertEquals(intervalEnum,
                     EventStoreTimeIntervalEnum.fromColumnInterval(intervalEnum.columnInterval()));
         }
     }
@@ -42,29 +47,60 @@ public class TestEventStoreTimeIntervalEnum {
     @Test
     public void testFromShortName() throws Exception {
         for (final EventStoreTimeIntervalEnum intervalEnum : EventStoreTimeIntervalEnum.values()) {
-            Assert.assertEquals(intervalEnum, EventStoreTimeIntervalEnum.fromShortName(intervalEnum.shortName()));
+            assertEquals(intervalEnum, EventStoreTimeIntervalEnum.fromShortName(intervalEnum.shortName()));
         }
     }
 
     @Test
-    public void testRoundTimeToColumnInterval() throws Exception {
+    public void testTruncteTimeToColumnInterval() throws Exception {
         for (final EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
             final long timeMs = (interval.columnInterval() * 2) + 1;
             final long expectedTimeMs = (interval.columnInterval() * 2);
 
-            final long roundedTime = interval.roundTimeToColumnInterval(timeMs);
+            final long roundedTime = interval.truncateTimeToColumnInterval(timeMs);
 
-            Assert.assertEquals(expectedTimeMs, roundedTime);
+            assertEquals(expectedTimeMs, roundedTime);
         }
     }
 
     @Test
-    public void testRoundTimeToColumnInterval_specific() throws Exception {
-        LocalDateTime time = LocalDateTime.of(2016, 2, 22, 23, 55, 40, 999);
-        long timeMS = time.atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
+    public void testTruncteTimeToColumnInterval_specific() {
+        final String eventTimeString = "2009-01-01T10:11:12.134Z";
+        final long eventTime = DateUtil.parseNormalDateTimeString(eventTimeString);
 
-        Assertions.assertThat(EventStoreTimeIntervalEnum.SECOND.roundTimeToColumnInterval(timeMS))
-                .isEqualTo(time.atZone(ZoneOffset.UTC).toInstant().truncatedTo(ChronoUnit.SECONDS).toEpochMilli());
+        long eventTimeRounded = EventStoreTimeIntervalEnum.SECOND.truncateTimeToColumnInterval(eventTime);
+
+        assertEquals("2009-01-01T10:11:12.000Z", DateUtil.createNormalDateTimeString(eventTimeRounded));
+
+        eventTimeRounded = EventStoreTimeIntervalEnum.MINUTE.truncateTimeToColumnInterval(eventTime);
+
+        assertEquals("2009-01-01T10:11:00.000Z", DateUtil.createNormalDateTimeString(eventTimeRounded));
+
+        eventTimeRounded = EventStoreTimeIntervalEnum.HOUR.truncateTimeToColumnInterval(eventTime);
+
+        assertEquals("2009-01-01T10:00:00.000Z", DateUtil.createNormalDateTimeString(eventTimeRounded));
+
+        eventTimeRounded = EventStoreTimeIntervalEnum.DAY.truncateTimeToColumnInterval(eventTime);
+
+        assertEquals("2009-01-01T00:00:00.000Z", DateUtil.createNormalDateTimeString(eventTimeRounded));
+    }
+
+    @Test
+    public void testTruncteTimeToColumnInterval_specific2() throws Exception {
+
+        List<Tuple2<EventStoreTimeIntervalEnum, ChronoUnit>> pairs = new ArrayList<>();
+        pairs.add(new Tuple2<>(EventStoreTimeIntervalEnum.SECOND, ChronoUnit.SECONDS));
+        pairs.add(new Tuple2<>(EventStoreTimeIntervalEnum.MINUTE, ChronoUnit.MINUTES));
+        pairs.add(new Tuple2<>(EventStoreTimeIntervalEnum.HOUR, ChronoUnit.HOURS));
+        pairs.add(new Tuple2<>(EventStoreTimeIntervalEnum.DAY, ChronoUnit.DAYS));
+
+        pairs.forEach(pair -> {
+            LocalDateTime time = LocalDateTime.of(2016, 2, 22, 23, 55, 40, 999);
+            long timeMS = time.atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
+
+            Assertions.assertThat(pair._1().truncateTimeToColumnInterval(timeMS))
+                    .isEqualTo(time.atZone(ZoneOffset.UTC).toInstant().truncatedTo(pair._2()).toEpochMilli());
+        });
     }
 
     @Test
@@ -73,9 +109,9 @@ public class TestEventStoreTimeIntervalEnum {
             final long timeMs = (interval.rowKeyInterval() * 2) + 1;
             final long expectedTimeMs = (interval.rowKeyInterval() * 2);
 
-            final long roundedTime = interval.roundTimeToRowKeyInterval(timeMs);
+            final long roundedTime = interval.truncateTimeToRowKeyInterval(timeMs);
 
-            Assert.assertEquals(expectedTimeMs, roundedTime);
+            assertEquals(expectedTimeMs, roundedTime);
         }
     }
 

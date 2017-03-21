@@ -23,7 +23,6 @@ package stroom.stats.hbase;
 
 import org.junit.Test;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.util.DateUtil;
 
 import java.util.List;
 import java.util.Optional;
@@ -105,19 +104,6 @@ public class TestEventStoreTimeIntervalHelper {
         assertEquals(EventStoreTimeIntervalEnum.DAY, EventStoreTimeIntervalHelper.getLargestInterval());
     }
 
-    @Test
-    public void testRoundTimeToColumnInterval() {
-        final String eventTimeString = "2009-01-01T10:11:12.134Z";
-        final long eventTime = DateUtil.parseNormalDateTimeString(eventTimeString);
-
-        long eventTimeRounded = EventStoreTimeIntervalEnum.SECOND.roundTimeToColumnInterval(eventTime);
-
-        assertEquals("2009-01-01T10:11:12.000Z", DateUtil.createNormalDateTimeString(eventTimeRounded));
-
-        eventTimeRounded = EventStoreTimeIntervalEnum.HOUR.roundTimeToColumnInterval(eventTime);
-
-        assertEquals("2009-01-01T10:00:00.000Z", DateUtil.createNormalDateTimeString(eventTimeRounded));
-    }
 
     @Test
     public void testGetBestFitByPeriodAndMaxIntervals() {

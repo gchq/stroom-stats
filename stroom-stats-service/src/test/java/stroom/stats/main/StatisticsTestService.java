@@ -154,7 +154,7 @@ public final class StatisticsTestService {
 
         final EventStoreTimeIntervalEnum workingTimeInterval = EventStoreTimeIntervalEnum.HOUR;
 
-        final HBaseTable hBaseTable = HBaseEventStoreTable.getInstance(workingTimeInterval, null, propertyService,
+        final HBaseEventStoreTable hBaseTable = HBaseEventStoreTable.getInstance(workingTimeInterval, null, propertyService,
                 hBaseConnection, uniqueIdCache);
 
         // HTableInterface table =
@@ -743,7 +743,7 @@ public final class StatisticsTestService {
     }
 
     private void scanRow(final Result result, final RowKeyBuilder simpleRowKeyBuilder, final RowKey rowKey,
-                         final StatisticType statsType) throws IOException {
+                         final StatisticType statsType, EventStoreTimeIntervalEnum interval) throws IOException {
         final CellScanner cellScanner = result.cellScanner();
         while (cellScanner.advance()) {
             final Cell cell = cellScanner.current();
@@ -756,7 +756,7 @@ public final class StatisticsTestService {
             // convert this into a true time, albeit rounded to the column
             // interval granularity
             final long columnIntervalNo = Bytes.toInt(bTimeQualifier);
-            final long columnIntervalSize = EventStoreTimeIntervalEnum.SECOND.columnInterval();
+            final long columnIntervalSize = interval.columnInterval();
             final long columnTimeComponentMillis = columnIntervalNo * columnIntervalSize;
             final long rowKeyPartialTimeMillis = simpleRowKeyBuilder.getPartialTimestamp(rowKey);
             final long fullTimestamp = rowKeyPartialTimeMillis + columnTimeComponentMillis;
@@ -782,22 +782,21 @@ public final class StatisticsTestService {
         }
     }
 
-    private void scanAllData(final HBaseTable hBaseTable, final RowKeyBuilder simpleRowKeyBuilder,
+    private void scanAllData(final HBaseEventStoreTable hBaseEventStoreTable, final RowKeyBuilder simpleRowKeyBuilder,
                              final EventStoreColumnFamily eventStoreColumnFamily) throws IOException {
-        scanAllData(hBaseTable, simpleRowKeyBuilder, eventStoreColumnFamily, Integer.MAX_VALUE);
+        scanAllData(hBaseEventStoreTable, simpleRowKeyBuilder, eventStoreColumnFamily, Integer.MAX_VALUE);
 
     }
 
-    private void scanAllData(final HBaseTable hBaseTable, final RowKeyBuilder simpleRowKeyBuilder,
+    private void scanAllData(final HBaseEventStoreTable hbaseEventStoreTable, final RowKeyBuilder simpleRowKeyBuilder,
                              final EventStoreColumnFamily eventStoreColumnFamily, final int rowLimit) throws IOException {
-        // get all rows from the counts column family, latest version only
+        // get all rows from the passed column family, latest version only
         final Scan scan = new Scan().setMaxVersions(1).addFamily(eventStoreColumnFamily.asByteArray());
 
         int rowCount = 0;
 
-        // get all the results back from the hourly event store to see what we
-        // hold
-        final Table tableInterface = hBaseTable.getTable();
+        // get all the results back from the event store to see what we hold
+        final Table tableInterface = hbaseEventStoreTable.getTable();
         final ResultScanner scanner = tableInterface.getScanner(scan);
         for (final Result result : scanner) {
             if (rowCount > rowLimit) {
@@ -825,7 +824,7 @@ public final class StatisticsTestService {
             else
                 statsType = StatisticType.VALUE;
 
-            // scanRow(result, simpleRowKeyBuilder, rowKeyObject, statsType);
+            scanRow(result, simpleRowKeyBuilder, rowKeyObject, statsType, hbaseEventStoreTable.getInterval());
 
             rowCount++;
 
@@ -840,7 +839,7 @@ public final class StatisticsTestService {
 
         LOGGER.info("Scanning all {} data in event store {}", eventStoreColumnFamily, timeInterval.getDisplayValue());
 
-        HBaseTable hBaseTable = (HBaseTable) eventStoreTableFactory.getEventStoreTable(timeInterval);
+        HBaseEventStoreTable hBaseTable = (HBaseEventStoreTable) eventStoreTableFactory.getEventStoreTable(timeInterval);
 //        final HBaseTable hBaseTable = HBaseEventStoreTable.getInstance(timeInterval, null, propertyService,
 //                hBaseConnection, uniqueIdCache);
 
