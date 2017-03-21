@@ -23,24 +23,25 @@ package stroom.stats.common;
 
 import stroom.stats.api.StatisticType;
 
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.Set;
+import java.util.List;
+import java.util.stream.Stream;
 
 
 public class StatisticDataSet implements Iterable<StatisticDataPoint> {
     private final String statisticName;
     private final StatisticType statisticType;
-    private final Set<StatisticDataPoint> statisticDataPoints;
+    private final List<StatisticDataPoint> statisticDataPoints;
 
     public StatisticDataSet(final String statisticName, final StatisticType statisticType) {
         this.statisticName = statisticName;
         this.statisticType = statisticType;
-        this.statisticDataPoints = new HashSet<>();
+        this.statisticDataPoints = new ArrayList<>();
     }
 
     public StatisticDataSet(final String statisticName, final StatisticType statisticType,
-                            final Set<StatisticDataPoint> statisticDataPoints) {
+                            final List<StatisticDataPoint> statisticDataPoints) {
         for (StatisticDataPoint dataPoint : statisticDataPoints) {
             if (!statisticType.equals(dataPoint.getStatisticType())) {
                 throw new RuntimeException(
@@ -53,12 +54,13 @@ public class StatisticDataSet implements Iterable<StatisticDataPoint> {
         this.statisticDataPoints = statisticDataPoints;
     }
 
-    public void addDataPoint(StatisticDataPoint dataPoint) {
+    public StatisticDataSet addDataPoint(StatisticDataPoint dataPoint) {
         if (!statisticType.equals(dataPoint.getStatisticType())) {
             throw new RuntimeException("Attempting to add a StatisticDataPoint of an incompatible StatisticType");
         }
 
         this.statisticDataPoints.add(dataPoint);
+        return this;
     }
 
     public String getStatisticName() {
@@ -69,8 +71,16 @@ public class StatisticDataSet implements Iterable<StatisticDataPoint> {
         return statisticType;
     }
 
-    public Set<StatisticDataPoint> getStatisticDataPoints() {
+    public List<StatisticDataPoint> getStatisticDataPoints() {
         return statisticDataPoints;
+    }
+
+    public Stream<StatisticDataPoint> stream() {
+        return statisticDataPoints.stream();
+    }
+
+    public Stream<StatisticDataPoint> parallelStream() {
+        return statisticDataPoints.parallelStream();
     }
 
     public int size() {

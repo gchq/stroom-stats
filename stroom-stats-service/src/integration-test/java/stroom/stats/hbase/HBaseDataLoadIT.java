@@ -30,6 +30,7 @@ import stroom.query.api.ExpressionOperator;
 import stroom.query.api.ExpressionTerm;
 import stroom.query.api.Query;
 import stroom.stats.AbstractAppIT;
+import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
 import stroom.stats.common.StatisticDataPoint;
@@ -58,6 +59,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -79,8 +81,9 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         StatisticType statisticType = StatisticType.COUNT;
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.MINUTE;
         RollUpBitMask rollUpBitMask = RollUpBitMask.ZERO_MASK;
-        long timeMs = interval.truncateTimeToColumnInterval(ZonedDateTime.now().toInstant().toEpochMilli());
-        LOGGER.info("Time: {}", ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeMs), ZoneOffset.UTC));
+        long timeMs1 = interval.truncateTimeToColumnInterval(ZonedDateTime.now().toInstant().toEpochMilli());
+        long timeMs2 = interval.truncateTimeToColumnInterval(Instant.ofEpochMilli(timeMs1).plus(1, ChronoUnit.MINUTES).toEpochMilli());
+        LOGGER.info("Time: {}", ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeMs1), ZoneOffset.UTC));
         List<AggregatedEvent> aggregatedEvents = new ArrayList<>();
 
         //Put time in the statName to allow us to re-run the test without an empty HBase
@@ -89,6 +92,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         String tag1Val1Str = tag1Str + "val1";
         String tag2Str = "tag2";
         String tag2Val1Str = tag2Str + "val1";
+        String tag2Val2Str = tag2Str + "val2";
 
         StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
                 statNameStr,
@@ -110,21 +114,37 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         UID tag1val1 = uniqueIdCache.getOrCreateId(tag1Val1Str);
         UID tag2 = uniqueIdCache.getOrCreateId(tag2Str);
         UID tag2val1 = uniqueIdCache.getOrCreateId(tag2Val1Str);
+        UID tag2val2 = uniqueIdCache.getOrCreateId(tag2Val2Str);
 
-        StatKey statKey = new StatKey( statName,
+        StatKey statKey1 = new StatKey( statName,
                 rollUpBitMask,
                 interval,
-                timeMs,
+                timeMs1,
                 new TagValue(tag1, tag1val1),
                 new TagValue(tag2, tag2val1));
 
-        long statValue = 100L;
+        long statValue1 = 100L;
 
-        StatAggregate statAggregate = new CountAggregate(statValue);
+        StatAggregate statAggregate1 = new CountAggregate(statValue1);
 
-        AggregatedEvent aggregatedEvent = new AggregatedEvent(statKey, statAggregate);
+        AggregatedEvent aggregatedEvent1 = new AggregatedEvent(statKey1, statAggregate1);
 
-        aggregatedEvents.add(aggregatedEvent);
+        aggregatedEvents.add(aggregatedEvent1);
+
+        StatKey statKey2 = new StatKey( statName,
+                rollUpBitMask,
+                interval,
+                timeMs2,
+                new TagValue(tag1, tag1val1),
+                new TagValue(tag2, tag2val2));
+
+        long statValue2 = 200L;
+
+        StatAggregate statAggregate2 = new CountAggregate(statValue2);
+
+        AggregatedEvent aggregatedEvent2 = new AggregatedEvent(statKey2, statAggregate2);
+
+        aggregatedEvents.add(aggregatedEvent2);
 
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
 
@@ -141,21 +161,56 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 tag1Val1Str);
 
         ExpressionItem tag2Term = new ExpressionTerm(
-                tag1Str,
+                tag2Str,
                 ExpressionTerm.Condition.EQUALS,
                 tag2Val1Str);
 
-        Query query = new Query(
+        ExpressionItem tag2TermNotFound = new ExpressionTerm(
+                tag2Str,
+                ExpressionTerm.Condition.EQUALS,
+                "ValueThatDoesn'tExist");
+
+        Query queryAllData = new Query(
+                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm));
+
+        Query querySpecificRow = new Query(
                 new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
                 new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, tag1Term, tag2Term));
 
+        Query queryNoDataFound = new Query(
+                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, tag1Term, tag2TermNotFound));
+
+        List<StatisticDataPoint> dataPoints1 = runQuery(statisticsService, queryAllData, statisticConfigurationEntity, 2);
+
+        //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
+        assertThat(dataPoints1.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
+                .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str, tag2Val2Str);
+        assertThat(dataPoints1.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo(statValue1 + statValue2);
+
+        List<StatisticDataPoint> dataPoints2 = runQuery(statisticsService, querySpecificRow, statisticConfigurationEntity, 1);
+
+        //shoudl only get two distinct tag values as we have just one row back
+        assertThat(dataPoints2.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
+                .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str);
+        assertThat(dataPoints2.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo(statValue1);
+
+        List<StatisticDataPoint> dataPoints3 = runQuery(statisticsService, queryNoDataFound, statisticConfigurationEntity, 0);
+
+    }
+
+
+    private List<StatisticDataPoint> runQuery(
+            StatisticsService statisticsService,
+            Query query,
+            StatisticConfigurationEntity statisticConfigurationEntity,
+            int expectedRecCount) {
         StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(query, statisticConfigurationEntity);
 
         assertThat(statisticDataSet).isNotNull();
-        assertThat(statisticDataSet).size().isEqualTo(1);
-        StatisticDataPoint statisticDataPoint = statisticDataSet.getStatisticDataPoints().stream().findFirst().get();
-        assertThat(statisticDataPoint.getCount()).isEqualTo(statValue);
-        assertThat(statisticDataPoint.getTags()).size().isEqualTo(statKey.getTagValues().size());
+        assertThat(statisticDataSet).size().isEqualTo(expectedRecCount);
+        return statisticDataSet.getStatisticDataPoints();
     }
 
 
