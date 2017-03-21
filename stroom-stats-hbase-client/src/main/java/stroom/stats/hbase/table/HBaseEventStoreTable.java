@@ -57,6 +57,7 @@ import stroom.stats.hbase.SimpleRowKeyBuilder;
 import stroom.stats.hbase.connection.HBaseConnection;
 import stroom.stats.hbase.exception.HBaseException;
 import stroom.stats.hbase.structure.CellQualifier;
+import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.CountCellIncrementHolder;
 import stroom.stats.hbase.structure.CountRowData;
 import stroom.stats.hbase.structure.RowKey;
@@ -74,7 +75,6 @@ import stroom.stats.task.api.TaskManager;
 import stroom.stats.util.DateUtil;
 import stroom.stats.util.logging.LambdaLogger;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -115,8 +115,8 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      * Private constructor
      */
     private HBaseEventStoreTable(final EventStoreTimeIntervalEnum eventStoreTimeIntervalEnum,
-            final TaskManager taskManager, final StroomPropertyService propertyService,
-            final HBaseConnection hBaseConnection, final UniqueIdCache uniqueIdCache) {
+                                 final TaskManager taskManager, final StroomPropertyService propertyService,
+                                 final HBaseConnection hBaseConnection, final UniqueIdCache uniqueIdCache) {
         super(hBaseConnection);
         this.displayName = eventStoreTimeIntervalEnum.longName() + DISPLAY_NAME_POSTFIX;
         this.tableName = TableName.valueOf(Bytes.toBytes(eventStoreTimeIntervalEnum.shortName() + TABLE_NAME_POSTFIX));
@@ -144,8 +144,8 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      * Static constructor
      */
     public static HBaseEventStoreTable getInstance(final EventStoreTimeIntervalEnum eventStoreTimeIntervalEnum,
-            final TaskManager taskManager, final StroomPropertyService propertyService,
-            final HBaseConnection hBaseConnection, final UniqueIdCache uniqueIdCache) {
+                                                   final TaskManager taskManager, final StroomPropertyService propertyService,
+                                                   final HBaseConnection hBaseConnection, final UniqueIdCache uniqueIdCache) {
         return new HBaseEventStoreTable(eventStoreTimeIntervalEnum, taskManager, propertyService, hBaseConnection, uniqueIdCache);
     }
 
@@ -361,7 +361,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         // create an action for each row we have data for
         final List<Mutation> actions = rowChanges.entrySet().stream()
                 .map(entry -> createIncrementOperation(entry.getKey(), entry.getValue()))
-                        .collect(Collectors.toList());
+                .collect(Collectors.toList());
 
         final Object[] results = null;
         // don't care about what is written to results as we are doing puts send the mutations to HBase
@@ -392,11 +392,9 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      * Builds a single {@link Increment} object for a row, with one-many cell
      * increments in that row
      *
-     * @param rowKey
-     *            The rowKey of the row to be updated
-     * @param cells
-     *            A list of objects containing the column qualifier and cell
-     *            increment value
+     * @param rowKey The rowKey of the row to be updated
+     * @param cells  A list of objects containing the column qualifier and cell
+     *               increment value
      * @return The completed {@link Increment} object
      */
     private Increment createIncrementOperation(final RowKey rowKey, final List<CountCellIncrementHolder> cells) {
@@ -412,8 +410,10 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         // upgrade to HBase 2.0 we need to add this line in.
         // increment.setReturnResults(false);
 
+        //if we happen to get multiple values for the same cell then we need to split them up
+
         for (final CountCellIncrementHolder cell : cells) {
-            increment.addColumn(EventStoreColumnFamily.COUNTS.asByteArray(), cell.getColumnQualifier(),
+            increment.addColumn(EventStoreColumnFamily.COUNTS.asByteArray(), cell.getColumnQualifier().getBytes(),
                     cell.getCellIncrementValue());
         }
         return increment;
@@ -442,24 +442,38 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
             // loop in case another thread beats us to the checkAndPut
             while (retryCounter-- > 0) {
                 // get the current value of the cell
-                final ValueCellValue currCellValue = new ValueCellValue(
-                        getCellValue(tableInterface, cellQualifier, EventStoreColumnFamily.VALUES.asByteArray()));
+                byte[] bColumnFamily = EventStoreColumnFamily.VALUES.asByteArray();
+                ColumnQualifier columnQualifier = cellQualifier.getColumnQualifier();
+                byte[] bColumnQualifier = columnQualifier.getBytes();
+                byte[] bRowKey = cellQualifier.getRowKey().asByteArray();
+                final Get get = new Get(bRowKey);
+                get.addColumn(bColumnFamily, bColumnQualifier);
+
+                final Result result = doGet(tableInterface, get);
+
+                Cell existingCell = result.getColumnLatestCell(bColumnFamily, bColumnQualifier);
+
+                final ValueCellValue currCellValue = new ValueCellValue(existingCell.getValueArray(), existingCell.getValueOffset(), existingCell.getValueOffset());
 
                 // aggregate the new value into the existing cell, incrementing
                 // the count and working out the max/min
                 final ValueCellValue newCellValue = currCellValue.addAggregatedValues(valueCellValue);
 
                 // construct the put containing the new aggregated cell value
-                final Put put = new Put(cellQualifier.getRowKey().asByteArray()).addColumn(
-                        EventStoreColumnFamily.VALUES.asByteArray(), cellQualifier.getColumnQualifier(),
+                final Put put = new Put(bRowKey).addColumn(
+                        bColumnFamily,
+                        bColumnQualifier,
                         newCellValue.asByteArray());
 
                 // do a check and put - atomic operation to only do the put if
                 // the cell value still looks like
                 // currCellValue. If it fails go round again for another go
-                hasPutSucceeded = doCheckAndPut(tableInterface, cellQualifier.getRowKey().asByteArray(),
-                        EventStoreColumnFamily.VALUES.asByteArray(), cellQualifier.getColumnQualifier(),
-                        (currCellValue.isEmpty() ? null : currCellValue.asByteArray()), put);
+                hasPutSucceeded = doCheckAndPut(
+                        tableInterface,
+                        bRowKey,
+                        bColumnFamily, bColumnQualifier,
+                        (currCellValue.isEmpty() ? null : currCellValue.asByteArray()),
+                        put);
 
                 if (hasPutSucceeded) {
                     // put worked so no need to retry
@@ -485,7 +499,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
     @Override
     public StatisticDataSet getStatisticsData(final UniqueIdCache uniqueIdCache, final StatisticConfiguration dataSource,
-            final RollUpBitMask rollUpBitMask, final FindEventCriteria criteria) {
+                                              final RollUpBitMask rollUpBitMask, final FindEventCriteria criteria) {
         LOGGER.debug("getChartData called for criteria: {}", criteria);
 
         final Period period = criteria.getPeriod();
@@ -569,22 +583,15 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                 while (cellScanner.advance()) {
                     final Cell cell = cellScanner.current();
 
-                    // get the column qualifier
-                    final byte[] bTimeQualifier = new byte[cell.getQualifierLength()];
+                    ColumnQualifier columnQualifier = ColumnQualifier.from(cell.getQualifierArray(), cell.getQualifierOffset());
 
-                    // need the array copy as we will hold the col qual as a
-                    // byte[] on the CellQualifier object
-                    System.arraycopy(cell.getQualifierArray(), cell.getQualifierOffset(), bTimeQualifier, 0,
-                            cell.getQualifierLength());
-
-                    final CellQualifier cellQualifier = rowKeyBuilder.buildCellQualifier(rowKeyObject,
-                            bTimeQualifier);
+                    final CellQualifier cellQualifier = rowKeyBuilder.buildCellQualifier(rowKeyObject, columnQualifier);
 
                     final long fullTimestamp = cellQualifier.getFullTimestamp();
 
                     if (LOGGER.isTraceEnabled()) {
-                        LOGGER.trace("ColQualBytes: " + ByteArrayUtils.byteArrayToString(bTimeQualifier)
-                                + " ColQualInt: " + Bytes.toInt(bTimeQualifier) + " FullTimestamp: "
+                        LOGGER.trace("ColQualBytes: " + columnQualifier
+                                + " ColQualInt: " + columnQualifier.getValue() + " FullTimestamp: "
                                 + DateUtil.createNormalDateTimeString(fullTimestamp));
                     }
 
@@ -627,16 +634,13 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     /**
      * @param fullTimestamp
      * @param tags
-     * @param bytes
-     *            An array of bytes which contains the cell value within it
-     * @param cellValueOffset
-     *            The start position of the cell value within bytes
-     * @param cellValueLength
-     *            The length of the cell value within bytes
+     * @param bytes           An array of bytes which contains the cell value within it
+     * @param cellValueOffset The start position of the cell value within bytes
+     * @param cellValueLength The length of the cell value within bytes
      * @return
      */
     private StatisticDataPoint buildCountDataPoint(final long fullTimestamp, final List<StatisticTag> tags,
-            final byte[] bytes, final int cellValueOffset, final int cellValueLength) {
+                                                   final byte[] bytes, final int cellValueOffset, final int cellValueLength) {
         final long count = (cellValueLength == 0) ? 0 : Bytes.toLong(bytes, cellValueOffset, cellValueLength);
 
         return StatisticDataPoint.countInstance(fullTimestamp, timeInterval.columnInterval(), tags, count);
@@ -645,16 +649,13 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     /**
      * @param fullTimestamp
      * @param tags
-     * @param bytes
-     *            An array of bytes which contains the cell value within it
-     * @param cellValueOffset
-     *            The start position of the cell value within bytes
-     * @param cellValueLength
-     *            The length of the cell value within bytes
+     * @param bytes           An array of bytes which contains the cell value within it
+     * @param cellValueOffset The start position of the cell value within bytes
+     * @param cellValueLength The length of the cell value within bytes
      * @return
      */
     private StatisticDataPoint buildValueDataPoint(final long fullTimestamp, final List<StatisticTag> tags,
-            final byte[] bytes, final int cellValueOffset, final int cellValueLength) {
+                                                   final byte[] bytes, final int cellValueOffset, final int cellValueLength) {
         final ValueCellValue cellValue = new ValueCellValue(bytes, cellValueOffset, cellValueLength);
 
         return StatisticDataPoint.valueInstance(fullTimestamp, timeInterval.columnInterval(), tags,
@@ -731,7 +732,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
     @Override
     public boolean doesStatisticExist(final UniqueIdCache uniqueIdCache,
-            final StatisticConfiguration statisticConfiguration) {
+                                      final StatisticConfiguration statisticConfiguration) {
         // call the overloaded method with a period with no from/to
         return doesStatisticExist(uniqueIdCache, statisticConfiguration, null, new Period(null, null));
 
@@ -741,13 +742,10 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      * Create a {@link StatisticsTagValueFilter} from the filter tree in the criteria.
      * Adds the filter to the scan object
      *
-     * @param scan
-     *            The HBase scan object being used to scan the rows
-     * @param criteria
-     *            The search criteria from the UI
-     * @param uniqueIdCache
-     *            The UID cache to convert strings into the UIDs understood by
-     *            HBase
+     * @param scan          The HBase scan object being used to scan the rows
+     * @param criteria      The search criteria from the UI
+     * @param uniqueIdCache The UID cache to convert strings into the UIDs understood by
+     *                      HBase
      */
     private void addScanFilter(final Scan scan, final FindEventCriteria criteria, final UniqueIdCache uniqueIdCache) {
         // criteria may not have a filterTree on it
@@ -759,16 +757,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
             scan.setFilter(tagValueFilter);
         }
-    }
-
-    private byte[] getCellValue(final Table tableInterface, final CellQualifier cellQualifier,
-            final byte[] columnFamily) throws IOException {
-        final Get get = new Get(cellQualifier.getRowKey().asByteArray());
-        get.addColumn(columnFamily, cellQualifier.getColumnQualifier());
-
-        final Result result = doGet(tableInterface, get);
-
-        return result.getValue(columnFamily, cellQualifier.getColumnQualifier());
     }
 
     /**
@@ -923,7 +911,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
     @Override
     public void purgeAll(final UniqueIdCache uniqueIdCache,
-                               final StatisticConfiguration statisticConfiguration) {
+                         final StatisticConfiguration statisticConfiguration) {
         final long startTime = System.currentTimeMillis();
 
         final String statisticName = statisticConfiguration.getName();

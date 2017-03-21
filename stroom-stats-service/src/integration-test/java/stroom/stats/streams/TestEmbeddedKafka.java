@@ -25,6 +25,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
@@ -162,8 +163,12 @@ public class TestEmbeddedKafka {
     @Test
     public void transformerStreamsTest() throws ExecutionException, InterruptedException, IOException {
 
+        Serde<Integer> intSerde = Serdes.Integer();
+        Serde<Long> longSerde = Serdes.Long();
+        Serde<String> stringSerde = Serdes.String();
+
         Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
-        KafkaProducer<Integer, Long> producer = new KafkaProducer<>(senderProps);
+        KafkaProducer<Integer, Long> producer = new KafkaProducer<>(senderProps, intSerde.serializer(), longSerde.serializer());
         producer.send(new ProducerRecord<>("messages", 0, 0, 10L)).get();
         producer.send(new ProducerRecord<>("messages", 0, 1, 10L)).get();
         producer.send(new ProducerRecord<>("messages", 1, 2, 10L)).get();
@@ -171,8 +176,9 @@ public class TestEmbeddedKafka {
 
         Map<String, Object> streamProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         streamProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "noddyStreamsTest");
-        streamProps.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
-        streamProps.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.Long().getClass().getName());
+//        streamProps.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.Integer().getClass().getName());
+//        streamProps.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.Long().getClass().getName());
+
 
         //We are trying to make a streams config with consumer config props, so need to remove some that
         //streams does not like.
@@ -181,10 +187,10 @@ public class TestEmbeddedKafka {
         StreamsConfig streamsConfig = new StreamsConfig(streamProps);
 
         KStreamBuilder builder = new KStreamBuilder();
-        KStream<String, Long> kafkaInput = builder.stream("messages");
+        KStream<Integer, Long> kafkaInput = builder.stream(intSerde, longSerde, "messages");
         kafkaInput
                 .mapValues(value -> value + "-mapped")
-                .to(Serdes.String(), Serdes.String(), "messages-mapped");
+                .to(intSerde, stringSerde, "messages-mapped");
 
         KafkaStreams streams = new KafkaStreams(builder, streamsConfig);
         streams.start();
@@ -196,7 +202,7 @@ public class TestEmbeddedKafka {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
 
-            KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
+            KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps, intSerde.deserializer(), stringSerde.deserializer());
             kafkaConsumer.subscribe(Collections.singletonList("messages-mapped"));
             try {
                 while (true) {

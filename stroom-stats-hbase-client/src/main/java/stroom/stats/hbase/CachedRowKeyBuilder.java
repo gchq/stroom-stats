@@ -26,6 +26,7 @@ import stroom.stats.api.TimeAgnosticStatisticEvent;
 import stroom.stats.common.RolledUpStatisticEvent;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.hbase.structure.CellQualifier;
+import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.TimeAgnosticRowKey;
 import stroom.stats.streams.aggregation.AggregatedEvent;
@@ -87,7 +88,7 @@ public class CachedRowKeyBuilder implements RowKeyBuilder {
     // }
 
     @Override
-    public CellQualifier buildCellQualifier(final RowKey rowKey, final byte[] columnQualifier) {
+    public CellQualifier buildCellQualifier(final RowKey rowKey, final ColumnQualifier columnQualifier) {
         return rowKeyBuilder.buildCellQualifier(rowKey, columnQualifier);
     }
 

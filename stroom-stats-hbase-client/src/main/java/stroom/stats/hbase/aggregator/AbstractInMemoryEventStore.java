@@ -27,6 +27,7 @@ import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class AbstractInMemoryEventStore {
+
     private final EventStoreMapKey eventStoreMapKey;
 
     private final AtomicBoolean hasDataBeenAdded = new AtomicBoolean(false);

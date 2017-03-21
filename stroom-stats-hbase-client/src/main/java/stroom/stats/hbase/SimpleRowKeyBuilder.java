@@ -31,6 +31,7 @@ import stroom.stats.common.RollUpBitMaskUtil;
 import stroom.stats.common.RolledUpStatisticEvent;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.hbase.structure.CellQualifier;
+import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.RowKeyTagValue;
 import stroom.stats.hbase.structure.TimeAgnosticRowKey;
@@ -132,7 +133,7 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
 
         long timeMs = aggregatedEvent.getStatKey().getTimeMs();
 
-        final byte[] columnQualifier = buildColumnQualifier(timeMs);
+        final ColumnQualifier columnQualifier = buildColumnQualifier(timeMs);
 
         //timeMs is already rounded to the column interval
         return new CellQualifier(buildRowKey(aggregatedEvent), columnQualifier, timeMs);
@@ -167,7 +168,7 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
 
         final byte[] partialTimestamp = buildPartialTimestamp(timeMs);
 
-        final byte[] columnQualifier = buildColumnQualifier(timeMs);
+        final ColumnQualifier columnQualifier = buildColumnQualifier(timeMs);
 
         // construct the row key
         final RowKey rowKey = new RowKey(timeAgnosticRowKey, partialTimestamp);
@@ -197,13 +198,13 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
     // }
 
     @Override
-    public CellQualifier buildCellQualifier(final RowKey rowKey, final byte[] columnQualifier) {
+    public CellQualifier buildCellQualifier(final RowKey rowKey, final ColumnQualifier columnQualifier) {
         return buildCellQualifier(rowKey, columnQualifier, timeInterval);
     }
 
-    public static CellQualifier buildCellQualifier(final RowKey rowKey, final byte[] columnQualifier,
+    public static CellQualifier buildCellQualifier(final RowKey rowKey, final ColumnQualifier columnQualifier,
             final EventStoreTimeIntervalEnum timeInterval) {
-        final long columnIntervalNo = Bytes.toInt(columnQualifier);
+        final long columnIntervalNo = Bytes.toInt(columnQualifier.getBackingArray(), columnQualifier.getOffset(), columnQualifier.length());
         final long columnTimeComponentMillis = columnIntervalNo * timeInterval.columnInterval();
         final long fullTimestamp = getPartialTimestamp(rowKey, timeInterval) + columnTimeComponentMillis;
 
@@ -223,7 +224,7 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
     public static CellQualifier convertCellQualifier(final CellQualifier currCellQualifier,
             final EventStoreTimeIntervalEnum newTimeInterval) {
         final byte[] newPartialTimeStamp = buildPartialTimestamp(currCellQualifier.getFullTimestamp(), newTimeInterval);
-        final byte[] newColumnQualifier = buildColumnQualifier(currCellQualifier.getFullTimestamp(), newTimeInterval);
+        final ColumnQualifier newColumnQualifier = buildColumnQualifier(currCellQualifier.getFullTimestamp(), newTimeInterval);
 
         final RowKey currRowKey = currCellQualifier.getRowKey();
 
@@ -234,7 +235,7 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
                 newTimeInterval.truncateTimeToColumnInterval(currCellQualifier.getFullTimestamp()));
     }
 
-    public static CellQualifier convertCellQualifier(final RowKey rowKey, final byte[] columnQualifier,
+    public static CellQualifier convertCellQualifier(final RowKey rowKey, final ColumnQualifier columnQualifier,
             final EventStoreTimeIntervalEnum oldTimeInterval, final EventStoreTimeIntervalEnum newTimeInterval) {
         final CellQualifier currCellQualifier = buildCellQualifier(rowKey, columnQualifier, oldTimeInterval);
 
@@ -377,19 +378,19 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
         return partialTimestamp;
     }
 
-    private byte[] buildColumnQualifier(final long time) {
+    private ColumnQualifier buildColumnQualifier(final long time) {
         return buildColumnQualifier(time, timeInterval);
     }
 
-    private static byte[] buildColumnQualifier(final long time, final EventStoreTimeIntervalEnum timeInterval) {
+    private static ColumnQualifier buildColumnQualifier(final long time, final EventStoreTimeIntervalEnum timeInterval) {
         // the row key has a rounded time. We must then work out the column
         // qualifier time
         // This uses a finer grained interval, e.g. key is hourly and columns
         // are rounded to the second.
         // So we work out which second in the hour the event falls into
         final long remainderTimeMillis = (time % timeInterval.rowKeyInterval());
-        final byte[] columnQualifier = Bytes.toBytes((int) (remainderTimeMillis / timeInterval.columnInterval()));
-        return columnQualifier;
+        final byte[] bColumnQualifier = Bytes.toBytes((int) (remainderTimeMillis / timeInterval.columnInterval()));
+        return ColumnQualifier.from(bColumnQualifier);
     }
 
     private void boxString(final StringBuilder sb, final String text) {

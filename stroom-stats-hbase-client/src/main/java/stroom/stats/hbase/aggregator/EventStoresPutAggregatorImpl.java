@@ -28,6 +28,7 @@ import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.hbase.SimpleRowKeyBuilder;
 import stroom.stats.hbase.structure.AddEventOperation;
 import stroom.stats.hbase.structure.CellQualifier;
+import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.ValueCellValue;
 import stroom.stats.hbase.util.bytes.ByteArrayWrapper;
@@ -421,12 +422,15 @@ public class EventStoresPutAggregatorImpl extends AbstractEventStoresAggregator 
         LOGGER.debug(() -> String.format("rollUpCountStore called for store with size: %s and new interval: %s", storeToRollUp.getSize(),
                 nextInterval));
 
-        for (final Entry<RowKey, Map<ByteArrayWrapper, MutableLong>> rowEntry : storeToRollUp) {
-            for (final Entry<ByteArrayWrapper, MutableLong> cellEntry : rowEntry.getValue().entrySet()) {
+        for (final Entry<RowKey, Map<ColumnQualifier, MutableLong>> rowEntry : storeToRollUp) {
+            for (final Entry<ColumnQualifier, MutableLong> cellEntry : rowEntry.getValue().entrySet()) {
                 // need to convert the rowkey and colQual to the new time
                 // interval before calling putCountValue
-                final CellQualifier newCellQualifier = SimpleRowKeyBuilder.convertCellQualifier(rowEntry.getKey(),
-                        cellEntry.getKey().getBytes(), storeToRollUp.getTimeInterval(), nextInterval);
+                final CellQualifier newCellQualifier = SimpleRowKeyBuilder.convertCellQualifier(
+                        rowEntry.getKey(),
+                        cellEntry.getKey(),
+                        storeToRollUp.getTimeInterval(),
+                        nextInterval);
 
                 // recursively call putCountValue to roll the current value up
                 // into the next coarser event store

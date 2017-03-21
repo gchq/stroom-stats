@@ -21,38 +21,37 @@
 
 package stroom.stats.hbase.structure;
 
-import java.util.Arrays;
-
-import stroom.stats.hbase.util.bytes.ByteArrayUtils;
+import com.google.common.base.Preconditions;
 
 public class CellQualifier {
     private final RowKey rowKey;
-    private final byte[] columnQualifier;
+    private final ColumnQualifier columnQualifier;
     private final long fullTimestamp;
 
     // cache of the hashcode as this object is immutable
-    private final int hashCodeValue;
+    private final int hashCode;
 
-    public CellQualifier(final RowKey rowKey, final byte[] columnQualifier, final long fullTimestamp) {
+    public CellQualifier(final RowKey rowKey, final ColumnQualifier columnQualifier, final long fullTimestamp) {
+        Preconditions.checkNotNull(rowKey);
+        Preconditions.checkNotNull(columnQualifier);
+        Preconditions.checkArgument(fullTimestamp >=0);
+
         // RowKey is immutable so just take the reference rather than deep copy
         this.rowKey = rowKey;
         this.columnQualifier = columnQualifier;
         this.fullTimestamp = fullTimestamp;
-        hashCodeValue = buildHashCode();
+        hashCode = buildHashCode();
     }
 
-    public CellQualifier(final byte[] rowKey, final byte[] columnQualifier, final long fullTimestamp) {
-        this.rowKey = new RowKey(rowKey);
-        this.columnQualifier = columnQualifier;
-        this.fullTimestamp = fullTimestamp;
-        hashCodeValue = buildHashCode();
+    public CellQualifier(final byte[] rowKey, byte[] columnQualifier, final long fullTimestamp) {
+        this(new RowKey(rowKey), ColumnQualifier.from(columnQualifier), fullTimestamp);
     }
 
     public RowKey getRowKey() {
         return rowKey;
     }
 
-    public byte[] getColumnQualifier() {
+    public ColumnQualifier getColumnQualifier() {
         return columnQualifier;
     }
 
@@ -68,44 +67,34 @@ public class CellQualifier {
     public String toString() {
         String retVal;
 
-        retVal = "rowKey: " + rowKey.toString() + " col qualifier: [" + ByteArrayUtils.byteArrayToHex(columnQualifier)
+        retVal = "rowKey: " + rowKey.toString() + " col qualifier: [" + columnQualifier
                 + "] originalTimestamp: " + fullTimestamp;
 
         return retVal;
     }
 
-    @Override
-    public int hashCode() {
-        return hashCodeValue;
-    }
-
     private int buildHashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + Arrays.hashCode(columnQualifier);
-        result = prime * result + (int) (fullTimestamp ^ (fullTimestamp >>> 32));
-        result = prime * result + ((rowKey == null) ? 0 : rowKey.hashCode());
+        int result = rowKey.hashCode();
+        result = 31 * result + columnQualifier.hashCode();
+        result = 31 * result + (int) (fullTimestamp ^ (fullTimestamp >>> 32));
         return result;
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (!(obj instanceof CellQualifier))
-            return false;
-        final CellQualifier other = (CellQualifier) obj;
-        if (!Arrays.equals(columnQualifier, other.columnQualifier))
-            return false;
-        if (fullTimestamp != other.fullTimestamp)
-            return false;
-        if (rowKey == null) {
-            if (other.rowKey != null)
-                return false;
-        } else if (!rowKey.equals(other.rowKey))
-            return false;
-        return true;
+    public int hashCode() {
+        return hashCode;
+    }
+
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        final CellQualifier that = (CellQualifier) o;
+
+        if (fullTimestamp != that.fullTimestamp) return false;
+        if (!rowKey.equals(that.rowKey)) return false;
+        return columnQualifier.equals(that.columnQualifier);
     }
 }

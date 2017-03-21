@@ -26,9 +26,9 @@ import stroom.stats.api.StatisticType;
 import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.hbase.store.task.EventStoreFlushTask;
 import stroom.stats.hbase.structure.CellQualifier;
+import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.ValueCellValue;
-import stroom.stats.hbase.util.bytes.ByteArrayWrapper;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.task.api.TaskCallbackAdaptor;
@@ -105,8 +105,8 @@ public class EventStoresThreadFlushAggregatorImpl extends AbstractEventStoresAgg
 
     @Inject
     public EventStoresThreadFlushAggregatorImpl(final StroomPropertyService propertyService,
-            final TaskManager taskManager,
-            final InMemoryEventStoreIdPool idPool) {
+                                                final TaskManager taskManager,
+                                                final InMemoryEventStoreIdPool idPool) {
         LOGGER.debug("Initialising: {}", this.getClass().getCanonicalName());
 
         this.taskManager = taskManager;
@@ -193,10 +193,10 @@ public class EventStoresThreadFlushAggregatorImpl extends AbstractEventStoresAgg
      * {@link EventStoreMapKey}.
      *
      * @return The instance of the {@link EventStoreMapKey} held in
-     *         inMemoryStoresMap matching the arguments passed.
+     * inMemoryStoresMap matching the arguments passed.
      */
     private EventStoreMapKey getMapKey(final StatisticType statisticType, final long threadId,
-            final EventStoreTimeIntervalEnum timeInterval) {
+                                       final EventStoreTimeIntervalEnum timeInterval) {
         final EventStoreMapKey eventStoreMapKey = keyMap.get(new EventStoreMapKey(statisticType, threadId, timeInterval,
                 getMemoryStoreTimeoutMillis(timeInterval), TimeUnit.MILLISECONDS));
 
@@ -231,16 +231,13 @@ public class EventStoresThreadFlushAggregatorImpl extends AbstractEventStoresAgg
     }
 
     /**
-     * @param storeToAdd
-     *            The store being added into the global store
-     * @param globalEventStoreKey
-     *            The map key for the global store map
-     * @param eventStoreAtomicRef
-     *            The atomic reference of the store in the global map
+     * @param storeToAdd          The store being added into the global store
+     * @param globalEventStoreKey The map key for the global store map
+     * @param eventStoreAtomicRef The atomic reference of the store in the global map
      */
     private void addFlushedCountStatistics(final AbstractInMemoryEventStore storeToAdd,
-            final EventStoreMapKey globalEventStoreKey,
-            final AtomicReference<AbstractInMemoryEventStore> eventStoreAtomicRef) {
+                                           final EventStoreMapKey globalEventStoreKey,
+                                           final AtomicReference<AbstractInMemoryEventStore> eventStoreAtomicRef) {
         LOGGER.trace(() -> String.format("addFlushedCountStatistics called for key: %s, store size: %s",
                 globalEventStoreKey, storeToAdd.getSize()));
 
@@ -251,9 +248,9 @@ public class EventStoresThreadFlushAggregatorImpl extends AbstractEventStoresAgg
 
         // loop through all the entries in the flushed map and put them into the
         // global map
-        for (final Entry<RowKey, Map<ByteArrayWrapper, MutableLong>> rowEntry : (InMemoryEventStoreCount) storeToAdd) {
+        for (final Entry<RowKey, Map<ColumnQualifier, MutableLong>> rowEntry : (InMemoryEventStoreCount) storeToAdd) {
             if (rowEntry.getValue() != null) {
-                for (final Entry<ByteArrayWrapper, MutableLong> cellEntry : rowEntry.getValue().entrySet()) {
+                for (final Entry<ColumnQualifier, MutableLong> cellEntry : rowEntry.getValue().entrySet()) {
                     // get a 'read' lock for this map key to do the add. Flush
                     // operations will get a write lock so will
                     // block all adds for the duration of the flush
@@ -262,8 +259,11 @@ public class EventStoresThreadFlushAggregatorImpl extends AbstractEventStoresAgg
 
                     try {
                         // put the flushed map entry into the global map
-                        if (globalStore.putValue(rowEntry.getKey(), cellEntry.getKey().getBytes(),
-                                cellEntry.getValue().longValue()) == true) {
+                        if (globalStore.putValue(
+                                rowEntry.getKey(),
+                                cellEntry.getKey(),
+                                cellEntry.getValue().longValue()
+                        ) == true) {
                             // first put to this store so put it on the delay
                             // queue
                             addKeyToDelayQueue(globalEventStoreKey);
@@ -285,16 +285,13 @@ public class EventStoresThreadFlushAggregatorImpl extends AbstractEventStoresAgg
     /**
      * Not thread safe so must operate within a synchronised block
      *
-     * @param storeToAdd
-     *            The store being added into the global store
-     * @param globalEventStoreKey
-     *            The map key for the global store map
-     * @param eventStoreAtomicRef
-     *            The atomic reference of the store in the global map
+     * @param storeToAdd          The store being added into the global store
+     * @param globalEventStoreKey The map key for the global store map
+     * @param eventStoreAtomicRef The atomic reference of the store in the global map
      */
     private void addFlushedValueStatistics(final AbstractInMemoryEventStore storeToAdd,
-            final EventStoreMapKey globalEventStoreKey,
-            final AtomicReference<AbstractInMemoryEventStore> eventStoreAtomicRef) {
+                                           final EventStoreMapKey globalEventStoreKey,
+                                           final AtomicReference<AbstractInMemoryEventStore> eventStoreAtomicRef) {
         LOGGER.trace(() -> String.format("addFlushedValueStatistics called for key: %s, store size: %s",
                 globalEventStoreKey, storeToAdd.getSize()));
 
@@ -336,12 +333,11 @@ public class EventStoresThreadFlushAggregatorImpl extends AbstractEventStoresAgg
      * If it is needed it flushes the store and replaces the store with a new
      * instance
      *
-     * @param eventStoreAtomicRef
-     *            The ref to the store
+     * @param eventStoreAtomicRef The ref to the store
      * @return True if a flush happens, false if not
      */
     private boolean flushIfNeeded(final EventStoreMapKey globalEventStoreKey,
-            final AtomicReference<AbstractInMemoryEventStore> eventStoreAtomicRef) {
+                                  final AtomicReference<AbstractInMemoryEventStore> eventStoreAtomicRef) {
         // check if the store is full up and if so flush it to the master store
         if (eventStoreAtomicRef.get() != null && eventStoreAtomicRef.get().getSize() >= getMemoryStoreMaxSize()) {
             return flushThreadStore(globalEventStoreKey, eventStoreAtomicRef, false);
@@ -351,7 +347,7 @@ public class EventStoresThreadFlushAggregatorImpl extends AbstractEventStoresAgg
     }
 
     private boolean flushThreadStore(final EventStoreMapKey globalEventStoreKey,
-            final AtomicReference<AbstractInMemoryEventStore> eventStoreAtomicRef, final boolean isForcedFlush) {
+                                     final AtomicReference<AbstractInMemoryEventStore> eventStoreAtomicRef, final boolean isForcedFlush) {
         boolean result = false;
         incrementFlushesInProgress(globalEventStoreKey.getStatisticType());
 
@@ -425,10 +421,9 @@ public class EventStoresThreadFlushAggregatorImpl extends AbstractEventStoresAgg
 
     /**
      * Not thread safe so must be done in a synchronised block.
-     *
      */
     private AbstractInMemoryEventStore getOrCreateEventStore(final EventStoreMapKey globalEventStoreKey,
-            final AtomicReference<AbstractInMemoryEventStore> eventStoreAtomicRef) {
+                                                             final AtomicReference<AbstractInMemoryEventStore> eventStoreAtomicRef) {
         LOGGER.trace(() -> String.format("getOrCreateEventStore called for interval: %s, mapKey: %s", globalEventStoreKey.getTimeInterval(),
                 globalEventStoreKey));
 
@@ -453,14 +448,13 @@ public class EventStoresThreadFlushAggregatorImpl extends AbstractEventStoresAgg
      * the atomic reference so puts can start on an empty store while the
      * swapped out store is flushed
      *
-     * @param globalEventStoreKey
-     *            The Key to map to find the store to swap out
+     * @param globalEventStoreKey The Key to map to find the store to swap out
      * @return The store to be flushed. Null if the swap hasn't happened and
-     *         there is nothing to flush. This will likely be caused by the
-     *         store having filled up and flushed before this time out flush.
+     * there is nothing to flush. This will likely be caused by the
+     * store having filled up and flushed before this time out flush.
      */
     private AbstractInMemoryEventStore swapInMemoryEventStore(final EventStoreMapKey globalEventStoreKey,
-            final AtomicReference<AbstractInMemoryEventStore> eventStoreAtomicRef, final boolean isForcedFlush) {
+                                                              final AtomicReference<AbstractInMemoryEventStore> eventStoreAtomicRef, final boolean isForcedFlush) {
         LOGGER.trace("getOrCreateEventStore called for eventStoreAtomicRef: {}", eventStoreAtomicRef);
 
         // there could be multiple threads working on the event store for this
@@ -551,12 +545,12 @@ public class EventStoresThreadFlushAggregatorImpl extends AbstractEventStoresAgg
 
     private long getMemoryStoreTimeoutMillis(final EventStoreTimeIntervalEnum timeInterval) {
         return propertyService.getLongPropertyOrThrow(HBaseStatisticConstants.NODE_SPECIFIC_MEM_STORE_TIMEOUT_MS_PROPERTY_NAME_PREFIX
-                        + timeInterval.longName().toLowerCase());
+                + timeInterval.longName().toLowerCase());
     }
 
     private int getFlushTaskLimitCount(final StatisticType statisticType) {
         return propertyService.getIntPropertyOrThrow(HBaseStatisticConstants.THREAD_SPECIFIC_MEM_STORE_ID_POOL_SIZE_PROPERTY_NAME_PREFIX
-                        + statisticType.name().toLowerCase());
+                + statisticType.name().toLowerCase());
     }
 
     private void incrementFlushesInProgress(final StatisticType statisticType) {

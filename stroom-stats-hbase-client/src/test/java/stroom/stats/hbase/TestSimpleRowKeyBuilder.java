@@ -75,8 +75,8 @@ public class TestSimpleRowKeyBuilder {
         // the partial key timestamp should be rounded to the hour
         assertEquals("2009-01-01T10:00:00.000Z", DateUtil.createNormalDateTimeString(keyTimestamp));
 
-        final long fullTimestamp = keyTimestamp
-                + (Bytes.toInt(cellQualifier.getColumnQualifier()) * timeInterval.columnInterval());
+        final long fullTimestamp = keyTimestamp +
+                (cellQualifier.getColumnQualifier().getValue() * timeInterval.columnInterval());
 
         LOGGER.debug(DateUtil.createNormalDateTimeString(fullTimestamp));
 
@@ -128,8 +128,8 @@ public class TestSimpleRowKeyBuilder {
             // the partial key timestamp should be rounded to the hour
             assertEquals("2009-01-01T10:00:00.000Z", DateUtil.createNormalDateTimeString(keyTimestamp));
 
-            final long fullTimestamp = keyTimestamp
-                    + (Bytes.toInt(cellQualifier.getColumnQualifier()) * timeInterval.columnInterval());
+            final long fullTimestamp = keyTimestamp +
+                    (cellQualifier.getColumnQualifier().getValue() * timeInterval.columnInterval());
 
             LOGGER.debug(DateUtil.createNormalDateTimeString(fullTimestamp));
 
@@ -198,8 +198,8 @@ public class TestSimpleRowKeyBuilder {
             final CellQualifier cellQualifier) {
         final long keyTimestamp = Bytes.toInt(cellQualifier.getRowKey().getPartialTimestamp())
                 * interval.rowKeyInterval();
-        final long fullTimestamp = keyTimestamp
-                + (Bytes.toInt(cellQualifier.getColumnQualifier()) * interval.columnInterval());
+        final long fullTimestamp = keyTimestamp +
+                (cellQualifier.getColumnQualifier().getValue() * interval.columnInterval());
         return fullTimestamp;
     }
 }

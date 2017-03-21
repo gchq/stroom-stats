@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.config.Config;
 import stroom.stats.configuration.StatisticConfigurationEntity;
+import stroom.stats.configuration.common.Folder;
 import stroom.stats.properties.StroomPropertyService;
 
 public class HeadlessTestApp extends Application<Config> {
@@ -37,7 +38,9 @@ public class HeadlessTestApp extends Application<Config> {
     Logger LOGGER = LoggerFactory.getLogger(App.class);
     private Injector injector = null;
 
-    private final HibernateBundle<Config> hibernateBundle = new HibernateBundle<Config>(StatisticConfigurationEntity.class) {
+    private final HibernateBundle<Config> hibernateBundle = new HibernateBundle<Config>(
+            StatisticConfigurationEntity.class,
+            Folder.class) {
         @Override
         public DataSourceFactory getDataSourceFactory(Config configuration) {
             return configuration.getDataSourceFactory();

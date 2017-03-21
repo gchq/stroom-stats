@@ -30,10 +30,10 @@ import stroom.stats.common.RolledUpStatisticEvent;
 import stroom.stats.hbase.RowKeyBuilder;
 import stroom.stats.hbase.SimpleRowKeyBuilder;
 import stroom.stats.hbase.structure.CellQualifier;
+import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
 import stroom.stats.hbase.uid.UniqueIdCache;
-import stroom.stats.hbase.util.bytes.ByteArrayWrapper;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.util.DateUtil;
 
@@ -116,10 +116,10 @@ public class TestInMemoryEventStoreCount {
         final RowKey lastRowKey = null;
         final byte[] lastColQual = Bytes.toBytes(999999999);
 
-        for (final Entry<RowKey, Map<ByteArrayWrapper, MutableLong>> rowEntry : store) {
+        for (final Entry<RowKey, Map<ColumnQualifier, MutableLong>> rowEntry : store) {
             assertFalse(rowEntry.getKey().equals(lastRowKey));
 
-            for (final Entry<ByteArrayWrapper, MutableLong> cellEntry : rowEntry.getValue().entrySet()) {
+            for (final Entry<ColumnQualifier, MutableLong> cellEntry : rowEntry.getValue().entrySet()) {
                 assertFalse(Arrays.equals(cellEntry.getKey().getBytes(), lastColQual));
                 i++;
             }
@@ -153,8 +153,8 @@ public class TestInMemoryEventStoreCount {
     }
 
     private void assertAllValuesInCountStore(final InMemoryEventStoreCount countStore, final long expectedValue) {
-        for (final Entry<RowKey, Map<ByteArrayWrapper, MutableLong>> rowEntry : countStore) {
-            for (final Entry<ByteArrayWrapper, MutableLong> cellEntry : rowEntry.getValue().entrySet()) {
+        for (final Entry<RowKey, Map<ColumnQualifier, MutableLong>> rowEntry : countStore) {
+            for (final Entry<ColumnQualifier, MutableLong> cellEntry : rowEntry.getValue().entrySet()) {
                 assertEquals(expectedValue, cellEntry.getValue().longValue());
             }
         }

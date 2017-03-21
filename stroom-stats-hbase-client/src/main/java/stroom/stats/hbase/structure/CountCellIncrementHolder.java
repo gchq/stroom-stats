@@ -21,10 +21,8 @@
 
 package stroom.stats.hbase.structure;
 
-import stroom.stats.hbase.util.bytes.ByteArrayUtils;
-
 public class CountCellIncrementHolder {
-    private final byte[] columnQualifier;
+    private final ColumnQualifier columnQualifier;
     private final long cellIncrementValue;
 
     /**
@@ -36,12 +34,12 @@ public class CountCellIncrementHolder {
      * @param cellValue
      *            The amount to increment the column by
      */
-    public CountCellIncrementHolder(final byte[] columnQualifier, final long cellValue) {
+    public CountCellIncrementHolder(final ColumnQualifier columnQualifier, final long cellValue) {
         this.columnQualifier = columnQualifier;
         this.cellIncrementValue = cellValue;
     }
 
-    public byte[] getColumnQualifier() {
+    public ColumnQualifier getColumnQualifier() {
         return columnQualifier;
     }
 
@@ -49,8 +47,12 @@ public class CountCellIncrementHolder {
         return cellIncrementValue;
     }
 
+    public boolean areQualifiersEqual(CountCellIncrementHolder that) {
+        return this.columnQualifier.equals(that);
+    }
+
     @Override
     public String toString() {
-        return "[" + ByteArrayUtils.byteArrayToHex(columnQualifier) + " - " + cellIncrementValue + "]";
+        return "[" + columnQualifier + " - " + cellIncrementValue + "]";
     }
 }

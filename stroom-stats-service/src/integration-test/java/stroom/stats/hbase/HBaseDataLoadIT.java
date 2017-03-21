@@ -63,6 +63,9 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Load data into HBase via the {@link StatisticsService} and then query it via the {@link StatisticsService}
+ */
 public class HBaseDataLoadIT extends AbstractAppIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseDataLoadIT.class);
@@ -74,7 +77,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller = injector.getInstance(StatisticConfigurationEntityMarshaller.class);
 
     @Test
-    public void test() {
+    public void testCount() {
         StatisticsService statisticsService = injector.getInstance(StatisticsService.class);
         UniqueIdCache uniqueIdCache = injector.getInstance(UniqueIdCache.class);
 
@@ -88,6 +91,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         //Put time in the statName to allow us to re-run the test without an empty HBase
         String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString();
+
         String tag1Str = "tag1";
         String tag1Val1Str = tag1Str + "val1";
         String tag2Str = "tag2";
@@ -129,6 +133,8 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         AggregatedEvent aggregatedEvent1 = new AggregatedEvent(statKey1, statAggregate1);
 
+        //Add two of the same event so hbase will aggregate the count
+        aggregatedEvents.add(aggregatedEvent1);
         aggregatedEvents.add(aggregatedEvent1);
 
         StatKey statKey2 = new StatKey( statName,
@@ -144,6 +150,8 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         AggregatedEvent aggregatedEvent2 = new AggregatedEvent(statKey2, statAggregate2);
 
+        //Add two of the same event so hbase will aggregate the count
+        aggregatedEvents.add(aggregatedEvent2);
         aggregatedEvents.add(aggregatedEvent2);
 
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
@@ -187,17 +195,16 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
         assertThat(dataPoints1.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str, tag2Val2Str);
-        assertThat(dataPoints1.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo(statValue1 + statValue2);
+        assertThat(dataPoints1.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo((statValue1 * 2) + (statValue2 * 2));
 
         List<StatisticDataPoint> dataPoints2 = runQuery(statisticsService, querySpecificRow, statisticConfigurationEntity, 1);
 
         //shoudl only get two distinct tag values as we have just one row back
         assertThat(dataPoints2.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str);
-        assertThat(dataPoints2.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo(statValue1);
+        assertThat(dataPoints2.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo(statValue1 * 2);
 
         List<StatisticDataPoint> dataPoints3 = runQuery(statisticsService, queryNoDataFound, statisticConfigurationEntity, 0);
-
     }
 
 

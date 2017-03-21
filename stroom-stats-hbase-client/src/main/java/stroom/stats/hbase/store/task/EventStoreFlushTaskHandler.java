@@ -25,13 +25,13 @@ import stroom.stats.hbase.aggregator.AbstractInMemoryEventStore;
 import stroom.stats.hbase.aggregator.ConcurrentInMemoryEventStoreCount;
 import stroom.stats.hbase.aggregator.ConcurrentInMemoryEventStoreValue;
 import stroom.stats.hbase.structure.CellQualifier;
+import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.CountCellIncrementHolder;
 import stroom.stats.hbase.structure.CountRowData;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.ValueCellValue;
 import stroom.stats.hbase.table.EventStoreTable;
 import stroom.stats.hbase.table.EventStoreTableFactory;
-import stroom.stats.hbase.util.bytes.ByteArrayWrapper;
 import stroom.stats.task.api.AbstractTaskHandler;
 import stroom.stats.task.api.VoidResult;
 import stroom.stats.util.logging.LambdaLogger;
@@ -119,11 +119,11 @@ public class EventStoreFlushTaskHandler extends AbstractTaskHandler<EventStoreFl
     private List<CountRowData> convertCountStoreToHBaseRows(final ConcurrentInMemoryEventStoreCount eventStore) {
         final List<CountRowData> rowList = new ArrayList<>();
 
-        for (final Entry<RowKey, ConcurrentMap<ByteArrayWrapper, AtomicLong>> rowEntry : eventStore) {
+        for (final Entry<RowKey, ConcurrentMap<ColumnQualifier, AtomicLong>> rowEntry : eventStore) {
             final List<CountCellIncrementHolder> cells = new ArrayList<>();
 
-            for (final Entry<ByteArrayWrapper, AtomicLong> cellEntry : rowEntry.getValue().entrySet()) {
-                cells.add(new CountCellIncrementHolder(cellEntry.getKey().getBytes(), cellEntry.getValue().get()));
+            for (final Entry<ColumnQualifier, AtomicLong> cellEntry : rowEntry.getValue().entrySet()) {
+                cells.add(new CountCellIncrementHolder(cellEntry.getKey(), cellEntry.getValue().get()));
             }
             rowList.add(new CountRowData(rowEntry.getKey(), cells));
         }

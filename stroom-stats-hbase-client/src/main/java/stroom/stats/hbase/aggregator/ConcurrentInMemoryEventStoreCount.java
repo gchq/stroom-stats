@@ -23,9 +23,8 @@ package stroom.stats.hbase.aggregator;
 
 import stroom.stats.api.StatisticType;
 import stroom.stats.hbase.structure.CellQualifier;
+import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
-import stroom.stats.hbase.util.bytes.ByteArrayUtils;
-import stroom.stats.hbase.util.bytes.ByteArrayWrapper;
 import stroom.stats.util.logging.LambdaLogger;
 
 import java.util.Iterator;
@@ -35,8 +34,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ConcurrentInMemoryEventStoreCount extends AbstractInMemoryEventStore
-        implements Iterable<Entry<RowKey, ConcurrentMap<ByteArrayWrapper, AtomicLong>>> {
-    private final ConcurrentMap<RowKey, ConcurrentMap<ByteArrayWrapper, AtomicLong>> store = new ConcurrentHashMap<>();
+        implements Iterable<Entry<RowKey, ConcurrentMap<ColumnQualifier, AtomicLong>>> {
+    private final ConcurrentMap<RowKey, ConcurrentMap<ColumnQualifier, AtomicLong>> store = new ConcurrentHashMap<>();
 
     private int cellCount = 0;
 
@@ -65,21 +64,19 @@ public class ConcurrentInMemoryEventStoreCount extends AbstractInMemoryEventStor
         return putValue(cellQualifier.getRowKey(), cellQualifier.getColumnQualifier(), value);
     }
 
-    public boolean putValue(final RowKey rowKey, final byte[] columnQualifier, final long value) {
-        LOGGER.trace(() -> String.format("putValue called for rowKey: %s, columnQualifier: %s, value: %s", rowKey,
-                ByteArrayUtils.byteArrayToHex(columnQualifier), value));
+    public boolean putValue(final RowKey rowKey, final ColumnQualifier columnQualifier, final long value) {
+        LOGGER.trace(() -> String.format("putValue called for rowKey: %s, columnQualifier: %s, value: %s", rowKey, columnQualifier, value));
 
         final boolean result = super.isFirstDataLoadIntoStore();
 
-        final ByteArrayWrapper wrappedColQual = ByteArrayWrapper.of(columnQualifier);
 
-        ConcurrentMap<ByteArrayWrapper, AtomicLong> existingCellMap = store.get(rowKey);
+        ConcurrentMap<ColumnQualifier, AtomicLong> existingCellMap = store.get(rowKey);
 
         // do the put if absent after the get to save us always having to build
         // the inner map just in case it is absent
         if (existingCellMap == null) {
-            final ConcurrentMap<ByteArrayWrapper, AtomicLong> newCellMap = new ConcurrentHashMap<>();
-            newCellMap.put(wrappedColQual, new AtomicLong(value));
+            final ConcurrentMap<ColumnQualifier, AtomicLong> newCellMap = new ConcurrentHashMap<>();
+            newCellMap.put(columnQualifier, new AtomicLong(value));
 
             existingCellMap = store.putIfAbsent(rowKey, newCellMap);
 
@@ -94,7 +91,7 @@ public class ConcurrentInMemoryEventStoreCount extends AbstractInMemoryEventStor
             // inner map
 
             // make sure we have a key for our column qualifier
-            final AtomicLong existingMapValue = existingCellMap.putIfAbsent(wrappedColQual, new AtomicLong(value));
+            final AtomicLong existingMapValue = existingCellMap.putIfAbsent(columnQualifier, new AtomicLong(value));
 
             if (existingMapValue != null) {
                 // the map value cannot be null as ConcurrentHashMap doesn't
@@ -118,7 +115,7 @@ public class ConcurrentInMemoryEventStoreCount extends AbstractInMemoryEventStor
     }
 
     @Override
-    public Iterator<Entry<RowKey, ConcurrentMap<ByteArrayWrapper, AtomicLong>>> iterator() {
+    public Iterator<Entry<RowKey, ConcurrentMap<ColumnQualifier, AtomicLong>>> iterator() {
         return store.entrySet().iterator();
     }
 }

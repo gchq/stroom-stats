@@ -26,6 +26,7 @@ import stroom.stats.api.TimeAgnosticStatisticEvent;
 import stroom.stats.common.RolledUpStatisticEvent;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.hbase.structure.CellQualifier;
+import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.TimeAgnosticRowKey;
 import stroom.stats.streams.aggregation.AggregatedEvent;
@@ -76,7 +77,7 @@ public interface RowKeyBuilder {
      *            The byte array that makes up the column qualifier
      * @return
      */
-    CellQualifier buildCellQualifier(RowKey rowKey, byte[] columnQualifier);
+    CellQualifier buildCellQualifier(RowKey rowKey, ColumnQualifier columnQualifier);
 
     /**
      * Constructs a RowKey object for the start of a time range. This is

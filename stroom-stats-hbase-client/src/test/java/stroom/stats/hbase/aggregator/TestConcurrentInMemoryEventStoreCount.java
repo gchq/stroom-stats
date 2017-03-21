@@ -21,7 +21,19 @@
 
 package stroom.stats.hbase.aggregator;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
+import stroom.stats.api.StatisticEvent;
+import stroom.stats.api.StatisticType;
+import stroom.stats.common.RolledUpStatisticEvent;
+import stroom.stats.hbase.RowKeyBuilder;
+import stroom.stats.hbase.SimpleRowKeyBuilder;
+import stroom.stats.hbase.structure.CellQualifier;
+import stroom.stats.hbase.structure.ColumnQualifier;
+import stroom.stats.hbase.structure.RowKey;
+import stroom.stats.hbase.uid.MockUniqueIdCache;
+import stroom.stats.hbase.uid.UniqueIdCache;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.util.DateUtil;
 
 import java.util.List;
 import java.util.Map.Entry;
@@ -29,20 +41,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.junit.Test;
-
-import stroom.stats.api.StatisticEvent;
-import stroom.stats.api.StatisticType;
-import stroom.stats.common.RolledUpStatisticEvent;
-import stroom.stats.hbase.uid.MockUniqueIdCache;
-import stroom.stats.hbase.RowKeyBuilder;
-import stroom.stats.hbase.SimpleRowKeyBuilder;
-import stroom.stats.hbase.structure.CellQualifier;
-import stroom.stats.hbase.structure.RowKey;
-import stroom.stats.hbase.uid.UniqueIdCache;
-import stroom.stats.hbase.util.bytes.ByteArrayWrapper;
-import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.util.DateUtil;
+import static org.junit.Assert.assertEquals;
 
 public class TestConcurrentInMemoryEventStoreCount {
     UniqueIdCache uniqueIdCache = new MockUniqueIdCache();
@@ -98,12 +97,16 @@ public class TestConcurrentInMemoryEventStoreCount {
     }
 
     private EventStoreMapKey getEventStoreMapKey(final StatisticType statisticType,
-            final EventStoreTimeIntervalEnum intervalEnum) {
+                                                 final EventStoreTimeIntervalEnum intervalEnum) {
         return new EventStoreMapKey(statisticType, 1, intervalEnum, 0, TimeUnit.MILLISECONDS);
     }
 
-    private void putCounts(final ConcurrentInMemoryEventStoreCount store, final RowKeyBuilder rowKeyBuilder,
-            final long value, final int numIterations, final int timeDeltaMillis, final int namesPerIteration) {
+    private void putCounts(final ConcurrentInMemoryEventStoreCount store,
+                           final RowKeyBuilder rowKeyBuilder,
+                           final long value,
+                           final int numIterations,
+                           final int timeDeltaMillis,
+                           final int namesPerIteration) {
         final String eventTimeString = "2009-01-01T00:00:00.000Z";
         long eventTime = DateUtil.parseNormalDateTimeString(eventTimeString);
 
@@ -122,9 +125,10 @@ public class TestConcurrentInMemoryEventStoreCount {
     }
 
     private void assertAllValuesInCountStore(final ConcurrentInMemoryEventStoreCount countStore,
-            final long expectedValue) {
-        for (final Entry<RowKey, ConcurrentMap<ByteArrayWrapper, AtomicLong>> rowEntry : countStore) {
-            for (final Entry<ByteArrayWrapper, AtomicLong> cellEntry : rowEntry.getValue().entrySet()) {
+                                             final long expectedValue) {
+
+        for (final Entry<RowKey, ConcurrentMap<ColumnQualifier, AtomicLong>> rowEntry : countStore) {
+            for (final Entry<ColumnQualifier, AtomicLong> cellEntry : rowEntry.getValue().entrySet()) {
                 assertEquals(expectedValue, cellEntry.getValue().longValue());
             }
         }

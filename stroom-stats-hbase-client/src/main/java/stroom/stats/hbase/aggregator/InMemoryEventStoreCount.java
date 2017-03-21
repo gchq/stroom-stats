@@ -24,9 +24,8 @@ package stroom.stats.hbase.aggregator;
 import org.apache.commons.lang.mutable.MutableLong;
 import stroom.stats.api.StatisticType;
 import stroom.stats.hbase.structure.CellQualifier;
+import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
-import stroom.stats.hbase.util.bytes.ByteArrayUtils;
-import stroom.stats.hbase.util.bytes.ByteArrayWrapper;
 import stroom.stats.util.logging.LambdaLogger;
 
 import java.util.HashMap;
@@ -38,8 +37,9 @@ import java.util.Map.Entry;
  * NOT thread safe, expected to be used by a single thread in isolation
  */
 public class InMemoryEventStoreCount extends AbstractInMemoryEventStore
-        implements Iterable<Entry<RowKey, Map<ByteArrayWrapper, MutableLong>>> {
-    private final Map<RowKey, Map<ByteArrayWrapper, MutableLong>> store = new HashMap<>();
+        implements Iterable<Entry<RowKey, Map<ColumnQualifier, MutableLong>>> {
+
+    private final Map<RowKey, Map<ColumnQualifier, MutableLong>> store = new HashMap<>();
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(InMemoryEventStoreCount.class);
 
@@ -84,31 +84,28 @@ public class InMemoryEventStoreCount extends AbstractInMemoryEventStore
      *
      * @return True if this was the first put into the store
      */
-    public boolean putValue(final RowKey rowKey, final byte[] columnQualifier, final long value) {
-        LOGGER.trace(() -> String.format("putValue called for rowKey: %s, columnQualifier: %s, value: %s", rowKey,
-                ByteArrayUtils.byteArrayToHex(columnQualifier), value));
+    public boolean putValue(final RowKey rowKey, final ColumnQualifier columnQualifier, final long value) {
+        LOGGER.trace("putValue called for rowKey: {}, columnQualifier: {}, value: {}", rowKey, columnQualifier, value);
 
         final boolean result = super.isFirstDataLoadIntoStore();
 
-        final Map<ByteArrayWrapper, MutableLong> cellsMap = store.get(rowKey);
-
-        final ByteArrayWrapper wrappedColQual = ByteArrayWrapper.of(columnQualifier);
+        final Map<ColumnQualifier, MutableLong> cellsMap = store.get(rowKey);
 
         if (cellsMap == null) {
             // no inner map so create one and put our value into it
 
-            final Map<ByteArrayWrapper, MutableLong> newCellsMap = new HashMap<>();
-            newCellsMap.put(wrappedColQual, new MutableLong(value));
+            final Map<ColumnQualifier, MutableLong> newCellsMap = new HashMap<>();
+            newCellsMap.put(columnQualifier, new MutableLong(value));
             store.put(rowKey, newCellsMap);
             cellCount++;
         } else {
             // inner map exists so check if we have an entry for our column
             // qualifier
-            final MutableLong cellValue = cellsMap.get(wrappedColQual);
+            final MutableLong cellValue = cellsMap.get(columnQualifier);
             if (cellValue == null) {
                 // null value could mean no key or null value, either way put a
                 // new atomic long with our value
-                cellsMap.put(wrappedColQual, new MutableLong(value));
+                cellsMap.put(columnQualifier, new MutableLong(value));
                 cellCount++;
             } else {
                 cellValue.add(value);
@@ -124,7 +121,7 @@ public class InMemoryEventStoreCount extends AbstractInMemoryEventStore
     }
 
     @Override
-    public Iterator<Entry<RowKey, Map<ByteArrayWrapper, MutableLong>>> iterator() {
+    public Iterator<Entry<RowKey, Map<ColumnQualifier, MutableLong>>> iterator() {
         return store.entrySet().iterator();
     }
 }

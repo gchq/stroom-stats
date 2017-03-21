@@ -32,10 +32,10 @@ import stroom.stats.hbase.RowKeyBuilder;
 import stroom.stats.hbase.SimpleRowKeyBuilder;
 import stroom.stats.hbase.store.task.EventStoreFlushTask;
 import stroom.stats.hbase.structure.CellQualifier;
+import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
 import stroom.stats.hbase.uid.UniqueIdCache;
-import stroom.stats.hbase.util.bytes.ByteArrayWrapper;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.task.api.AbstractTaskHandler;
@@ -402,16 +402,16 @@ public class TestEventStoresThreadFlushAggregatorImpl {
 
     private void assertAllValuesInConcurrentCountStore(final ConcurrentInMemoryEventStoreCount countStore,
             final long expectedValue) {
-        for (final Entry<RowKey, ConcurrentMap<ByteArrayWrapper, AtomicLong>> rowEntry : countStore) {
-            for (final Entry<ByteArrayWrapper, AtomicLong> cellEntry : rowEntry.getValue().entrySet()) {
+        for (final Entry<RowKey, ConcurrentMap<ColumnQualifier, AtomicLong>> rowEntry : countStore) {
+            for (final Entry<ColumnQualifier, AtomicLong> cellEntry : rowEntry.getValue().entrySet()) {
                 assertEquals(expectedValue, cellEntry.getValue().longValue());
             }
         }
     }
 
     private void assertAllValuesInCountStore(final InMemoryEventStoreCount countStore, final long expectedValue) {
-        for (final Entry<RowKey, Map<ByteArrayWrapper, MutableLong>> rowEntry : countStore) {
-            for (final Entry<ByteArrayWrapper, MutableLong> cellEntry : rowEntry.getValue().entrySet()) {
+        for (final Entry<RowKey, Map<ColumnQualifier, MutableLong>> rowEntry : countStore) {
+            for (final Entry<ColumnQualifier, MutableLong> cellEntry : rowEntry.getValue().entrySet()) {
                 assertEquals(expectedValue, cellEntry.getValue().longValue());
             }
         }

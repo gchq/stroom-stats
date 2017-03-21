@@ -33,11 +33,11 @@ import stroom.stats.hbase.RowKeyBuilder;
 import stroom.stats.hbase.SimpleRowKeyBuilder;
 import stroom.stats.hbase.structure.AddEventOperation;
 import stroom.stats.hbase.structure.CellQualifier;
+import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.ValueCellValue;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
 import stroom.stats.hbase.uid.UniqueIdCache;
-import stroom.stats.hbase.util.bytes.ByteArrayWrapper;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.util.DateUtil;
@@ -49,7 +49,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class TestEventStoresPutAggregatorImpl {
     MockStroomPropertyService propertyService = new MockStroomPropertyService();
@@ -122,8 +121,8 @@ public class TestEventStoresPutAggregatorImpl {
         assertEquals(1, countStore.getSize());
         assertEquals(workingInterval, countStore.getTimeInterval());
         assertEquals(lastCellQualifierUsed.getRowKey(), countStore.iterator().next().getKey());
-        assertTrue(Arrays.equals(lastCellQualifierUsed.getColumnQualifier(),
-                countStore.iterator().next().getValue().keySet().iterator().next().getBytes()));
+        assertEquals(lastCellQualifierUsed.getColumnQualifier(),
+                countStore.iterator().next().getValue().keySet().iterator().next());
 
         assertEquals(1500L, countStore.iterator().next().getValue().values().iterator().next().longValue());
 
@@ -817,8 +816,8 @@ public class TestEventStoresPutAggregatorImpl {
     }
 
     private void assertAllValuesInCountStore(final InMemoryEventStoreCount countStore, final long expectedValue) {
-        for (final Entry<RowKey, Map<ByteArrayWrapper, MutableLong>> rowEntry : countStore) {
-            for (final Entry<ByteArrayWrapper, MutableLong> cellEntry : rowEntry.getValue().entrySet()) {
+        for (final Entry<RowKey, Map<ColumnQualifier, MutableLong>> rowEntry : countStore) {
+            for (final Entry<ColumnQualifier, MutableLong> cellEntry : rowEntry.getValue().entrySet()) {
                 assertEquals(expectedValue, cellEntry.getValue().longValue());
             }
         }
