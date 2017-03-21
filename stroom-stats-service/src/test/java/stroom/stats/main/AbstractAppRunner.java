@@ -1,5 +1,3 @@
-
-
 /*
  * Copyright 2017 Crown Copyright
  *
@@ -22,18 +20,29 @@
 package stroom.stats.main;
 
 import com.google.inject.Injector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import stroom.stats.App;
 
-public class HbaseDataViewerUID extends AbstractAppRunner {
+public abstract class AbstractAppRunner {
 
-    public static void main(final String[] args) throws Exception {
-        new HbaseDataViewerUID();
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractAppRunner.class);
+
+    public AbstractAppRunner() {
+
+        try {
+            App app = new App();
+            app.run(new String[] {"server", "./stroom-stats-service/config_dev.yml"});
+
+            Injector injector = app.getInjector();
+
+            run(injector);
+        } catch (Exception e) {
+            LOGGER.error("Error: {}", e.getMessage(), e);
+        }
+
+        System.exit(0);
     }
 
-    @Override
-    void run(final Injector injector) throws Exception {
-
-        final StatisticsTestService statisticsTestService = injector.getInstance(StatisticsTestService.class);
-
-        statisticsTestService.scanUIDTable();
-    }
+    abstract void run(Injector injector) throws Exception;
 }

@@ -266,7 +266,7 @@ public final class StatisticsTestService {
     }
 
     private StatisticDataSet performSearch(final String eventName, final long rangeFrom, final long rangeTo,
-            final ExpressionItem additionalFilterBranch) {
+                                           final ExpressionItem additionalFilterBranch) {
         StatisticDataSet statisticDataSet;
 
         final StatisticConfiguration statisticConfiguration = statisticConfigurationService
@@ -633,10 +633,10 @@ public final class StatisticsTestService {
 
         startTime = System.currentTimeMillis();
 
-        UserManagedCache<String,byte[]> cache = UserManagedCacheBuilder.newUserManagedCacheBuilder(String.class, byte[].class)
+        UserManagedCache<String, byte[]> cache = UserManagedCacheBuilder.newUserManagedCacheBuilder(String.class, byte[].class)
                 .withResourcePools(ResourcePoolsBuilder.heap(1000000))
                 .withExpiry(Expirations.timeToLiveExpiration(Duration.of(600, TimeUnit.SECONDS)))
-                .withExpiry(Expirations.timeToIdleExpiration(Duration.of(3600,TimeUnit.SECONDS)))
+                .withExpiry(Expirations.timeToIdleExpiration(Duration.of(3600, TimeUnit.SECONDS)))
                 .build(true);
 
 
@@ -686,10 +686,10 @@ public final class StatisticsTestService {
             }
         };
 
-        UserManagedCache<String,byte[]> selfPopCache = UserManagedCacheBuilder.newUserManagedCacheBuilder(String.class, byte[].class)
+        UserManagedCache<String, byte[]> selfPopCache = UserManagedCacheBuilder.newUserManagedCacheBuilder(String.class, byte[].class)
                 .withResourcePools(ResourcePoolsBuilder.heap(1000000))
                 .withExpiry(Expirations.timeToLiveExpiration(Duration.of(600, TimeUnit.SECONDS)))
-                .withExpiry(Expirations.timeToIdleExpiration(Duration.of(3600,TimeUnit.SECONDS)))
+                .withExpiry(Expirations.timeToIdleExpiration(Duration.of(3600, TimeUnit.SECONDS)))
                 .withLoaderWriter(loaderWriter)
                 .build(true);
 
@@ -709,8 +709,8 @@ public final class StatisticsTestService {
         startTime = System.currentTimeMillis();
 
         for (final StatisticTag statisticTag : allStatisticTags) {
-            final byte[] t =  selfPopCache.get(statisticTag.getTag());
-            final byte[] v =  selfPopCache.get(statisticTag.getValue());
+            final byte[] t = selfPopCache.get(statisticTag.getTag());
+            final byte[] v = selfPopCache.get(statisticTag.getValue());
         }
 
         LOGGER.info("New selfPopEHCache get finished in " + (System.currentTimeMillis() - startTime) + "ms");
@@ -743,7 +743,7 @@ public final class StatisticsTestService {
     }
 
     private void scanRow(final Result result, final RowKeyBuilder simpleRowKeyBuilder, final RowKey rowKey,
-            final StatisticType statsType) throws IOException {
+                         final StatisticType statsType) throws IOException {
         final CellScanner cellScanner = result.cellScanner();
         while (cellScanner.advance()) {
             final Cell cell = cellScanner.current();
@@ -769,31 +769,29 @@ public final class StatisticsTestService {
             System.arraycopy(cell.getValueArray(), cell.getValueOffset(), bValue, 0, cell.getValueLength());
 
             switch (statsType) {
-            case VALUE:
-                final ValueCellValue cellValue = new ValueCellValue(bValue);
+                case VALUE:
+                    final ValueCellValue cellValue = new ValueCellValue(bValue);
 
-                LOGGER.debug("Val: " + cellValue);
-                break;
-            case COUNT:
-                LOGGER.debug("Val: " + Bytes.toLong(bValue));
-                break;
+                    LOGGER.debug("Val: " + cellValue);
+                    break;
+                case COUNT:
+                    LOGGER.debug("Val: " + Bytes.toLong(bValue));
+                    break;
             }
 
         }
     }
 
     private void scanAllData(final HBaseTable hBaseTable, final RowKeyBuilder simpleRowKeyBuilder,
-            final EventStoreColumnFamily eventStoreColumnFamily) throws IOException {
+                             final EventStoreColumnFamily eventStoreColumnFamily) throws IOException {
         scanAllData(hBaseTable, simpleRowKeyBuilder, eventStoreColumnFamily, Integer.MAX_VALUE);
 
     }
 
     private void scanAllData(final HBaseTable hBaseTable, final RowKeyBuilder simpleRowKeyBuilder,
-            final EventStoreColumnFamily eventStoreColumnFamily, final int rowLimit) throws IOException {
+                             final EventStoreColumnFamily eventStoreColumnFamily, final int rowLimit) throws IOException {
         // get all rows from the counts column family, latest version only
         final Scan scan = new Scan().setMaxVersions(1).addFamily(eventStoreColumnFamily.asByteArray());
-
-        LOGGER.info("Reading all event store data");
 
         int rowCount = 0;
 
@@ -837,9 +835,14 @@ public final class StatisticsTestService {
     }
 
     public void scanAllData(final EventStoreTimeIntervalEnum timeInterval,
-            final EventStoreColumnFamily eventStoreColumnFamily, final int rowLimit) throws IOException {
-        final HBaseTable hBaseTable = HBaseEventStoreTable.getInstance(timeInterval, null, propertyService,
-                hBaseConnection, uniqueIdCache);
+                            final EventStoreColumnFamily eventStoreColumnFamily,
+                            final int rowLimit) throws IOException {
+
+        LOGGER.info("Scanning all {} data in event store {}", eventStoreColumnFamily, timeInterval.getDisplayValue());
+
+        HBaseTable hBaseTable = (HBaseTable) eventStoreTableFactory.getEventStoreTable(timeInterval);
+//        final HBaseTable hBaseTable = HBaseEventStoreTable.getInstance(timeInterval, null, propertyService,
+//                hBaseConnection, uniqueIdCache);
 
         final RowKeyBuilder simpleRowKeyBuilder = new SimpleRowKeyBuilder(uniqueIdCache, timeInterval);
 
@@ -958,7 +961,7 @@ public final class StatisticsTestService {
         final Scan scan = new Scan();
         scan.addFamily(EventStoreColumnFamily.COUNTS.asByteArray());
         scan.addFamily(EventStoreColumnFamily.VALUES.asByteArray());
-        try(final ResultScanner results = table.getScanner(scan)) {
+        try (final ResultScanner results = table.getScanner(scan)) {
             count = Iterables.size(results);
         }
         return count;

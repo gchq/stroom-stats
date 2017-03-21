@@ -65,7 +65,7 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
      *            and column qualifiers.
      */
     public SimpleRowKeyBuilder(final UniqueIdCache uniqueIdCache, final EventStoreTimeIntervalEnum timeInterval) {
-        LOGGER.info("Initialising SimpleRowKeyBuilder");
+        LOGGER.trace("Initialising SimpleRowKeyBuilder");
         this.uniqueIdCache = uniqueIdCache;
         this.timeInterval = timeInterval;
     }

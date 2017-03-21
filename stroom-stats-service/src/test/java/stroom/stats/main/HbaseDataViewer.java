@@ -21,26 +21,38 @@
 
 package stroom.stats.main;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
 import com.google.inject.Injector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import stroom.stats.hbase.table.EventStoreColumnFamily;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
-public class HbaseDataViewer {
+import java.io.IOException;
+import java.util.Arrays;
 
-    public static void main(final String[] args) throws Exception {
+public class HbaseDataViewer extends AbstractAppRunner {
 
-        final Injector injector = Guice.createInjector(new AbstractModule() {
-            @Override
-            protected void configure() {
-                bind(StatisticsTestService.class);
-            }
-        });
+    private static final Logger LOGGER = LoggerFactory.getLogger(HbaseDataViewer.class);
+
+    public static void main(String[] args) {
+        new HbaseDataViewer();
+    }
+
+    @Override
+    void run(final Injector injector) throws Exception {
 
         final StatisticsTestService statisticsTestService = injector.getInstance(StatisticsTestService.class);
 
         // scan all rows in the hourly event store table and output the results.
-        statisticsTestService.scanAllData(EventStoreTimeIntervalEnum.SECOND, EventStoreColumnFamily.COUNTS, 2000);
+        Arrays.stream(EventStoreTimeIntervalEnum.values()).forEach(interval ->
+                Arrays.stream(EventStoreColumnFamily.values()).forEach(colFam -> {
+                    try {
+                        statisticsTestService.scanAllData(interval, colFam, 2000);
+                    } catch (IOException e) {
+                        throw new RuntimeException(String.format("Exception scanning all data for col fam %s and interval %s", colFam, interval), e);
+                    }
+                })
+        );
+
     }
 }

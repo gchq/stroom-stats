@@ -107,7 +107,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         UID tag1 = uniqueIdCache.getOrCreateId(tag1Str);
         UID tag1val1 = uniqueIdCache.getOrCreateId(tag1Val1Str);
         UID tag2 = uniqueIdCache.getOrCreateId(tag2Str);
-        UID tag2val1 = uniqueIdCache.getOrCreateId(tag1Val1Str);
+        UID tag2val1 = uniqueIdCache.getOrCreateId(tag2Val1Str);
 
         StatKey statKey = new StatKey( statName,
                 rollUpBitMask,
