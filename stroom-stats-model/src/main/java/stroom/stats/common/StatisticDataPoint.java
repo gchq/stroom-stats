@@ -31,7 +31,7 @@ import java.util.Map;
 
 
 /**
- * Value object to hold a statistic data point retreived from a statistic store.
+ * Value object to hold a statistic data point retrieved from a statistic store.
  * This differs from a {@link StatisticEvent} in that this data point may
  * represent an aggregated value rather than a single statistic event.
  */

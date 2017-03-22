@@ -23,8 +23,20 @@ import com.google.common.base.Preconditions;
 import io.dropwizard.lifecycle.Managed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.dashboard.expression.FieldIndexMap;
+import stroom.query.Coprocessor;
+import stroom.query.CoprocessorSettings;
+import stroom.query.CoprocessorSettingsMap;
+import stroom.query.Payload;
+import stroom.query.SearchResponseCreator;
+import stroom.query.TableCoprocessor;
+import stroom.query.TableCoprocessorSettings;
 import stroom.query.api.DocRef;
+import stroom.query.api.FlatResult;
 import stroom.query.api.OffsetRange;
+import stroom.query.api.Param;
+import stroom.query.api.Result;
+import stroom.query.api.ResultRequest;
 import stroom.query.api.Row;
 import stroom.query.api.SearchRequest;
 import stroom.query.api.SearchResponse;
@@ -32,16 +44,24 @@ import stroom.query.api.TableResult;
 import stroom.stats.adapters.StatisticEventAdapter;
 import stroom.stats.api.StatisticEvent;
 import stroom.stats.api.StatisticsService;
+import stroom.stats.common.StatisticDataPoint;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.schema.Statistics;
+import stroom.util.shared.HasTerminate;
+import stroom.util.task.TaskMonitor;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 //TODO everything about this class needs work, including its name
@@ -84,21 +104,99 @@ public class HBaseClient implements Managed {
 //        final Try<StatisticConfiguration> optStatisticConfiguration =
         return statisticConfigurationService.fetchStatisticConfigurationByUuid(statisticStoreRef.getUuid())
                 .map(statisticConfiguration -> {
+
+
+                    // TODO: possibly the mapping from the componentId to the coprocessorsettings map is a bit odd.
+                    final CoprocessorSettingsMap coprocessorSettingsMap = CoprocessorSettingsMap.create(searchRequest);
+
+                    Map<CoprocessorSettingsMap.CoprocessorKey, Coprocessor> coprocessorMap = new HashMap<>();
+                    // TODO: Mapping to this is complicated! it'd be nice not to have to do this.
+                    final FieldIndexMap fieldIndexMap = new FieldIndexMap(true);
+
+                    // Compile all of the result component options to optimise pattern matching etc.
+                    if (coprocessorSettingsMap.getMap() != null) {
+                        for (final Map.Entry<CoprocessorSettingsMap.CoprocessorKey, CoprocessorSettings> entry : coprocessorSettingsMap.getMap().entrySet()) {
+                            final CoprocessorSettingsMap.CoprocessorKey coprocessorId = entry.getKey();
+                            final CoprocessorSettings coprocessorSettings = entry.getValue();
+
+                            // Create a parameter map.
+                            final Map<String, String> paramMap = Collections.emptyMap();
+                            if (searchRequest.getQuery().getParams() != null) {
+                                for (final Param param : searchRequest.getQuery().getParams()) {
+                                    paramMap.put(param.getKey(), param.getValue());
+                                }
+                            }
+
+                            final Coprocessor coprocessor = createCoprocessor(
+                                    coprocessorSettings, fieldIndexMap, paramMap, new HasTerminate(){
+                                        //TODO do something about this
+                                        @Override
+                                        public void terminate() {
+                                            System.out.println("terminating");
+                                        }
+
+                                        @Override
+                                        public boolean isTerminated() {
+                                            return false;
+                                        }
+                                    });
+
+                            if (coprocessor != null) {
+                                coprocessorMap.put(coprocessorId, coprocessor);
+                            }
+                        }
+                    }
+
                     StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(searchRequest.getQuery(), statisticConfiguration);
+                    SearchResponse.Builder searchResponseBuilder = new SearchResponse.Builder(true);
 
-                    //TODO convert the statisticDataSet into a SearchResponse, somehow!
-                    //See the code in StatStoreSearchTaskHandler in Stroom as this goes from the same starting point
+                    //TODO TableCoprocessor is doing a lot of work to pre-process and aggregate the datas
 
 
-                    searchRequest.getResultRequests().stream()
-                            .forEach(resultRequest -> {
-                                String componentId = resultRequest.getComponentId();
+                    for(StatisticDataPoint statisticDataPoint : statisticDataSet){
+                        String[] tags = new String[fieldIndexMap.size()];
+                        statisticDataPoint.getTags().forEach(statisticTag -> {
+                            int position = fieldIndexMap.get(statisticTag.getTag());
+                            if(position != -1){
+                                tags[position] = statisticTag.getValue();
+                            }
+                            //TODO what are the special names for the other values in the data point? Ask Andy!
+                        });
 
-                                //TODO build the component result for this ID and add it into SearchResponse
+                        coprocessorMap.entrySet().forEach(coprocessor -> {
+                            coprocessor.getValue().receive(tags);
+                        });
+                    }
 
-                            });
 
-                    return getDummySearchResponse();
+
+                    // TODO pyutting things into a payload and taking them out again is a waste of time in this case. We could use a queue instead and that'd be fine.
+                    //TODO: 'Payload' is a cluster specific name - what lucene ships back from a node.
+                    // Produce payloads for each coprocessor.
+                    Map<CoprocessorSettingsMap.CoprocessorKey, Payload> payloadMap = null;
+                    if (coprocessorMap != null && coprocessorMap.size() > 0) {
+                        for (final Map.Entry<CoprocessorSettingsMap.CoprocessorKey, Coprocessor> entry : coprocessorMap.entrySet()) {
+                            final Payload payload = entry.getValue().createPayload();
+                            if (payload != null) {
+                                if (payloadMap == null) {
+                                    payloadMap = new HashMap<>();
+                                }
+
+                                payloadMap.put(entry.getKey(), payload);
+                            }
+                        }
+                    }
+
+
+                    StatisticsStore store = new StatisticsStore();
+                    store.process(coprocessorSettingsMap);
+                    store.coprocessorMap(coprocessorMap);
+                    store.payloadMap(payloadMap);
+
+                    SearchResponseCreator searchResponseCreator = new SearchResponseCreator(store);
+                    SearchResponse searchResponse = searchResponseCreator.create(searchRequest);
+
+                    return searchResponse;
                 })
                 .orElseGet(() -> {
                     SearchResponse searchResponse = new SearchResponse(
@@ -166,4 +264,20 @@ public class HBaseClient implements Managed {
 
         return searchResponse;
     }
+
+
+
+
+    //TODO This lives in stroom and should have a copy here
+    public static Coprocessor createCoprocessor(final CoprocessorSettings settings,
+                              final FieldIndexMap fieldIndexMap, final Map<String, String> paramMap, final HasTerminate taskMonitor) {
+        if (settings instanceof TableCoprocessorSettings) {
+            final TableCoprocessorSettings tableCoprocessorSettings = (TableCoprocessorSettings) settings;
+            final TableCoprocessor tableCoprocessor = new TableCoprocessor(tableCoprocessorSettings,
+                    fieldIndexMap, taskMonitor, paramMap);
+            return tableCoprocessor;
+        }
+        return null;
+    }
+
 }
