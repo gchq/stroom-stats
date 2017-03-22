@@ -16,6 +16,7 @@ def kafkaVersion = "0.10.1.1"
 //3rd Party libs
 ext.libs = [
     stroomQueryApi: "stroom:stroom-query-api:$stroomVersion",
+    stroomQueryCommon: "stroom:stroom-query-common:$stroomVersion",
     stroomExpressions: "stroom:stroom-expression:$stroomVersion",
     stroomUtil: "stroom:stroom-util:$stroomVersion",
 
