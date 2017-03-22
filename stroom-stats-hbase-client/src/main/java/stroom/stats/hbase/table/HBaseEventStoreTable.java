@@ -456,11 +456,22 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
                 Cell existingCell = result.getColumnLatestCell(bColumnFamily, bColumnQualifier);
 
-                final ValueCellValue currCellValue = new ValueCellValue(existingCell.getValueArray(), existingCell.getValueOffset(), existingCell.getValueOffset());
+                final ValueCellValue currCellValue;
+                final ValueCellValue newCellValue;
 
-                // aggregate the new value into the existing cell, incrementing
-                // the count and working out the max/min
-                final ValueCellValue newCellValue = currCellValue.addAggregatedValues(valueCellValue);
+                if (existingCell != null) {
+                    currCellValue = new ValueCellValue(existingCell.getValueArray(), existingCell.getValueOffset(), existingCell.getValueLength());
+
+                    // aggregate the new value into the existing cell, incrementing
+                    // the count and working out the max/min
+                    newCellValue = currCellValue.addAggregatedValues(valueCellValue);
+                    LOGGER.trace("Aggregating, currCellValue: {}, newCellValue: {}", currCellValue, newCellValue);
+                } else {
+                    //nothing there for this rowKey/colQual so just use our value as is
+                    currCellValue = null;
+                    newCellValue = valueCellValue;
+                    LOGGER.trace("Cell is empty, newCellValue: {}", newCellValue);
+                }
 
                 // construct the put containing the new aggregated cell value
                 final Put put = new Put(bRowKey).addColumn(
@@ -475,7 +486,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                         tableInterface,
                         bRowKey,
                         bColumnFamily, bColumnQualifier,
-                        (currCellValue.isEmpty() ? null : currCellValue.asByteArray()),
+                        (currCellValue == null ? null : currCellValue.asByteArray()),
                         put);
 
                 if (hasPutSucceeded) {
