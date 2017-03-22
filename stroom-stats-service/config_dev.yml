@@ -29,7 +29,7 @@ logging:
     level: WARN
     loggers:
         stroom.stats: DEBUG
-        stroom.stats.hbase.table.HBaseEventStoreTable: TRACE
+        #stroom.stats.hbase.table.HBaseEventStoreTable: TRACE
         org.ehcache: INFO
         org.eclipse.jetty: INFO
 

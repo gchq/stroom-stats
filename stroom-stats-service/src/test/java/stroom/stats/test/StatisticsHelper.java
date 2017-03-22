@@ -32,7 +32,7 @@ import java.util.GregorianCalendar;
 
 public class StatisticsHelper {
 
-    public static Statistics.Statistic buildCountStatistic(String statName, ZonedDateTime time, long value, TagType... tagValues) throws DatatypeConfigurationException {
+    public static Statistics.Statistic buildCountStatistic(String statName, ZonedDateTime time, long value, TagType... tagValues) {
         Statistics.Statistic statistic = new ObjectFactory().createStatisticsStatistic();
         statistic.setName(statName);
         Statistics.Statistic.Tags tagsObj = new Statistics.Statistic.Tags();
@@ -41,12 +41,16 @@ public class StatisticsHelper {
         }
         statistic.setTags(tagsObj);
         GregorianCalendar gregorianCalendar = GregorianCalendar.from(time);
-        statistic.setTime(DatatypeFactory.newInstance().newXMLGregorianCalendar(gregorianCalendar));
+        try {
+            statistic.setTime(DatatypeFactory.newInstance().newXMLGregorianCalendar(gregorianCalendar));
+        } catch (DatatypeConfigurationException e) {
+            throw new RuntimeException(String.format("Error converting time %s to a gregorian calendar", time), e);
+        }
         statistic.setCount(value);
         return statistic;
     }
 
-    public static Statistics.Statistic buildValueStatistic(String statName, ZonedDateTime time, double value, TagType... tagValues) throws DatatypeConfigurationException {
+    public static Statistics.Statistic buildValueStatistic(String statName, ZonedDateTime time, double value, TagType... tagValues) {
         Statistics.Statistic statistic = new ObjectFactory().createStatisticsStatistic();
         statistic.setName(statName);
         Statistics.Statistic.Tags tagsObj = new Statistics.Statistic.Tags();
@@ -55,7 +59,11 @@ public class StatisticsHelper {
         }
         statistic.setTags(tagsObj);
         GregorianCalendar gregorianCalendar = GregorianCalendar.from(time);
-        statistic.setTime(DatatypeFactory.newInstance().newXMLGregorianCalendar(gregorianCalendar));
+        try {
+            statistic.setTime(DatatypeFactory.newInstance().newXMLGregorianCalendar(gregorianCalendar));
+        } catch (DatatypeConfigurationException e) {
+            throw new RuntimeException(String.format("Error converting time %s to a gregorian calendar", time), e);
+        }
         statistic.setValue(value);
         return statistic;
     }
