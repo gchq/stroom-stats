@@ -78,21 +78,25 @@ public abstract class AbstractStatisticMapper {
         if (statistic.getIdentifiers() == null || statistic.getIdentifiers().getCompoundIdentifier() == null) {
             return Collections.emptyList();
         }
-        return statistic.getIdentifiers().getCompoundIdentifier().stream()
-                .limit(maxEventIds)
-                .map(compoundIdentifierType ->
-                        new MultiPartIdentifier(compoundIdentifierType.getLongIdentifierOrStringIdentifier().stream()
-                                .map(longOrStringId -> {
-                                    if (longOrStringId instanceof CompoundIdentifierType.LongIdentifier) {
-                                        return ((CompoundIdentifierType.LongIdentifier) longOrStringId).getValue();
-                                    } else if (longOrStringId instanceof CompoundIdentifierType.StringIdentifier) {
-                                        return ((CompoundIdentifierType.StringIdentifier) longOrStringId).getValue();
-                                    } else {
-                                        throw new RuntimeException("Unexpected type: " + longOrStringId.getClass().getName());
-                                    }
-                                })
-                                .toArray()))
-                .collect(Collectors.toList());
+        try {
+            return statistic.getIdentifiers().getCompoundIdentifier().stream()
+                    .limit(maxEventIds)
+                    .map(compoundIdentifierType ->
+                            new MultiPartIdentifier(compoundIdentifierType.getLongIdentifierOrStringIdentifier().stream()
+                                    .map(longOrStringId -> {
+                                        if (longOrStringId instanceof CompoundIdentifierType.LongIdentifier) {
+                                            return ((CompoundIdentifierType.LongIdentifier) longOrStringId).getValue();
+                                        } else if (longOrStringId instanceof CompoundIdentifierType.StringIdentifier) {
+                                            return ((CompoundIdentifierType.StringIdentifier) longOrStringId).getValue();
+                                        } else {
+                                            throw new RuntimeException("Unexpected type: " + longOrStringId.getClass().getName());
+                                        }
+                                    })
+                                    .toArray()))
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("Error converting eventIds for stat %s", statistic), e);
+        }
     }
 
     public static boolean isInsidePurgeRetention(final StatisticWrapper statisticWrapper,

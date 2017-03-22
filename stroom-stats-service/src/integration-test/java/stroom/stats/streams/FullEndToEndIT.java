@@ -75,6 +75,10 @@ public class FullEndToEndIT extends AbstractAppIT {
     @Test
     public void testAllTypesAndIntervals() {
 
+        //set small batch size and flush interval so we don't have to wait ages for data to come through
+        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10);
+        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 500);
+
         Map<Tuple2<StatisticType, EventStoreTimeIntervalEnum>, String> statNameMap = new HashMap<>();
 
         //build a map of all the stat names and add them as StatConfig entities
@@ -86,20 +90,26 @@ public class FullEndToEndIT extends AbstractAppIT {
                             interval.name().toLowerCase(), 10_000);
 
             Arrays.stream(StatisticType.values()).forEach(statisticType -> {
-                String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString() + "-" + statisticType + "-" + interval;
-                statNameMap.put(new Tuple2(statisticType, interval), statNameStr);
-                StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
-                        statNameStr,
-                        statisticType,
-                        interval.columnInterval(),
-                        StatisticRollUpType.ALL)
-                        .addFields(tagEnv, tagSystem)
-                        .build();
+                //TODO temporary filter, remove
+                if (interval.equals(EventStoreTimeIntervalEnum.SECOND)) {
+//                if (interval.equals(EventStoreTimeIntervalEnum.SECOND) && statisticType.equals(StatisticType.COUNT)) {
+                    String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString() + "-" + statisticType + "-" + interval;
+                    LOGGER.info("Creating stat name : {}", statNameStr);
 
-                StatisticConfigurationEntityHelper.addStatConfig(
-                        sessionFactory,
-                        statisticConfigurationEntityMarshaller,
-                        statisticConfigurationEntity);
+                    statNameMap.put(new Tuple2(statisticType, interval), statNameStr);
+                    StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
+                            statNameStr,
+                            statisticType,
+                            interval.columnInterval(),
+                            StatisticRollUpType.ALL)
+                            .addFields(tagEnv, tagSystem)
+                            .build();
+
+                    StatisticConfigurationEntityHelper.addStatConfig(
+                            sessionFactory,
+                            statisticConfigurationEntityMarshaller,
+                            statisticConfigurationEntity);
+                }
             });
         });
 
@@ -107,8 +117,8 @@ public class FullEndToEndIT extends AbstractAppIT {
         ZonedDateTime startTime = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS);
         LOGGER.info("Start time is {}", startTime);
         int statsInBatch = 10;
-        int timeDeltaMs = 500;
-        long maxIterations = 10;
+        int timeDeltaMs = 250;
+        long maxIterations = 8;
         final AtomicLong counter = new AtomicLong(0);
         List<Tuple2<String, String>> valuePairs = new ArrayList<>();
         valuePairs.add(new Tuple2<>(valEnvOps, valSystemABC));
@@ -142,34 +152,39 @@ public class FullEndToEndIT extends AbstractAppIT {
 
             String topic = TopicNameFactory.getStatisticTypedName(topicPrefix, statisticType);
 
-            ZonedDateTime time = startTime.plus(timeDeltaMs * counter.get(), ChronoUnit.MILLIS);
 
-            Tuple2<String, String> valuePair = valuePairs.get((int) (counter.get() % valuePairs.size()));
+            while (counter.get() < maxIterations) {
+                ZonedDateTime time = startTime.plus(timeDeltaMs * counter.get(), ChronoUnit.MILLIS);
 
-            TagType tagTypeEnv = StatisticsHelper.buildTagType(tagEnv, valuePair._1());
-            TagType tagTypeSystem = StatisticsHelper.buildTagType(tagSystem, valuePair._2());
-            Statistics.Statistic statistic;
-            if (statisticType.equals(StatisticType.COUNT)) {
-                statistic = StatisticsHelper.buildCountStatistic(statName, time, 10L, tagTypeEnv, tagTypeSystem);
-            } else {
-                statistic = StatisticsHelper.buildValueStatistic(statName, time, 0.5, tagTypeEnv, tagTypeSystem);
-            }
+                Tuple2<String, String> valuePair = valuePairs.get((int) (counter.get() % valuePairs.size()));
 
-            statList.add(statistic);
+                TagType tagTypeEnv = StatisticsHelper.buildTagType(tagEnv, valuePair._1());
+                TagType tagTypeSystem = StatisticsHelper.buildTagType(tagSystem, valuePair._2());
+                Statistics.Statistic statistic;
+                if (statisticType.equals(StatisticType.COUNT)) {
+                    statistic = StatisticsHelper.buildCountStatistic(statName, time, 10L, tagTypeEnv, tagTypeSystem);
+                } else {
+                    statistic = StatisticsHelper.buildValueStatistic(statName, time, 0.5, tagTypeEnv, tagTypeSystem);
+                }
 
-            while (counter.get() <= maxIterations) {
-                if (counter.get() != 0 && counter.get() % statsInBatch == 0) {
+                statList.add(statistic);
+
+                if (counter.get() != 0 && (counter.get() % statsInBatch == 0 || counter.get() == (maxIterations - 1))) {
                     Statistics statistics = StatisticsHelper.buildStatistics(statList.toArray(new Statistics.Statistic[statList.size()]));
+                    statList.clear();
                     sendStatistics(kafkaProducer, topic, statistics);
                 }
                 counter.incrementAndGet();
             }
+
+            //reset for the next round
+            counter.set(0);
         });
 
         kafkaProducer.flush();
         kafkaProducer.close();
 
-        ThreadUtil.sleep(30_000);
+        ThreadUtil.sleep(60_000);
 
     }
 
@@ -177,6 +192,10 @@ public class FullEndToEndIT extends AbstractAppIT {
     private void sendStatistics(KafkaProducer<String, String> kafkaProducer, String topic, Statistics statistics) {
 
         ProducerRecord<String, String> producerRecord = buildProducerRecord(topic, statistics);
+
+        statistics.getStatistic().forEach(statistic ->
+                LOGGER.trace("Sending stat with name {}, count {} and value {}", statistic.getName(), statistic.getCount(), statistic.getValue())
+        );
 
         LOGGER.trace(() -> String.format("Sending %s stat events to topic $s", statistics.getStatistic().size(), topic));
         kafkaProducer.send(producerRecord);

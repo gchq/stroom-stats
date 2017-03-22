@@ -81,7 +81,8 @@ class StatisticsFlatMappingProcessor {
                              final String intervalTopicPrefix,
                              final AbstractStatisticMapper statisticMapper) {
 
-        LOGGER.info("Building stream with input topic {}, badEventTopic {} and intervalTopicPrefix {}", inputTopic, badEventTopic, intervalTopicPrefix);
+        LOGGER.info("Building stream with input topic {}, badEventTopic {}, intervalTopicPrefix {} and mapper {}",
+                inputTopic, badEventTopic, intervalTopicPrefix, statisticMapper.getClass().getSimpleName());
 
         Serde<String> stringSerde = Serdes.String();
         Serde<StatKey> statKeySerde = StatKeySerde.instance();

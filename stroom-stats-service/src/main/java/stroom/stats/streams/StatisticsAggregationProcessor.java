@@ -139,7 +139,12 @@ class StatisticsAggregationProcessor {
                     try {
                         ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(1000);
 
-                        LOGGER.trace(() -> String.format("Received %s records from topic %s", records.count(), inputTopic));
+                        LOGGER.ifTraceIsEnabled(() -> {
+                            int recCount = records.count();
+                            if (recCount > 0) {
+                                String.format("Received %s records from topic %s", records.count(), inputTopic);
+                            }
+                        });
 
                         for (ConsumerRecord<StatKey, StatAggregate> record : records) {
                             statAggregator.add(record.key(), record.value());

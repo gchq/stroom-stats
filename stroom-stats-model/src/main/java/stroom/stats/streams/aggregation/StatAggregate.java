@@ -42,9 +42,13 @@ public abstract class StatAggregate {
 
     void aggregateEventIds(final StatAggregate other, final int maxEventIds) {
         //limit the number of event Ids we hold to prevent noisy events creating massive aggregates
-        if (other.eventIds.size() > 0) {
-            int addCount = maxEventIds - eventIds.size();
-            eventIds.addAll(other.eventIds.subList(0, Math.min(other.eventIds.size(), addCount)));
+        try {
+            if (other.eventIds.size() > 0) {
+                int addCount = maxEventIds - eventIds.size();
+                eventIds.addAll(other.eventIds.subList(0, Math.min(other.eventIds.size(), addCount)));
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("Error aggregating event IDs, this: %s, other: %s", this, other), e);
         }
     }
 
