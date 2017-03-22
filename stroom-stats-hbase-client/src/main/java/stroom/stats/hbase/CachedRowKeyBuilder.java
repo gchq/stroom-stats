@@ -29,7 +29,7 @@ import stroom.stats.hbase.structure.CellQualifier;
 import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.TimeAgnosticRowKey;
-import stroom.stats.streams.aggregation.AggregatedEvent;
+import stroom.stats.streams.StatKey;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -93,13 +93,13 @@ public class CachedRowKeyBuilder implements RowKeyBuilder {
     }
 
     @Override
-    public CellQualifier buildCellQualifier(AggregatedEvent aggregatedEvent) {
-        return rowKeyBuilder.buildCellQualifier(aggregatedEvent);
+    public CellQualifier buildCellQualifier(StatKey statKey) {
+        return rowKeyBuilder.buildCellQualifier(statKey);
     }
 
     @Override
-    public RowKey buildRowKey(AggregatedEvent aggregatedEvent) {
-        return rowKeyBuilder.buildRowKey(aggregatedEvent);
+    public RowKey buildRowKey(StatKey statKey) {
+        return rowKeyBuilder.buildRowKey(statKey);
     }
 
     @Override

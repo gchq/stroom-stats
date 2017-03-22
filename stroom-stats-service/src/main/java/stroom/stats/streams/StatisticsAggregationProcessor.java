@@ -31,7 +31,6 @@ import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.aggregation.AggregatedEvent;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatKeySerde;
@@ -42,7 +41,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
@@ -154,11 +152,10 @@ class StatisticsAggregationProcessor {
 
                             //flush all the aggregated stats down to the StatStore and onto the next biggest interval topic
                             //(if there is one) for coarser aggregation
-                            flushToStatStore(statisticType, statAggregator);
+                            Map<StatKey, StatAggregate> aggregatedEvents = flushToStatStore(statisticType, statAggregator);
                             if (nextInterval.isPresent()) {
-                                flushToTopic(statAggregator, nextIntervalTopic.get(), nextInterval.get(), kafkaProducer);
+                                flushToTopic(aggregatedEvents, nextIntervalTopic.get(), nextInterval.get(), kafkaProducer);
                             }
-                            statAggregator.clear();
                             kafkaConsumer.commitSync();
                         }
                     } catch (Exception e) {
@@ -172,26 +169,36 @@ class StatisticsAggregationProcessor {
     }
 
 
-    private void flushToStatStore(final StatisticType statisticType, final StatAggregator statAggregator) {
-        List<AggregatedEvent> aggregatedEvents = statAggregator.getAll();
+    /**
+     * Drain the aggregator and pass all aggregated events to the stat service to persist to the event store
+     * @param statisticType The type of events being processed
+     * @param statAggregator
+     * @return The list of aggregates events drained from the aggregator and sent to the event store
+     */
+    private Map<StatKey, StatAggregate> flushToStatStore(final StatisticType statisticType, final StatAggregator statAggregator) {
+        Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.drain();
         LOGGER.trace(() -> String.format("Flushing %s events of type %s, interval %s to the StatisticsService",
                 statAggregator.size(), statisticType, statAggregator.getAggregationInterval()));
         statisticsService.putAggregatedEvents(statisticType, statAggregator.getAggregationInterval(), aggregatedEvents);
+        return aggregatedEvents;
     }
 
-    private void flushToTopic(final StatAggregator statAggregator,
+    private void flushToTopic(final Map<StatKey, StatAggregate> aggregatedEvents,
                               final String topic,
                               final EventStoreTimeIntervalEnum newInterval,
                               final KafkaProducer<StatKey, StatAggregate> producer) {
-        Preconditions.checkNotNull(statAggregator);
+
+        Preconditions.checkNotNull(aggregatedEvents);
         Preconditions.checkNotNull(producer);
 
         //Uplift the statkey to the new interval and put it on the topic
-        statAggregator.stream()
-                .map(aggregatedEvent -> new ProducerRecord<>(
+        //We will not be trying to uplift the statKey if we are already at the highest interval
+        //so the RTE that cloneAndChangeInterval can throw should never happen
+        aggregatedEvents.entrySet().stream()
+                .map(entry -> new ProducerRecord<>(
                         topic,
-                        aggregatedEvent.getStatKey().cloneAndChangeInterval(newInterval),
-                        aggregatedEvent.getStatAggregate()))
+                        entry.getKey().cloneAndChangeInterval(newInterval),
+                        entry.getValue()))
                 .peek(producerRecord -> LOGGER.trace("Putting record {} on topic {}", producerRecord, topic))
                 .forEach(producer::send);
 

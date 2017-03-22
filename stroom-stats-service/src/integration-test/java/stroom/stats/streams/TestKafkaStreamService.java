@@ -61,7 +61,6 @@ import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.schema.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.aggregation.AggregatedEvent;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatKeySerde;
@@ -117,7 +116,7 @@ public class TestKafkaStreamService {
 
     private UniqueIdCache uniqueIdCache;
 
-    private List<Tuple3<StatisticType, EventStoreTimeIntervalEnum, List<AggregatedEvent>>> statServiceArguments = new ArrayList<>();
+    private List<Tuple3<StatisticType, EventStoreTimeIntervalEnum, Map<StatKey, StatAggregate>>> statServiceArguments = new ArrayList<>();
 
     @Rule
     public TestRule watcher = new TestWatcher() {
@@ -230,7 +229,7 @@ public class TestKafkaStreamService {
 
         //Make sure all events get passed to the StatService
         assertThat(statServiceArguments.stream()
-                .flatMap(invocation -> invocation._3().stream())
+                .flatMap(invocation -> invocation._3().entrySet().stream())
                 .count()
         )
                 .isEqualTo(expectedGoodMsgCount);
@@ -948,7 +947,7 @@ public class TestKafkaStreamService {
                     return null;
                 })
                 .when(mockStatisticsService)
-                .putAggregatedEvents(Mockito.any(), Mockito.any(), Mockito.anyList());
+                .putAggregatedEvents(Mockito.any(), Mockito.any(), Mockito.anyMap());
 
         StroomStatsEmbeddedOverrideModule embeddedOverrideModule = new StroomStatsEmbeddedOverrideModule(
                 mockStroomPropertyService,

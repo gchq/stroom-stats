@@ -68,8 +68,9 @@ import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.hbase.util.bytes.ByteArrayUtils;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.aggregation.AggregatedEvent;
+import stroom.stats.streams.StatKey;
 import stroom.stats.streams.aggregation.CountAggregate;
+import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
 import stroom.stats.task.api.TaskManager;
 import stroom.stats.util.DateUtil;
@@ -156,7 +157,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     }
 
     @Override
-    public void addAggregatedEvents(final StatisticType statisticType, final List<AggregatedEvent> aggregatedEvents) {
+    public void addAggregatedEvents(final StatisticType statisticType, final Map<StatKey, StatAggregate> aggregatedEvents) {
 
         switch (statisticType) {
             case COUNT:
@@ -170,7 +171,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         }
     }
 
-    private void putAggregatedEventsCount(final List<AggregatedEvent> aggregatedEvents) {
+    private void putAggregatedEventsCount(final Map<StatKey, StatAggregate> aggregatedEvents) {
 
         LOGGER.trace(() -> String.format("putAggregatedEventsCount called with size %s", aggregatedEvents.size()));
 
@@ -178,10 +179,10 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         //group them by rowkey so we have a list of cell increments for each row
         //meaning hbase can lock a row and make multiple changes to it at once.
         //Tuple2 is (RowKey, CountCellIncrementHolder)
-        Map<RowKey, List<CountCellIncrementHolder>> rowData = aggregatedEvents.stream()
-                .map(aggregatedEvent -> {
-                    CellQualifier cellQualifier = rowKeyBuilder.buildCellQualifier(aggregatedEvent);
-                    long countIncrement = ((CountAggregate) aggregatedEvent.getStatAggregate()).getAggregatedCount();
+        Map<RowKey, List<CountCellIncrementHolder>> rowData = aggregatedEvents.entrySet().stream()
+                .map(entry -> {
+                    CellQualifier cellQualifier = rowKeyBuilder.buildCellQualifier(entry.getKey());
+                    long countIncrement = ((CountAggregate) entry.getValue()).getAggregatedCount();
                     return new Tuple2<>(
                             cellQualifier.getRowKey(),
                             new CountCellIncrementHolder(cellQualifier.getColumnQualifier(), countIncrement));
@@ -192,19 +193,19 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         addMultipleCounts(rowData);
     }
 
-    private void putAggregatedEventsValue(final List<AggregatedEvent> aggregatedEvents) {
+    private void putAggregatedEventsValue(final Map<StatKey, StatAggregate> aggregatedEvents) {
 
         LOGGER.trace(() -> String.format("putAggregatedEventsValue called with size %s", aggregatedEvents.size()));
         //TODO ValueCellValue and ValueAggregate are essentially the same thing. Should probably keep Value Aggregate
         //and put any additional code from VCV into it.
-        aggregatedEvents.forEach(aggregatedEvent -> {
-            CellQualifier cellQualifier = rowKeyBuilder.buildCellQualifier(aggregatedEvent);
+        aggregatedEvents.forEach((statKey, statAggregate) -> {
+            CellQualifier cellQualifier = rowKeyBuilder.buildCellQualifier(statKey);
             ValueAggregate valueAggregate;
             try {
-                valueAggregate = (ValueAggregate) aggregatedEvent.getStatAggregate();
+                valueAggregate = (ValueAggregate) statAggregate;
             } catch (Exception e) {
                 throw new IllegalArgumentException(String.format("StatAggregate %s is of the wrong type",
-                        aggregatedEvent.getStatAggregate().getClass().getName()));
+                        statAggregate.getClass().getName()));
             }
             ValueCellValue valueCellValue = new ValueCellValue(
                     valueAggregate.getCount(),
@@ -398,7 +399,8 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      * @return The completed {@link Increment} object
      */
     private Increment createIncrementOperation(final RowKey rowKey, final List<CountCellIncrementHolder> cells) {
-        LOGGER.trace(() -> String.format("createIncrementOperation called for rowKey: %s with cell count %s", rowKey.toString(),
+        LOGGER.trace(() -> String.format("createIncrementOperation called for rowKey: %s with cell count %s",
+                rowKey.toString(),
                 cells.size()));
 
         final Increment increment = new Increment(rowKey.asByteArray());
@@ -410,8 +412,9 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         // upgrade to HBase 2.0 we need to add this line in.
         // increment.setReturnResults(false);
 
-        //if we happen to get multiple values for the same cell then we need to split them up
-
+        //if we have multiple CCIHs for the same rowKey/colQual then hbase seems to only process one of them
+        //Due to the way the data is passed through to this method we should not get multiple increments for the
+        //same rowKey/colQual so we will not check for it due to the cost of doing that.
         for (final CountCellIncrementHolder cell : cells) {
             increment.addColumn(EventStoreColumnFamily.COUNTS.asByteArray(), cell.getColumnQualifier().getBytes(),
                     cell.getCellIncrementValue());

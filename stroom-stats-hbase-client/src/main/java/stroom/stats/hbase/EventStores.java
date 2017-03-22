@@ -36,7 +36,8 @@ import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.server.common.AbstractStatisticsService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.aggregation.AggregatedEvent;
+import stroom.stats.streams.StatKey;
+import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
@@ -147,7 +148,7 @@ public class EventStores {
      */
     public void putAggregatedEvents(final StatisticType statisticType,
                                     final EventStoreTimeIntervalEnum interval,
-                                    final List<AggregatedEvent> aggregatedEvents) {
+                                    final Map<StatKey, StatAggregate> aggregatedEvents) {
 
 //        aggregatedEvents.stream()
 //                .collect(Collectors.groupingBy(aggregatedEvent -> aggregatedEvent.getStatKey().getInterval()))

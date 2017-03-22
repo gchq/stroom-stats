@@ -29,20 +29,23 @@ import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.aggregation.AggregatedEvent;
+import stroom.stats.streams.StatKey;
+import stroom.stats.streams.aggregation.StatAggregate;
 
-import java.util.List;
+import java.util.Map;
 
 public interface EventStoreTable extends GenericTable {
 
 
     /**
-     * Adds the passed aggregated events into the table, merging them with any existing aggregates
+     * Adds the passed aggregated events into the table, merging them with any existing aggregates.
+     * It is expected that
      * @param statisticType The type of the events being aggregated (COUNT|VALUE)
      * @param aggregatedEvents A list of events that may or may not be the product of multiple events
      *                         aggregated together
      */
-    void addAggregatedEvents(final StatisticType statisticType, final List<AggregatedEvent> aggregatedEvents);
+    void addAggregatedEvents(final StatisticType statisticType,
+                             final Map<StatKey, StatAggregate> aggregatedEvents);
 
     //TODO remove
 //    void bufferedAddCount(final CountRowData countRowData, final boolean isForcedFlushToDisk);

@@ -21,24 +21,26 @@
 
 package stroom.stats.hbase;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import stroom.query.api.Query;
 import stroom.stats.api.StatisticEvent;
 import stroom.stats.api.StatisticType;
 import stroom.stats.common.FindEventCriteria;
 import stroom.stats.common.RolledUpStatisticEvent;
-import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.StatisticConfigurationValidator;
+import stroom.stats.common.StatisticDataSet;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.server.common.AbstractStatisticsService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.aggregation.AggregatedEvent;
+import stroom.stats.streams.StatKey;
+import stroom.stats.streams.aggregation.StatAggregate;
 
 import javax.inject.Inject;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -68,7 +70,7 @@ public class HBaseStatisticsService extends AbstractStatisticsService {
     @Override
     public void putAggregatedEvents(final StatisticType statisticType,
                                     final EventStoreTimeIntervalEnum interval,
-                                    final List<AggregatedEvent> aggregatedEvents) {
+                                    final Map<StatKey, StatAggregate> aggregatedEvents) {
         //TODO
         //Think we need to change the javadoc on this method to state that message should belong to the same stat type
         //and interval. This is is to save having to group them by type/interval again if they we already divided up

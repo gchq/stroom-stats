@@ -164,8 +164,8 @@ public class KafkaStreamService {
         //Add any additional props, overwriting any from above
         props.putAll(additionalProps);
 
-        props.forEach((s, o) ->
-            LOGGER.info("Setting Kafka Streams property {} for appId {} to [{}]", s, appId, o.toString())
+        props.forEach((key, value) ->
+            LOGGER.info("Setting Kafka Streams property {} for appId {} to [{}]", key, appId, value.toString())
         );
 
         return new StreamsConfig(props);
@@ -262,6 +262,8 @@ public class KafkaStreamService {
                         StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000));
         producerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 50_000_000);
 
+        //start a processor for a stat type and interval pair
+        //This will improve aggregation as it will only handle data for the same stat types and interval sizes
         statisticsAggregationProcessor.startProcessor(
                 consumerProps,
                 producerProps,
@@ -270,7 +272,6 @@ public class KafkaStreamService {
                 optNextIntervalTopic,
                 statisticType,
                 interval);
-
     }
 
     private String getName(final String propKey, final StatisticType statisticType) {

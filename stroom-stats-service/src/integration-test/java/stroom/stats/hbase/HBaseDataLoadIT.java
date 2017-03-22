@@ -46,7 +46,6 @@ import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.StatKey;
 import stroom.stats.streams.TagValue;
-import stroom.stats.streams.aggregation.AggregatedEvent;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.test.StatisticConfigurationEntityBuilder;
@@ -57,8 +56,9 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -87,7 +87,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         long timeMs1 = interval.truncateTimeToColumnInterval(ZonedDateTime.now().toInstant().toEpochMilli());
         long timeMs2 = interval.truncateTimeToColumnInterval(Instant.ofEpochMilli(timeMs1).plus(1, ChronoUnit.MINUTES).toEpochMilli());
         LOGGER.info("Time: {}", ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeMs1), ZoneOffset.UTC));
-        List<AggregatedEvent> aggregatedEvents = new ArrayList<>();
+        Map<StatKey, StatAggregate> aggregatedEvents = new HashMap<>();
 
         //Put time in the statName to allow us to re-run the test without an empty HBase
         String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString();
@@ -131,11 +131,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         StatAggregate statAggregate1 = new CountAggregate(statValue1);
 
-        AggregatedEvent aggregatedEvent1 = new AggregatedEvent(statKey1, statAggregate1);
-
-        //Add two of the same event so hbase will aggregate the count
-        aggregatedEvents.add(aggregatedEvent1);
-        aggregatedEvents.add(aggregatedEvent1);
+        aggregatedEvents.put(statKey1, statAggregate1);
 
         StatKey statKey2 = new StatKey( statName,
                 rollUpBitMask,
@@ -148,11 +144,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         StatAggregate statAggregate2 = new CountAggregate(statValue2);
 
-        AggregatedEvent aggregatedEvent2 = new AggregatedEvent(statKey2, statAggregate2);
-
-        //Add two of the same event so hbase will aggregate the count
-        aggregatedEvents.add(aggregatedEvent2);
-        aggregatedEvents.add(aggregatedEvent2);
+        aggregatedEvents.put(statKey2, statAggregate2);
 
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
 
@@ -195,16 +187,17 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
         assertThat(dataPoints1.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str, tag2Val2Str);
-        assertThat(dataPoints1.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo((statValue1 * 2) + (statValue2 * 2));
+        assertThat(dataPoints1.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo((statValue1) + (statValue2));
 
         List<StatisticDataPoint> dataPoints2 = runQuery(statisticsService, querySpecificRow, statisticConfigurationEntity, 1);
 
-        //shoudl only get two distinct tag values as we have just one row back
+        //should only get two distinct tag values as we have just one row back
         assertThat(dataPoints2.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str);
-        assertThat(dataPoints2.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo(statValue1 * 2);
+        assertThat(dataPoints2.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo(statValue1);
 
-        List<StatisticDataPoint> dataPoints3 = runQuery(statisticsService, queryNoDataFound, statisticConfigurationEntity, 0);
+        //should get nothing back as the requested tagvalue is not in the store
+        runQuery(statisticsService, queryNoDataFound, statisticConfigurationEntity, 0);
     }
 
 

@@ -34,11 +34,13 @@ import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.aggregation.AggregatedEvent;
+import stroom.stats.streams.StatKey;
+import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.util.DateUtil;
 import stroom.stats.util.logging.LambdaLogger;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -82,7 +84,7 @@ public class EventStore {
     /**
      * Puts a batch of aggregated events into the store
      */
-    public void putAggregatedEvents(final StatisticType statisticType, final List<AggregatedEvent> aggregatedEvents) {
+    public void putAggregatedEvents(final StatisticType statisticType, final Map<StatKey, StatAggregate> aggregatedEvents) {
 
         eventStoreTable.addAggregatedEvents(statisticType, aggregatedEvents);
     }

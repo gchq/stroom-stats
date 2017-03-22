@@ -29,7 +29,7 @@ import stroom.stats.hbase.structure.CellQualifier;
 import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.TimeAgnosticRowKey;
-import stroom.stats.streams.aggregation.AggregatedEvent;
+import stroom.stats.streams.StatKey;
 
 import java.util.List;
 import java.util.Map;
@@ -47,9 +47,9 @@ public interface RowKeyBuilder {
 
     List<CellQualifier> buildCellQualifiers(RolledUpStatisticEvent rolledUpStatisticEvent);
 
-    CellQualifier buildCellQualifier(final AggregatedEvent aggregatedEvent);
+    CellQualifier buildCellQualifier(final StatKey statKey);
 
-    RowKey buildRowKey(final AggregatedEvent aggregatedEvent);
+    RowKey buildRowKey(final StatKey statKey);
 
     /**
      * Constructs a {@link CellQualifier} object for a given time. This is
