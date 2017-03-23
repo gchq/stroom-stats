@@ -142,7 +142,7 @@ class StatisticsAggregationProcessor {
                         LOGGER.ifTraceIsEnabled(() -> {
                             int recCount = records.count();
                             if (recCount > 0) {
-                                String.format("Received %s records from topic %s", records.count(), inputTopic);
+                                LOGGER.trace("Received {} records from topic {}", records.count(), inputTopic);
                             }
                         });
 
