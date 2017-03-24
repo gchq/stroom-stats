@@ -46,7 +46,7 @@ import static stroom.query.api.ExpressionTerm.Condition;
 import static stroom.stats.HttpAsserts.assertAccepted;
 import static stroom.stats.HttpAsserts.assertUnauthorized;
 
-public class ApiResourceIT extends AbstractAppIT {
+public class ApiResource_authHeader_IT extends AbstractAppIT {
 
     @Test
     public void postEmptyStatistics_validCredentials() throws UnsupportedEncodingException {
@@ -71,19 +71,19 @@ public class ApiResourceIT extends AbstractAppIT {
      */
     @Test
     public void testPostQueryData_validCredentials() throws UnsupportedEncodingException {
-        Response response = req().body(ApiResourceIT::getSearchRequest).getStats();
+        Response response = req().body(ApiResource_authHeader_IT::getSearchRequest).getStats();
         assertAccepted(response);
     }
 
     @Test
     public void postQueryData_missingCredentials(){
-        Response response = req().body(ApiResourceIT::getSearchRequest).authHeader(AuthHeader.MISSING).getStats();
+        Response response = req().body(ApiResource_authHeader_IT::getSearchRequest).authHeader(AuthHeader.MISSING).getStats();
         assertUnauthorized(response);
     }
 
     @Test
     public void postQueryData_invalidCredentials() throws UnsupportedEncodingException {
-        Response response = req().body(ApiResourceIT::getSearchRequest).authHeader(AuthHeader.INVALID).getStats();
+        Response response = req().body(ApiResource_authHeader_IT::getSearchRequest).authHeader(AuthHeader.INVALID).getStats();
         assertUnauthorized(response);
     }
 
