@@ -41,8 +41,8 @@ import java.util.Arrays;
  * findTagValueSectionOfRowKey() as each implementation may have a different
  * rowkey structure
  *
- * The filer relies on the tag/value pairs in the rowkey being in lexographical
- * order by tag uid so it can make optimisations when filering the tags
+ * The fitler relies on the tag/value pairs in the rowkey being in lexographical
+ * order by tag uid so it can make optimisations when filtering the tags
  */
 public abstract class AbstractTagValueFilter extends FilterBase {
     private static LambdaLogger LOGGER = LambdaLogger.getLogger(AbstractTagValueFilter.class);
