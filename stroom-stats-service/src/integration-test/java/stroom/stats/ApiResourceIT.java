@@ -38,36 +38,31 @@ import stroom.query.api.TimeZone;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.schema.Statistics;
 
-import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
-import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
-import java.util.function.Supplier;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static stroom.query.api.ExpressionTerm.Condition;
+import static stroom.stats.HttpAsserts.assertAccepted;
+import static stroom.stats.HttpAsserts.assertUnauthorized;
 
 public class ApiResourceIT extends AbstractAppIT {
 
     @Test
     public void testPostEmptyStatistics() throws UnsupportedEncodingException {
         Response response = postXml(Statistics::new, STATISTICS_URL, AuthorizationHelper::getHeaderWithValidCredentials);
-
         assertAccepted(response);
     }
 
     @Test
     public void postEmptyStatistics_missingCredentials() {
         Response response = postXml(Statistics::new, STATISTICS_URL, AuthorizationHelper::getHeaderWithInvalidCredentials);
-
         assertUnauthorized(response);
     }
 
     @Test
     public void postEmptyStatistics_invalidCredentials() throws UnsupportedEncodingException {
         Response response = postXml(ApiResourceIT::getSearchRequest, STATISTICS_URL, AuthorizationHelper::getHeaderWithInvalidCredentials);
-
         assertUnauthorized(response);
     }
 
@@ -76,60 +71,20 @@ public class ApiResourceIT extends AbstractAppIT {
      */
     @Test
     public void testPostQueryData() throws UnsupportedEncodingException {
-        // Given/when
         Response response = postJson(ApiResourceIT::getSearchRequest, QUERY_URL, AuthorizationHelper::getHeaderWithValidCredentials);
-
-        // Then
         assertAccepted(response);
     }
 
     @Test
     public void postQueryData_missingCredentials(){
         Response response = postJson(ApiResourceIT::getSearchRequest, QUERY_URL, () -> "");
-
         assertUnauthorized(response);
     }
 
     @Test
     public void postQueryData_invalidCredentials() throws UnsupportedEncodingException {
         Response response = postJson(ApiResourceIT::getSearchRequest, QUERY_URL, AuthorizationHelper::getHeaderWithInvalidCredentials);
-
         assertUnauthorized(response);
-    }
-
-    private Response postJson(Supplier<Serializable> requestObjectFunc, String url, Supplier<String> credentialFunc){
-        // Given
-        Serializable requestObject = requestObjectFunc.get();
-
-        // When
-        Response response = getClient().target(url)
-                .request()
-                .header("Authorization", credentialFunc.get())
-                .post(Entity.json(requestObject));
-
-        return response;
-    }
-
-    private Response postXml(Supplier<Serializable> requestObjectFunc, String url, Supplier<String> credentialFunc){
-
-        // Given
-        Serializable requestObject = requestObjectFunc.get();
-
-        // When
-        Response response = getClient().target(url)
-                .request()
-                .header("Authorization", credentialFunc.get())
-                .post(Entity.xml(requestObject));
-
-        return response;
-    }
-
-    private static void assertAccepted(Response response){
-        assertThat(response.getStatus()).isEqualTo(Response.Status.ACCEPTED.getStatusCode());
-    }
-
-    private static void assertUnauthorized(Response response){
-        assertThat(response.getStatus()).isEqualTo(Response.Status.UNAUTHORIZED.getStatusCode());
     }
 
     private static SearchRequest getSearchRequest() {

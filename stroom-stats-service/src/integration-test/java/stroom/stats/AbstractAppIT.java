@@ -28,7 +28,10 @@ import org.slf4j.LoggerFactory;
 import stroom.stats.config.Config;
 
 import javax.ws.rs.client.Client;
-import java.time.Duration;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.Response;
+import java.io.Serializable;
+import java.util.function.Supplier;
 
 public abstract class AbstractAppIT {
 
@@ -67,12 +70,31 @@ public abstract class AbstractAppIT {
         return app;
     }
 
-    public void sleep(final Duration duration) {
-        try {
-            Thread.sleep(duration.toMillis());
-        } catch (InterruptedException e) {
-            LOGGER.error("Thread interrupted during sleep");
-            throw new RuntimeException("Thread interrupted during sleep");
-        }
+    protected static Response postJson(Supplier<Serializable> requestObjectFunc, String url, Supplier<String> credentialFunc){
+        // Given
+        Serializable requestObject = requestObjectFunc.get();
+
+        // When
+        Response response = getClient().target(url)
+                .request()
+                .header("Authorization", credentialFunc.get())
+                .post(Entity.json(requestObject));
+
+        return response;
     }
+
+    protected static Response postXml(Supplier<Serializable> requestObjectFunc, String url, Supplier<String> credentialFunc){
+
+        // Given
+        Serializable requestObject = requestObjectFunc.get();
+
+        // When
+        Response response = getClient().target(url)
+                .request()
+                .header("Authorization", credentialFunc.get())
+                .post(Entity.xml(requestObject));
+
+        return response;
+    }
+
 }
