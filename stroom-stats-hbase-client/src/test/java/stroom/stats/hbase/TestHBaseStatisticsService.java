@@ -19,7 +19,7 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.server.common;
+package stroom.stats.hbase;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -47,9 +47,9 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static stroom.query.api.ExpressionOperator.*;
+import static stroom.query.api.ExpressionOperator.Op;
 
-public class TestAbstractStatisticEventStore {
+public class TestHBaseStatisticsService {
     private static final long EVENT_TIME = 1234L;
     private static final String EVENT_NAME = "MyStatistic";
     private static final long EVENT_COUNT = 1;
@@ -68,7 +68,7 @@ public class TestAbstractStatisticEventStore {
 
         final StatisticConfiguration statisticConfiguration = buildStatisticConfiguration();
 
-        final RolledUpStatisticEvent rolledUpStatisticEvent = AbstractStatisticsService.generateTagRollUps(event,
+        final RolledUpStatisticEvent rolledUpStatisticEvent = HBaseStatisticsService.generateTagRollUps(event,
                 statisticConfiguration);
 
         assertEquals(4, rolledUpStatisticEvent.getPermutationCount());
@@ -119,7 +119,7 @@ public class TestAbstractStatisticEventStore {
 
         final StatisticConfiguration statisticConfiguration = buildStatisticConfiguration(StatisticRollUpType.CUSTOM);
 
-        final RolledUpStatisticEvent rolledUpStatisticEvent = AbstractStatisticsService.generateTagRollUps(event,
+        final RolledUpStatisticEvent rolledUpStatisticEvent = HBaseStatisticsService.generateTagRollUps(event,
                 statisticConfiguration);
 
         assertEquals(3, rolledUpStatisticEvent.getPermutationCount());
@@ -174,7 +174,7 @@ public class TestAbstractStatisticEventStore {
 
         final StatisticConfiguration statisticConfiguration = buildStatisticConfiguration();
 
-        final RolledUpStatisticEvent rolledUpStatisticEvent = AbstractStatisticsService.generateTagRollUps(event,
+        final RolledUpStatisticEvent rolledUpStatisticEvent = HBaseStatisticsService.generateTagRollUps(event,
                 statisticConfiguration);
 
         assertEquals(1, rolledUpStatisticEvent.getPermutationCount());
@@ -200,7 +200,7 @@ public class TestAbstractStatisticEventStore {
 
         final StatisticConfiguration statisticConfiguration = buildStatisticConfiguration(StatisticRollUpType.NONE);
 
-        final RolledUpStatisticEvent rolledUpStatisticEvent = AbstractStatisticsService.generateTagRollUps(event,
+        final RolledUpStatisticEvent rolledUpStatisticEvent = HBaseStatisticsService.generateTagRollUps(event,
                 statisticConfiguration);
 
         assertEquals(1, rolledUpStatisticEvent.getPermutationCount());
@@ -265,7 +265,7 @@ public class TestAbstractStatisticEventStore {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        AbstractStatisticsService.buildCriteria(query, dataSource);
+        HBaseStatisticsService.buildCriteria(query, dataSource);
 
     }
 
@@ -282,7 +282,7 @@ public class TestAbstractStatisticEventStore {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        AbstractStatisticsService.buildCriteria(query, dataSource);
+        HBaseStatisticsService.buildCriteria(query, dataSource);
 
     }
 
@@ -304,7 +304,7 @@ public class TestAbstractStatisticEventStore {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        final FindEventCriteria criteria = AbstractStatisticsService.buildCriteria(query, dataSource);
+        final FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(query, dataSource);
 
         Assert.assertNotNull(criteria);
         Assert.assertEquals(fromDate, criteria.getPeriod().getFrom().longValue());
@@ -331,7 +331,7 @@ public class TestAbstractStatisticEventStore {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        AbstractStatisticsService.buildCriteria(search, dataSource);
+        HBaseStatisticsService.buildCriteria(search, dataSource);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -354,7 +354,7 @@ public class TestAbstractStatisticEventStore {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        AbstractStatisticsService.buildCriteria(query, dataSource);
+        HBaseStatisticsService.buildCriteria(query, dataSource);
     }
 
     @Test
@@ -376,7 +376,7 @@ public class TestAbstractStatisticEventStore {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        final FindEventCriteria criteria = AbstractStatisticsService.buildCriteria(query, dataSource);
+        final FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(query, dataSource);
 
         Assert.assertNotNull(criteria);
         Assert.assertEquals("[MyField=]", criteria.getFilterTermsTree().toString());
@@ -401,7 +401,7 @@ public class TestAbstractStatisticEventStore {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        final FindEventCriteria criteria = AbstractStatisticsService.buildCriteria(query, dataSource);
+        final FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(query, dataSource);
 
         Assert.assertNotNull(criteria);
         Assert.assertEquals(fromDate, criteria.getPeriod().getFrom().longValue());

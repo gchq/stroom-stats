@@ -30,7 +30,6 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.server.common.AbstractStatisticsService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.StatKey;
 import stroom.stats.streams.aggregation.StatAggregate;
@@ -220,7 +219,7 @@ public class EventStores {
 
         StatisticDataSet statisticDataSet;
 
-        final RollUpBitMask rollUpBitMask = AbstractStatisticsService.buildRollUpBitMaskFromCriteria(criteria,
+        final RollUpBitMask rollUpBitMask = HBaseStatisticsService.buildRollUpBitMaskFromCriteria(criteria,
                 statisticConfiguration);
 
         if (bestFit == null) {

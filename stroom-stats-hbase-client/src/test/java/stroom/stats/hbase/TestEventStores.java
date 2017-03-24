@@ -40,7 +40,6 @@ import stroom.stats.hbase.table.EventStoreTable;
 import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
 import stroom.stats.properties.MockStroomPropertyService;
-import stroom.stats.server.common.AbstractStatisticsService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.io.IOException;
@@ -164,7 +163,7 @@ public class TestEventStores {
 
         statisticConfiguration.setRollUpType(StatisticRollUpType.ALL);
 
-        final RolledUpStatisticEvent rolledUpStatisticEvent = AbstractStatisticsService.generateTagRollUps(statisticEvent,
+        final RolledUpStatisticEvent rolledUpStatisticEvent = HBaseStatisticsService.generateTagRollUps(statisticEvent,
                 statisticConfiguration);
 
         return rolledUpStatisticEvent;
