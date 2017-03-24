@@ -19,10 +19,10 @@
 
 package stroom.stats.streams;
 
+import javaslang.Tuple2;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.aggregation.AggregatedEvent;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.test.StatKeyHelper;
@@ -30,6 +30,8 @@ import stroom.stats.test.StatKeyHelper;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class TestStatAggregator {
@@ -51,14 +53,15 @@ public class TestStatAggregator {
 
         Assertions.assertThat(statAggregator.size()).isEqualTo(1);
 
-        List<AggregatedEvent> aggregatedEvents = statAggregator.getAll();
+        Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.drain();
 
         Assertions.assertThat(aggregatedEvents).hasSize(1);
+        Assertions.assertThat(statAggregator.size()).isEqualTo(0);
 
-        CountAggregate countAggregate = (CountAggregate) aggregatedEvents.get(0).getStatAggregate();
+        CountAggregate countAggregate = (CountAggregate) aggregatedEvents.values().stream().findFirst().get();
         Assertions.assertThat(countAggregate.getAggregatedCount())
                 .isEqualTo(loopSize * statValue);
-        Assertions.assertThat(aggregatedEvents.get(0).getStatKey().getTimeMs())
+        Assertions.assertThat(aggregatedEvents.keySet().stream().findFirst().get().getTimeMs())
                 .isEqualTo(baseTime.atZone(ZoneOffset.UTC).toInstant().toEpochMilli());
     }
 
@@ -86,28 +89,24 @@ public class TestStatAggregator {
 
         Assertions.assertThat(statAggregator.size()).isEqualTo(2);
 
-        List<AggregatedEvent> aggregatedEvents = statAggregator.getAll();
+        Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.drain();
+        List<Tuple2<StatKey, StatAggregate>> pairs = aggregatedEvents.entrySet().stream()
+                .map(entry -> new Tuple2<>(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toList());
 
         Assertions.assertThat(aggregatedEvents).hasSize(2);
+        Assertions.assertThat(statAggregator.size()).isEqualTo(0);
 
-        AggregatedEvent expectedEvent1 = new AggregatedEvent(
+        Tuple2<StatKey, StatAggregate> expectedEvent1 = new Tuple2<>(
                 StatKeyHelper.buildStatKey(baseTime1, aggregationInterval),
                 new CountAggregate(statValue1 * loopSize));
 
-        AggregatedEvent expectedEvent2 = new AggregatedEvent(
+        Tuple2<StatKey, StatAggregate> expectedEvent2 = new Tuple2<>(
                 StatKeyHelper.buildStatKey(baseTime2, aggregationInterval),
                 new CountAggregate(statValue2 * loopSize));
 
-        Assertions.assertThat(aggregatedEvents).containsExactlyInAnyOrder(expectedEvent1, expectedEvent2);
+        Assertions.assertThat(pairs).containsExactlyInAnyOrder(expectedEvent1, expectedEvent2);
 
-
-        Assertions.assertThat(statAggregator.stream().count()).isEqualTo(2);
-
-        statAggregator.clear();
-
-        Assertions.assertThat(statAggregator.size()).isEqualTo(0);
-        Assertions.assertThat(statAggregator.getAll()).hasSize(0);
-        Assertions.assertThat(statAggregator.stream().count()).isEqualTo(0);
     }
 
 }

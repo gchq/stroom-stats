@@ -48,7 +48,11 @@ public class StatisticsMarshaller {
     public Statistics unMarshallXml(String xmlStr) {
         try {
             Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
-            return (Statistics) unmarshaller.unmarshal(new StringReader(xmlStr));
+            Statistics statistics =  (Statistics) unmarshaller.unmarshal(new StringReader(xmlStr));
+            if (LOGGER.isTraceEnabled()) {
+                logStatistics(statistics);
+            }
+            return statistics;
         } catch (JAXBException e) {
             int trimIndex = xmlStr.length() < 50 ? xmlStr.length() : 49;
             LOGGER.error("Unable to deserialise a message (enable debug to log full message): {}...", xmlStr.substring(0, trimIndex));
@@ -69,6 +73,12 @@ public class StatisticsMarshaller {
             LOGGER.error("Error marshalling message value");
             throw new RuntimeException(String.format("Error marshalling message value"), e);
         }
+    }
+
+    private void logStatistics(Statistics statistics) {
+        statistics.getStatistic().forEach(statistic ->
+                LOGGER.trace("Un-marshalling stat with name {}, count {} and value {}", statistic.getName(), statistic.getCount(), statistic.getValue())
+        );
     }
 
 }

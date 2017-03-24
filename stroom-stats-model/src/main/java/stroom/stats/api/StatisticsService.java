@@ -25,9 +25,11 @@ import stroom.query.api.Query;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.aggregation.AggregatedEvent;
+import stroom.stats.streams.StatKey;
+import stroom.stats.streams.aggregation.StatAggregate;
 
 import java.util.List;
+import java.util.Map;
 
 public interface StatisticsService {
 
@@ -39,7 +41,7 @@ public interface StatisticsService {
      */
     void putAggregatedEvents(final StatisticType statisticType,
                              final EventStoreTimeIntervalEnum interval,
-                             final List<AggregatedEvent> aggregatedEvents);
+                             final Map<StatKey, StatAggregate> aggregatedEvents);
 
     /**
      * @param statisticEvents Puts multiple statistic events to the store. The statistic events can be for different

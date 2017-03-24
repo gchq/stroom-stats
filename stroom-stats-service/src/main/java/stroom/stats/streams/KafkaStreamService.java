@@ -1,22 +1,3 @@
-/*
- * Copyright 2017 Crown Copyright
- *
- * This file is part of Stroom-Stats.
- *
- * Stroom-Stats is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Stroom-Stats is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package stroom.stats.streams;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -164,15 +145,23 @@ public class KafkaStreamService {
         //Add any additional props, overwriting any from above
         props.putAll(additionalProps);
 
-        props.forEach((s, o) ->
-            LOGGER.info("Setting Kafka Streams property {} for appId {} to [{}]", s, appId, o.toString())
+        props.forEach((key, value) ->
+            LOGGER.info("Setting Kafka Streams property {} for appId {} to [{}]", key, appId, value.toString())
         );
 
         return new StreamsConfig(props);
     }
 
-    private Thread.UncaughtExceptionHandler buildUncaughtExceptionHandler(String appId) {
-        return (t, e) -> LOGGER.error("Uncaught exception in stream processor with appId {} in thread {}", appId, t.getName(), e);
+    private Thread.UncaughtExceptionHandler buildUncaughtExceptionHandler(final String appId,
+                                                                          final StatisticType statisticType,
+                                                                          final AbstractStatisticMapper abstractStatisticMapper) {
+        return (t, e) ->
+                LOGGER.error("Uncaught exception in stream processor with appId {} type {} and mapper {} in thread {}",
+                        appId,
+                        statisticType,
+                        abstractStatisticMapper.getClass().getSimpleName(),
+                        t.getName(),
+                        e);
     }
 
     private KafkaStreams startFlatMapProcessor(final StatisticType statisticType,
@@ -202,7 +191,7 @@ public class KafkaStreamService {
                 permsTopicsPrefix,
                 mapper);
 
-        flatMapProcessor.setUncaughtExceptionHandler(buildUncaughtExceptionHandler(appId));
+        flatMapProcessor.setUncaughtExceptionHandler(buildUncaughtExceptionHandler(appId, statisticType, mapper));
 
         flatMapProcessor.start();
 
@@ -262,6 +251,8 @@ public class KafkaStreamService {
                         StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000));
         producerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 50_000_000);
 
+        //start a processor for a stat type and interval pair
+        //This will improve aggregation as it will only handle data for the same stat types and interval sizes
         statisticsAggregationProcessor.startProcessor(
                 consumerProps,
                 producerProps,
@@ -270,7 +261,6 @@ public class KafkaStreamService {
                 optNextIntervalTopic,
                 statisticType,
                 interval);
-
     }
 
     private String getName(final String propKey, final StatisticType statisticType) {

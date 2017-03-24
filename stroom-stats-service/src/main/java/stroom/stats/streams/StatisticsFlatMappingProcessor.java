@@ -57,6 +57,16 @@ class StatisticsFlatMappingProcessor {
     private interface InterValToPredicateMapper extends Function<IntervalTopicPair, Predicate<StatKey, StatAggregate>> {
     }
 
+    //Defined to avoid 'generic array creation' compiler warnings
+    private interface StatisticWrapperPredicate extends Predicate<String, StatisticWrapper> {
+    }
+
+    //define the predicates for forking a topic into valid and invalid events
+    private static StatisticWrapperPredicate[] VALID_INVALID_BRANCHING_PREDICATES = new StatisticWrapperPredicate[]{
+            (String key, StatisticWrapper value) -> value.isValid(),
+            StatisticsFlatMappingProcessor::catchAllPredicate
+    };
+
     private final StatisticConfigurationService statisticConfigurationService;
     private final StroomPropertyService stroomPropertyService;
     private final StatisticsMarshaller statisticsMarshaller;
@@ -66,6 +76,7 @@ class StatisticsFlatMappingProcessor {
     StatisticsFlatMappingProcessor(final StatisticConfigurationService statisticConfigurationService,
                                    final StroomPropertyService stroomPropertyService,
                                    final StatisticsMarshaller statisticsMarshaller) {
+
         this.statisticConfigurationService = statisticConfigurationService;
         this.stroomPropertyService = stroomPropertyService;
         this.statisticsMarshaller = statisticsMarshaller;
@@ -81,13 +92,15 @@ class StatisticsFlatMappingProcessor {
                              final String intervalTopicPrefix,
                              final AbstractStatisticMapper statisticMapper) {
 
-        LOGGER.info("Building stream with input topic {}, badEventTopic {} and intervalTopicPrefix {}", inputTopic, badEventTopic, intervalTopicPrefix);
+        LOGGER.info("Building stream with input topic {}, badEventTopic {}, intervalTopicPrefix {} and mapper {}",
+                inputTopic, badEventTopic, intervalTopicPrefix, statisticMapper.getClass().getSimpleName());
 
         Serde<String> stringSerde = Serdes.String();
         Serde<StatKey> statKeySerde = StatKeySerde.instance();
         Serde<StatAggregate> statAggregateSerde = StatAggregateSerde.instance();
 
         KStreamBuilder builder = new KStreamBuilder();
+        //This is the input to all the processing, key is the statname, value is the stat XML
         KStream<String, String> inputStream = builder.stream(stringSerde, stringSerde, inputTopic);
 
         //TODO currently the stat name is both the msg key and in the Statistic object.
@@ -97,16 +110,14 @@ class StatisticsFlatMappingProcessor {
                 .flatMapValues(Statistics::getStatistic) //flatMap a batch of stats down to individual events, badly named jaxb objects
                 .mapValues(this::buildStatisticWrapper) //wrap the stat event with its stat config
                 .map(StatisticValidator::validate) //validate each one then branch off the bad ones
-                .branch(
-                        (key, value) -> value.isValid(),
-                        this::catchAll);
+                .branch(VALID_INVALID_BRANCHING_PREDICATES); //fork stream on valid/invalid state of the statisticWrapper
 
         KStream<String, StatisticWrapper> validEvents = forkedStreams[0];
-        KStream<String, StatisticWrapper> badEvents = forkedStreams[1];
+        KStream<String, StatisticWrapper> invalidEvents = forkedStreams[1];
 
         //Send the bad events out to a bad topic as the original xml with the error message attached to the
         // bottom of the XML, albeit as individual events rather than batches
-        badEvents
+        invalidEvents
                 .mapValues(this::badStatisticWrapperToString)
                 .to(stringSerde, stringSerde, badEventTopic);
 
@@ -127,6 +138,7 @@ class StatisticsFlatMappingProcessor {
                 .flatMap(statisticMapper::flatMap) //map to StatKey/StatAggregate pair
                 .branch(intervalPredicates);
 
+        //Following line if uncommented can be useful for debugging
 //        final ConcurrentMap<EventStoreTimeIntervalEnum, AtomicLong> counters = new ConcurrentHashMap<>();
         //Route each from the stream interval specific branches to the appropriate topic
         for (int i = 0; i < intervalStreams.length; i++) {
@@ -146,21 +158,26 @@ class StatisticsFlatMappingProcessor {
     private List<IntervalTopicPair> getIntervalTopicPairs(final String intervalTopicPrefix) {
         //get a sorted (by interval ms) list of topic|interval pairs so we can branch the kstream
         return Arrays.stream(EventStoreTimeIntervalEnum.values())
-                .map(interval -> new IntervalTopicPair(TopicNameFactory.getIntervalTopicName(intervalTopicPrefix, interval),interval))
+                .map(interval -> new IntervalTopicPair(TopicNameFactory.getIntervalTopicName(intervalTopicPrefix, interval), interval))
                 .sorted()
                 .collect(Collectors.toList());
     }
 
     private Predicate<StatKey, StatAggregate>[] getPredicates(final List<IntervalTopicPair> intervalTopicPairs) {
         //map the topic|Interval pair to an array of predicates that tests for equality with each interval, i.e.
-        //[statkey interval == SECOND, statkey interval == MINUTE, statkey interval == HOUR, statkey interval == DAY, ...]
+        //[
+        //  statkey interval == SECOND,
+        //  statkey interval == MINUTE,
+        //  statkey interval == HOUR,
+        //  statkey interval == DAY,
+        //  ...
+        //]
         return intervalTopicPairs.stream()
                 .sequential()
                 .map((InterValToPredicateMapper) pair ->
                         (StatKey statKey, StatAggregate statAggregate) -> statKey.equalsIntervalPart(pair.getInterval()))
                 .toArray(size -> new Predicate[size]);
     }
-
 
     private Statistics wrapStatisticWithStatistics(final Statistics.Statistic statistic) {
         Statistics statistics = new ObjectFactory().createStatistics();
@@ -169,12 +186,12 @@ class StatisticsFlatMappingProcessor {
     }
 
     private String badStatisticWrapperToString(StatisticWrapper statisticWrapper) {
-        StringBuilder stringBuilder = new StringBuilder();
         Statistics statisticsObj = wrapStatisticWithStatistics(statisticWrapper.getStatistic());
-        stringBuilder.append(statisticsMarshaller.marshallXml(statisticsObj));
-        //Append the error message to the bottom of the XML as an XML comment
-        stringBuilder.append("\n<!-- VALIDATION_ERROR - " + statisticWrapper.getValidationErrorMessage().get() + " -->");
-        return stringBuilder.toString();
+        return new StringBuilder()
+                .append(statisticsMarshaller.marshallXml(statisticsObj))
+                //Append the error message to the bottom of the XML as an XML comment
+                .append("\n<!-- VALIDATION_ERROR - " + statisticWrapper.getValidationErrorMessage().get() + " -->")
+                .toString();
     }
 
 
@@ -185,7 +202,12 @@ class StatisticsFlatMappingProcessor {
     }
 
 
-    private boolean isInsideLargestPurgeRetention(final String statName, final StatisticWrapper statisticWrapper) {
+    /**
+     * Method signature to match {@link Predicate}<{@link String}, {@link StatisticWrapper}>
+     */
+    private boolean isInsideLargestPurgeRetention(
+            @SuppressWarnings("unused") final String statName,
+            final StatisticWrapper statisticWrapper) {
         //TODO get smallest interval from stat config, get purge retention for that interval
         //check it is inside it. May want to cache retention periods by interval
 
@@ -209,13 +231,15 @@ class StatisticsFlatMappingProcessor {
     /**
      * A catchall predicate for allowing everything through, used for clarity
      */
-    private boolean catchAll(final String statname, final StatisticWrapper statisticWrapper) {
+    private static boolean catchAllPredicate(
+            @SuppressWarnings("unused") final String statName,
+            @SuppressWarnings("unused") final StatisticWrapper statisticWrapper) {
         return true;
     }
 
     private static class IntervalTopicPair implements Comparable<IntervalTopicPair> {
-       private final String topic;
-       private final EventStoreTimeIntervalEnum interval;
+        private final String topic;
+        private final EventStoreTimeIntervalEnum interval;
 
         public IntervalTopicPair(final String topic, final EventStoreTimeIntervalEnum interval) {
             this.topic = topic;

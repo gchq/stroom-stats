@@ -39,7 +39,6 @@ import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.StatKey;
-import stroom.stats.streams.aggregation.AggregatedEvent;
 import stroom.stats.util.DateUtil;
 
 import java.util.ArrayList;
@@ -128,22 +127,21 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
     }
 
     @Override
-    public CellQualifier buildCellQualifier(final AggregatedEvent aggregatedEvent) {
-        Preconditions.checkNotNull(aggregatedEvent);
+    public CellQualifier buildCellQualifier(final StatKey statKey) {
+        Preconditions.checkNotNull(statKey);
 
-        long timeMs = aggregatedEvent.getStatKey().getTimeMs();
+        long timeMs = statKey.getTimeMs();
 
         final ColumnQualifier columnQualifier = buildColumnQualifier(timeMs);
 
         //timeMs is already rounded to the column interval
-        return new CellQualifier(buildRowKey(aggregatedEvent), columnQualifier, timeMs);
+        return new CellQualifier(buildRowKey(statKey), columnQualifier, timeMs);
     }
 
     @Override
-    public RowKey buildRowKey(AggregatedEvent aggregatedEvent) {
-        Preconditions.checkNotNull(aggregatedEvent);
+    public RowKey buildRowKey(StatKey statKey) {
+        Preconditions.checkNotNull(statKey);
 
-        StatKey statKey = aggregatedEvent.getStatKey();
         long timeMs = statKey.getTimeMs();
 
         final byte[] partialTimestamp = buildPartialTimestamp(timeMs);

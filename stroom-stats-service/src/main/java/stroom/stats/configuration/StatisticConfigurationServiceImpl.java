@@ -21,6 +21,9 @@ package stroom.stats.configuration;
 
 import javaslang.control.Try;
 import org.ehcache.Cache;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.context.internal.ManagedSessionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.cache.CacheFactory;
@@ -29,6 +32,7 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 public class StatisticConfigurationServiceImpl implements StatisticConfigurationService {
 
@@ -40,13 +44,16 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
     private final StatisticConfigurationEntityDAO statisticConfigurationEntityDAO;
     private final Cache<String, StatisticConfiguration> keyByNameCache;
     private final Cache<String, StatisticConfiguration> keyByUuidCache;
+    private final SessionFactory sessionFactory;
 
     @Inject
     public StatisticConfigurationServiceImpl(final CacheFactory cacheFactory,
                                              final StatisticConfigurationEntityDAO statisticConfigurationEntityDAO,
                                              final StatisticConfigurationCacheByNameLoaderWriter byNameLoaderWriter,
-                                             final StatisticConfigurationCacheByUuidLoaderWriter byUuidLoaderWriter ) {
+                                             final StatisticConfigurationCacheByUuidLoaderWriter byUuidLoaderWriter,
+                                             final SessionFactory sessionFactory) {
         this.statisticConfigurationEntityDAO = statisticConfigurationEntityDAO;
+        this.sessionFactory = sessionFactory;
 
         this.keyByNameCache = cacheFactory.getOrCreateCache(KEY_BY_NAME_CACHE_NAME, String.class, StatisticConfiguration.class, Optional.of(byNameLoaderWriter));
         this.keyByUuidCache = cacheFactory.getOrCreateCache(KEY_BY_UUID_CACHE_NAME, String.class, StatisticConfiguration.class, Optional.of(byUuidLoaderWriter));
@@ -54,20 +61,43 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
 
     @Override
     public List<StatisticConfiguration> fetchAll() {
-        return new ArrayList<>(statisticConfigurationEntityDAO.loadAll());
+//        return new ArrayList<>(statisticConfigurationEntityDAO.loadAll());
+
+        return executeInSession(() ->
+            new ArrayList<>(statisticConfigurationEntityDAO.loadAll())
+        );
     }
 
     @Override
     public Optional<StatisticConfiguration> fetchStatisticConfigurationByName(final String name) {
-        return Try.of(() -> keyByNameCache.get(name))
-                .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache",name, throwable))
-                .toJavaOptional();
+        return executeInSession(() ->
+            Try.of(() -> keyByNameCache.get(name))
+                    .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache",name, throwable))
+                    .toJavaOptional()
+        );
+//        return Try.of(() -> keyByNameCache.get(name))
+//                .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache",name, throwable))
+//                .toJavaOptional();
     }
 
     @Override
     public Optional<StatisticConfiguration> fetchStatisticConfigurationByUuid(final String uuid) {
-        return Try.of(() -> keyByNameCache.get(uuid))
-                .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache",uuid, throwable))
-                .toJavaOptional();
+        return executeInSession(() ->
+            Try.of(() -> keyByNameCache.get(uuid))
+                    .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache",uuid, throwable))
+                    .toJavaOptional()
+        );
+    }
+
+    private <T> T executeInSession(Supplier<T> task) {
+
+        try (Session session = sessionFactory.openSession()){
+            ManagedSessionContext.bind(session);
+            session.beginTransaction();
+
+            return task.get();
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("Error executing task, %s", e.getMessage()), e);
+        }
     }
 }
