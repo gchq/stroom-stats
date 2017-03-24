@@ -154,7 +154,8 @@ public final class StatisticsTestService {
 
         final EventStoreTimeIntervalEnum workingTimeInterval = EventStoreTimeIntervalEnum.HOUR;
 
-        final HBaseEventStoreTable hBaseTable = HBaseEventStoreTable.getInstance(workingTimeInterval, null, propertyService,
+        final HBaseEventStoreTable hBaseTable = HBaseEventStoreTable.getInstance(
+                workingTimeInterval, propertyService,
                 hBaseConnection, uniqueIdCache);
 
         // HTableInterface table =
@@ -185,7 +186,7 @@ public final class StatisticsTestService {
 
             LOGGER.trace("Putting event: " + event.toString());
 
-            statisticEventStore.putEvents(Collections.singletonList(event));
+//            statisticEventStore.putEvents(Collections.singletonList(event));
         }
 
         // get all the results back from the hourly event store to see what we
@@ -250,7 +251,7 @@ public final class StatisticsTestService {
 
             LOGGER.trace("Putting event: " + event.toString());
 
-            statisticEventStore.putEvents(Collections.singletonList(event));
+//            statisticEventStore.putEvents(Collections.singletonList(event));
         }
 
         scanAllData(hBaseTable, simpleRowKeyBuilder, EventStoreColumnFamily.VALUES);
@@ -470,7 +471,7 @@ public final class StatisticsTestService {
                 public void run() {
                     // LOGGER.info("Starting thread: " +
                     // Thread.currentThread().getName());
-                    statisticEventStore.putEvents(Collections.singletonList(statisticEvent));
+//                    statisticEventStore.putEvents(Collections.singletonList(statisticEvent));
                 }
             };
 
@@ -488,7 +489,7 @@ public final class StatisticsTestService {
             public void run() {
                 // LOGGER.info("Starting thread: " +
                 // Thread.currentThread().getName());
-                statisticEventStore.putEvents(Collections.singletonList(event));
+//                statisticEventStore.putEvents(Collections.singletonList(event));
             }
         };
 
@@ -503,11 +504,11 @@ public final class StatisticsTestService {
             public void run() {
                 // LOGGER.info("Starting thread: " +
                 // Thread.currentThread().getName());
-                try {
-                    statisticEventStore.putEvents(Collections.singletonList(queue.take()));
-                } catch (final InterruptedException e) {
-                    e.printStackTrace();
-                }
+//                try {
+////                    statisticEventStore.putEvents(Collections.singletonList(queue.take()));
+//                } catch (final InterruptedException e) {
+//                    e.printStackTrace();
+//                }
             }
         };
 
@@ -969,7 +970,7 @@ public final class StatisticsTestService {
     private void clearDownAllTables(final HBaseConnection tableConfiguration) throws IOException {
         HBaseTable hBaseTable;
         for (final EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
-            hBaseTable = HBaseEventStoreTable.getInstance(interval, null, propertyService, hBaseConnection, uniqueIdCache);
+            hBaseTable = HBaseEventStoreTable.getInstance(interval,propertyService, hBaseConnection, uniqueIdCache);
             final Table tableInterface = hBaseTable.getTable();
             clearDownTable(tableInterface);
             tableInterface.close();
@@ -980,7 +981,7 @@ public final class StatisticsTestService {
     private void countAllTables(final HBaseConnection tableConfiguration) throws IOException {
         HBaseTable hBaseTable;
         for (final EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
-            hBaseTable = HBaseEventStoreTable.getInstance(interval, null, propertyService, hBaseConnection, uniqueIdCache);
+            hBaseTable = HBaseEventStoreTable.getInstance(interval, propertyService, hBaseConnection, uniqueIdCache);
             final Table tableInterface = hBaseTable.getTable();
             LOGGER.info("Row count for " + hBaseTable.getName() + " (" + countRows(tableInterface) + ")");
             tableInterface.close();

@@ -51,7 +51,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public abstract class AbstractStatisticsService implements StatisticsService {
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(AbstractStatisticsService.class);
@@ -71,30 +70,6 @@ public abstract class AbstractStatisticsService implements StatisticsService {
         this.propertyService = propertyService;
     }
 
-
-    @Override
-    public boolean putEvents(final List<StatisticEvent> statisticEvents) {
-
-        statisticEvents.stream()
-                .collect(Collectors.groupingBy(StatisticEvent::getName))
-                .forEach((statisticName, groupedStatisticEvents) -> {
-                    StatisticConfiguration statisticConfiguration = getStatisticConfiguration(statisticName);
-                    putEvents(statisticConfiguration, groupedStatisticEvents);
-                });
-        return true;
-    }
-
-
-//    protected boolean validateStatisticConfiguration(final StatisticEvent statisticEvent,
-//                                                  final StatisticConfiguration statisticConfiguration) {
-//        if (statisticConfigurationValidator != null) {
-//            return statisticConfigurationValidator.validateStatisticConfiguration(statisticEvent.getName(),
-//                    statisticEvent.getType(), statisticConfiguration);
-//        } else {
-//            // no validator has been supplied so return true
-//            return true;
-//        }
-//    }
 
     protected static FindEventCriteria buildCriteria(final Query query, final StatisticConfiguration statisticConfiguration) {
         LOGGER.trace(() -> String.format("buildCriteria called for statisticConfiguration ", statisticConfiguration));

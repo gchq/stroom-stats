@@ -23,14 +23,10 @@ package stroom.stats.hbase;
 
 import stroom.stats.api.StatisticType;
 import stroom.stats.common.FindEventCriteria;
-import stroom.stats.common.RolledUpStatisticEvent;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.exception.StatisticsException;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.hbase.aggregator.EventStoresPutAggregator;
-import stroom.stats.hbase.structure.AddEventOperation;
-import stroom.stats.hbase.structure.CellQualifier;
 import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
@@ -43,8 +39,6 @@ import stroom.stats.util.logging.LambdaLogger;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -56,7 +50,6 @@ public class EventStores {
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(EventStores.class);
 
     private final UniqueIdCache uidCache;
-    private final EventStoresPutAggregator eventStoresPutAggregator;
     private final EventStoreTableFactory eventStoreTableFactory;
     private final StroomPropertyService propertyService;
 
@@ -71,13 +64,11 @@ public class EventStores {
     @Inject
     public EventStores(final RowKeyCache rowKeyCache,
                        final UniqueIdCache uniqueIdCache,
-                       final EventStoresPutAggregator eventStoresPutAggregator,
                        final EventStoreTableFactory eventStoreTableFactory,
                        final StroomPropertyService propertyService) throws IOException {
 
         LOGGER.info("Initialising: {}", this.getClass().getCanonicalName());
 
-        this.eventStoresPutAggregator = eventStoresPutAggregator;
         this.eventStoreTableFactory = eventStoreTableFactory;
         this.propertyService = propertyService;
 
@@ -94,15 +85,6 @@ public class EventStores {
         }
     }
 
-//    public Map<EventStoreTimeIntervalEnum, Integer> getEventStorePutBufferSizes(final boolean isDeepCount) {
-//        final Map<EventStoreTimeIntervalEnum, Integer> map = new HashMap<>();
-//
-//        for (final EventStore eventStore : eventStoreMap.values()) {
-//            map.put(eventStore.getTimeInterval(), eventStore.getPutBufferCount(isDeepCount));
-//        }
-//        return map;
-//    }
-
     public Map<EventStoreTimeIntervalEnum, Long> getCellsPutCount(final StatisticType statisticType) {
         final Map<EventStoreTimeIntervalEnum, Long> map = new HashMap<>();
 
@@ -111,11 +93,6 @@ public class EventStores {
         }
         return map;
     }
-
-//    public int getAvailableBatchPutTaskPermits() {
-//        // it is a static property so just call it on one of the stores.
-//        return eventStoreMap.values().iterator().next().getAvailableBatchPutTaskPermits();
-//    }
 
     // method used to extract an instance of the unique id cache in testing
     @Deprecated
@@ -127,7 +104,6 @@ public class EventStores {
      * Flushes all events down to the datastore
      */
     public void flushAllEvents() {
-        eventStoresPutAggregator.flushAll();
 
         LOGGER.debug("flushAllEvents called");
         for (final EventStore eventStore : eventStoreMap.values()) {
@@ -150,62 +126,8 @@ public class EventStores {
                                     final EventStoreTimeIntervalEnum interval,
                                     final Map<StatKey, StatAggregate> aggregatedEvents) {
 
-//        aggregatedEvents.stream()
-//                .collect(Collectors.groupingBy(aggregatedEvent -> aggregatedEvent.getStatKey().getInterval()))
-//                .entrySet()
-//                .forEach(entry -> eventStoreMap.get(entry.getKey()).putAggregatedEvents(entry.getValue()));
-        eventStoreMap.get(interval).putAggregatedEvents(statisticType, aggregatedEvents);
-    }
-
-    /**
-     * Method determines which of the available event stores to use and puts the
-     * event into the smallest one. Processing further down the chain will roll
-     * the data up into the coarser event stores
-     *
-     * @param rolledUpStatisticEvent The event object to put into the appropriate event store
-     */
-    public void putEvent(final RolledUpStatisticEvent rolledUpStatisticEvent, final long precisionMs) {
-        LOGGER.trace("putEvent called for event: {}", rolledUpStatisticEvent);
-
-        putEvents(Collections.singletonList(rolledUpStatisticEvent), precisionMs, rolledUpStatisticEvent.getType());
-    }
-
-    public void putEvents(final List<RolledUpStatisticEvent> rolledUpStatisticEvents, final long precisionMs,
-                          final StatisticType statisticType) {
-        LOGGER.trace(() -> String.format("putEvent called for event count: %s and precision: %s",
-                rolledUpStatisticEvents.size(), precisionMs));
-
-        // get the smallest event store to use based on the desired granularity
-        final EventStoreTimeIntervalEnum desiredTimeInterval = EventStoreTimeIntervalHelper
-                .getMatchingInterval(precisionMs);
-
-        LOGGER.trace("Using timeInterval: {}", desiredTimeInterval);
-
-        final List<AddEventOperation> operations = new ArrayList<>();
-
-        for (final RolledUpStatisticEvent rolledUpStatisticEvent : rolledUpStatisticEvents) {
-            Optional<EventStoreTimeIntervalEnum> effectiveTimeInterval = Optional.of(desiredTimeInterval);
-
-            // see if the event is outside the purge retention period. This is
-            // an optimisation to deal with events that
-            // come in very late. If it is get the next biggest store. If the
-            // biggest store is outside then use a time
-            // interval of null
-            while (effectiveTimeInterval.isPresent() && !eventStoreMap.get(effectiveTimeInterval.get())
-                    .isTimeInsidePurgeRetention(rolledUpStatisticEvent.getTimeMs())) {
-                effectiveTimeInterval = EventStoreTimeIntervalHelper.getNextBiggest(effectiveTimeInterval.get());
-            }
-
-            if (effectiveTimeInterval.isPresent()) {
-                final List<CellQualifier> cellQualifiers = cachedRowKeyBuilders.get(effectiveTimeInterval.get())
-                        .buildCellQualifiers(rolledUpStatisticEvent);
-
-                for (final CellQualifier cellQualifier : cellQualifiers) {
-                    operations.add(new AddEventOperation(effectiveTimeInterval.get(), cellQualifier, rolledUpStatisticEvent));
-                }
-            }
-        }
-        eventStoresPutAggregator.putEvents(operations, statisticType);
+        eventStoreMap.get(interval)
+                .putAggregatedEvents(statisticType, aggregatedEvents);
     }
 
     /**

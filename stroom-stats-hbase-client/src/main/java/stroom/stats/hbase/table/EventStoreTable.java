@@ -47,14 +47,6 @@ public interface EventStoreTable extends GenericTable {
     void addAggregatedEvents(final StatisticType statisticType,
                              final Map<StatKey, StatAggregate> aggregatedEvents);
 
-    //TODO remove
-//    void bufferedAddCount(final CountRowData countRowData, final boolean isForcedFlushToDisk);
-
-
-    //TODO remove
-//    void addMultipleCounts(final Map<RowKey, List<CountCellIncrementHolder>> rowChanges);
-
-//    void addValue(CellQualifier cellQualifier, ValueCellValue valueCellValue);
 
     StatisticDataSet getStatisticsData(final UniqueIdCache uniqueIdCache,
                                        final StatisticConfiguration statisticConfiguration, final RollUpBitMask rollUpBitMask,
@@ -112,20 +104,6 @@ public interface EventStoreTable extends GenericTable {
 //    void flushPutBuffer();
 
     void shutdown();
-
-    /**
-     * @return The number of items currently on the put buffer, zero if not
-     *         initialised
-     */
-    //TODO remove
-//    int getPutBufferCount(boolean isDeepCount);
-
-    /**
-     * @return Count of the number of permits currently available for batch put
-     *         tasks. For use in monitoring or debugging only.
-     */
-    //TODO remove
-//    int getAvailableBatchPutTaskPermits();
 
     long getCellsPutCount(StatisticType statisticType);
 

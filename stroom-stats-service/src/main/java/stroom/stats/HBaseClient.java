@@ -32,17 +32,12 @@ import stroom.query.SearchResponseCreator;
 import stroom.query.TableCoprocessor;
 import stroom.query.TableCoprocessorSettings;
 import stroom.query.api.DocRef;
-import stroom.query.api.FlatResult;
 import stroom.query.api.OffsetRange;
 import stroom.query.api.Param;
-import stroom.query.api.Result;
-import stroom.query.api.ResultRequest;
 import stroom.query.api.Row;
 import stroom.query.api.SearchRequest;
 import stroom.query.api.SearchResponse;
 import stroom.query.api.TableResult;
-import stroom.stats.adapters.StatisticEventAdapter;
-import stroom.stats.api.StatisticEvent;
 import stroom.stats.api.StatisticsService;
 import stroom.stats.common.StatisticDataPoint;
 import stroom.stats.common.StatisticDataSet;
@@ -50,18 +45,15 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.schema.Statistics;
 import stroom.util.shared.HasTerminate;
-import stroom.util.task.TaskMonitor;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 //TODO everything about this class needs work, including its name
@@ -82,18 +74,7 @@ public class HBaseClient implements Managed {
     public void addStatistics(Statistics statistics) {
         Preconditions.checkNotNull(statistics);
 
-        // TODO Change putEvents to handle statistics
-        //TODO maybe this should talk direct to EventStores
-        //TODO need to figure out how much of the code in AbstractStatisticsService and
-        // HBaseStatisticsService needs to live in Stroom-stats and how much in stroom
-
-        //TODO not very efficient to have to do this conversion but for the moment
-        //it gets things working
-        List<StatisticEvent> statisticEvents = statistics.getStatistic().stream()
-                .map(StatisticEventAdapter::convert)
-                .collect(Collectors.toList());
-
-        statisticsService.putEvents(statisticEvents);
+        //TODO need a kafka producer to put these stats on a topic so they get processed via that route.
     }
 
 

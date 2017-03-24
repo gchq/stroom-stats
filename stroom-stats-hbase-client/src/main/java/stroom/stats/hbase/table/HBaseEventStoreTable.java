@@ -72,16 +72,15 @@ import stroom.stats.streams.StatKey;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
-import stroom.stats.task.api.TaskManager;
 import stroom.stats.util.DateUtil;
 import stroom.stats.util.logging.LambdaLogger;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
@@ -90,25 +89,23 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     private final String displayName;
     private final TableName tableName;
     private final EventStoreTimeIntervalEnum timeInterval;
-    private final TaskManager taskManager;
+//    private final TaskManager taskManager;
     private final StroomPropertyService propertyService;
-    private final HBaseCountPutBuffer countPutBuffer;
-    //TODO don't know why this is lazily initialised, just do it eagerly in the ctor
+//    private final HBaseCountPutBuffer countPutBuffer;
     private final RowKeyBuilder rowKeyBuilder;
 
     private static final String DISPLAY_NAME_POSTFIX = " EventStore";
     public static final String TABLE_NAME_POSTFIX = "es";
 
-    // private ScheduledExecutorService debugSnapshotScheduler;
-
     // static variable so we have a set of permits that work accross all event
     // store intervals
-    private static Semaphore maxConcurrentBatchPutTasksSemaphore = null;
-    private static final Object SEMAPHORE_LOCK_OBJECT = new Object();
+//    private static Semaphore maxConcurrentBatchPutTasksSemaphore = null;
+//    private static final Object SEMAPHORE_LOCK_OBJECT = new Object();
 
     // counters to track how many cell puts we do for the
-    private final LongAdder cellPutCounterCount = new LongAdder();
-    private final LongAdder cellPutCounterValue = new LongAdder();
+    private final Map<StatisticType, LongAdder> putCounterMap = new EnumMap<>(StatisticType.class);
+//    private final LongAdder cellPutCounterCount = new LongAdder();
+//    private final LongAdder cellPutCounterValue = new LongAdder();
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(HBaseEventStoreTable.class);
 
@@ -116,38 +113,44 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      * Private constructor
      */
     private HBaseEventStoreTable(final EventStoreTimeIntervalEnum eventStoreTimeIntervalEnum,
-                                 final TaskManager taskManager, final StroomPropertyService propertyService,
-                                 final HBaseConnection hBaseConnection, final UniqueIdCache uniqueIdCache) {
+                                 final StroomPropertyService propertyService,
+                                 final HBaseConnection hBaseConnection,
+                                 final UniqueIdCache uniqueIdCache) {
         super(hBaseConnection);
         this.displayName = eventStoreTimeIntervalEnum.longName() + DISPLAY_NAME_POSTFIX;
         this.tableName = TableName.valueOf(Bytes.toBytes(eventStoreTimeIntervalEnum.shortName() + TABLE_NAME_POSTFIX));
         this.timeInterval = eventStoreTimeIntervalEnum;
-        this.taskManager = taskManager;
         this.propertyService = propertyService;
         this.rowKeyBuilder = new SimpleRowKeyBuilder(uniqueIdCache, timeInterval);
 
-        countPutBuffer = new HBaseCountPutBuffer(getPutBufferSize());
+        for (StatisticType statisticType : StatisticType.values()) {
+            putCounterMap.put(statisticType, new LongAdder());
+        }
 
-        initMaxBatchPutTasksSemaphore();
+//        countPutBuffer = new HBaseCountPutBuffer(getPutBufferSize());
+
+//        initMaxBatchPutTasksSemaphore();
 
         init();
     }
 
-    private void initMaxBatchPutTasksSemaphore() {
-        synchronized (SEMAPHORE_LOCK_OBJECT) {
-            if (maxConcurrentBatchPutTasksSemaphore == null) {
-                maxConcurrentBatchPutTasksSemaphore = new Semaphore(getMaxConcurrentBatchPutTasks());
-            }
-        }
-    }
+//    private void initMaxBatchPutTasksSemaphore() {
+//        synchronized (SEMAPHORE_LOCK_OBJECT) {
+//            if (maxConcurrentBatchPutTasksSemaphore == null) {
+//                maxConcurrentBatchPutTasksSemaphore = new Semaphore(getMaxConcurrentBatchPutTasks());
+//            }
+//        }
+//    }
 
     /**
      * Static constructor
      */
     public static HBaseEventStoreTable getInstance(final EventStoreTimeIntervalEnum eventStoreTimeIntervalEnum,
-                                                   final TaskManager taskManager, final StroomPropertyService propertyService,
-                                                   final HBaseConnection hBaseConnection, final UniqueIdCache uniqueIdCache) {
-        return new HBaseEventStoreTable(eventStoreTimeIntervalEnum, taskManager, propertyService, hBaseConnection, uniqueIdCache);
+                                                   final StroomPropertyService propertyService,
+                                                   final HBaseConnection hBaseConnection,
+                                                   final UniqueIdCache uniqueIdCache) {
+
+        return new HBaseEventStoreTable(eventStoreTimeIntervalEnum, propertyService, hBaseConnection, uniqueIdCache);
     }
 
 
@@ -157,7 +160,8 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     }
 
     @Override
-    public void addAggregatedEvents(final StatisticType statisticType, final Map<StatKey, StatAggregate> aggregatedEvents) {
+    public void addAggregatedEvents(final StatisticType statisticType,
+                                    final Map<StatKey, StatAggregate> aggregatedEvents) {
 
         switch (statisticType) {
             case COUNT:
@@ -169,6 +173,11 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
             default:
                 throw new IllegalArgumentException("Unexpected statisticType " + statisticType);
         }
+
+        //keep a counter of the number of puts by stat type since this instance was last re-started
+        //useful as an indication of how it is functioning.  Could put the count to a stat of its own
+        //for long term tracking of performance
+        putCounterMap.get(statisticType).add(aggregatedEvents.size());
     }
 
     private void putAggregatedEventsCount(final Map<StatKey, StatAggregate> aggregatedEvents) {
@@ -217,19 +226,10 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         });
     }
 
-//    @Override
-//    public int getPutBufferCount(final boolean isDeepCount) {
-//        return isDeepCount ? countPutBuffer.getCellCount() : countPutBuffer.getQueueSize();
-//    }
-
-//    @Override
-//    public int getAvailableBatchPutTaskPermits() {
-//        return HBaseEventStoreTable.maxConcurrentBatchPutTasksSemaphore.availablePermits();
-//    }
-
     @Override
     public long getCellsPutCount(final StatisticType statisticType) {
-        return StatisticType.COUNT.equals(statisticType) ? cellPutCounterCount.sum() : cellPutCounterValue.sum();
+        //longaddr sum is not a concurrent snapshot but for this purpose is fine
+        return putCounterMap.get(statisticType).sum();
     }
 
     @Override
@@ -256,106 +256,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         return desc;
     }
 
-//    @Override
-//    public void bufferedAddCount(final CountRowData countRowData, final boolean isForcedFlushToDisk) {
-//        // try {
-//        // LOGGER.info("bufferedAddCount called for [%s] cells, waiting
-//        // forever", countRowData.getCells().size());
-//        // new Semaphore(0).acquire();
-//        // } catch (InterruptedException e) {
-//        // LOGGER.info("interupted");
-//        // }
-//
-//        LOGGER.trace(() -> String.format("bufferedAddCount called for interval: %s, rowKey: %s, cell count: %s", this.timeInterval,
-//                countRowData.getRowKey().toString(), countRowData.getCells().size()));
-//
-//        try {
-//            // queue will block its puts when it reaches its limit
-//            countPutBuffer.put(countRowData);
-//        } catch (final InterruptedException e1) {
-//            // something has interrupted this thread while it was waiting to do
-//            // the put
-//            // re-enable the interrupt status
-//            Thread.currentThread().interrupt();
-//        }
-//
-//        LOGGER.trace(() -> String.format("countPutBuffer size: %s, cell count: %s", countPutBuffer.getQueueSize(),
-//                countPutBuffer.getCellCount()));
-//
-//        processBatchFromQueue(isForcedFlushToDisk);
-//    }
-
-//    /**
-//     * If the deep cell count of the countPutBuffer has reach a certain point it
-//     * will attempt to repeatedly take items until it has a desired number. The
-//     * taken items are then sent on for persistence to HBase
-//     *
-//     * @param isForcedFlushToDisk
-//     *            true if you want it to flush everything to HBase regardless of
-//     *            how much is in the queue
-//     */
-//    private void processBatchFromQueue(final boolean isForcedFlushToDisk) {
-//        final List<CountRowData> rowsFromBuffer = new ArrayList<>();
-//        final int putBufferTakeCount = getPutTakeCount();
-//
-//        int cumulativeCellCount = 0;
-//        CountRowData rowFromQueue = null;
-//
-//        if (countPutBuffer.getCellCount() >= putBufferTakeCount || isForcedFlushToDisk)
-//            do {
-//                // grab one row's worth of data from the queue
-//                rowFromQueue = countPutBuffer.poll();
-//
-//                if (rowFromQueue != null) {
-//                    rowsFromBuffer.add(rowFromQueue);
-//                    cumulativeCellCount += rowFromQueue.getCells().size();
-//                }
-//            } while (rowFromQueue != null && cumulativeCellCount <= putBufferTakeCount);
-//
-//        if (rowsFromBuffer.size() > 0) {
-//            createMultiplePutsTask(rowsFromBuffer);
-//        }
-//    }
-
-//    //TODO do we realy need to do this rather than just firing increments at the tableinterface and
-//    //letting it buffer them?
-//    /**
-//     * Create an async task to persist a batch of count stats
-//     */
-//    private void createMultiplePutsTask(final List<CountRowData> rowsFromBuffer) {
-//        if (rowsFromBuffer != null && rowsFromBuffer.size() > 0) {
-//            final HBaseBatchPutTask task = new HBaseBatchPutTask(timeInterval, rowsFromBuffer);
-//
-//            LOGGER.debug(() -> String.format("About to get permit for batch put task with row count: %s.  Available permits: %s, max permits: %s",
-//                    rowsFromBuffer.size(), maxConcurrentBatchPutTasksSemaphore.availablePermits(),
-//                    getMaxConcurrentBatchPutTasks()));
-//
-//            try {
-//                maxConcurrentBatchPutTasksSemaphore.acquire();
-//            } catch (final InterruptedException e) {
-//                Thread.currentThread().interrupt();
-//            }
-//            try {
-//                taskManager.execAsync(task, new TaskCallbackAdaptor<VoidResult>() {
-//                    @Override
-//                    public void onSuccess(final VoidResult result) {
-//                        maxConcurrentBatchPutTasksSemaphore.release();
-//                        LOGGER.trace("EventStoreFlushTask completed successfully for store: {}", timeInterval);
-//                    }
-//
-//                    @Override
-//                    public void onFailure(final Throwable t) {
-//                        maxConcurrentBatchPutTasksSemaphore.release();
-//                        LOGGER.error("EventStoreFlushTask failed for store: {}", timeInterval, t);
-//
-//                    };
-//                });
-//            } catch (final Exception e) {
-//                maxConcurrentBatchPutTasksSemaphore.release();
-//            }
-//        }
-//    }
-
     private void addMultipleCounts(final Map<RowKey, List<CountCellIncrementHolder>> rowChanges) {
         LOGGER.trace(() -> String.format("addMultipleCounts called for %s rows", rowChanges.size()));
 
@@ -369,7 +269,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
         // long startTime = System.currentTimeMillis();
         doBatch(actions, results);
-        cellPutCounterCount.add(actions.size());
         LOGGER.trace(() -> String.format("%s puts sent to HBase", actions.size()));
 
         // LOGGER.info("Sent %s ADDs to HBase from thread %s in %s ms",
@@ -378,16 +277,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         // startTime));
 
     }
-
-//    @Override
-//    public void flushPutBuffer() {
-//        LOGGER.debug("flushPutBuffer called for store: {}", timeInterval);
-//
-//        // keep processing batches from the queue until it is empty
-//        while (countPutBuffer.getQueueSize() > 0) {
-//            processBatchFromQueue(true);
-//        }
-//    }
 
     /**
      * Builds a single {@link Increment} object for a row, with one-many cell
@@ -491,7 +380,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
                 if (hasPutSucceeded) {
                     // put worked so no need to retry
-                    cellPutCounterValue.increment();
                     break;
                 } else {
                     LOGGER.trace("CheckAndPut failed on retry {}, retrying", retryCounter);
@@ -512,15 +400,18 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     }
 
     @Override
-    public StatisticDataSet getStatisticsData(final UniqueIdCache uniqueIdCache, final StatisticConfiguration dataSource,
-                                              final RollUpBitMask rollUpBitMask, final FindEventCriteria criteria) {
-        LOGGER.debug("getChartData called for criteria: {}", criteria);
+    public StatisticDataSet getStatisticsData(final UniqueIdCache uniqueIdCache,
+                                              final StatisticConfiguration statisticConfiguration,
+                                              final RollUpBitMask rollUpBitMask,
+                                              final FindEventCriteria criteria) {
+
+        LOGGER.debug(() -> String.format("getStatisticsData called, store: %s, statName: %s, type: %s, mask: %s, criteria: %s",
+                timeInterval, statisticConfiguration.getName(), statisticConfiguration.getStatisticType(), rollUpBitMask, criteria));
 
         final Period period = criteria.getPeriod();
 
-        final StatisticType statisticType = dataSource.getStatisticType();
+        final StatisticType statisticType = statisticConfiguration.getStatisticType();
 
-        LOGGER.debug(() -> String.format("getChartData() called on eventStore: [%s]", timeInterval.longName()));
         LOGGER.debug(() -> String.format("Using time period: [%s] to [%s]", DateUtil.createNormalDateTimeString(period.getFrom()),
                 DateUtil.createNormalDateTimeString(period.getTo())));
 

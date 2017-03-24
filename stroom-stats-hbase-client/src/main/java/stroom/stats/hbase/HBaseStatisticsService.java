@@ -24,10 +24,8 @@ package stroom.stats.hbase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.query.api.Query;
-import stroom.stats.api.StatisticEvent;
 import stroom.stats.api.StatisticType;
 import stroom.stats.common.FindEventCriteria;
-import stroom.stats.common.RolledUpStatisticEvent;
 import stroom.stats.common.StatisticConfigurationValidator;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.configuration.StatisticConfiguration;
@@ -41,7 +39,6 @@ import stroom.stats.streams.aggregation.StatAggregate;
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * This class is the entry point for all interactions with the HBase backed statistics store, e.g.
@@ -81,24 +78,6 @@ public class HBaseStatisticsService extends AbstractStatisticsService {
         //revisit buffering in HBEST as we want to consume a batch, put that batch then commit kafka
         //kafka partitioning should mean similarity between stat keys in the batch
         eventStores.putAggregatedEvents(statisticType, interval, aggregatedEvents);
-    }
-
-    @Override
-    public boolean putEvents(final StatisticConfiguration statisticConfiguration, final List<StatisticEvent> statisticEvents) {
-
-//        if (validateStatisticConfiguration(statisticEvents.iterator().next(), statisticConfiguration) == false) {
-//            // no StatisticConfiguration entity so don't record the stat as we
-//            // will have no way of querying the stat
-//            return false;
-//        }
-
-        final List<RolledUpStatisticEvent> rolledUpStatisticEvents = statisticEvents.stream()
-                .map(statisticEvent -> generateTagRollUps(statisticEvent, statisticConfiguration))
-                .collect(Collectors.toList());
-
-        eventStores.putEvents(rolledUpStatisticEvents, statisticConfiguration.getPrecision(), statisticConfiguration.getStatisticType());
-
-        return true;
     }
 
     @Override

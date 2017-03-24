@@ -65,8 +65,11 @@ public class EventStore {
      * @param interval A TimeIntervalEnum instance describing what interval the store
      *                 should be configured with
      */
-    public EventStore(final UniqueIdCache uidCache, final EventStoreTimeIntervalEnum interval,
-                      final EventStoreTableFactory eventStoreTableFactory, final StroomPropertyService propertyService) {
+    public EventStore(final UniqueIdCache uidCache,
+                      final EventStoreTimeIntervalEnum interval,
+                      final EventStoreTableFactory eventStoreTableFactory,
+                      final StroomPropertyService propertyService) {
+
         LOGGER.info("Initialising EventSore for interval {}", interval);
 
         this.eventStoreTable = eventStoreTableFactory.getEventStoreTable(interval);
@@ -74,7 +77,6 @@ public class EventStore {
         this.propertyService = propertyService;
         this.purgeRetentionPeriodsPropertyKey = HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX
                 + interval.name().toLowerCase();
-
 
         //TODO do we want to cache the conversion of AggregatedEvents to CellQualifiers?
         rowKeyBuilder = new SimpleRowKeyBuilder(uidCache, interval);
@@ -84,34 +86,27 @@ public class EventStore {
     /**
      * Puts a batch of aggregated events into the store
      */
-    public void putAggregatedEvents(final StatisticType statisticType, final Map<StatKey, StatAggregate> aggregatedEvents) {
+    public void putAggregatedEvents(final StatisticType statisticType,
+                                    final Map<StatKey, StatAggregate> aggregatedEvents) {
 
         eventStoreTable.addAggregatedEvents(statisticType, aggregatedEvents);
     }
-
 
     public void flushAllEvents() {
         LOGGER.debug("flushAllEvents called for store: {}", this.timeInterval);
         eventStoreTable.shutdown();
     }
 
-//    public int getPutBufferCount(final boolean isDeepCount) {
-//        return eventStoreTable.getPutBufferCount(isDeepCount);
-//    }
-//
-//    public int getAvailableBatchPutTaskPermits() {
-//        return eventStoreTable.getAvailableBatchPutTaskPermits();
-//    }
-
     public long getCellsPutCount(final StatisticType statisticType) {
         return eventStoreTable.getCellsPutCount(statisticType);
     }
 
     public StatisticDataSet getStatisticsData(final UniqueIdCache uniqueIdCache,
-                                              final StatisticConfiguration statisticConfiguration, final RollUpBitMask rollUpBitMask,
+                                              final StatisticConfiguration statisticConfiguration,
+                                              final RollUpBitMask rollUpBitMask,
                                               final FindEventCriteria criteria) {
-        return eventStoreTable.getStatisticsData(uniqueIdCache, statisticConfiguration, rollUpBitMask, criteria);
 
+        return eventStoreTable.getStatisticsData(uniqueIdCache, statisticConfiguration, rollUpBitMask, criteria);
     }
 
     public EventStoreTimeIntervalEnum getTimeInterval() {
