@@ -70,30 +70,35 @@ public abstract class AbstractAppIT {
         return app;
     }
 
-    protected static Response postJson(Supplier<Serializable> requestObjectFunc, String url, Supplier<String> credentialFunc){
-        // Given
-        Serializable requestObject = requestObjectFunc.get();
+    protected static Response postJson(Supplier<Serializable> requestObjectFunc, String url){
+        return postJson(requestObjectFunc, url, AuthorizationHeader.VALID);
+    }
 
-        // When
+    protected static Response postJson(Supplier<Serializable> requestObjectFunc, String url, AuthorizationHeader authorizationHeader){
+        return postJson(requestObjectFunc.get(), url, authorizationHeader.get());
+    }
+
+    protected static Response postXml(Supplier<Serializable> requestObjectFunc, String url){
+        return postXml(requestObjectFunc, url, AuthorizationHeader.VALID);
+    }
+
+    protected static Response postXml(Supplier<Serializable> requestObjectFunc, String url, AuthorizationHeader authorizationHeader){
+        return postXml(requestObjectFunc.get(), url, authorizationHeader.get());
+    }
+
+    protected static Response postJson(Serializable requestObject, String url, String authorizationHeader){
         Response response = getClient().target(url)
                 .request()
-                .header("Authorization", credentialFunc.get())
+                .header("Authorization", authorizationHeader)
                 .post(Entity.json(requestObject));
-
         return response;
     }
 
-    protected static Response postXml(Supplier<Serializable> requestObjectFunc, String url, Supplier<String> credentialFunc){
-
-        // Given
-        Serializable requestObject = requestObjectFunc.get();
-
-        // When
+    protected static Response postXml(Serializable requestObject, String url, String authorizationHeader){
         Response response = getClient().target(url)
                 .request()
-                .header("Authorization", credentialFunc.get())
+                .header("Authorization", authorizationHeader)
                 .post(Entity.xml(requestObject));
-
         return response;
     }
 

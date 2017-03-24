@@ -50,19 +50,19 @@ public class ApiResourceIT extends AbstractAppIT {
 
     @Test
     public void testPostEmptyStatistics() throws UnsupportedEncodingException {
-        Response response = postXml(Statistics::new, STATISTICS_URL, AuthorizationHelper::getHeaderWithValidCredentials);
+        Response response = postXml(Statistics::new, STATISTICS_URL);
         assertAccepted(response);
     }
 
     @Test
     public void postEmptyStatistics_missingCredentials() {
-        Response response = postXml(Statistics::new, STATISTICS_URL, AuthorizationHelper::getHeaderWithInvalidCredentials);
+        Response response = postXml(Statistics::new, STATISTICS_URL, AuthorizationHeader.MISSING);
         assertUnauthorized(response);
     }
 
     @Test
     public void postEmptyStatistics_invalidCredentials() throws UnsupportedEncodingException {
-        Response response = postXml(ApiResourceIT::getSearchRequest, STATISTICS_URL, AuthorizationHelper::getHeaderWithInvalidCredentials);
+        Response response = postXml(ApiResourceIT::getSearchRequest, STATISTICS_URL, AuthorizationHeader.INVALID);
         assertUnauthorized(response);
     }
 
@@ -71,19 +71,19 @@ public class ApiResourceIT extends AbstractAppIT {
      */
     @Test
     public void testPostQueryData() throws UnsupportedEncodingException {
-        Response response = postJson(ApiResourceIT::getSearchRequest, QUERY_URL, AuthorizationHelper::getHeaderWithValidCredentials);
+        Response response = postJson(ApiResourceIT::getSearchRequest, QUERY_URL);
         assertAccepted(response);
     }
 
     @Test
     public void postQueryData_missingCredentials(){
-        Response response = postJson(ApiResourceIT::getSearchRequest, QUERY_URL, () -> "");
+        Response response = postJson(ApiResourceIT::getSearchRequest, QUERY_URL, AuthorizationHeader.MISSING);
         assertUnauthorized(response);
     }
 
     @Test
     public void postQueryData_invalidCredentials() throws UnsupportedEncodingException {
-        Response response = postJson(ApiResourceIT::getSearchRequest, QUERY_URL, AuthorizationHelper::getHeaderWithInvalidCredentials);
+        Response response = postJson(ApiResourceIT::getSearchRequest, QUERY_URL, AuthorizationHeader.INVALID);
         assertUnauthorized(response);
     }
 

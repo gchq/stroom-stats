@@ -41,6 +41,10 @@ public class AuthorizationHelper {
         return "Bearer " + getToken(INVALID_JWT_TOKEN_SECRET);
     }
 
+    public static String getHeaderWithMissingCredentials(){
+        return "";
+    }
+
     private static String getToken(byte[] jwtSecretToken) {
         return toToken(jwtSecretToken, getClaimsForUser("stroom-stats-service integration test"));
     }
