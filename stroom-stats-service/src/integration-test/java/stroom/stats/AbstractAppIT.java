@@ -29,6 +29,7 @@ import stroom.stats.config.Config;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.Serializable;
 import java.util.function.Supplier;
@@ -70,20 +71,16 @@ public abstract class AbstractAppIT {
         return app;
     }
 
-    protected static Response postJson(Supplier<Serializable> requestObjectFunc, String url){
-        return postJson(requestObjectFunc, url, AuthorizationHeader.VALID);
+    protected static Response post(Supplier<Serializable> requestObjectFunc, String url, String mediaType){
+        return post(requestObjectFunc, url, mediaType, AuthorizationHeader.VALID);
     }
 
-    protected static Response postJson(Supplier<Serializable> requestObjectFunc, String url, AuthorizationHeader authorizationHeader){
-        return postJson(requestObjectFunc.get(), url, authorizationHeader.get());
-    }
-
-    protected static Response postXml(Supplier<Serializable> requestObjectFunc, String url){
-        return postXml(requestObjectFunc, url, AuthorizationHeader.VALID);
-    }
-
-    protected static Response postXml(Supplier<Serializable> requestObjectFunc, String url, AuthorizationHeader authorizationHeader){
-        return postXml(requestObjectFunc.get(), url, authorizationHeader.get());
+    protected static Response post(Supplier<Serializable> requestObjectFunc, String url, String mediaType, AuthorizationHeader authorizationHeader){
+        switch(mediaType){
+            case MediaType.APPLICATION_JSON: return postJson(requestObjectFunc.get(), url, authorizationHeader.get());
+            case MediaType.APPLICATION_XML: return postXml(requestObjectFunc.get(), url, authorizationHeader.get());
+            default: throw new RuntimeException("Unsupported media type: " + mediaType);
+        }
     }
 
     protected static Response postJson(Serializable requestObject, String url, String authorizationHeader){
