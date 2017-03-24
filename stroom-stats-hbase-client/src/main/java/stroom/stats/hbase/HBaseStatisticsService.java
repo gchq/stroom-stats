@@ -21,10 +21,13 @@
 
 package stroom.stats.hbase;
 
+import com.google.common.base.Preconditions;
+import stroom.query.DateExpressionParser;
 import stroom.query.api.ExpressionItem;
 import stroom.query.api.ExpressionOperator;
 import stroom.query.api.ExpressionTerm;
 import stroom.query.api.Query;
+import stroom.query.api.SearchRequest;
 import stroom.stats.api.StatisticEvent;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
@@ -46,16 +49,16 @@ import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.StatKey;
 import stroom.stats.streams.aggregation.StatAggregate;
-import stroom.stats.util.DateUtil;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -90,14 +93,24 @@ public class HBaseStatisticsService implements StatisticsService {
         this.eventStores = eventStores;
     }
 
-    protected static FindEventCriteria buildCriteria(final Query query, final StatisticConfiguration statisticConfiguration) {
+    protected static FindEventCriteria buildCriteria(final SearchRequest searchRequest,
+                                                     final StatisticConfiguration statisticConfiguration) {
         LOGGER.trace(() -> String.format("buildCriteria called for statisticConfiguration ", statisticConfiguration));
+
+        Preconditions.checkNotNull(searchRequest);
+        Preconditions.checkNotNull(statisticConfiguration);
+        Query query = searchRequest.getQuery();
+        Preconditions.checkNotNull(query);
+
+
+        // Get the current time in millis since epoch.
+        final long nowEpochMilli = System.currentTimeMillis();
 
         // object looks a bit like this
         // AND
         // Date Time between 2014-10-22T23:00:00.000Z,2014-10-23T23:00:00.000Z
 
-        final ExpressionOperator topLevelExpressionOperator = query.getExpression();
+        final ExpressionOperator topLevelExpressionOperator = searchRequest.getQuery().getExpression();
 
         if (topLevelExpressionOperator == null || topLevelExpressionOperator.getOp().getDisplayValue() == null) {
             throw new IllegalArgumentException(
@@ -164,7 +177,7 @@ public class HBaseStatisticsService implements StatisticsService {
 
         // if we have got here then we have a single BETWEEN date term, so parse
         // it.
-        final Range<Long> range = extractRange(dateTerm);
+        final Range<Long> range = extractRange(dateTerm, searchRequest.getDateTimeLocale(), nowEpochMilli);
 
         final List<ExpressionTerm> termNodesInFilter = new ArrayList<>();
 
@@ -216,8 +229,8 @@ public class HBaseStatisticsService implements StatisticsService {
     }
 
     // TODO could go futher up the chain so is store agnostic
-    public static RolledUpStatisticEvent generateTagRollUps(final StatisticEvent event,
-                                                            final StatisticConfiguration statisticConfiguration) {
+    static RolledUpStatisticEvent generateTagRollUps(final StatisticEvent event,
+                                                     final StatisticConfiguration statisticConfiguration) {
         RolledUpStatisticEvent rolledUpStatisticEvent = null;
 
         final int eventTagListSize = event.getTagList().size();
@@ -248,9 +261,9 @@ public class HBaseStatisticsService implements StatisticsService {
         return rolledUpStatisticEvent;
     }
 
-    private static Range<Long> extractRange(final ExpressionTerm dateTerm) {
-        long rangeFrom = 0;
-        long rangeTo = Long.MAX_VALUE;
+    private static Range<Long> extractRange(final ExpressionTerm dateTerm,
+                                            final String timeZoneId,
+                                            final long nowEpochMilli) {
 
         final String[] dateArr = dateTerm.getValue().split(",");
 
@@ -258,9 +271,13 @@ public class HBaseStatisticsService implements StatisticsService {
             throw new RuntimeException("DateTime term is not a valid format, term: " + dateTerm.toString());
         }
 
-        rangeFrom = DateUtil.parseNormalDateTimeString(dateArr[0]);
+        Long rangeFrom = parseDateTime("from", dateArr[0], timeZoneId, nowEpochMilli)
+                .map(zonedDateTime -> zonedDateTime.toInstant().toEpochMilli())
+                .orElse(null);
         // add one to make it exclusive
-        rangeTo = DateUtil.parseNormalDateTimeString(dateArr[1]) + 1;
+        Long rangeTo = parseDateTime("to", dateArr[1], timeZoneId, nowEpochMilli)
+                .map(zonedDateTime -> zonedDateTime.toInstant().toEpochMilli() + 1)
+                .orElse(null);
 
         final Range<Long> range = new Range<>(rangeFrom, rangeTo);
 
@@ -357,8 +374,8 @@ public class HBaseStatisticsService implements StatisticsService {
     }
 
     @Override
-    public StatisticDataSet searchStatisticsData(final Query query, final StatisticConfiguration dataSource) {
-        final FindEventCriteria criteria = buildCriteria(query, dataSource);
+    public StatisticDataSet searchStatisticsData(final SearchRequest searchRequest, final StatisticConfiguration dataSource) {
+        final FindEventCriteria criteria = buildCriteria(searchRequest, dataSource);
         return eventStores.getStatisticsData(criteria, dataSource);
     }
 
@@ -407,31 +424,11 @@ public class HBaseStatisticsService implements StatisticsService {
         flushAllEvents();
     }
 
-    protected StatisticConfiguration getStatisticConfiguration(final String statisticName) {
-        return statisticConfigurationService.fetchStatisticConfigurationByName(statisticName)
-                .orElseThrow(() -> new RuntimeException("No statistic configuration exists with name: " + statisticName));
-    }
-
-    /**
-     * Template method, should be overridden by a sub-class if it needs to black
-     * list certain index fields
-     *
-     * @return
-     */
-    protected Set<String> getIndexFieldBlackList() {
-        return Collections.emptySet();
-    }
-
-    public List<Set<Integer>> getFieldPositionsForBitMasks(final List<Short> maskValues) {
-        if (maskValues != null) {
-            final List<Set<Integer>> tagPosPermsList = new ArrayList<>();
-
-            for (final Short maskValue : maskValues) {
-                tagPosPermsList.add(RollUpBitMask.fromShort(maskValue).getTagPositions());
-            }
-            return tagPosPermsList;
-        } else {
-            return Collections.emptyList();
+    private static Optional<ZonedDateTime> parseDateTime(final String type, final String value, final String timeZoneId, final long nowEpochMilli) {
+        try {
+            return DateExpressionParser.parse(value, timeZoneId, nowEpochMilli);
+        } catch (final Exception e) {
+            throw new RuntimeException("DateTime term has an invalid '" + type + "' value of '" + value + "'");
         }
     }
 }

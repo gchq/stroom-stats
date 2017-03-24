@@ -27,6 +27,7 @@ import stroom.query.api.ExpressionOperator;
 import stroom.query.api.ExpressionTerm;
 import stroom.query.api.ExpressionTerm.Condition;
 import stroom.query.api.Query;
+import stroom.query.api.SearchRequest;
 import stroom.stats.api.StatisticEvent;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.TimeAgnosticStatisticEvent;
@@ -40,8 +41,10 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.util.DateUtil;
 
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -265,7 +268,7 @@ public class TestHBaseStatisticsService {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        HBaseStatisticsService.buildCriteria(query, dataSource);
+        HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
 
     }
 
@@ -282,7 +285,7 @@ public class TestHBaseStatisticsService {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        HBaseStatisticsService.buildCriteria(query, dataSource);
+        HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
 
     }
 
@@ -304,7 +307,7 @@ public class TestHBaseStatisticsService {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        final FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(query, dataSource);
+        final FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
 
         Assert.assertNotNull(criteria);
         Assert.assertEquals(fromDate, criteria.getPeriod().getFrom().longValue());
@@ -326,12 +329,12 @@ public class TestHBaseStatisticsService {
                 new ExpressionTerm(StatisticConfiguration.FIELD_NAME_DATE_TIME, Condition.BETWEEN, dateTerm)
         );
 
-        final Query search = new Query(null, rootOperator, null);
+        final Query query = new Query(null, rootOperator, null);
 
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        HBaseStatisticsService.buildCriteria(search, dataSource);
+        HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -354,7 +357,7 @@ public class TestHBaseStatisticsService {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        HBaseStatisticsService.buildCriteria(query, dataSource);
+        HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
     }
 
     @Test
@@ -376,7 +379,7 @@ public class TestHBaseStatisticsService {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        final FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(query, dataSource);
+        final FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
 
         Assert.assertNotNull(criteria);
         Assert.assertEquals("[MyField=]", criteria.getFilterTermsTree().toString());
@@ -401,7 +404,7 @@ public class TestHBaseStatisticsService {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        final FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(query, dataSource);
+        final FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
 
         Assert.assertNotNull(criteria);
         Assert.assertEquals(fromDate, criteria.getPeriod().getFrom().longValue());
@@ -410,5 +413,9 @@ public class TestHBaseStatisticsService {
         // only a date term so the filter tree has noting in it as the date is
         // handled outside of the tree
         Assert.assertEquals("[MyField=xxx]", criteria.getFilterTermsTree().toString());
+    }
+
+    private SearchRequest wrapQuery(Query query) {
+        return new SearchRequest(null, query, Collections.emptyList(), ZoneOffset.UTC.getId(), false);
     }
 }

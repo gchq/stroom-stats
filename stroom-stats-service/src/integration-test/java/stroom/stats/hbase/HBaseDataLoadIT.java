@@ -27,6 +27,7 @@ import stroom.query.api.ExpressionItem;
 import stroom.query.api.ExpressionOperator;
 import stroom.query.api.ExpressionTerm;
 import stroom.query.api.Query;
+import stroom.query.api.SearchRequest;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
@@ -51,8 +52,10 @@ import stroom.stats.test.StatisticConfigurationEntityHelper;
 import stroom.stats.util.DateUtil;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -325,7 +328,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
             Query query,
             StatisticConfigurationEntity statisticConfigurationEntity,
             int expectedRecCount) {
-        StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(query, statisticConfigurationEntity);
+        StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(wrapQuery(query), statisticConfigurationEntity);
 
         assertThat(statisticDataSet).isNotNull();
         assertThat(statisticDataSet).size().isEqualTo(expectedRecCount);
@@ -333,6 +336,9 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     }
 
 
+    private SearchRequest wrapQuery(Query query) {
+        return new SearchRequest(null, query, Collections.emptyList(), ZoneOffset.UTC.getId(), false);
+    }
 
 
 

@@ -159,6 +159,13 @@ public class Range<T extends Number> implements Serializable, HasIsConstrained {
         return from != null || to != null || matchNull;
     }
 
+    public boolean hasFrom() {
+        return from != null || matchNull;
+    }
+
+    public boolean hasTo() {
+        return to != null || matchNull;
+    }
 
     /**
      * Determine if a supplied time is within this period. Used for mock stream

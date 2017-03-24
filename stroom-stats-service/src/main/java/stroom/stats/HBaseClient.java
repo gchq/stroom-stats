@@ -128,7 +128,7 @@ public class HBaseClient implements Managed {
                         }
                     }
 
-                    StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(searchRequest.getQuery(), statisticConfiguration);
+                    StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(searchRequest, statisticConfiguration);
                     SearchResponse.Builder searchResponseBuilder = new SearchResponse.Builder(true);
 
                     //TODO TableCoprocessor is doing a lot of work to pre-process and aggregate the datas

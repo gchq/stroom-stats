@@ -45,7 +45,7 @@ public enum EventStoreTimeIntervalEnum {
     MINUTE(86_400_000L, 60_000L, "Minute", "m"),
     // Four Weekly row key with 672 1hour column intervals
     HOUR(2_419_200_000L, 3_600_000L, "Hour", "h"),
-    // Fifty two Weekly with 364 1day column intervals
+    // Fifty two Weekly row key with 364 1day column intervals
     DAY(31_449_600_000L, 86_400_000L, "Day", "d");
 
     public static final int BYTE_VALUE_LENGTH = Long.BYTES;

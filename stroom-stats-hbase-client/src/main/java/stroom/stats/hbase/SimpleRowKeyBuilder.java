@@ -247,6 +247,7 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
 
         final byte[] partialTimestamp = buildPartialTimestamp(rangeStartTime);
 
+        //tags/values will be handled by the row key filter, hence the empty list
         return new RowKey(nameUid, rollUpBitMask.asBytes(), partialTimestamp, Collections.<RowKeyTagValue> emptyList());
     }
 
@@ -258,6 +259,7 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
         // add one interval on to give us the next row key to the one we want
         final byte[] partialTimestamp = buildPartialTimestamp(rangeEndTime + timeInterval.rowKeyInterval());
 
+        //tags/values will be handled by the row key filter, hence the empty list
         return new RowKey(nameUid, rollUpBitMask.asBytes(), partialTimestamp, Collections.<RowKeyTagValue> emptyList());
     }
 

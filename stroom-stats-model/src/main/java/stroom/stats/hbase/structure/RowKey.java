@@ -32,8 +32,7 @@ import java.util.List;
 /**
  * The row key structure looks like this:
  *
- * <stat name UID><roll up bit mask><partial timestamp>
- * <tag1nameUID><tag1valUID>...<tagNnameUID><tagNvalUID>
+ * <stat name UID><roll up bit mask><partial timestamp><tag1nameUID><tag1valUID>...<tagNnameUID><tagNvalUID>
  *
  * and the widths in bytes look like this
  *
@@ -109,6 +108,7 @@ public class RowKey {
 
         final byte[] rowKey = new byte[timeAgnosticRowKey.getTypeId().length()
                 + timeAgnosticRowKey.getRollUpBitMask().length + partialTimestamp.length + tagValueTotalLength];
+
         final ByteBuffer buffer = ByteBuffer.wrap(rowKey);
         buffer.put(timeAgnosticRowKey.getTypeId().getUidBytes());
         buffer.put(timeAgnosticRowKey.getRollUpBitMask());
@@ -134,6 +134,10 @@ public class RowKey {
 
     public List<RowKeyTagValue> getTagValuePairs() {
         return timeAgnosticRowKey.getTagValuePairs();
+    }
+
+    public TimeAgnosticRowKey getTimeAgnosticRowKey() {
+        return timeAgnosticRowKey;
     }
 
     @Override

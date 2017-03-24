@@ -21,7 +21,7 @@
 
 package stroom.stats.api;
 
-import stroom.query.api.Query;
+import stroom.query.api.SearchRequest;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -43,7 +43,7 @@ public interface StatisticsService {
                              final EventStoreTimeIntervalEnum interval,
                              final Map<StatKey, StatAggregate> aggregatedEvents);
 
-    StatisticDataSet searchStatisticsData(final Query query,
+    StatisticDataSet searchStatisticsData(final SearchRequest searchRequest,
                                           final StatisticConfiguration statisticConfiguration);
 
     /**
