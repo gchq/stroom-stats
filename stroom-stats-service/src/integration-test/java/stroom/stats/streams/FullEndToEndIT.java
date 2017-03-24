@@ -56,30 +56,13 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class FullEndToEndIT extends AbstractAppIT {
-
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(FullEndToEndIT.class);
 
     private Injector injector = getApp().getInjector();
-    private SessionFactory sessionFactory = injector.getInstance(SessionFactory.class);
-    private StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller = injector.getInstance(StatisticConfigurationEntityMarshaller.class);
     private StroomPropertyService stroomPropertyService = injector.getInstance(StroomPropertyService.class);
 
     private final static String TAG_ENV = "environment";
-    private final static String VAL_ENV_OPS = "OPS";
-    private final static String VAL_ENV_DEV = "DEV";
     private final static String TAG_SYSTEM = "system";
-    private final static String VAL_SYSTEM_ABC = "SystemABC";
-    private final static String VAL_SYSTEM_XZY = "SystemXYZ";
-
-    private final static List<Tuple2<String, String>> VALUE_PAIRS = Arrays.asList(
-            new Tuple2<>(VAL_ENV_OPS, VAL_SYSTEM_ABC),
-            new Tuple2<>(VAL_ENV_OPS, VAL_SYSTEM_XZY),
-            new Tuple2<>(VAL_ENV_DEV, VAL_SYSTEM_ABC),
-            new Tuple2<>(VAL_ENV_DEV, VAL_SYSTEM_XZY));
-    private final static int STATS_IN_BATCH = 10;
-    private final static int TIME_DELTA_MS = 250;
-    private final static long MAX_ITERATIONS = 8;
-
 
     @Test
     public void testAllTypesAndIntervals() {
@@ -88,8 +71,14 @@ public class FullEndToEndIT extends AbstractAppIT {
         LOGGER.info("Start time is {}", startTime);
 
         configure(stroomPropertyService);
-        Map<Tuple2<StatisticType, EventStoreTimeIntervalEnum>, String> statNameMap =
-                buildStatNameMap(stroomPropertyService, sessionFactory, statisticConfigurationEntityMarshaller);
+        List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> statNameMap = createDummyStatistics(stroomPropertyService);
+
+
+        persistDummyStatistics(
+                statNameMap,
+                injector.getInstance(SessionFactory.class),
+                injector.getInstance(StatisticConfigurationEntityMarshaller.class));
+
 
         Map<String, List<Statistics>> statistics = buildStatistics(
                 statNameMap,
@@ -106,15 +95,43 @@ public class FullEndToEndIT extends AbstractAppIT {
 
     }
 
-    private static Map<String, List<Statistics>> buildStatistics(Map<Tuple2<StatisticType, EventStoreTimeIntervalEnum>, String> statNameMap, String topicPrefix, ZonedDateTime startTime) {
+    private static void persistDummyStatistics(
+            List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> statNameMap,
+           SessionFactory sessionFactory,
+           StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller) {
+
+        statNameMap.forEach(stat ->
+        StatisticConfigurationEntityHelper.addStatConfig(
+                sessionFactory,
+                statisticConfigurationEntityMarshaller,
+                stat._1()));
+    }
+
+    private static Map<String, List<Statistics>> buildStatistics(
+            List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> stats,
+            String topicPrefix,
+            ZonedDateTime startTime) {
+        final String VAL_ENV_OPS = "OPS";
+        final String VAL_ENV_DEV = "DEV";
+        final String VAL_SYSTEM_ABC = "SystemABC";
+        final String VAL_SYSTEM_XZY = "SystemXYZ";
+        final List<Tuple2<String, String>> VALUE_PAIRS = Arrays.asList(
+                new Tuple2<>(VAL_ENV_OPS, VAL_SYSTEM_ABC),
+                new Tuple2<>(VAL_ENV_OPS, VAL_SYSTEM_XZY),
+                new Tuple2<>(VAL_ENV_DEV, VAL_SYSTEM_ABC),
+                new Tuple2<>(VAL_ENV_DEV, VAL_SYSTEM_XZY));
+        final int STATS_IN_BATCH = 10;
+        final int TIME_DELTA_MS = 250;
+        final long MAX_ITERATIONS = 8;
+
         Map<String, List<Statistics>> topicToStatistics = new HashMap<>();
         final AtomicLong counter = new AtomicLong(0);
         List<Statistics.Statistic> statList = new ArrayList<>();
 
-        statNameMap.entrySet().forEach(entry -> {
-            String statName = entry.getValue();
-            StatisticType statisticType = entry.getKey()._1();
-            EventStoreTimeIntervalEnum interval = entry.getKey()._2();
+        stats.forEach(stat -> {
+            String statName = stat._1().getName();
+            StatisticType statisticType = stat._1().getStatisticType();
+            EventStoreTimeIntervalEnum interval = stat._2();
 
             LOGGER.info("Processing {} - {}", statisticType, interval);
 
@@ -164,10 +181,10 @@ public class FullEndToEndIT extends AbstractAppIT {
         stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 500);
     }
 
-    private static Map<Tuple2<StatisticType, EventStoreTimeIntervalEnum>, String> buildStatNameMap(StroomPropertyService stroomPropertyService,
-                                         SessionFactory sessionFactory,
-                                         StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller){
-        Map<Tuple2<StatisticType, EventStoreTimeIntervalEnum>, String> statNameMap = new HashMap<>();
+    private static List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> createDummyStatistics(
+            StroomPropertyService stroomPropertyService){
+
+        List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> stats = new ArrayList<>();
 
         //build a map of all the stat names and add them as StatConfig entities
         Arrays.stream(EventStoreTimeIntervalEnum.values()).forEach(interval -> {
@@ -184,7 +201,6 @@ public class FullEndToEndIT extends AbstractAppIT {
                     String statNameStr = "FullEndToEndIT-test-" + Instant.now().toString() + "-" + statisticType + "-" + interval;
                     LOGGER.info("Creating stat name : {}", statNameStr);
 
-                    statNameMap.put(new Tuple2(statisticType, interval), statNameStr);
                     StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
                             statNameStr,
                             statisticType,
@@ -193,15 +209,12 @@ public class FullEndToEndIT extends AbstractAppIT {
                             .addFields(TAG_ENV, TAG_SYSTEM)
                             .build();
 
-                    StatisticConfigurationEntityHelper.addStatConfig(
-                            sessionFactory,
-                            statisticConfigurationEntityMarshaller,
-                            statisticConfigurationEntity);
+                    stats.add(new Tuple2(statisticConfigurationEntity, interval));
                 }
             });
         });
 
-        return statNameMap;
+        return stats;
     }
 
     private static KafkaProducer<String, String> buildKafkaProducer(StroomPropertyService stroomPropertyService){
@@ -245,5 +258,4 @@ public class FullEndToEndIT extends AbstractAppIT {
         String statName = statistics.getStatistic().get(0).getName();
         return new ProducerRecord<>(topic, statName, statisticsMarshaller.marshallXml(statistics));
     }
-
 }
