@@ -72,7 +72,7 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
     public Optional<StatisticConfiguration> fetchStatisticConfigurationByName(final String name) {
         return executeInSession(() ->
             Try.of(() -> keyByNameCache.get(name))
-                    .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache",name, throwable))
+                    .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache", name, throwable))
                     .toJavaOptional()
         );
 //        return Try.of(() -> keyByNameCache.get(name))
@@ -83,8 +83,8 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
     @Override
     public Optional<StatisticConfiguration> fetchStatisticConfigurationByUuid(final String uuid) {
         return executeInSession(() ->
-            Try.of(() -> keyByNameCache.get(uuid))
-                    .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache",uuid, throwable))
+            Try.of(() -> keyByUuidCache.get(uuid))
+                    .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache", uuid, throwable))
                     .toJavaOptional()
         );
     }

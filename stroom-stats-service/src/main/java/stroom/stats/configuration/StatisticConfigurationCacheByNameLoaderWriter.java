@@ -39,9 +39,9 @@ public class StatisticConfigurationCacheByNameLoaderWriter implements CacheLoade
     }
 
     @Override
-    public StatisticConfiguration load(final String key) throws Exception {
-        return statisticConfigurationEntityDAO.loadByName(key)
-                .orElseThrow(() -> new Exception(String.format("Statistic configuration with name %s cannot be found in the database", key)));
+    public StatisticConfiguration load(final String name) throws Exception {
+        return statisticConfigurationEntityDAO.loadByName(name)
+                .orElseThrow(() -> new Exception(String.format("Statistic configuration with name %s cannot be found in the database", name)));
     }
 
     @Override
