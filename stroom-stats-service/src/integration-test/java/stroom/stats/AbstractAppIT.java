@@ -28,11 +28,6 @@ import org.slf4j.LoggerFactory;
 import stroom.stats.config.Config;
 
 import javax.ws.rs.client.Client;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import java.io.Serializable;
-import java.util.function.Supplier;
 
 public abstract class AbstractAppIT {
 
@@ -71,32 +66,8 @@ public abstract class AbstractAppIT {
         return app;
     }
 
-    protected static Response post(Supplier<Serializable> requestObjectFunc, String url, String mediaType){
-        return post(requestObjectFunc, url, mediaType, AuthorizationHeader.VALID);
-    }
-
-    protected static Response post(Supplier<Serializable> requestObjectFunc, String url, String mediaType, AuthorizationHeader authorizationHeader){
-        switch(mediaType){
-            case MediaType.APPLICATION_JSON: return postJson(requestObjectFunc.get(), url, authorizationHeader.get());
-            case MediaType.APPLICATION_XML: return postXml(requestObjectFunc.get(), url, authorizationHeader.get());
-            default: throw new RuntimeException("Unsupported media type: " + mediaType);
-        }
-    }
-
-    protected static Response postJson(Serializable requestObject, String url, String authorizationHeader){
-        Response response = getClient().target(url)
-                .request()
-                .header("Authorization", authorizationHeader)
-                .post(Entity.json(requestObject));
-        return response;
-    }
-
-    protected static Response postXml(Serializable requestObject, String url, String authorizationHeader){
-        Response response = getClient().target(url)
-                .request()
-                .header("Authorization", authorizationHeader)
-                .post(Entity.xml(requestObject));
-        return response;
+    protected StatsApiClient req(){
+        return new StatsApiClient().client(getClient());
     }
 
 }

@@ -38,7 +38,6 @@ import stroom.query.api.TimeZone;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.schema.Statistics;
 
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
@@ -50,20 +49,20 @@ import static stroom.stats.HttpAsserts.assertUnauthorized;
 public class ApiResourceIT extends AbstractAppIT {
 
     @Test
-    public void testPostEmptyStatistics() throws UnsupportedEncodingException {
-        Response response = post(Statistics::new, STATISTICS_URL, MediaType.APPLICATION_XML);
+    public void postEmptyStatistics_validCredentials() throws UnsupportedEncodingException {
+        Response response = req().useXml().body(Statistics::new).postStats();
         assertAccepted(response);
     }
 
     @Test
     public void postEmptyStatistics_missingCredentials() {
-        Response response = post(Statistics::new, STATISTICS_URL, MediaType.APPLICATION_XML, AuthorizationHeader.MISSING);
+        Response response = req().useXml().body(Statistics::new).authHeader(AuthHeader.MISSING).postStats();
         assertUnauthorized(response);
     }
 
     @Test
     public void postEmptyStatistics_invalidCredentials() throws UnsupportedEncodingException {
-        Response response = post(ApiResourceIT::getSearchRequest, STATISTICS_URL, MediaType.APPLICATION_XML, AuthorizationHeader.INVALID);
+        Response response = req().useXml().body(Statistics::new).authHeader(AuthHeader.INVALID).postStats();
         assertUnauthorized(response);
     }
 
@@ -71,20 +70,20 @@ public class ApiResourceIT extends AbstractAppIT {
      * This test depends on SetupSampleData being run - the DocRef with the uuid needs to exist.
      */
     @Test
-    public void testPostQueryData() throws UnsupportedEncodingException {
-        Response response = post(ApiResourceIT::getSearchRequest, QUERY_URL, MediaType.APPLICATION_JSON);
+    public void testPostQueryData_validCredentials() throws UnsupportedEncodingException {
+        Response response = req().body(ApiResourceIT::getSearchRequest).getStats();
         assertAccepted(response);
     }
 
     @Test
     public void postQueryData_missingCredentials(){
-        Response response = post(ApiResourceIT::getSearchRequest, QUERY_URL, MediaType.APPLICATION_JSON, AuthorizationHeader.MISSING);
+        Response response = req().body(ApiResourceIT::getSearchRequest).authHeader(AuthHeader.MISSING).getStats();
         assertUnauthorized(response);
     }
 
     @Test
     public void postQueryData_invalidCredentials() throws UnsupportedEncodingException {
-        Response response = post(ApiResourceIT::getSearchRequest, QUERY_URL, MediaType.APPLICATION_JSON, AuthorizationHeader.INVALID);
+        Response response = req().body(ApiResourceIT::getSearchRequest).authHeader(AuthHeader.INVALID).getStats();
         assertUnauthorized(response);
     }
 

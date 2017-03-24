@@ -1,6 +1,6 @@
 package stroom.stats;
 
-public enum AuthorizationHeader {
+public enum AuthHeader {
     VALID,
     INVALID,
     MISSING;
