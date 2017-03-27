@@ -71,8 +71,7 @@ public class FullEndToEndIT extends AbstractAppIT {
         LOGGER.info("Start time is {}", startTime);
 
         configure(stroomPropertyService);
-        List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> statNameMap = createDummyStatisticConfigurations(stroomPropertyService);
-
+        List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> statNameMap = createDummyStatisticConfigurations();
 
         persistDummyStatisticConfigurations(
                 statNameMap,
@@ -96,45 +95,37 @@ public class FullEndToEndIT extends AbstractAppIT {
     }
 
     private static void configure(StroomPropertyService stroomPropertyService){
+        //make sure the purge retention periods are very large so no stats get purged
+        Arrays.stream(EventStoreTimeIntervalEnum.values()).forEach(interval ->
+                stroomPropertyService.setProperty(
+                        HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX +
+                        interval.name().toLowerCase(), 10_000));
+
         //set small batch size and flush interval so we don't have to wait ages for data to come through
         stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10);
         stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 500);
     }
 
-    private static List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> createDummyStatisticConfigurations(
-            StroomPropertyService stroomPropertyService){
-
+    private static List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> createDummyStatisticConfigurations(){
         List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> stats = new ArrayList<>();
-
-        //build a map of all the stat names and add them as StatConfig entities
-        Arrays.stream(EventStoreTimeIntervalEnum.values()).forEach(interval -> {
-
-            //make sure the purge retention periods are very large so no stats get purged
-            stroomPropertyService.setProperty(
-                    HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX +
-                            interval.name().toLowerCase(), 10_000);
-
-            Arrays.stream(StatisticType.values()).forEach(statisticType -> {
-                //TODO temporary filter, remove
-                if (interval.equals(EventStoreTimeIntervalEnum.SECOND)) {
-//                if (interval.equals(EventStoreTimeIntervalEnum.SECOND) && statisticType.equals(StatisticType.COUNT)) {
-                    String statNameStr = "FullEndToEndIT-test-" + Instant.now().toString() + "-" + statisticType + "-" + interval;
-                    LOGGER.info("Creating stat name : {}", statNameStr);
-
-                    StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
-                            statNameStr,
-                            statisticType,
-                            interval.columnInterval(),
-                            StatisticRollUpType.ALL)
-                            .addFields(TAG_ENV, TAG_SYSTEM)
-                            .build();
-
-                    stats.add(new Tuple2(statisticConfigurationEntity, interval));
-                }
-            });
-        });
-
+        stats.add(createDummyStatisticConfiguration(StatisticType.COUNT, EventStoreTimeIntervalEnum.SECOND, TAG_ENV, TAG_SYSTEM));
+        stats.add(createDummyStatisticConfiguration(StatisticType.VALUE, EventStoreTimeIntervalEnum.SECOND, TAG_ENV, TAG_SYSTEM));
         return stats;
+    }
+
+    private static Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum> createDummyStatisticConfiguration(
+            StatisticType statisticType, EventStoreTimeIntervalEnum interval, String... fields){
+        String statNameStr = "FullEndToEndIT-test-" + Instant.now().toString() + "-" + statisticType + "-" + interval;
+        LOGGER.info("Creating stat name : {}", statNameStr);
+        StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
+                statNameStr,
+                statisticType,
+                interval.columnInterval(),
+                StatisticRollUpType.ALL)
+                .addFields(fields)
+                .build();
+
+        return new Tuple2(statisticConfigurationEntity, interval);
     }
 
     private static void persistDummyStatisticConfigurations(
