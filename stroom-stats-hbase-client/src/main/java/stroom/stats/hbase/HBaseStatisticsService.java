@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * This class is the entry point for all interactions with the HBase backed statistics store, e.g.
@@ -71,7 +72,13 @@ public class HBaseStatisticsService implements StatisticsService {
     public static final String ENGINE_NAME = "hbase";
 
     private static final List<ExpressionTerm.Condition> SUPPORTED_DATE_CONDITIONS = Arrays
-            .asList(new ExpressionTerm.Condition[]{ExpressionTerm.Condition.BETWEEN});
+            .asList(new ExpressionTerm.Condition[]{
+                    ExpressionTerm.Condition.BETWEEN,
+                    ExpressionTerm.Condition.EQUALS,
+                    ExpressionTerm.Condition.LESS_THAN,
+                    ExpressionTerm.Condition.LESS_THAN_OR_EQUAL_TO,
+                    ExpressionTerm.Condition.GREATER_THAN,
+                    ExpressionTerm.Condition.GREATER_THAN_OR_EQUAL_TO});
 
     private final EventStores eventStores;
     private final StatisticConfigurationValidator statisticConfigurationValidator;
@@ -122,13 +129,9 @@ public class HBaseStatisticsService implements StatisticsService {
         int dateTermsFound = 0;
 
         // Identify the date term in the search criteria. Currently we must have
-        // a exactly one BETWEEN operator on the
-        // datetime
-        // field to be able to search. This is because of the way the search in
-        // hbase is done, ie. by start/stop row
-        // key.
-        // It may be possible to expand the capability to make multiple searches
-        // but that is currently not in place
+        // a exactly one date term due to the way we have start/stop rowkeys
+        // It may be possible to instead scan with just the statName and mask prefix and
+        // then add date handling logic into the custom filter, but this will likely be slower
         ExpressionTerm dateTerm = null;
         if (childExpressions != null) {
             for (final ExpressionItem expressionItem : childExpressions) {
@@ -162,14 +165,14 @@ public class HBaseStatisticsService implements StatisticsService {
             throw new UnsupportedOperationException(
                     "Search queries on the statistic store must contain one term using the '"
                             + StatisticConfiguration.FIELD_NAME_DATE_TIME
-                            + "' field with one of the following condtitions [" + SUPPORTED_DATE_CONDITIONS.toString()
+                            + "' field with one of the following conditions [" + SUPPORTED_DATE_CONDITIONS.toString()
                             + "].  Please amend the query");
         }
 
         // ensure the value field is not used in the query terms
         query.getExpression().getChildren().forEach(expressionItem -> {
-            if(expressionItem instanceof ExpressionTerm
-                    && ((ExpressionTerm)expressionItem).getValue().contains(StatisticConfiguration.FIELD_NAME_VALUE)){
+            if (expressionItem instanceof ExpressionTerm
+                    && ((ExpressionTerm) expressionItem).getValue().contains(StatisticConfiguration.FIELD_NAME_VALUE)) {
                 throw new UnsupportedOperationException("Search queries containing the field '"
                         + StatisticConfiguration.FIELD_NAME_VALUE + "' are not supported.  Please remove it from the query");
             }
@@ -267,19 +270,60 @@ public class HBaseStatisticsService implements StatisticsService {
 
         final String[] dateArr = dateTerm.getValue().split(",");
 
-        if (dateArr.length != 2) {
-            throw new RuntimeException("DateTime term is not a valid format, term: " + dateTerm.toString());
+
+        List<Long> timeParts = Arrays.stream(dateArr)
+                .map(dateStr -> parseDateTime("dateTime", dateStr, timeZoneId, nowEpochMilli)
+                        .map(zonedDateTime -> zonedDateTime.toInstant().toEpochMilli())
+                        .orElse(null))
+                .collect(Collectors.toList());
+
+//        Long dateTime0 = parseDateTime("from", dateArr[0], timeZoneId, nowEpochMilli)
+//                .map(zonedDateTime -> zonedDateTime.toInstant().toEpochMilli())
+//                .orElse(null);
+//        // add one to make it exclusive
+//        Long dateTime1 = parseDateTime("to", dateArr[1], timeZoneId, nowEpochMilli)
+//                .map(zonedDateTime -> zonedDateTime.toInstant().toEpochMilli() + 1)
+//                .orElse(null);
+
+        if (dateTerm.getCondition().equals(ExpressionTerm.Condition.BETWEEN)) {
+            if (timeParts.size() != 2) {
+                throw new RuntimeException("BETWEEN DateTime term must have two parts, term: " + dateTerm.toString());
+            }
+        } else {
+            if (timeParts.size() != 2) {
+                throw new RuntimeException("BETWEEN DateTime term must have two parts, term: " + dateTerm.toString());
+            }
         }
 
-        Long rangeFrom = parseDateTime("from", dateArr[0], timeZoneId, nowEpochMilli)
-                .map(zonedDateTime -> zonedDateTime.toInstant().toEpochMilli())
-                .orElse(null);
-        // add one to make it exclusive
-        Long rangeTo = parseDateTime("to", dateArr[1], timeZoneId, nowEpochMilli)
-                .map(zonedDateTime -> zonedDateTime.toInstant().toEpochMilli() + 1)
-                .orElse(null);
+        Long fromMs = null;
+        Long toMs = null;
 
-        final Range<Long> range = new Range<>(rangeFrom, rangeTo);
+        switch (dateTerm.getCondition()) {
+            case EQUALS:
+                fromMs = timeParts.get(0);
+                toMs = timeParts.get(0);
+                break;
+            case BETWEEN:
+                fromMs = timeParts.get(0);
+                toMs = timeParts.get(1);
+                break;
+            case LESS_THAN:
+                toMs = timeParts.get(0);
+                break;
+            case LESS_THAN_OR_EQUAL_TO:
+                toMs = timeParts.get(0) + 1; //make it exclusive
+                break;
+            case GREATER_THAN:
+                fromMs = timeParts.get(0);
+                break;
+            case GREATER_THAN_OR_EQUAL_TO:
+                toMs = timeParts.get(0) + 1; //make it exclusive
+                break;
+            default:
+                throw new RuntimeException("Should not have got here, unexpected condition " + dateTerm.getCondition());
+        }
+
+        final Range<Long> range = new Range<>(fromMs, toMs);
 
         return range;
     }
