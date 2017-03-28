@@ -170,6 +170,7 @@ public class HBaseStatisticsService implements StatisticsService {
         final Set<String> blackListedFieldNames = new HashSet<>();
         blackListedFieldNames.addAll(rolledUpFieldNames);
         blackListedFieldNames.add(StatisticConfiguration.FIELD_NAME_DATE_TIME);
+        blackListedFieldNames.add(StatisticConfiguration.FIELD_NAME_PRECISION);
 
         final FilterTermsTree filterTermsTree = FilterTermsTreeBuilder
                 .convertExpresionItemsTree(topLevelExpressionOperator, blackListedFieldNames);
@@ -318,14 +319,14 @@ public class HBaseStatisticsService implements StatisticsService {
         switch (dateTerm.getCondition()) {
             case EQUALS:
                 fromMs = timeParts.get(0);
-                toMs = timeParts.get(0);
+                toMs = timeParts.get(0) + 1; //make it exclusive
                 break;
             case BETWEEN:
                 fromMs = timeParts.get(0);
-                toMs = timeParts.get(1);
+                toMs = timeParts.get(1) + 1; //make it exclusive
                 break;
             case LESS_THAN:
-                toMs = timeParts.get(0);
+                toMs = timeParts.get(0); //already exclusive
                 break;
             case LESS_THAN_OR_EQUAL_TO:
                 toMs = timeParts.get(0) + 1; //make it exclusive
@@ -509,7 +510,7 @@ public class HBaseStatisticsService implements StatisticsService {
         if (item instanceof ExpressionTerm) {
             ExpressionTerm term = (ExpressionTerm) item;
             Preconditions.checkNotNull(term.getField());
-            if (term.getField().equals(targetFieldName) && term.getEnabled()) {
+            if (term.getField().equals(targetFieldName) && term.enabled()) {
                 List<ExpressionItem> path = new ArrayList<>(currentParents);
                 path.add(item);
                 foundPaths.add(path);
@@ -518,7 +519,7 @@ public class HBaseStatisticsService implements StatisticsService {
             ExpressionOperator op = (ExpressionOperator) item;
             Preconditions.checkNotNull(op.getChildren());
             op.getChildren().stream()
-                    .filter(ExpressionItem::getEnabled)
+                    .filter(ExpressionItem::enabled)
                     .forEach(child -> walkExpressionTree(child, targetFieldName, currentParents, foundPaths));
         } else {
             throw new RuntimeException(String.format("Unexpected instance type %s", item.getClass().getName()));

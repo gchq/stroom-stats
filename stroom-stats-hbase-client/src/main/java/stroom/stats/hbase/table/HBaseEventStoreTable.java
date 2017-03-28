@@ -470,7 +470,8 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                     }
 
                     // filter the cell to ensure it is in the period we are after
-                    if (fullTimestamp >= periodFrom && fullTimestamp <= periodTo) {
+                    //periodTo is exclusive
+                    if (fullTimestamp >= periodFrom && fullTimestamp < periodTo) {
                         final StatisticDataPoint dataPoint;
 
                         if (statisticType.equals(StatisticType.COUNT)) {

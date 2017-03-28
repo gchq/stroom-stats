@@ -60,6 +60,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -75,9 +76,14 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     private StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller = injector.getInstance(StatisticConfigurationEntityMarshaller.class);
 
     private EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.DAY;
+    private ChronoUnit workingChronoUnit = ChronoUnit.DAYS;
     private RollUpBitMask rollUpBitMask = RollUpBitMask.ZERO_MASK;
-    private long timeMs1 = interval.truncateTimeToColumnInterval(ZonedDateTime.now().toInstant().toEpochMilli());
-    private long timeMs2 = interval.truncateTimeToColumnInterval(Instant.ofEpochMilli(timeMs1).plus(5, ChronoUnit.DAYS).toEpochMilli());
+    private final Instant time1 = ZonedDateTime.now().toInstant();
+    private final Instant time2 = time1.plus(5, workingChronoUnit);
+    private List<Instant> times = IntStream.rangeClosed(0, 4)
+            .boxed()
+            .map(i -> time1.plus(5 * i, workingChronoUnit))
+            .collect(Collectors.toList());
 
     private String tag1Str = "tag1";
     private String tag1Val1Str = tag1Str + "val1";
@@ -95,8 +101,13 @@ public class HBaseDataLoadIT extends AbstractAppIT {
             StatisticConfiguration.FIELD_NAME_DATE_TIME,
             ExpressionTerm.Condition.BETWEEN,
             String.format("%s,%s",
-                    DateUtil.createNormalDateTimeString(Instant.now().minus(10, ChronoUnit.DAYS).toEpochMilli()),
-                    DateUtil.createNormalDateTimeString(Instant.now().plus(10, ChronoUnit.DAYS).toEpochMilli())));
+                    DateUtil.createNormalDateTimeString(Instant.now().minus(10, workingChronoUnit).toEpochMilli()),
+                    DateUtil.createNormalDateTimeString(Instant.now().plus(10, workingChronoUnit).toEpochMilli())));
+
+    private ExpressionItem precisionTerm = new ExpressionTerm(
+            StatisticConfiguration.FIELD_NAME_PRECISION,
+            ExpressionTerm.Condition.EQUALS,
+            interval.toString().toLowerCase());
 
     private ExpressionItem tag1Term = new ExpressionTerm(
             tag1Str,
@@ -141,7 +152,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         StatKey statKey1 = new StatKey( statName,
                 rollUpBitMask,
                 interval,
-                timeMs1,
+                time1.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
                 new TagValue(tag2, tag2val1));
 
@@ -154,7 +165,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         StatKey statKey2 = new StatKey( statName,
                 rollUpBitMask,
                 interval,
-                timeMs2,
+                time2.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
                 new TagValue(tag2, tag2val2));
 
@@ -245,7 +256,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         StatKey statKey1 = new StatKey( statName,
                 rollUpBitMask,
                 interval,
-                timeMs1,
+                time1.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
                 new TagValue(tag2, tag2val1));
 
@@ -258,7 +269,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         StatKey statKey2 = new StatKey( statName,
                 rollUpBitMask,
                 interval,
-                timeMs2,
+                time2.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
                 new TagValue(tag2, tag2val2));
 
@@ -352,7 +363,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(statisticType, statNameStr);
 
         //truncate the original stat time down to the interval so we can find it with an EQUALS
-        long time = Instant.ofEpochMilli(timeMs1).truncatedTo(ChronoUnit.DAYS).toEpochMilli();
+        long time = time1.truncatedTo(workingChronoUnit).toEpochMilli();
 
         ExpressionItem dateTerm = new ExpressionTerm(
                 StatisticConfiguration.FIELD_NAME_DATE_TIME,
@@ -361,7 +372,34 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         Query query = new Query(
                 new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
-                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm));
+                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
+
+        //only find the the one we equal
+        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, query, statisticConfigurationEntity, 1);
+        assertThat(dataPoints.get(0).getTimeMs()).isEqualTo(time);
+    }
+
+    @Test
+    public void testDateHandling_lessThan() {
+
+        StatisticType statisticType = StatisticType.COUNT;
+
+        //Put time in the statName to allow us to re-run the test without an empty HBase
+        String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString();
+
+        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(statisticType, statNameStr);
+
+        //truncate the original stat time down to the interval so we can find it with an EQUALS
+        long time = time1.truncatedTo(workingChronoUnit).toEpochMilli();
+
+        ExpressionItem dateTerm = new ExpressionTerm(
+                StatisticConfiguration.FIELD_NAME_DATE_TIME,
+                ExpressionTerm.Condition.EQUALS,
+                DateUtil.createNormalDateTimeString(time));
+
+        Query query = new Query(
+                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
 
         //only find the the one we equal
         List<StatisticDataPoint> dataPoints = runQuery(statisticsService, query, statisticConfigurationEntity, 1);
@@ -388,7 +426,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         StatKey statKey1 = new StatKey( statName,
                 rollUpBitMask,
                 interval,
-                timeMs1,
+                time1.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
                 new TagValue(tag2, tag2val1));
 
@@ -402,7 +440,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         StatKey statKey2 = new StatKey( statName,
                 rollUpBitMask,
                 interval,
-                timeMs2,
+                time2.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
                 new TagValue(tag2, tag2val2));
 

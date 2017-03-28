@@ -226,7 +226,11 @@ public class EventStores {
 
         // Try to determine which store holds the data precision we will need to
         // serve this query.
-        EventStore bestFit = findBestFit(criteria, statisticConfiguration);
+        EventStore bestFit = criteria.getInterval()
+                .flatMap(interval -> Optional.of(eventStoreMap.get(interval)))
+                .orElseGet(() ->
+                        findBestFit(criteria, statisticConfiguration)
+                );
 
         LOGGER.debug("Using event store: " + bestFit.getTimeInterval().longName());
 
