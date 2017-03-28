@@ -38,14 +38,11 @@ import stroom.stats.common.FindEventCriteria;
 import stroom.stats.common.Period;
 import stroom.stats.common.Range;
 import stroom.stats.common.RolledUpStatisticEvent;
-import stroom.stats.common.StatisticConfigurationValidator;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.CustomRollUpMask;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.StatKey;
 import stroom.stats.streams.aggregation.StatAggregate;
@@ -84,28 +81,18 @@ public class HBaseStatisticsService implements StatisticsService {
             StatisticConfiguration.FIELD_NAME_PRECISION);
 
     private final EventStores eventStores;
-    private final StatisticConfigurationValidator statisticConfigurationValidator;
-    private final StatisticConfigurationService statisticConfigurationService;
-    private final StroomPropertyService propertyService;
 
     @Inject
-    public HBaseStatisticsService(final StatisticConfigurationService statisticConfigurationService,
-                                  final StatisticConfigurationValidator statisticConfigurationValidator,
-                                  final EventStores eventStores,
-                                  final StroomPropertyService propertyService) {
-
-        this.statisticConfigurationValidator = statisticConfigurationValidator;
-        this.statisticConfigurationService = statisticConfigurationService;
-        this.propertyService = propertyService;
+    public HBaseStatisticsService(final EventStores eventStores) {
 
         LOGGER.debug("Initialising: {}", this.getClass().getCanonicalName());
 
         this.eventStores = eventStores;
     }
 
-    protected static FindEventCriteria buildCriteria(final SearchRequest searchRequest,
+    static FindEventCriteria buildCriteria(final SearchRequest searchRequest,
                                                      final StatisticConfiguration statisticConfiguration) {
-        LOGGER.trace(() -> String.format("buildCriteria called for statisticConfiguration ", statisticConfiguration));
+        LOGGER.trace(() -> String.format("buildCriteria called for statisticConfiguration %s", statisticConfiguration));
 
         Preconditions.checkNotNull(searchRequest);
         Preconditions.checkNotNull(statisticConfiguration);
@@ -120,7 +107,7 @@ public class HBaseStatisticsService implements StatisticsService {
 
         if (topLevelExpressionOperator == null || topLevelExpressionOperator.getOp().getDisplayValue() == null) {
             throw new IllegalArgumentException(
-                    "The top level operator for the query must be one of [" + ExpressionOperator.Op.values() + "]");
+                    "The top level operator for the query must be one of [" + Arrays.toString(ExpressionOperator.Op.values()) + "]");
         }
 
         Optional<ExpressionTerm> optPrecisionTerm = validateSpecialTerm(
@@ -194,12 +181,12 @@ public class HBaseStatisticsService implements StatisticsService {
      * It may be possible to instead scan with just the statName and mask prefix and
      * then add date handling logic into the custom filter, but this will likely be slower
      */
-    private static void validateDateTerm(final ExpressionTerm dateTimeTerm) throws RuntimeException {
+    private static void validateDateTerm(final ExpressionTerm dateTimeTerm) throws UnsupportedOperationException {
         Preconditions.checkNotNull(dateTimeTerm);
         Preconditions.checkNotNull(dateTimeTerm.getCondition());
 
         if (!SUPPORTED_DATE_CONDITIONS.contains(dateTimeTerm.getCondition())) {
-            throw new RuntimeException(String.format("Date Time expression has an invalid condition %s, should be one of %s",
+            throw new UnsupportedOperationException(String.format("Date Time expression has an invalid condition %s, should be one of %s",
                     dateTimeTerm.getCondition(), SUPPORTED_DATE_CONDITIONS));
         }
     }
@@ -439,19 +426,15 @@ public class HBaseStatisticsService implements StatisticsService {
 
     @Override
     public StatisticDataSet searchStatisticsData(final SearchRequest searchRequest, final StatisticConfiguration dataSource) {
+
         final FindEventCriteria criteria = buildCriteria(searchRequest, dataSource);
+
         return eventStores.getStatisticsData(criteria, dataSource);
     }
 
-    // @Override
-    // public void refreshMetadata() {
-    // statStoreMetadataService.refreshMetadata();
-    // }
-
     @Override
     public List<String> getValuesByTag(final String tagName) {
-        // TODO This will be used for providing a dropdown of known values in
-        // the UI
+        // TODO This will be used for providing a dropdown of known values in the UI
         throw new UnsupportedOperationException("Code waiting to be written");
     }
 
@@ -513,7 +496,7 @@ public class HBaseStatisticsService implements StatisticsService {
 
         if (item instanceof ExpressionTerm) {
             ExpressionTerm term = (ExpressionTerm) item;
-            Preconditions.checkNotNull(term.getField());
+            Preconditions.checkArgument(term.getField() != null);
             if (term.getField().equals(targetFieldName) && term.enabled()) {
                 List<ExpressionItem> path = new ArrayList<>(currentParents);
                 path.add(item);

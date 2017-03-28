@@ -21,6 +21,7 @@
 
 package stroom.stats.hbase;
 
+import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 import stroom.query.api.ExpressionOperator;
@@ -259,7 +260,7 @@ public class TestHBaseStatisticsService {
         return statisticConfiguration;
     }
 
-    @Test(expected = UnsupportedOperationException.class)
+    @Test
     public void testBuildCriteria_noDate() throws Exception {
         final ExpressionOperator rootOperator = new ExpressionOperator(true, Op.AND, Arrays.asList());
 
@@ -268,7 +269,15 @@ public class TestHBaseStatisticsService {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
+        FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
+
+        Assert.assertNotNull(criteria);
+        Assertions.assertThat(criteria.getPeriod().getFrom()).isNull();
+        Assertions.assertThat(criteria.getPeriod().getTo()).isNull();
+
+        // only a date term so the filter tree has noting in it as the date is
+        // handled outside of the tree
+        Assert.assertEquals(FilterTermsTree.emptyTree(), criteria.getFilterTermsTree());
 
     }
 
