@@ -74,10 +74,10 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     private SessionFactory sessionFactory = injector.getInstance(SessionFactory.class);
     private StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller = injector.getInstance(StatisticConfigurationEntityMarshaller.class);
 
-    private EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.MINUTE;
+    private EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.DAY;
     private RollUpBitMask rollUpBitMask = RollUpBitMask.ZERO_MASK;
     private long timeMs1 = interval.truncateTimeToColumnInterval(ZonedDateTime.now().toInstant().toEpochMilli());
-    private long timeMs2 = interval.truncateTimeToColumnInterval(Instant.ofEpochMilli(timeMs1).plus(1, ChronoUnit.MINUTES).toEpochMilli());
+    private long timeMs2 = interval.truncateTimeToColumnInterval(Instant.ofEpochMilli(timeMs1).plus(5, ChronoUnit.DAYS).toEpochMilli());
 
     private String tag1Str = "tag1";
     private String tag1Val1Str = tag1Str + "val1";
@@ -95,8 +95,8 @@ public class HBaseDataLoadIT extends AbstractAppIT {
             StatisticConfiguration.FIELD_NAME_DATE_TIME,
             ExpressionTerm.Condition.BETWEEN,
             String.format("%s,%s",
-                    DateUtil.createNormalDateTimeString(Instant.now().minus(10, ChronoUnit.MINUTES).toEpochMilli()),
-                    DateUtil.createNormalDateTimeString(Instant.now().plus(10, ChronoUnit.MINUTES).toEpochMilli())));
+                    DateUtil.createNormalDateTimeString(Instant.now().minus(10, ChronoUnit.DAYS).toEpochMilli()),
+                    DateUtil.createNormalDateTimeString(Instant.now().plus(10, ChronoUnit.DAYS).toEpochMilli())));
 
     private ExpressionItem tag1Term = new ExpressionTerm(
             tag1Str,
@@ -321,6 +321,99 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         //should get nothing back as the requested tagvalue is not in the store
         runQuery(statisticsService, queryNoDataFound, statisticConfigurationEntity, 0);
+    }
+
+    @Test
+    public void testDateHandling_missingDateTerm() {
+
+        StatisticType statisticType = StatisticType.COUNT;
+
+        //Put time in the statName to allow us to re-run the test without an empty HBase
+        String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString();
+
+        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(statisticType, statNameStr);
+
+        Query query = new Query(
+                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new ExpressionOperator(true, ExpressionOperator.Op.AND));
+
+        //both records should come back
+        runQuery(statisticsService, query, statisticConfigurationEntity, 2);
+    }
+
+    @Test
+    public void testDateHandling_equals() {
+
+        StatisticType statisticType = StatisticType.COUNT;
+
+        //Put time in the statName to allow us to re-run the test without an empty HBase
+        String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString();
+
+        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(statisticType, statNameStr);
+
+        //truncate the original stat time down to the interval so we can find it with an EQUALS
+        long time = Instant.ofEpochMilli(timeMs1).truncatedTo(ChronoUnit.DAYS).toEpochMilli();
+
+        ExpressionItem dateTerm = new ExpressionTerm(
+                StatisticConfiguration.FIELD_NAME_DATE_TIME,
+                ExpressionTerm.Condition.EQUALS,
+                DateUtil.createNormalDateTimeString(time));
+
+        Query query = new Query(
+                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm));
+
+        //only find the the one we equal
+        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, query, statisticConfigurationEntity, 1);
+        assertThat(dataPoints.get(0).getTimeMs()).isEqualTo(time);
+    }
+
+    private StatisticConfigurationEntity loadStatData(final StatisticType statisticType, final String statNameStr) {
+        StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
+                statNameStr,
+                statisticType,
+                interval.columnInterval(),
+                StatisticRollUpType.ALL)
+                .addFields(tag1Str, tag2Str)
+                .build();
+
+        StatisticConfigurationEntityHelper.addStatConfig(
+                sessionFactory,
+                statisticConfigurationEntityMarshaller,
+                statisticConfigurationEntity);
+
+        UID statName = uniqueIdCache.getOrCreateId(statNameStr);
+        assertThat(statName).isNotNull();
+
+        StatKey statKey1 = new StatKey( statName,
+                rollUpBitMask,
+                interval,
+                timeMs1,
+                new TagValue(tag1, tag1val1),
+                new TagValue(tag2, tag2val1));
+
+        long statValue1 = 100L;
+
+        StatAggregate statAggregate1 = new CountAggregate(statValue1);
+
+        Map<StatKey, StatAggregate> aggregatedEvents = new HashMap<>();
+        aggregatedEvents.put(statKey1, statAggregate1);
+
+        StatKey statKey2 = new StatKey( statName,
+                rollUpBitMask,
+                interval,
+                timeMs2,
+                new TagValue(tag1, tag1val1),
+                new TagValue(tag2, tag2val2));
+
+        long statValue2 = 200L;
+
+        StatAggregate statAggregate2 = new CountAggregate(statValue2);
+
+        aggregatedEvents.put(statKey2, statAggregate2);
+
+        statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
+        return statisticConfigurationEntity;
     }
 
     private List<StatisticDataPoint> runQuery(

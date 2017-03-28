@@ -284,6 +284,9 @@ public class HBaseStatisticsService implements StatisticsService {
             if (timeParts.size() != 2) {
                 throw new RuntimeException("BETWEEN DateTime term must have two parts, term: " + dateTerm.toString());
             }
+            if (timeParts.get(0) > timeParts.get(1)) {
+                throw new RuntimeException("The first time part should be before the second time part, term: " + dateTerm.toString());
+            }
         } else {
             if (timeParts.size() != 1) {
                 throw new RuntimeException(String.format("%s DateTime term must have just one part, term: %s", dateTerm.getCondition(), dateTerm.toString()));

@@ -23,6 +23,7 @@ package stroom.stats.hbase;
 
 import stroom.stats.api.StatisticType;
 import stroom.stats.common.FindEventCriteria;
+import stroom.stats.common.Period;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.exception.StatisticsException;
 import stroom.stats.common.rollup.RollUpBitMask;
@@ -38,6 +39,7 @@ import stroom.stats.util.logging.LambdaLogger;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -141,7 +143,13 @@ public class EventStores {
         // serve this query.
         EventStoreTimeIntervalEnum bestFitInterval;
 
-        final long periodMillis = criteria.getPeriod().duration();
+        Period effectivePeriod = buildEffectivePeriod(criteria);
+
+        final long periodMillis = effectivePeriod.duration();
+
+        if (periodMillis == 0) {
+            throw new RuntimeException(String.format("Not possible to calculate a best fit store for a zero length time period"));
+        }
 
         // Work out which store to pull data from based on the period requested
         // and an optimum number of data points
@@ -167,33 +175,45 @@ public class EventStores {
         // no/partial results back. It is possible
         // that the purge has not run or the purge retention has changed but
         // there is not a lot we can do to allow for
-        // that.
-        while (bestFitStore.isTimeInsidePurgeRetention(criteria.getPeriod().getFrom()) == false) {
-            bestFitStore = eventStoreMap
-                    .get(EventStoreTimeIntervalHelper.getNextBiggest(bestFitStore.getTimeInterval()));
+        // that. To support queries with no date term we will always return the largest store as a last resort
+        //irrespective of the purge retention
+        while (bestFitStore.isTimeInsidePurgeRetention(effectivePeriod.getFrom()) == false) {
+            EventStore nextBiggestStore = eventStoreMap.get(EventStoreTimeIntervalHelper.getNextBiggest(bestFitStore.getTimeInterval()));
 
-            if (bestFitStore == null) {
+            if (nextBiggestStore == null) {
                 // there is no next biggest so no point continuing
                 break;
             }
-
-            if (bestFitStore.getTimeInterval().equals(EventStoreTimeIntervalHelper.getLargestInterval())) {
-                // already at the biggest so break out and use this one and
-                // return null as there is no point in running
-                // the search if there is no data for this stat in any stores
-                bestFitStore = null;
-                break;
-            }
+            bestFitStore = nextBiggestStore;
         }
-        final EventStoreTimeIntervalEnum bestFitBasedOnRetention = bestFitStore.getTimeInterval();
+        final EventStoreTimeIntervalEnum bestFitBasedOnRetention = bestFitStore != null ? bestFitStore.getTimeInterval() : null;
+        bestFitInterval = bestFitBasedOnRetention;
 
         LOGGER.info("Using event store [{}] for search.  Best fit based on: period - [{}], data source - [{}] & retention - [{}]",
-                bestFitStore.getTimeInterval().longName(),
-                bestFitBasedOnPeriod.longName(),
-                bestFitBasedOnDataSource.longName(),
-                bestFitBasedOnRetention.longName());
+                nullSafePrintInterval(bestFitInterval),
+                nullSafePrintInterval(bestFitBasedOnPeriod),
+                nullSafePrintInterval(bestFitBasedOnDataSource),
+                nullSafePrintInterval(bestFitBasedOnRetention));
 
         return bestFitStore;
+    }
+
+    private String nullSafePrintInterval(EventStoreTimeIntervalEnum interval) {
+        if (interval == null) {
+            return "NULL";
+        } else {
+            return interval.longName();
+        }
+    }
+
+    /**
+     * If parts are missing from the period then constrain it using the epoch and/or now
+     */
+    private Period buildEffectivePeriod(final FindEventCriteria criteria) {
+        Long from = criteria.getPeriod().getFrom();
+        Long to = criteria.getPeriod().getTo();
+        return new Period(from != null ? from : 0, to != null ? to : Instant.now().toEpochMilli());
+
     }
 
     public StatisticDataSet getStatisticsData(final FindEventCriteria criteria,
@@ -203,33 +223,19 @@ public class EventStores {
             throw new StatisticsException("Results must be requested from a given period");
         }
 
-        // Determine what duration we are requesting.
-        final long duration = criteria.getPeriod().getTo() - criteria.getPeriod().getFrom();
-        if (duration < 0) {
-            throw new StatisticsException("The from time must be less than the to time");
-        }
-
         // Try to determine which store holds the data precision we will need to
         // serve this query.
-        EventStore bestFit;
+        EventStore bestFit = findBestFit(criteria, statisticConfiguration);
 
-        bestFit = findBestFit(criteria, statisticConfiguration);
-
-        LOGGER.debug("using event store: " + (bestFit == null ? "NULL" : bestFit.getTimeInterval().longName()));
+        LOGGER.debug("Using event store: " + bestFit.getTimeInterval().longName());
 
         StatisticDataSet statisticDataSet;
 
         final RollUpBitMask rollUpBitMask = HBaseStatisticsService.buildRollUpBitMaskFromCriteria(criteria,
                 statisticConfiguration);
 
-        if (bestFit == null) {
-            LOGGER.debug("No stats exist for this period and criteria so returning an empty chartData object");
-            final String statisticName = criteria.getStatisticName();
-            statisticDataSet = new StatisticDataSet(statisticName, statisticConfiguration.getStatisticType());
-        } else {
-            // Get results from the selected event store.
-            statisticDataSet = bestFit.getStatisticsData(uidCache, statisticConfiguration, rollUpBitMask, criteria);
-        }
+        // Get results from the selected event store.
+        statisticDataSet = bestFit.getStatisticsData(uidCache, statisticConfiguration, rollUpBitMask, criteria);
 
         return statisticDataSet;
     }

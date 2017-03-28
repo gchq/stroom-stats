@@ -606,8 +606,11 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      * @param cellValueLength The length of the cell value within bytes
      * @return
      */
-    private StatisticDataPoint buildValueDataPoint(final long fullTimestamp, final List<StatisticTag> tags,
-                                                   final byte[] bytes, final int cellValueOffset, final int cellValueLength) {
+    private StatisticDataPoint buildValueDataPoint(final long fullTimestamp,
+                                                   final List<StatisticTag> tags,
+                                                   final byte[] bytes,
+                                                   final int cellValueOffset,
+                                                   final int cellValueLength) {
         final ValueCellValue cellValue = new ValueCellValue(bytes, cellValueOffset, cellValueLength);
 
         return StatisticDataPoint.valueInstance(fullTimestamp, timeInterval.columnInterval(), tags,
@@ -616,43 +619,22 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
     @Override
     public boolean doesStatisticExist(final UniqueIdCache uniqueIdCache,
-                                      final StatisticConfiguration statisticConfiguration, final RollUpBitMask rollUpBitMask, final Period period) {
+                                      final StatisticConfiguration statisticConfiguration,
+                                      final RollUpBitMask rollUpBitMask,
+                                      final Period period) {
         boolean isFound = false;
         final String statName = statisticConfiguration.getName();
 
         final UID statNameUid = uniqueIdCache.getUniqueIdOrDefault(statName);
 
-        Scan scan = new Scan();
-
-        //TODO probably can use buildBasicScan() here
-        if (period.getFrom() != null) {
-            final RowKey startRowKey = rowKeyBuilder.buildStartKey(statisticConfiguration.getName(), rollUpBitMask,
-                    period.getFrom());
-            scan.setStartRow(startRowKey.asByteArray());
-        }
-
-        if (period.getTo() != null) {
-            // need to subtract one from the period to time as it is exclusive
-            // and we want to work from an inclusive
-            // time
-            final RowKey endRowKeyExclusive = rowKeyBuilder.buildEndKey(statName, rollUpBitMask,
-                    period.getTo() - 1L);
-            scan.setStopRow(endRowKeyExclusive.asByteArray());
-        }
+        Scan scan = buildBasicScan(rollUpBitMask, period, statisticConfiguration.getStatisticType(), statName);
 
         // filter on rows with a key starting with the UID of our stat name
         final Filter prefixFilter = new PrefixFilter(statNameUid.getUidBytes());
-
         // filter on the first row found
         final Filter pageFilter = new PageFilter(1);
-
         final Filter keyOnlyFilter = new KeyOnlyFilter();
-
-        final FilterList filters = new FilterList();
-        filters.addFilter(prefixFilter);
-        filters.addFilter(pageFilter);
-        filters.addFilter(keyOnlyFilter);
-
+        final FilterList filters = new FilterList(prefixFilter, pageFilter, keyOnlyFilter);
         scan.setFilter(filters);
 
         final Table tableInterface = getTable();
@@ -660,16 +642,12 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
         try {
             // the page filter may return more than one row as it is run on each
-            // region so you may get one per
-            // region.
-            // we just want the first one we find
-
+            // region so you may get one per region. We just want the first one we find
             final Result result = scanner.next();
 
             if (result != null && result.getRow() != null) {
                 isFound = true;
             }
-
         } catch (final Throwable t) {
             closeScanner(scanner);
             closeTable(tableInterface);
@@ -680,7 +658,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         }
 
         return isFound;
-
     }
 
     @Override
@@ -774,8 +751,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         scan.setCaching(1_000);
 
         // add a keyOnlyFilter so we only get back the keys and not the data
-        final FilterList filters = new FilterList();
-        filters.addFilter(new KeyOnlyFilter());
+        final FilterList filters = new FilterList(new KeyOnlyFilter());
         scan.setFilter(filters);
 
         int rowCount = 0;
@@ -874,8 +850,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                 .getUidBytes();
 
         // add a keyOnlyFilter so we only get back the keys and not the data
-        final FilterList filters = new FilterList();
-        filters.addFilter(new KeyOnlyFilter());
+        final FilterList filters = new FilterList(new KeyOnlyFilter());
 
         final Scan scan = new Scan()
                 .setRowPrefixFilter(bRowKey)
