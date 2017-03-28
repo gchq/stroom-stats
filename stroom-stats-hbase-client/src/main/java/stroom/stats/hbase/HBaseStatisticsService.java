@@ -71,14 +71,17 @@ public class HBaseStatisticsService implements StatisticsService {
 
     public static final String ENGINE_NAME = "hbase";
 
-    private static final List<ExpressionTerm.Condition> SUPPORTED_DATE_CONDITIONS = Arrays
-            .asList(new ExpressionTerm.Condition[]{
-                    ExpressionTerm.Condition.BETWEEN,
-                    ExpressionTerm.Condition.EQUALS,
-                    ExpressionTerm.Condition.LESS_THAN,
-                    ExpressionTerm.Condition.LESS_THAN_OR_EQUAL_TO,
-                    ExpressionTerm.Condition.GREATER_THAN,
-                    ExpressionTerm.Condition.GREATER_THAN_OR_EQUAL_TO});
+    private static final List<ExpressionTerm.Condition> SUPPORTED_DATE_CONDITIONS = Arrays.asList(
+            ExpressionTerm.Condition.BETWEEN,
+            ExpressionTerm.Condition.EQUALS,
+            ExpressionTerm.Condition.LESS_THAN,
+            ExpressionTerm.Condition.LESS_THAN_OR_EQUAL_TO,
+            ExpressionTerm.Condition.GREATER_THAN,
+            ExpressionTerm.Condition.GREATER_THAN_OR_EQUAL_TO);
+
+    private static final List<String> SUPPORTED_QUERYABLE_STATIC_FIELDS = Arrays.asList(
+            StatisticConfiguration.FIELD_NAME_DATE_TIME,
+            StatisticConfiguration.FIELD_NAME_PRECISION);
 
     private final EventStores eventStores;
     private final StatisticConfigurationValidator statisticConfigurationValidator;
@@ -120,31 +123,16 @@ public class HBaseStatisticsService implements StatisticsService {
                     "The top level operator for the query must be one of [" + ExpressionOperator.Op.values() + "]");
         }
 
-        final List<ExpressionItem> childExpressions = topLevelExpressionOperator.getChildren();
 
-        List<ExpressionTerm> dateTerms = validateDateTerms(childExpressions);
+        Optional<ExpressionTerm> optPrecisionTerm = validateSpecialTerm(topLevelExpressionOperator, StatisticConfiguration.FIELD_NAME_PRECISION);
+        Optional<ExpressionTerm> optDateTimeTerm = validateSpecialTerm(topLevelExpressionOperator, StatisticConfiguration.FIELD_NAME_DATE_TIME);
 
-        //TODO Factor out this query validation
-        // ensure we have a date term
-        if (dateTerms.size() > 1) {
-            throw new UnsupportedOperationException(
-                    "Search queries on the statistic store must contain one term using the '"
-                            + StatisticConfiguration.FIELD_NAME_DATE_TIME
-                            + "' field with one of the following conditions [" + SUPPORTED_DATE_CONDITIONS.toString()
-                            + "].  Please amend the query");
-        }
-
-        // ensure the value field is not used in the query terms
-        query.getExpression().getChildren().forEach(expressionItem -> {
-            if (expressionItem instanceof ExpressionTerm
-                    && ((ExpressionTerm) expressionItem).getValue().contains(StatisticConfiguration.FIELD_NAME_VALUE)) {
-                throw new UnsupportedOperationException("Search queries containing the field '"
-                        + StatisticConfiguration.FIELD_NAME_VALUE + "' are not supported.  Please remove it from the query");
-            }
-        });
+        optDateTimeTerm.ifPresent(HBaseStatisticsService::validateDateTerm);
+        Optional<EventStoreTimeIntervalEnum> optInterval = optPrecisionTerm.flatMap(precisionTerm ->
+                Optional.of(validatePrecisionTerm(precisionTerm)));
 
         // if we have got here then we have a single BETWEEN date term, so parse it.
-        final Range<Long> range = extractRange(dateTerms.size() == 1 ? dateTerms.get(0) : null, searchRequest.getDateTimeLocale(), nowEpochMilli);
+        final Range<Long> range = extractRange(optDateTimeTerm.orElse(null), searchRequest.getDateTimeLocale(), nowEpochMilli);
 
         final List<ExpressionTerm> termNodesInFilter = new ArrayList<>();
 
@@ -186,13 +174,13 @@ public class HBaseStatisticsService implements StatisticsService {
         final FilterTermsTree filterTermsTree = FilterTermsTreeBuilder
                 .convertExpresionItemsTree(topLevelExpressionOperator, blackListedFieldNames);
 
-        final FindEventCriteria criteria = FindEventCriteria.builder(new Period(range.getFrom(), range.getTo()), statisticConfiguration.getName())
+        final FindEventCriteria.FindEventCriteriaBuilder criteriaBuilder = FindEventCriteria.builder(new Period(range.getFrom(), range.getTo()), statisticConfiguration.getName())
                 .setFilterTermsTree(filterTermsTree)
-                .setRolledUpFieldNames(rolledUpFieldNames)
-                .build();
+                .setRolledUpFieldNames(rolledUpFieldNames);
 
-        LOGGER.info("Searching statistics store with criteria: {}", criteria);
-        return criteria;
+        optInterval.ifPresent(criteriaBuilder::setInterval);
+
+        return criteriaBuilder.build();
     }
 
     /**
@@ -201,32 +189,63 @@ public class HBaseStatisticsService implements StatisticsService {
      * It may be possible to instead scan with just the statName and mask prefix and
      * then add date handling logic into the custom filter, but this will likely be slower
      */
-    private static List<ExpressionTerm> validateDateTerms(final List<ExpressionItem> childExpressions) {
-        List<ExpressionTerm> dateTerms = new ArrayList<>();
-        if (childExpressions != null) {
-            for (final ExpressionItem expressionItem : childExpressions) {
-                if (expressionItem instanceof ExpressionTerm) {
-                    final ExpressionTerm expressionTerm = (ExpressionTerm) expressionItem;
+    private static void validateDateTerm(final ExpressionTerm dateTimeTerm) throws RuntimeException {
+        Preconditions.checkNotNull(dateTimeTerm);
+        Preconditions.checkNotNull(dateTimeTerm.getCondition());
 
-                    if (expressionTerm.getField() == null) {
-                        throw new IllegalArgumentException("Expression term does not have a field specified");
-                    }
-
-                    if (expressionTerm.getField().equals(StatisticConfiguration.FIELD_NAME_DATE_TIME)) {
-
-                        if (SUPPORTED_DATE_CONDITIONS.contains(expressionTerm.getCondition())) {
-                            dateTerms.add(expressionTerm);
-                        }
-                    }
-                } else if (expressionItem instanceof ExpressionOperator) {
-                    if (((ExpressionOperator) expressionItem).getOp().getDisplayValue() == null) {
-                        throw new IllegalArgumentException(
-                                "An operator in the query is missing a type, it should be one of " + ExpressionOperator.Op.values());
-                    }
-                }
-            }
+        if (!SUPPORTED_DATE_CONDITIONS.contains(dateTimeTerm.getCondition())) {
+            throw new RuntimeException(String.format("Date Time expression has an invalid condition %s, should be one of %s",
+                    dateTimeTerm.getCondition(), SUPPORTED_DATE_CONDITIONS));
         }
-        return dateTerms;
+    }
+
+    private static EventStoreTimeIntervalEnum validatePrecisionTerm(final ExpressionTerm precisionTerm) {
+        Preconditions.checkNotNull(precisionTerm);
+        Preconditions.checkNotNull(precisionTerm.getValue());
+        EventStoreTimeIntervalEnum interval;
+        try {
+            interval = EventStoreTimeIntervalEnum.valueOf(precisionTerm.getValue().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(String.format("Precision term value %s is not a valid time interval",
+                    precisionTerm.getValue()), e);
+        }
+        return interval;
+    }
+
+    /**
+     * Ensure the the passed fieldName appears no more than once in the tree if it does appear
+     * it must be directly below at root operator of AND. This is used for special fields that have to
+     * be treated differently and cannot just be sprinkled round the boolean tree
+     */
+    private static Optional<ExpressionTerm> validateSpecialTerm(final ExpressionOperator rootOperator,
+                                                                final String fieldName) throws RuntimeException {
+        Preconditions.checkNotNull(rootOperator);
+        Preconditions.checkNotNull(fieldName);
+
+        ExpressionOperator.Op expectedRootOp = ExpressionOperator.Op.AND;
+        int expectedPathLength = 2;
+        List<List<ExpressionItem>> foundPaths = findFieldsInExpressionTree(rootOperator, fieldName);
+
+        if (foundPaths.size() > 1) {
+            throw new RuntimeException(String.format("Field %s is only allowed to appear once in the expression tree", fieldName));
+        } else if (foundPaths.size() == 1) {
+            List<ExpressionItem> path = foundPaths.get(0);
+
+            if (rootOperator.getOp().equals(expectedRootOp) && path.size() == expectedPathLength) {
+                return Optional.of((ExpressionTerm) path.get(expectedPathLength - 1));
+            } else {
+                throw new RuntimeException(String.format("Field %s must appear as a direct child to the root operator which must be %s",
+                        fieldName, expectedRootOp));
+            }
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    List<String> getQueryableFields(final StatisticConfiguration statisticConfiguration) {
+        List<String> queryableFields = new ArrayList<>(statisticConfiguration.getFieldNames());
+        queryableFields.addAll(SUPPORTED_QUERYABLE_STATIC_FIELDS);
+        return queryableFields;
     }
 
     @Deprecated //now done in kafka streams
@@ -469,6 +488,40 @@ public class HBaseStatisticsService implements StatisticsService {
             return DateExpressionParser.parse(value, timeZoneId, nowEpochMilli);
         } catch (final Exception e) {
             throw new RuntimeException("DateTime term has an invalid '" + type + "' value of '" + value + "'");
+        }
+    }
+
+    private static List<List<ExpressionItem>> findFieldsInExpressionTree(final ExpressionItem rootItem,
+                                                                         final String targetFieldName) {
+
+        List<List<ExpressionItem>> foundPaths = new ArrayList<>();
+        List<ExpressionItem> currentParents = new ArrayList<>();
+        currentParents.add(rootItem);
+        walkExpressionTree(rootItem, targetFieldName, currentParents, foundPaths);
+        return foundPaths;
+    }
+
+    private static void walkExpressionTree(final ExpressionItem item,
+                                           final String targetFieldName,
+                                           final List<ExpressionItem> currentParents,
+                                           final List<List<ExpressionItem>> foundPaths) {
+
+        if (item instanceof ExpressionTerm) {
+            ExpressionTerm term = (ExpressionTerm) item;
+            Preconditions.checkNotNull(term.getField());
+            if (term.getField().equals(targetFieldName) && term.getEnabled()) {
+                List<ExpressionItem> path = new ArrayList<>(currentParents);
+                path.add(item);
+                foundPaths.add(path);
+            }
+        } else if (item instanceof ExpressionOperator) {
+            ExpressionOperator op = (ExpressionOperator) item;
+            Preconditions.checkNotNull(op.getChildren());
+            op.getChildren().stream()
+                    .filter(ExpressionItem::getEnabled)
+                    .forEach(child -> walkExpressionTree(child, targetFieldName, currentParents, foundPaths));
+        } else {
+            throw new RuntimeException(String.format("Unexpected instance type %s", item.getClass().getName()));
         }
     }
 }
