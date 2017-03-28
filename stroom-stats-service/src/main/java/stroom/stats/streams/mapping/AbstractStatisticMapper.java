@@ -209,6 +209,7 @@ public abstract class AbstractStatisticMapper {
         StatisticConfiguration statisticConfiguration = statisticWrapper.getOptionalStatisticConfiguration()
                 .orElseThrow(() -> new RuntimeException("Statistic configuration should never be null here as it has already been through validation"));
 
+        //bad jaxb naming
         final int tagListSize = statistic.getTags().getTag().size();
         final StatisticRollUpType rollUpType = statisticConfiguration.getRollUpType();
 
@@ -253,5 +254,4 @@ public abstract class AbstractStatisticMapper {
             return keyValuePerms;
         }
     }
-
 }

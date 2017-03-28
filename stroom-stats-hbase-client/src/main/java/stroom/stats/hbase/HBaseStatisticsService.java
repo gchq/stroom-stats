@@ -109,14 +109,10 @@ public class HBaseStatisticsService implements StatisticsService {
         Query query = searchRequest.getQuery();
         Preconditions.checkNotNull(query);
 
-
         // Get the current time in millis since epoch.
         final long nowEpochMilli = System.currentTimeMillis();
 
-        // object looks a bit like this
-        // AND
-        // Date Time between 2014-10-22T23:00:00.000Z,2014-10-23T23:00:00.000Z
-
+        // object looks a bit like this AND Date Time between 2014-10-22T23:00:00.000Z,2014-10-23T23:00:00.000Z
         final ExpressionOperator topLevelExpressionOperator = searchRequest.getQuery().getExpression();
 
         if (topLevelExpressionOperator == null || topLevelExpressionOperator.getOp().getDisplayValue() == null) {
@@ -125,43 +121,12 @@ public class HBaseStatisticsService implements StatisticsService {
         }
 
         final List<ExpressionItem> childExpressions = topLevelExpressionOperator.getChildren();
-        int validDateTermsFound = 0;
-        int dateTermsFound = 0;
 
-        // Identify the date term in the search criteria. Currently we must have
-        // a exactly one date term due to the way we have start/stop rowkeys
-        // It may be possible to instead scan with just the statName and mask prefix and
-        // then add date handling logic into the custom filter, but this will likely be slower
-        ExpressionTerm dateTerm = null;
-        if (childExpressions != null) {
-            for (final ExpressionItem expressionItem : childExpressions) {
-                if (expressionItem instanceof ExpressionTerm) {
-                    final ExpressionTerm expressionTerm = (ExpressionTerm) expressionItem;
-
-                    if (expressionTerm.getField() == null) {
-                        throw new IllegalArgumentException("Expression term does not have a field specified");
-                    }
-
-                    if (expressionTerm.getField().equals(StatisticConfiguration.FIELD_NAME_DATE_TIME)) {
-                        dateTermsFound++;
-
-                        if (SUPPORTED_DATE_CONDITIONS.contains(expressionTerm.getCondition())) {
-                            dateTerm = expressionTerm;
-                            validDateTermsFound++;
-                        }
-                    }
-                } else if (expressionItem instanceof ExpressionOperator) {
-                    if (((ExpressionOperator) expressionItem).getOp().getDisplayValue() == null) {
-                        throw new IllegalArgumentException(
-                                "An operator in the query is missing a type, it should be one of " + ExpressionOperator.Op.values());
-                    }
-                }
-            }
-        }
+        List<ExpressionTerm> dateTerms = validateDateTerms(childExpressions);
 
         //TODO Factor out this query validation
         // ensure we have a date term
-        if (dateTermsFound != 1 || validDateTermsFound != 1) {
+        if (dateTerms.size() > 1) {
             throw new UnsupportedOperationException(
                     "Search queries on the statistic store must contain one term using the '"
                             + StatisticConfiguration.FIELD_NAME_DATE_TIME
@@ -178,9 +143,8 @@ public class HBaseStatisticsService implements StatisticsService {
             }
         });
 
-        // if we have got here then we have a single BETWEEN date term, so parse
-        // it.
-        final Range<Long> range = extractRange(dateTerm, searchRequest.getDateTimeLocale(), nowEpochMilli);
+        // if we have got here then we have a single BETWEEN date term, so parse it.
+        final Range<Long> range = extractRange(dateTerms.size() == 1 ? dateTerms.get(0) : null, searchRequest.getDateTimeLocale(), nowEpochMilli);
 
         final List<ExpressionTerm> termNodesInFilter = new ArrayList<>();
 
@@ -231,7 +195,41 @@ public class HBaseStatisticsService implements StatisticsService {
         return criteria;
     }
 
-    // TODO could go futher up the chain so is store agnostic
+    /**
+     * Identify the date term in the search criteria. Currently we must have
+     * a zero or one date terms due to the way we have start/stop rowkeys
+     * It may be possible to instead scan with just the statName and mask prefix and
+     * then add date handling logic into the custom filter, but this will likely be slower
+     */
+    private static List<ExpressionTerm> validateDateTerms(final List<ExpressionItem> childExpressions) {
+        List<ExpressionTerm> dateTerms = new ArrayList<>();
+        if (childExpressions != null) {
+            for (final ExpressionItem expressionItem : childExpressions) {
+                if (expressionItem instanceof ExpressionTerm) {
+                    final ExpressionTerm expressionTerm = (ExpressionTerm) expressionItem;
+
+                    if (expressionTerm.getField() == null) {
+                        throw new IllegalArgumentException("Expression term does not have a field specified");
+                    }
+
+                    if (expressionTerm.getField().equals(StatisticConfiguration.FIELD_NAME_DATE_TIME)) {
+
+                        if (SUPPORTED_DATE_CONDITIONS.contains(expressionTerm.getCondition())) {
+                            dateTerms.add(expressionTerm);
+                        }
+                    }
+                } else if (expressionItem instanceof ExpressionOperator) {
+                    if (((ExpressionOperator) expressionItem).getOp().getDisplayValue() == null) {
+                        throw new IllegalArgumentException(
+                                "An operator in the query is missing a type, it should be one of " + ExpressionOperator.Op.values());
+                    }
+                }
+            }
+        }
+        return dateTerms;
+    }
+
+    @Deprecated //now done in kafka streams
     static RolledUpStatisticEvent generateTagRollUps(final StatisticEvent event,
                                                      final StatisticConfiguration statisticConfiguration) {
         RolledUpStatisticEvent rolledUpStatisticEvent = null;
@@ -267,31 +265,28 @@ public class HBaseStatisticsService implements StatisticsService {
     private static Range<Long> extractRange(final ExpressionTerm dateTerm,
                                             final String timeZoneId,
                                             final long nowEpochMilli) {
+        Preconditions.checkNotNull(timeZoneId);
+        Preconditions.checkArgument(nowEpochMilli > 0, "nowEpochMilli must be > 0");
 
-        final String[] dateArr = dateTerm.getValue().split(",");
+        if (dateTerm == null) {
+            return new Range<>(null, null);
+        }
 
-
-        List<Long> timeParts = Arrays.stream(dateArr)
+        //For a BETWEEN the date term str will look like 'xxxxxxxx,yyyyyyyyy' but for all others will
+        //just be a single date string
+        List<Long> timeParts = Arrays.stream(dateTerm.getValue().split(","))
                 .map(dateStr -> parseDateTime("dateTime", dateStr, timeZoneId, nowEpochMilli)
                         .map(zonedDateTime -> zonedDateTime.toInstant().toEpochMilli())
                         .orElse(null))
                 .collect(Collectors.toList());
-
-//        Long dateTime0 = parseDateTime("from", dateArr[0], timeZoneId, nowEpochMilli)
-//                .map(zonedDateTime -> zonedDateTime.toInstant().toEpochMilli())
-//                .orElse(null);
-//        // add one to make it exclusive
-//        Long dateTime1 = parseDateTime("to", dateArr[1], timeZoneId, nowEpochMilli)
-//                .map(zonedDateTime -> zonedDateTime.toInstant().toEpochMilli() + 1)
-//                .orElse(null);
 
         if (dateTerm.getCondition().equals(ExpressionTerm.Condition.BETWEEN)) {
             if (timeParts.size() != 2) {
                 throw new RuntimeException("BETWEEN DateTime term must have two parts, term: " + dateTerm.toString());
             }
         } else {
-            if (timeParts.size() != 2) {
-                throw new RuntimeException("BETWEEN DateTime term must have two parts, term: " + dateTerm.toString());
+            if (timeParts.size() != 1) {
+                throw new RuntimeException(String.format("%s DateTime term must have just one part, term: %s", dateTerm.getCondition(), dateTerm.toString()));
             }
         }
 
@@ -323,9 +318,7 @@ public class HBaseStatisticsService implements StatisticsService {
                 throw new RuntimeException("Should not have got here, unexpected condition " + dateTerm.getCondition());
         }
 
-        final Range<Long> range = new Range<>(fromMs, toMs);
-
-        return range;
+        return new Range<>(fromMs, toMs);
     }
 
     private static List<List<StatisticTag>> generateStatisticTagPerms(final List<StatisticTag> eventTags,
