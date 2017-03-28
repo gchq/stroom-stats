@@ -123,9 +123,13 @@ public class HBaseStatisticsService implements StatisticsService {
                     "The top level operator for the query must be one of [" + ExpressionOperator.Op.values() + "]");
         }
 
+        Optional<ExpressionTerm> optPrecisionTerm = validateSpecialTerm(
+                topLevelExpressionOperator,
+                StatisticConfiguration.FIELD_NAME_PRECISION);
 
-        Optional<ExpressionTerm> optPrecisionTerm = validateSpecialTerm(topLevelExpressionOperator, StatisticConfiguration.FIELD_NAME_PRECISION);
-        Optional<ExpressionTerm> optDateTimeTerm = validateSpecialTerm(topLevelExpressionOperator, StatisticConfiguration.FIELD_NAME_DATE_TIME);
+        Optional<ExpressionTerm> optDateTimeTerm = validateSpecialTerm(
+                topLevelExpressionOperator,
+                StatisticConfiguration.FIELD_NAME_DATE_TIME);
 
         optDateTimeTerm.ifPresent(HBaseStatisticsService::validateDateTerm);
         Optional<EventStoreTimeIntervalEnum> optInterval = optPrecisionTerm.flatMap(precisionTerm ->
@@ -165,8 +169,7 @@ public class HBaseStatisticsService implements StatisticsService {
             }
         }
 
-        // Date Time is handled spearately to the the filter tree so ignore it
-        // in the conversion
+        // Some fields are handled separately to the the filter tree so ignore it in the conversion
         final Set<String> blackListedFieldNames = new HashSet<>();
         blackListedFieldNames.addAll(rolledUpFieldNames);
         blackListedFieldNames.add(StatisticConfiguration.FIELD_NAME_DATE_TIME);
@@ -175,7 +178,8 @@ public class HBaseStatisticsService implements StatisticsService {
         final FilterTermsTree filterTermsTree = FilterTermsTreeBuilder
                 .convertExpresionItemsTree(topLevelExpressionOperator, blackListedFieldNames);
 
-        final FindEventCriteria.FindEventCriteriaBuilder criteriaBuilder = FindEventCriteria.builder(new Period(range.getFrom(), range.getTo()), statisticConfiguration.getName())
+        final FindEventCriteria.FindEventCriteriaBuilder criteriaBuilder = FindEventCriteria
+                .builder(new Period(range.getFrom(), range.getTo()), statisticConfiguration.getName())
                 .setFilterTermsTree(filterTermsTree)
                 .setRolledUpFieldNames(rolledUpFieldNames);
 
