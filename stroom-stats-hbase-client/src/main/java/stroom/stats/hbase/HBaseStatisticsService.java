@@ -194,6 +194,8 @@ public class HBaseStatisticsService implements StatisticsService {
     private static EventStoreTimeIntervalEnum validatePrecisionTerm(final ExpressionTerm precisionTerm) {
         Preconditions.checkNotNull(precisionTerm);
         Preconditions.checkNotNull(precisionTerm.getValue());
+        Preconditions.checkArgument(ExpressionTerm.Condition.EQUALS.equals(precisionTerm.getCondition()),
+                "Precision field only supports EQUALS as a condition");
         EventStoreTimeIntervalEnum interval;
         try {
             interval = EventStoreTimeIntervalEnum.valueOf(precisionTerm.getValue().toUpperCase());
@@ -219,14 +221,14 @@ public class HBaseStatisticsService implements StatisticsService {
         List<List<ExpressionItem>> foundPaths = findFieldsInExpressionTree(rootOperator, fieldName);
 
         if (foundPaths.size() > 1) {
-            throw new RuntimeException(String.format("Field %s is only allowed to appear once in the expression tree", fieldName));
+            throw new UnsupportedOperationException(String.format("Field %s is only allowed to appear once in the expression tree", fieldName));
         } else if (foundPaths.size() == 1) {
             List<ExpressionItem> path = foundPaths.get(0);
 
             if (rootOperator.getOp().equals(expectedRootOp) && path.size() == expectedPathLength) {
                 return Optional.of((ExpressionTerm) path.get(expectedPathLength - 1));
             } else {
-                throw new RuntimeException(String.format("Field %s must appear as a direct child to the root operator which must be %s",
+                throw new UnsupportedOperationException(String.format("Field %s must appear as a direct child to the root operator which must be %s",
                         fieldName, expectedRootOp));
             }
         } else {
@@ -484,7 +486,6 @@ public class HBaseStatisticsService implements StatisticsService {
 
         List<List<ExpressionItem>> foundPaths = new ArrayList<>();
         List<ExpressionItem> currentParents = new ArrayList<>();
-        currentParents.add(rootItem);
         walkExpressionTree(rootItem, targetFieldName, currentParents, foundPaths);
         return foundPaths;
     }
@@ -494,12 +495,12 @@ public class HBaseStatisticsService implements StatisticsService {
                                            final List<ExpressionItem> currentParents,
                                            final List<List<ExpressionItem>> foundPaths) {
 
+        currentParents.add(item);
         if (item instanceof ExpressionTerm) {
             ExpressionTerm term = (ExpressionTerm) item;
             Preconditions.checkArgument(term.getField() != null);
             if (term.getField().equals(targetFieldName) && term.enabled()) {
                 List<ExpressionItem> path = new ArrayList<>(currentParents);
-                path.add(item);
                 foundPaths.add(path);
             }
         } else if (item instanceof ExpressionOperator) {

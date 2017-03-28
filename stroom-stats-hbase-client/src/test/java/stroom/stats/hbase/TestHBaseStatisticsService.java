@@ -254,7 +254,7 @@ public class TestHBaseStatisticsService {
         statisticConfiguration.addCustomRollupMask(new MockCustomRollupMask(new ArrayList<Integer>())); // no
         statisticConfiguration.addCustomRollupMask(new MockCustomRollupMask(Arrays.asList(0, 1))); // tags
         statisticConfiguration.addCustomRollupMask(new MockCustomRollupMask(Arrays.asList(1))); // tag
-                                                                                                // 2
+        // 2
         statisticConfiguration.setRollUpType(statisticRollUpType);
 
         return statisticConfiguration;
@@ -415,13 +415,116 @@ public class TestHBaseStatisticsService {
 
         final FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
 
-        Assert.assertNotNull(criteria);
-        Assert.assertEquals(fromDate, criteria.getPeriod().getFrom().longValue());
-        Assert.assertEquals(toDate + 1, criteria.getPeriod().getTo().longValue());
+    }
 
-        // only a date term so the filter tree has noting in it as the date is
-        // handled outside of the tree
-        Assert.assertEquals("[MyField=xxx]", criteria.getFilterTermsTree().toString());
+    @Test(expected = UnsupportedOperationException.class)
+    public void testBuildCriteria_dateTermTooDeep() throws Exception {
+        final String fromDateStr = "2000-01-01T00:00:00.000Z";
+        final long fromDate = DateUtil.parseNormalDateTimeString(fromDateStr);
+        final String toDateStr = "2010-01-01T00:00:00.000Z";
+        final long toDate = DateUtil.parseNormalDateTimeString(toDateStr);
+
+        final String dateTerm = fromDateStr + "," + toDateStr;
+
+        final ExpressionOperator childOp = new ExpressionOperator(true, Op.AND,
+                new ExpressionTerm(StatisticConfiguration.FIELD_NAME_DATE_TIME, Condition.BETWEEN, dateTerm),
+                new ExpressionTerm("MyField1", Condition.EQUALS, "xxx")
+        );
+
+        final ExpressionOperator rootOperator = new ExpressionOperator(true, Op.AND,
+                childOp,
+                new ExpressionTerm("MyField2", Condition.EQUALS, "xxx")
+        );
+
+        final Query query = new Query(null, rootOperator, null);
+
+        final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
+        dataSource.setName("MyDataSource");
+
+        HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
+
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testBuildCriteria_tooManyDateTerms() throws Exception {
+        final String fromDateStr = "2000-01-01T00:00:00.000Z";
+        final long fromDate = DateUtil.parseNormalDateTimeString(fromDateStr);
+        final String toDateStr = "2010-01-01T00:00:00.000Z";
+        final long toDate = DateUtil.parseNormalDateTimeString(toDateStr);
+
+        final String dateTerm = fromDateStr + "," + toDateStr;
+
+        final ExpressionOperator childOp = new ExpressionOperator(true, Op.AND,
+                new ExpressionTerm(StatisticConfiguration.FIELD_NAME_DATE_TIME, Condition.BETWEEN, dateTerm),
+                new ExpressionTerm("MyField1", Condition.EQUALS, "xxx")
+        );
+
+        final ExpressionOperator rootOperator = new ExpressionOperator(true, Op.AND,
+                new ExpressionTerm(StatisticConfiguration.FIELD_NAME_DATE_TIME, Condition.BETWEEN, dateTerm),
+                new ExpressionTerm("MyField2", Condition.EQUALS, "xxx"),
+                new ExpressionTerm(StatisticConfiguration.FIELD_NAME_DATE_TIME, Condition.BETWEEN, dateTerm)
+        );
+
+        final Query query = new Query(null, rootOperator, null);
+
+        final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
+        dataSource.setName("MyDataSource");
+
+        HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testBuildCriteria_precisionTooDeep() throws Exception {
+
+        final ExpressionOperator childOp = new ExpressionOperator(true, Op.AND,
+                new ExpressionTerm(StatisticConfiguration.FIELD_NAME_PRECISION, Condition.EQUALS, "minute"),
+                new ExpressionTerm("MyField1", Condition.EQUALS, "xxx")
+        );
+
+        final ExpressionOperator rootOperator = new ExpressionOperator(true, Op.AND,
+                childOp,
+                new ExpressionTerm("MyField2", Condition.EQUALS, "xxx")
+        );
+
+        final Query query = new Query(null, rootOperator, null);
+
+        final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
+        dataSource.setName("MyDataSource");
+
+        HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testBuildCriteria_tooManyPrecisionTerms() throws Exception {
+
+        final ExpressionOperator rootOperator = new ExpressionOperator(true, Op.AND,
+                new ExpressionTerm(StatisticConfiguration.FIELD_NAME_PRECISION, Condition.EQUALS, "minute"),
+                new ExpressionTerm("MyField2", Condition.EQUALS, "xxx"),
+                new ExpressionTerm(StatisticConfiguration.FIELD_NAME_PRECISION, Condition.EQUALS, "minute")
+        );
+
+        final Query query = new Query(null, rootOperator, null);
+
+        final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
+        dataSource.setName("MyDataSource");
+
+        HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testBuildCriteria_wrongPrecisionCondition() throws Exception {
+
+        final ExpressionOperator rootOperator = new ExpressionOperator(true, Op.AND,
+                new ExpressionTerm(StatisticConfiguration.FIELD_NAME_PRECISION, Condition.IN_DICTIONARY, "minute"),
+                new ExpressionTerm("MyField2", Condition.EQUALS, "xxx")
+        );
+
+        final Query query = new Query(null, rootOperator, null);
+
+        final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
+        dataSource.setName("MyDataSource");
+
+        HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
     }
 
     private SearchRequest wrapQuery(Query query) {
