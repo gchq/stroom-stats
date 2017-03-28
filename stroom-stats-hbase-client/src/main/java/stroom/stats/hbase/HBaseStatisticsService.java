@@ -332,10 +332,10 @@ public class HBaseStatisticsService implements StatisticsService {
                 toMs = timeParts.get(0) + 1; //make it exclusive
                 break;
             case GREATER_THAN:
-                fromMs = timeParts.get(0);
+                fromMs = timeParts.get(0) + 1; //make it exclusive
                 break;
             case GREATER_THAN_OR_EQUAL_TO:
-                toMs = timeParts.get(0) + 1; //make it exclusive
+                fromMs = timeParts.get(0);
                 break;
             default:
                 throw new RuntimeException("Should not have got here, unexpected condition " + dateTerm.getCondition());
