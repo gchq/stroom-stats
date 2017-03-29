@@ -25,9 +25,9 @@ import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.streams.KafkaStreamService;
 import stroom.stats.streams.TopicNameFactory;
 import stroom.stats.test.StatisticConfigurationEntityHelper;
-import stroom.stats.testdata.DummyStat;
-import stroom.stats.testdata.KafkaHelper;
-import stroom.stats.testdata.TestData;
+import stroom.stats.correlation.testdata.DummyStat;
+import stroom.stats.correlation.testdata.KafkaHelper;
+import stroom.stats.correlation.testdata.TestData;
 import stroom.stats.xml.StatisticsMarshaller;
 import stroom.util.thread.ThreadUtil;
 

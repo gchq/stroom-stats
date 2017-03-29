@@ -1,4 +1,4 @@
-package stroom.stats.testdata;
+package stroom.stats.correlation.testdata;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;

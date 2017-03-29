@@ -1,4 +1,4 @@
-package stroom.stats.testdata;
+package stroom.stats.correlation.testdata;
 
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.schema.Statistics;
