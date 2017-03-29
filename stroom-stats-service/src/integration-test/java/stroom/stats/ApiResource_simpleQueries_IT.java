@@ -66,9 +66,8 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
         assertThat(((TableResult)yesterdaySearchResponse.getResults().get(0)).getTotalResults()).isEqualTo(3);
         assertThat(((TableResult)todaySearchResponse.getResults().get(0)).getTotalResults()).isEqualTo(2);
 
-        List<Row> yesterday = yesterdaySearchResponse.getResults().get(0);
-        List<Row> today = todaySearchResponse.getResults().get(0);
-        yesterday.get(0).getValues()
+        List<Row> yesterday = ((TableResult) yesterdaySearchResponse.getResults().get(0)).getRows();
+        List<Row> today = ((TableResult) todaySearchResponse.getResults().get(0)).getRows();
 
         // TODO assert on the correlation
     }
