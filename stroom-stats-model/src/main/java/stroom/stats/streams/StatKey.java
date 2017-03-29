@@ -22,7 +22,6 @@ package stroom.stats.streams;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 import stroom.stats.common.rollup.RollUpBitMask;
-import stroom.stats.hbase.EventStoreTimeIntervalHelper;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.util.bytes.ByteArrayUtils;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -42,6 +41,9 @@ import java.util.List;
  *
  * The underlying UIDs are built on top of existing byte[]s. These byte[]s should not be mutated as StatKey is treated
  * as effectively immutable and caches its hashcode
+ *
+ * The time element in a {@link StatKey} will ALWAYS be truncated down to the nearest {@link EventStoreTimeIntervalEnum}.
+ * This truncation will happen in the public constructors and in certain clone operations
  */
 public class StatKey {
 
@@ -61,7 +63,6 @@ public class StatKey {
     static int TAG_VALUE_PAIR_LENGTH = UID_ARRAY_LENGTH * 2;
     static int TAG_VALUE_PAIRS_OFFSET = TIME_PART_OFFSET + TIME_PART_LENGTH;
 
-    //    private final  byte[] key;
     private final UID statName;
     private final RollUpBitMask rollupMask;
     private EventStoreTimeIntervalEnum interval;
@@ -69,11 +70,17 @@ public class StatKey {
     private final List<TagValue> tagValues;
     private int hashCode;
 
-    public StatKey(final UID statName,
+    private enum TimeTruncation {
+        TRUNCATE,
+        DONT_TRUNCATE
+    }
+
+    private StatKey(final UID statName,
                    final RollUpBitMask rollupMask,
                    final EventStoreTimeIntervalEnum interval,
                    final long timeMs,
-                   final List<TagValue> tagValues) {
+                   final List<TagValue> tagValues,
+                   final TimeTruncation timeTruncation) {
 
         Preconditions.checkNotNull(statName);
         Preconditions.checkNotNull(rollupMask);
@@ -83,9 +90,28 @@ public class StatKey {
         this.statName = statName;
         this.rollupMask = rollupMask;
         this.interval = interval;
-        this.timeMs = interval.truncateTimeToColumnInterval(timeMs);
         this.tagValues = tagValues;
         this.hashCode = buildHashCode();
+        switch (timeTruncation) {
+            case TRUNCATE:
+                this.timeMs = interval.truncateTimeToColumnInterval(timeMs);
+                break;
+            case DONT_TRUNCATE:
+                this.timeMs = timeMs;
+                break;
+            default:
+                throw new IllegalArgumentException(String.format("Unexpected value for timeTruncation: %s", timeTruncation));
+        }
+    }
+
+    public StatKey(final UID statName,
+                   final RollUpBitMask rollupMask,
+                   final EventStoreTimeIntervalEnum interval,
+                   final long timeMs,
+                   final List<TagValue> tagValues) {
+
+        //public constructor so ensure the time is truncated to the time interval
+        this(statName, rollupMask, interval, timeMs, tagValues, TimeTruncation.TRUNCATE);
     }
 
 
@@ -95,8 +121,10 @@ public class StatKey {
                    final long timeMs,
                    final TagValue... tagValues) {
 
-       this(statName, rollupMask, interval, timeMs, Arrays.asList(tagValues));
+        //public constructor so ensure the time is truncated to the time interval
+       this(statName, rollupMask, interval, timeMs, Arrays.asList(tagValues), TimeTruncation.TRUNCATE);
     }
+
     /**
      * Spawns a new {@link StatKey} based on the values of this but with some of
      * the tag values rolled up and a new {@link RollUpBitMask}. The new tag values
@@ -124,17 +152,8 @@ public class StatKey {
                 newTagValues.add(tagValues.get(i));
             }
         }
-        return new StatKey(statName, newRollUpBitMask, interval, timeMs, newTagValues);
-    }
-
-    /**
-     * Shallow copy of this except the interval is changed for the next biggest. Will throw a {@link RuntimeException}
-     * if it is already the biggest.
-     */
-    public StatKey cloneAndIncrementInterval() {
-        EventStoreTimeIntervalEnum newInterval = EventStoreTimeIntervalHelper.getNextBiggest(interval).orElseThrow(() ->
-                new RuntimeException(String.format("Cannot increment current interval %s as it is the biggest interval", interval.toString())));
-        return new StatKey(statName, rollupMask, newInterval, timeMs, tagValues);
+        //time of the new key is unchanged from this so don't truncate
+        return new StatKey(statName, newRollUpBitMask, interval, timeMs, newTagValues, TimeTruncation.DONT_TRUNCATE);
     }
 
     /**
@@ -143,26 +162,8 @@ public class StatKey {
      */
     public StatKey cloneAndChangeInterval(EventStoreTimeIntervalEnum newInterval) {
         Preconditions.checkNotNull(newInterval);
-        return new StatKey(statName, rollupMask, newInterval, timeMs, tagValues);
-    }
-
-    /**
-     * Shallow copy of this instance except the timeMs value is truncated down to the nearest interval
-     */
-    public StatKey cloneAndTruncateTimeToInterval() {
-        long newTimeMs = interval.truncateTimeToColumnInterval(timeMs);
-        return new StatKey(statName, rollupMask, interval, newTimeMs, tagValues);
-    }
-
-    /**
-     * Shallow copy of this instance except the timeMs value is truncated down to the new interval
-     * and the interval is changed to the new interval
-     */
-    public StatKey cloneAndTruncateTimeToInterval(final EventStoreTimeIntervalEnum newInterval) {
-        Preconditions.checkArgument(newInterval.compareTo(this.interval) > 1,
-                "newInterval %s should be larger than interval %s", interval, newInterval);
-        long newTimeMs = interval.truncateTimeToColumnInterval(timeMs);
-        return new StatKey(statName, rollupMask, newInterval, newTimeMs, tagValues);
+        //truncate the time in the new statKey down to the new interval
+        return new StatKey(statName, rollupMask, newInterval, timeMs, tagValues, TimeTruncation.TRUNCATE);
     }
 
     public byte[] getBytes() {
@@ -185,7 +186,8 @@ public class StatKey {
         List<TagValue> tagValues = getTagValues(bytes);
 
         try {
-            StatKey statKey = new StatKey(uid, rollUpBitMask, interval, timeMs, tagValues);
+            //de-serializing so leave time as in its byte form
+            StatKey statKey = new StatKey(uid, rollUpBitMask, interval, timeMs, tagValues, TimeTruncation.DONT_TRUNCATE);
             LOGGER.trace(() -> String.format("De-serializing bytes %s to StatKey %s", ByteArrayUtils.byteArrayToHex(bytes), statKey));
             return statKey;
         } catch (Exception e) {
@@ -197,15 +199,6 @@ public class StatKey {
     public UID getStatName() {
         return statName;
     }
-
-//    public byte[] getStatNameCopy() {
-//        ByteBuffer byteBuffer = statName.duplicate();
-//        byteBuffer.position(0);
-//        byteBuffer.limit(STAT_NAME_PART_LENGTH);
-//        byte[] copy = new byte[STAT_NAME_PART_LENGTH];
-//        byteBuffer.get(copy);
-//        return copy;
-//    }
 
     public RollUpBitMask getRollupMask() {
         return rollupMask;
@@ -279,4 +272,6 @@ public class StatKey {
                 ", tagValues=" + tagValues +
                 '}';
     }
+
+
 }
