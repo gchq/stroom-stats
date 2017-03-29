@@ -19,6 +19,7 @@
 
 package stroom.stats.streams.mapping;
 
+import com.google.common.base.Preconditions;
 import org.apache.kafka.streams.KeyValue;
 import stroom.stats.api.MultiPartIdentifier;
 import stroom.stats.hbase.uid.UniqueIdCache;
@@ -57,9 +58,11 @@ public class CountStatToAggregateFlatMapper extends AbstractStatisticFlatMapper 
      */
     @Override
     public Iterable<KeyValue<StatKey, StatAggregate>> flatMap(String statName, StatisticWrapper statisticWrapper) {
+        Preconditions.checkNotNull(statName);
+        Preconditions.checkNotNull(statisticWrapper);
 
         int maxEventIds = stroomPropertyService.getIntProperty(StatAggregate.PROP_KEY_MAX_AGGREGATED_EVENT_IDS, Integer.MAX_VALUE);
-        Statistics.Statistic statistic = statisticWrapper.getStatistic();
+        Statistics.Statistic statistic = Preconditions.checkNotNull(statisticWrapper.getStatistic());
 
         List<MultiPartIdentifier> eventIds = convertEventIds(statistic, maxEventIds);
 

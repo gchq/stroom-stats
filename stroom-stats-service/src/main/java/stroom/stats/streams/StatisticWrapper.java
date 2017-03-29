@@ -46,6 +46,7 @@ public class StatisticWrapper {
     }
 
     public StatisticWrapper(final Statistics.Statistic statistic, final Optional<StatisticConfiguration> optStatConfig) {
+        //hold the converted time to save doing the conversion again
         this(statistic, optStatConfig, statistic.getTime().toGregorianCalendar().getTimeInMillis(), Optional.empty());
     }
 

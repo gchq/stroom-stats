@@ -21,20 +21,24 @@ package stroom.stats.streams.mapping;
 
 import javaslang.Tuple2;
 import org.apache.kafka.streams.KeyValue;
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.api.MultiPartIdentifier;
 import stroom.stats.api.StatisticType;
 import stroom.stats.common.rollup.RollUpBitMask;
-import stroom.stats.configuration.CustomRollUpMask;
 import stroom.stats.configuration.MockCustomRollupMask;
 import stroom.stats.configuration.MockStatisticConfiguration;
+import stroom.stats.configuration.MockStatisticConfigurationService;
+import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.schema.Statistics;
+import stroom.stats.schema.TagType;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.StatKey;
 import stroom.stats.streams.StatisticWrapper;
@@ -44,12 +48,12 @@ import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.test.StatisticsHelper;
 
 import javax.xml.datatype.DatatypeConfigurationException;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -60,12 +64,14 @@ public class TestCountStatToAggregateFlatMapper {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TestCountStatToAggregateFlatMapper.class);
 
-    UniqueIdCache uniqueIdCache = new MockUniqueIdCache();
-    MockStroomPropertyService mockStroomPropertyService = new MockStroomPropertyService();
+    private MockStatisticConfigurationService mockStatisticConfigurationService;
+    private MockStroomPropertyService mockStroomPropertyService;
+    private CountStatToAggregateFlatMapper countStatToAggregateMapper;
+    private UniqueIdCache uniqueIdCache = new MockUniqueIdCache();
 
-    String statName = "MyStat";
-    String tag1 = "tag1";
-    String tag2 = "tag2";
+    private String statName = "MyStat";
+    private String tag1 = "tag1";
+    private String tag2 = "tag2";
     String tag1val1 = tag1 + "val1";
     String tag2val1 = tag2 + "val1";
     UID statNameUid = uniqueIdCache.getOrCreateId("MyStat");
@@ -74,56 +80,98 @@ public class TestCountStatToAggregateFlatMapper {
     UID tag1val1Uid = uniqueIdCache.getOrCreateId(tag1val1);
     UID tag2val1Uid = uniqueIdCache.getOrCreateId(tag2val1);
     UID rolledUpUid = uniqueIdCache.getOrCreateId(RollUpBitMask.ROLL_UP_TAG_VALUE);
+    private long id1part1 = 5001L;
+    private long id1part2 = 1001L;
+    private long id2part1 = 5002L;
+    private long id2part2 = 1002L;
 
-    ZonedDateTime time = ZonedDateTime.of(
-            LocalDateTime.of(2017, 2, 27, 10, 50, 30),
-            ZoneOffset.UTC);
-    StatisticType statisticType = StatisticType.COUNT;
-    EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.MINUTE;
-    long aggValue = 1L;
+    @Before
+    public void setup() {
+        mockStatisticConfigurationService = new MockStatisticConfigurationService();
+        mockStroomPropertyService = new MockStroomPropertyService();
+        countStatToAggregateMapper = new CountStatToAggregateFlatMapper(uniqueIdCache, mockStroomPropertyService);
+    }
 
-    CountStatToAggregateFlatMapper countStatToAggregateFlatMapper = new CountStatToAggregateFlatMapper(
-            uniqueIdCache,
-            mockStroomPropertyService);
 
-    @Test
-    public void flatMap_noRollUps() throws Exception {
+    @Test(expected = RuntimeException.class)
+    public void flatMap_noStatConfig() throws Exception {
 
-        StatisticWrapper statisticWrapper = buildBasicStatWrapper(StatisticRollUpType.NONE);
 
-        List<KeyValue<StatKey, StatAggregate>> keyValues = new ArrayList<>();
-        countStatToAggregateFlatMapper.flatMap(statName, statisticWrapper)
-                .forEach(keyValue -> keyValues.add(keyValue));
+        Statistics.Statistic statistic = buildStatistic();
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.empty());
 
-        assertThat(keyValues).hasSize(1);
-
-        StatKey statKey = keyValues.get(0).key;
-        StatAggregate statAggregate = keyValues.get(0).value;
-
-        assertThat(uniqueIdCache.getName(statKey.getStatName())).isEqualTo(statName);
-        assertThat(statKey.getRollupMask()).isEqualTo(RollUpBitMask.ZERO_MASK);
-        assertThat(statKey.getTimeMs()).isEqualTo(time.toInstant().truncatedTo(ChronoUnit.MINUTES).toEpochMilli());
-
-        assertThat(statKey.getTagValues()).containsExactly(
-                new TagValue(tag1Uid, tag1val1Uid),
-                new TagValue(tag2Uid, tag2val1Uid));
-
-        assertThat(statAggregate).isInstanceOf(CountAggregate.class);
-        CountAggregate countAggregate = (CountAggregate) statAggregate;
-        assertThat(countAggregate.getAggregatedCount()).isEqualTo(aggValue);
+        //will throw a RTE as there is no StatConfig
+        countStatToAggregateMapper.flatMap(statistic.getName(), statisticWrapper);
     }
 
     @Test
-    public void flatMap_allRolledUp() throws Exception {
+    public void flatMap_noRollups() throws Exception {
 
-        StatisticWrapper statisticWrapper = buildBasicStatWrapper(StatisticRollUpType.ALL);
+        Statistics.Statistic statistic = buildStatistic();
 
-        List<KeyValue<StatKey, StatAggregate>> keyValues = new ArrayList<>();
-        countStatToAggregateFlatMapper.flatMap(statName, statisticWrapper)
-                .forEach(keyValue -> keyValues.add(keyValue));
+        StatisticConfiguration statisticConfiguration = new MockStatisticConfiguration()
+                .setName(statistic.getName())
+                .setStatisticType(StatisticType.COUNT)
+                .setRollUpType(StatisticRollUpType.NONE)
+                .addFieldNames(tag1, tag2)
+                .setPrecision(1_000L);
 
-        //two tags so 4 possible rollup combos
+
+        mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
+
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+
+        //will throw a RTE as there is no StatConfig
+        Iterable<KeyValue<StatKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statistic.getName(), statisticWrapper);
+        List<KeyValue<StatKey, StatAggregate>> keyValues = (List<KeyValue<StatKey, StatAggregate>>) iterable;
+
+        assertThat(keyValues).hasSize(1);
+        assertOnKeyValue(keyValues.get(0), statistic, statisticConfiguration);
+
+        StatKey statKey = keyValues.get(0).key;
+        //make sure the values match
+        assertThat(statKey.getTagValues().stream()
+                .map(tagValue -> uniqueIdCache.getName(tagValue.getValue()))
+                .collect(Collectors.toList()))
+                .isEqualTo(statistic.getTags().getTag().stream()
+                        .map(TagType::getValue)
+                        .collect(Collectors.toList()));
+        assertThat(statKey.getInterval()).isEqualTo(EventStoreTimeIntervalEnum.fromColumnInterval(statisticConfiguration.getPrecision()));
+
+        assertThat(statKey.getRollupMask()).isEqualTo(RollUpBitMask.ZERO_MASK);
+    }
+
+    @Test
+    public void flatMap_AllRollups() throws Exception {
+
+        Statistics.Statistic statistic = buildStatistic();
+
+        StatisticConfiguration statisticConfiguration = new MockStatisticConfiguration()
+                .setName(statistic.getName())
+                .setStatisticType(StatisticType.COUNT)
+                .setRollUpType(StatisticRollUpType.ALL)
+                .addFieldNames(tag1, tag2)
+                .setPrecision(1_000L);
+
+
+        mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
+
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+
+        Instant start = Instant.now();
+        Iterable<KeyValue<StatKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statistic.getName(), statisticWrapper);
+        Duration executionTime = Duration.between(start, Instant.now());
+        LOGGER.debug("Execution time: {}ms", executionTime.toMillis());
+
+        List<KeyValue<StatKey, StatAggregate>> keyValues = (List<KeyValue<StatKey, StatAggregate>>) iterable;
+
+        //2 tags so 4 rolled up events
         assertThat(keyValues).hasSize(4);
+
+        assertThat(keyValues.stream()
+                .map(keyValue -> keyValue.key.getRollupMask())
+                .collect(Collectors.toList()))
+                .containsAll(RollUpBitMask.getRollUpBitMasks(2));
 
         List<Tuple2<TagValue, TagValue>> tagValuePairs = keyValues.stream()
                 .map(kv -> new Tuple2<>(kv.key.getTagValues().get(0), kv.key.getTagValues().get(1)))
@@ -135,40 +183,51 @@ public class TestCountStatToAggregateFlatMapper {
                 new Tuple2<>(new TagValue(tag1Uid, tag1val1Uid), new TagValue(tag2Uid, rolledUpUid)),
                 new Tuple2<>(new TagValue(tag1Uid, rolledUpUid), new TagValue(tag2Uid, rolledUpUid)));
 
-        assertThat(keyValues.stream()
-                .map(kv -> kv.key.getRollupMask())
-                .collect(Collectors.toList())
-        )
-                .containsExactlyInAnyOrder(
-                        RollUpBitMask.fromTagPositions(Arrays.asList()),
-                        RollUpBitMask.fromTagPositions(Arrays.asList(0)),
-                        RollUpBitMask.fromTagPositions(Arrays.asList(1)),
-                        RollUpBitMask.fromTagPositions(Arrays.asList(0, 1))
-                );
+        keyValues.forEach(keyValue -> assertOnKeyValue(keyValue, statistic, statisticConfiguration));
 
-        List<Long> aggValues = keyValues.stream()
-                .map(kv -> ((CountAggregate) kv.value).getAggregatedCount())
-                .distinct()
-                .collect(Collectors.toList());
-        //all the same agg value
-        assertThat(aggValues).hasSize(1);
-        assertThat(aggValues.get(0)).isEqualTo(aggValue);
     }
 
     @Test
-    public void flatMap_customMasks() throws Exception {
+    public void flatMap_CustomRollups() throws Exception {
 
-        StatisticWrapper statisticWrapper = buildBasicStatWrapper(
-                StatisticRollUpType.CUSTOM,
-                new MockCustomRollupMask(Arrays.asList(0)),
-                new MockCustomRollupMask(Arrays.asList(0, 1)));
+        Statistics.Statistic statistic = buildStatistic();
 
-        List<KeyValue<StatKey, StatAggregate>> keyValues = new ArrayList<>();
-        countStatToAggregateFlatMapper.flatMap(statName, statisticWrapper)
-                .forEach(keyValue -> keyValues.add(keyValue));
+        RollUpBitMask mask0 = RollUpBitMask.ZERO_MASK;
+        RollUpBitMask mask1 = RollUpBitMask.fromTagPositions(Collections.singletonList(0));
+        RollUpBitMask mask2 = RollUpBitMask.fromTagPositions(Arrays.asList(0, 1));
 
-        //two custom rollup masks so should get 3 different combos, the zero mask plus the 2 custom ones
+        StatisticConfiguration statisticConfiguration = new MockStatisticConfiguration()
+                .setName(statistic.getName())
+                .setStatisticType(StatisticType.COUNT)
+                .setRollUpType(StatisticRollUpType.CUSTOM)
+                .addCustomRollupMask(new MockCustomRollupMask(mask1.getTagPositionsAsList()))
+                .addCustomRollupMask(new MockCustomRollupMask(mask2.getTagPositionsAsList()))
+                .addFieldNames(tag1, tag2)
+                .setPrecision(1_000L);
+
+
+        mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
+
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+
+        //will throw a RTE as there is no StatConfig
+        Instant start = Instant.now();
+        Iterable<KeyValue<StatKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statistic.getName(), statisticWrapper);
+        Duration executionTime = Duration.between(start, Instant.now());
+        LOGGER.debug("Execution time: {}ms", executionTime.toMillis());
+
+        List<KeyValue<StatKey, StatAggregate>> keyValues = (List<KeyValue<StatKey, StatAggregate>>) iterable;
+
+        //2 custom masks and the zero mask will always be generated so expect 3 events in total
         assertThat(keyValues).hasSize(3);
+
+        assertThat(keyValues.stream()
+                .map(keyValue -> keyValue.key.getRollupMask())
+                .collect(Collectors.toList()))
+                .containsExactlyInAnyOrder(
+                        mask0,
+                        mask1,
+                        mask2);
 
         List<Tuple2<TagValue, TagValue>> tagValuePairs = keyValues.stream()
                 .map(kv -> new Tuple2<>(kv.key.getTagValues().get(0), kv.key.getTagValues().get(1)))
@@ -179,47 +238,92 @@ public class TestCountStatToAggregateFlatMapper {
                 new Tuple2<>(new TagValue(tag1Uid, rolledUpUid), new TagValue(tag2Uid, tag2val1Uid)),
                 new Tuple2<>(new TagValue(tag1Uid, rolledUpUid), new TagValue(tag2Uid, rolledUpUid)));
 
-        assertThat(keyValues.stream()
-                .map(kv -> kv.key.getRollupMask())
-                .collect(Collectors.toList())
-        )
-                .containsExactlyInAnyOrder(
-                        RollUpBitMask.fromTagPositions(Arrays.asList()),
-                        RollUpBitMask.fromTagPositions(Arrays.asList(0)),
-                        RollUpBitMask.fromTagPositions(Arrays.asList(0, 1))
-                );
-
-        List<Long> aggValues = keyValues.stream()
-                .map(kv -> ((CountAggregate) kv.value).getAggregatedCount())
-                .distinct()
-                .collect(Collectors.toList());
-        //all the same agg value
-        assertThat(aggValues).hasSize(1);
-        assertThat(aggValues.get(0)).isEqualTo(aggValue);
+        keyValues.forEach(keyValue -> assertOnKeyValue(keyValue, statistic, statisticConfiguration));
     }
 
-    private StatisticWrapper buildBasicStatWrapper(final StatisticRollUpType statisticRollUpType, CustomRollUpMask... customRollUpMasks)
-            throws DatatypeConfigurationException {
+    @Test
+    public void flatMap_AllRollUps_noTags() throws Exception {
+
+        Statistics.Statistic statistic = buildStatisticNoTags();
+
+        StatisticConfiguration statisticConfiguration = new MockStatisticConfiguration()
+                .setName(statistic.getName())
+                .setStatisticType(StatisticType.COUNT)
+                .setRollUpType(StatisticRollUpType.ALL)
+                .addFieldNames(tag1, tag2)
+                .setPrecision(1_000L);
 
 
-        Statistics.Statistic statistic = StatisticsHelper.buildCountStatistic(statName, time, aggValue,
+        mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
+
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+
+        Instant start = Instant.now();
+        Iterable<KeyValue<StatKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statistic.getName(), statisticWrapper);
+        Duration executionTime = Duration.between(start, Instant.now());
+        LOGGER.debug("Execution time: {}ms", executionTime.toMillis());
+
+        List<KeyValue<StatKey, StatAggregate>> keyValues = (List<KeyValue<StatKey, StatAggregate>>) iterable;
+
+        //no tags so nothing to rollup, thus just get the original event
+        assertThat(keyValues).hasSize(1);
+
+    }
+
+    private void assertOnKeyValue(KeyValue<StatKey, StatAggregate> keyValue, Statistics.Statistic statistic, StatisticConfiguration statisticConfiguration) {
+        StatKey statKey = keyValue.key;
+        StatAggregate statAggregate = keyValue.value;
+        assertThat(statKey).isNotNull();
+        assertThat(statKey.getTagValues()).hasSize(statistic.getTags().getTag().size());
+        //make sure the tags match
+        assertThat(statKey.getTagValues().stream()
+                .map(tagValue -> uniqueIdCache.getName(tagValue.getTag()))
+                .collect(Collectors.toList()))
+                .isEqualTo(statistic.getTags().getTag().stream()
+                        .map(TagType::getName)
+                        .collect(Collectors.toList()));
+        assertThat(statKey.getInterval()).isEqualTo(EventStoreTimeIntervalEnum.fromColumnInterval(statisticConfiguration.getPrecision()));
+
+        assertThat(statAggregate).isNotNull();
+        assertThat(statAggregate).isExactlyInstanceOf(CountAggregate.class);
+
+        CountAggregate countAggregate = (CountAggregate) statAggregate;
+        assertThat(countAggregate.getAggregatedCount()).isEqualTo(statistic.getCount());
+        assertThat(countAggregate.getEventIds()).hasSize(2);
+
+        MultiPartIdentifier id1 = countAggregate.getEventIds().get(0);
+        assertThat(id1.getValue()).contains(id1part1, id1part2);
+        MultiPartIdentifier id2 = countAggregate.getEventIds().get(1);
+        assertThat(id2.getValue()).contains(id2part1, id2part2);
+    }
+
+
+    private Statistics.Statistic buildStatistic() throws DatatypeConfigurationException {
+
+        //use system time as class under test has logic based on system time
+        ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
+
+        Statistics.Statistic statistic = StatisticsHelper.buildCountStatistic(statName, time, 10L,
                 StatisticsHelper.buildTagType(tag1, tag1val1),
                 StatisticsHelper.buildTagType(tag2, tag2val1)
         );
+        StatisticsHelper.addIdentifier(statistic, id1part1, id1part2);
+        StatisticsHelper.addIdentifier(statistic, id2part1, id2part2);
 
-        MockStatisticConfiguration statConfig = new MockStatisticConfiguration()
-                .setName(statName)
-                .setStatisticType(statisticType)
-                .setRollUpType(statisticRollUpType)
-                .addFieldName(tag1)
-                .addFieldName(tag2)
-                .setPrecision(interval.columnInterval());
+        return statistic;
+    }
 
-        for (CustomRollUpMask customRollUpMask : customRollUpMasks) {
-            statConfig.addCustomRollupMask(customRollUpMask);
-        }
+    private Statistics.Statistic buildStatisticNoTags() throws DatatypeConfigurationException {
 
-        return new StatisticWrapper(statistic, Optional.of(statConfig));
+        //use system time as class under test has logic based on system time
+        ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
+
+        Statistics.Statistic statistic = StatisticsHelper.buildCountStatistic(statName, time, 10L);
+
+        StatisticsHelper.addIdentifier(statistic, id1part1, id1part2);
+        StatisticsHelper.addIdentifier(statistic, id2part1, id2part2);
+
+        return statistic;
     }
 
 }
