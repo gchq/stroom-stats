@@ -61,7 +61,7 @@ public class TestCountStatToAggregateMapper {
 
     private MockStatisticConfigurationService mockStatisticConfigurationService;
     private MockStroomPropertyService mockStroomPropertyService;
-    private CountStatToAggregateMapper countStatToAggregateMapper;
+    private CountStatToAggregateFlatMapper countStatToAggregateMapper;
     private MockUniqueIdCache mockUniqueIdCache;
 
     private String statName = "MyStat";
@@ -77,7 +77,7 @@ public class TestCountStatToAggregateMapper {
         mockStatisticConfigurationService = new MockStatisticConfigurationService();
         mockStroomPropertyService = new MockStroomPropertyService();
         mockUniqueIdCache = new MockUniqueIdCache();
-        countStatToAggregateMapper = new CountStatToAggregateMapper(mockUniqueIdCache, mockStroomPropertyService);
+        countStatToAggregateMapper = new CountStatToAggregateFlatMapper(mockUniqueIdCache, mockStroomPropertyService);
     }
 
 

@@ -35,7 +35,7 @@ import stroom.stats.schema.ObjectFactory;
 import stroom.stats.schema.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.StatAggregate;
-import stroom.stats.streams.mapping.AbstractStatisticMapper;
+import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatKeySerde;
 import stroom.stats.util.logging.LambdaLogger;
@@ -90,7 +90,7 @@ class StatisticsFlatMappingProcessor {
 
     KafkaStreams buildStream(final StreamsConfig streamsConfig, final String inputTopic, final String badEventTopic,
                              final String intervalTopicPrefix,
-                             final AbstractStatisticMapper statisticMapper) {
+                             final AbstractStatisticFlatMapper statisticMapper) {
 
         LOGGER.info("Building stream with input topic {}, badEventTopic {}, intervalTopicPrefix {} and mapper {}",
                 inputTopic, badEventTopic, intervalTopicPrefix, statisticMapper.getClass().getSimpleName());
@@ -222,7 +222,7 @@ class StatisticsFlatMappingProcessor {
 
         final int retentionRowIntervals = stroomPropertyService.getIntPropertyOrThrow(purgeRetentionPeriodsPropertyKey);
 
-        boolean result = AbstractStatisticMapper.isInsidePurgeRetention(statisticWrapper, biggestInterval, retentionRowIntervals);
+        boolean result = AbstractStatisticFlatMapper.isInsidePurgeRetention(statisticWrapper, biggestInterval, retentionRowIntervals);
         LOGGER.trace("isInsideLargestPurgeRetention == {}", result);
         return result;
     }

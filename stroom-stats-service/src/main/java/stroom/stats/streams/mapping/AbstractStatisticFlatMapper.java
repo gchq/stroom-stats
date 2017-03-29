@@ -45,9 +45,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public abstract class AbstractStatisticMapper {
+public abstract class AbstractStatisticFlatMapper {
 
-    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(AbstractStatisticMapper.class);
+    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(AbstractStatisticFlatMapper.class);
 
     public static final String NULL_VALUE_STRING = "<<<<NULL_VALUE>>>>";
 
@@ -55,8 +55,8 @@ public abstract class AbstractStatisticMapper {
     private final StroomPropertyService stroomPropertyService;
     private final UID rolledUpValue;
 
-    public AbstractStatisticMapper(final UniqueIdCache uniqueIdCache,
-                                   final StroomPropertyService stroomPropertyService) {
+    public AbstractStatisticFlatMapper(final UniqueIdCache uniqueIdCache,
+                                       final StroomPropertyService stroomPropertyService) {
         this.uniqueIdCache = uniqueIdCache;
         this.stroomPropertyService = stroomPropertyService;
 
