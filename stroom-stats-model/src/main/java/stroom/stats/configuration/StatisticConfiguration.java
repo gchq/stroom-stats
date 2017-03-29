@@ -19,9 +19,13 @@
 
 package stroom.stats.configuration;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import stroom.stats.api.StatisticType;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 
@@ -41,6 +45,25 @@ public interface StatisticConfiguration {
     String FIELD_NAME_MAX_VALUE = "Max Statistic Value";
     String FIELD_NAME_PRECISION = "Precision";
     String FIELD_NAME_PRECISION_MS = "Precision ms";
+
+    //Define the static fields available to each type of statistic
+    Map<StatisticType, List<String>> STATIC_FIELDS_MAP = Maps.immutableEnumMap(ImmutableMap.of(
+            StatisticType.COUNT, Arrays.asList(
+                    FIELD_NAME_DATE_TIME,
+                    FIELD_NAME_COUNT,
+                    FIELD_NAME_PRECISION,
+                    FIELD_NAME_PRECISION_MS
+            ),
+            StatisticType.VALUE, Arrays.asList(
+                    FIELD_NAME_DATE_TIME,
+                    FIELD_NAME_VALUE,
+                    FIELD_NAME_COUNT,
+                    FIELD_NAME_MIN_VALUE,
+                    FIELD_NAME_MAX_VALUE,
+                    FIELD_NAME_PRECISION,
+                    FIELD_NAME_PRECISION_MS
+            )
+    ));
 
     String getName();
 
@@ -63,7 +86,7 @@ public interface StatisticConfiguration {
     boolean isEnabled();
 
     /**
-     * All the field names (aka tags) for this statistic, in alphanumeric order
+     * All the dynamic field names (aka tags) for this statistic, in alphanumeric order
      */
     List<String> getFieldNames();
 

@@ -88,7 +88,7 @@ public class HBaseStatisticsService implements StatisticsService {
     }
 
     static FindEventCriteria buildCriteria(final SearchRequest searchRequest,
-                                                     final StatisticConfiguration statisticConfiguration) {
+                                           final StatisticConfiguration statisticConfiguration) {
         LOGGER.trace(() -> String.format("buildCriteria called for statisticConfiguration %s", statisticConfiguration));
 
         Preconditions.checkNotNull(searchRequest);
@@ -382,11 +382,13 @@ public class HBaseStatisticsService implements StatisticsService {
     }
 
     @Override
-    public StatisticDataSet searchStatisticsData(final SearchRequest searchRequest, final StatisticConfiguration dataSource) {
+    public StatisticDataSet searchStatisticsData(final SearchRequest searchRequest,
+                                                 final List<String> requestedFields,
+                                                 final StatisticConfiguration statisticConfiguration) {
 
-        final FindEventCriteria criteria = buildCriteria(searchRequest, dataSource);
+        final FindEventCriteria criteria = buildCriteria(searchRequest, statisticConfiguration);
 
-        return eventStores.getStatisticsData(criteria, dataSource);
+        return eventStores.getStatisticsData(criteria, statisticConfiguration);
     }
 
     @Override

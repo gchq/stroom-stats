@@ -35,23 +35,52 @@ public interface StatisticsService {
 
     /**
      * Puts multiple aggregated events into the appropriate store.
-     * @param statisticType The type of ALL the events in the aggregatedEvents
-     * @param interval The time interval that ALL the aggregatedEvents have been aggregated to
+     *
+     * @param statisticType    The type of ALL the events in the aggregatedEvents
+     * @param interval         The time interval that ALL the aggregatedEvents have been aggregated to
      * @param aggregatedEvents An event that has been aggregated from zero-many source events
      */
     void putAggregatedEvents(final StatisticType statisticType,
                              final EventStoreTimeIntervalEnum interval,
                              final Map<StatKey, StatAggregate> aggregatedEvents);
 
+    //TODO if we take a SearchRequest then we probably ought to return a SearchResponse object and
+    //do the work that is currentlt done in HBclient in here
+    /**
+     * Perform a search of the statistic store. The requestedDynamicFields arg allows for optimisation
+     * of the query such that any dynamic fields that are not required or not included as predicates
+     * will be rolled up to improve query performance and reduce the returned data set.
+     *
+     * @param searchRequest          Defines the search query
+     * @param requestedDynamicFields A list of the dynamic fields (aka tags) that are required in the result set
+     * @param statisticConfiguration The statistic to query against
+     * @return An empty or populated {@link StatisticDataSet} object
+     */
     StatisticDataSet searchStatisticsData(final SearchRequest searchRequest,
+                                          final List<String> requestedDynamicFields,
                                           final StatisticConfiguration statisticConfiguration);
+
+    /**
+     * Perform a search of the statistic store. No rolling up of data will be performed.
+     *
+     * @param searchRequest          Defines the search query
+     * @param statisticConfiguration The statistic to query against
+     * @return An empty or populated {@link StatisticDataSet} object
+     */
+    default StatisticDataSet searchStatisticsData(final SearchRequest searchRequest,
+                                                  final StatisticConfiguration statisticConfiguration) {
+
+        //supply all dynamic fields for this stat config so it uses the zero rollup mask, thus rolling up nothing
+        return searchStatisticsData(searchRequest,
+                statisticConfiguration.getFieldNames(),
+                statisticConfiguration);
+    }
 
     /**
      * For a given statistic tag name, it returns all known values existing in
      * the statistic store
      *
-     * @param tagName
-     *            The statistic tag name to search for
+     * @param tagName The statistic tag name to search for
      * @return A list of values associated with the given statistic tag name
      */
     List<String> getValuesByTag(String tagName);
@@ -60,11 +89,9 @@ public interface StatisticsService {
      * For a given statistic tag name and part of a value, it returns all known
      * values existing in the statistic store that match
      *
-     * @param tagName
-     *            The statistic tag name to search for
-     * @param partialValue
-     *            A contiguous part of a statistic tag value which should be
-     *            contained in any matches
+     * @param tagName      The statistic tag name to search for
+     * @param partialValue A contiguous part of a statistic tag value which should be
+     *                     contained in any matches
      * @return Those statistic tag values that match both criteria
      */
     List<String> getValuesByTagAndPartialValue(String tagName, String partialValue);

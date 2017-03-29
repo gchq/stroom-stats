@@ -17,33 +17,20 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.common;
+package stroom.stats.hbase.structure;
 
 import stroom.stats.api.StatisticTag;
-import stroom.stats.api.StatisticType;
+import stroom.stats.common.StatisticDataPoint;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.List;
-import java.util.Map;
 
-public interface StatisticDataPoint {
+public interface StatisticDataPointAdapter {
 
-    long getTimeMs();
-
-    long getPrecisionMs();
-
-    default String getPrecision() {
-        return EventStoreTimeIntervalEnum.fromColumnInterval(getPrecisionMs()).longName();
-    }
-
-    List<StatisticTag> getTags();
-
-    Map<String, String> getTagsAsMap();
-
-    StatisticType getStatisticType();
-
-//    Map<String, Object> getFieldToValueMap();
-
-    String getFieldValue(final String fieldName);
-
+    StatisticDataPoint convertCell(final long timeMs,
+                                   final EventStoreTimeIntervalEnum interval,
+                                   final List<StatisticTag> tags,
+                                   final byte[] bytes,
+                                   final int cellValueOffset,
+                                   final int cellValueLength);
 }
