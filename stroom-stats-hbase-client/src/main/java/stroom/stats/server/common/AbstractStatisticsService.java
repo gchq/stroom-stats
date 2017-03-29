@@ -203,7 +203,7 @@ public abstract class AbstractStatisticsService implements StatisticsService {
             }
         }
 
-        // Date Time is handled spearately to the the filter tree so ignore it
+        // Date Time is handled separately to the the filter tree so ignore it
         // in the conversion
         final Set<String> blackListedFieldNames = new HashSet<>();
         blackListedFieldNames.addAll(rolledUpFieldNames);
