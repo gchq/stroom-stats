@@ -75,13 +75,14 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
                 .addSet(CorrelationBuilder.SetName.B, today)
                 .complement(CorrelationBuilder.SetName.A);
         assertThat(yesterdayAndNotToday.size()).isEqualTo(1);
+        assertThat(yesterdayAndNotToday.get(0).getValues().get(0)).isEqualTo("user1");
+        assertThat(yesterdayAndNotToday.get(0).getValues().get(1)).isEqualTo("door1");
     }
 
     private static String getDateRangeFor(ZonedDateTime dateTime){
         String day = dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String range= String.format("%sT00:00:00.000Z,%sT23:59:59.000Z", day, day);
         return range;
-//        return "2017-01-01T00:00:00.000Z,2017-12-30T00:00:00.000Z";
     }
 
 
