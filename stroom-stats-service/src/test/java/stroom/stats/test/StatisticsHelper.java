@@ -27,43 +27,20 @@ import stroom.stats.schema.TagType;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.GregorianCalendar;
 
 public class StatisticsHelper {
 
     public static Statistics.Statistic buildCountStatistic(String statName, ZonedDateTime time, long value, TagType... tagValues) {
-        Statistics.Statistic statistic = new ObjectFactory().createStatisticsStatistic();
-        statistic.setName(statName);
-        Statistics.Statistic.Tags tagsObj = new Statistics.Statistic.Tags();
-        for (TagType tagValue : tagValues) {
-            tagsObj.getTag().add(tagValue);
-        }
-        statistic.setTags(tagsObj);
-        GregorianCalendar gregorianCalendar = GregorianCalendar.from(time);
-        try {
-            statistic.setTime(DatatypeFactory.newInstance().newXMLGregorianCalendar(gregorianCalendar));
-        } catch (DatatypeConfigurationException e) {
-            throw new RuntimeException(String.format("Error converting time %s to a gregorian calendar", time), e);
-        }
+        Statistics.Statistic statistic = buildStatistic(statName, time, tagValues);
         statistic.setCount(value);
         return statistic;
     }
 
     public static Statistics.Statistic buildValueStatistic(String statName, ZonedDateTime time, double value, TagType... tagValues) {
-        Statistics.Statistic statistic = new ObjectFactory().createStatisticsStatistic();
-        statistic.setName(statName);
-        Statistics.Statistic.Tags tagsObj = new Statistics.Statistic.Tags();
-        for (TagType tagValue : tagValues) {
-            tagsObj.getTag().add(tagValue);
-        }
-        statistic.setTags(tagsObj);
-        GregorianCalendar gregorianCalendar = GregorianCalendar.from(time);
-        try {
-            statistic.setTime(DatatypeFactory.newInstance().newXMLGregorianCalendar(gregorianCalendar));
-        } catch (DatatypeConfigurationException e) {
-            throw new RuntimeException(String.format("Error converting time %s to a gregorian calendar", time), e);
-        }
+        Statistics.Statistic statistic = buildStatistic(statName, time, tagValues);
         statistic.setValue(value);
         return statistic;
     }
@@ -98,5 +75,20 @@ public class StatisticsHelper {
         tagType.setName(tag);
         tagType.setValue(value);
         return tagType;
+    }
+
+    private static Statistics.Statistic buildStatistic(String statName, ZonedDateTime time, TagType... tagValues){
+        Statistics.Statistic statistic = new ObjectFactory().createStatisticsStatistic();
+        statistic.setName(statName);
+        Statistics.Statistic.Tags tagsObj = new Statistics.Statistic.Tags();
+        tagsObj.getTag().addAll(new ArrayList(Arrays.asList(tagValues)));
+        statistic.setTags(tagsObj);
+        GregorianCalendar gregorianCalendar = GregorianCalendar.from(time);
+        try {
+            statistic.setTime(DatatypeFactory.newInstance().newXMLGregorianCalendar(gregorianCalendar));
+        } catch (DatatypeConfigurationException e) {
+            throw new RuntimeException(String.format("Error converting time %s to a gregorian calendar", time), e);
+        }
+        return statistic;
     }
 }
