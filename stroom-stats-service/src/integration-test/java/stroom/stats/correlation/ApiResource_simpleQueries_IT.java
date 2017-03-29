@@ -1,4 +1,4 @@
-package stroom.stats;
+package stroom.stats.correlation;
 
 import com.google.inject.Injector;
 import javaslang.control.Try;
@@ -17,6 +17,7 @@ import stroom.query.api.SearchResponse;
 import stroom.query.api.TableResult;
 import stroom.query.api.TableSettings;
 import stroom.query.api.TableSettingsBuilder;
+import stroom.stats.AbstractAppIT;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
@@ -69,7 +70,11 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
         List<Row> yesterday = ((TableResult) yesterdaySearchResponse.getResults().get(0)).getRows();
         List<Row> today = ((TableResult) todaySearchResponse.getResults().get(0)).getRows();
 
-        // TODO assert on the correlation
+        List<Row> yesterdayAndNotToday = new CorrelationBuilder()
+                .addSet(CorrelationBuilder.SetName.A, yesterday)
+                .addSet(CorrelationBuilder.SetName.B, today)
+                .complement(CorrelationBuilder.SetName.A);
+        assertThat(yesterdayAndNotToday.size()).isEqualTo(1);
     }
 
     private static String getDateRangeFor(ZonedDateTime dateTime){
