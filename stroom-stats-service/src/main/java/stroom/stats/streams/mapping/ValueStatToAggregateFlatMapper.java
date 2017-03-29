@@ -45,7 +45,7 @@ public class ValueStatToAggregateFlatMapper extends AbstractStatisticFlatMapper 
                                           final StroomPropertyService stroomPropertyService) {
 
         super(uniqueIdCache, stroomPropertyService);
-        LOGGER.info("Initialising {}", this.getClass().getCanonicalName());
+        LOGGER.debug("Initialising {}", this.getClass().getCanonicalName());
         this.uniqueIdCache = uniqueIdCache;
         this.stroomPropertyService = stroomPropertyService;
     }

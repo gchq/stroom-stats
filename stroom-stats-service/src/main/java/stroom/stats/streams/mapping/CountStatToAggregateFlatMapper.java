@@ -44,7 +44,7 @@ public class CountStatToAggregateFlatMapper extends AbstractStatisticFlatMapper 
     public CountStatToAggregateFlatMapper(UniqueIdCache uniqueIdCache,
                                           StroomPropertyService stroomPropertyService) {
         super(uniqueIdCache, stroomPropertyService);
-        LOGGER.info("Initialising {}", this.getClass().getCanonicalName());
+        LOGGER.debug("Initialising {}", this.getClass().getCanonicalName());
 
         this.uniqueIdCache = uniqueIdCache;
         this.stroomPropertyService = stroomPropertyService;

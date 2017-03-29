@@ -68,6 +68,7 @@ public abstract class AbstractStatisticFlatMapper {
     public abstract Iterable<KeyValue<StatKey, StatAggregate>> flatMap(String statName, StatisticWrapper statisticWrapper);
 
     private TagValue buildTagValue(String tag, Optional<String> value) {
+
         LOGGER.trace(() -> String.format("Creating TagValue tag: %s value %s", tag, value.orElse("NULL")));
         UID tagUid = uniqueIdCache.getOrCreateId(tag);
         UID valueUid = uniqueIdCache.getOrCreateId(value.orElse(NULL_VALUE_STRING));
@@ -75,6 +76,7 @@ public abstract class AbstractStatisticFlatMapper {
     }
 
     protected List<MultiPartIdentifier> convertEventIds(final Statistics.Statistic statistic, final int maxEventIds) {
+
         if (statistic.getIdentifiers() == null || statistic.getIdentifiers().getCompoundIdentifier() == null) {
             return Collections.emptyList();
         }
