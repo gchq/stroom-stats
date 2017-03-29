@@ -11,8 +11,10 @@ import stroom.query.api.FieldBuilder;
 import stroom.query.api.Query;
 import stroom.query.api.QueryKey;
 import stroom.query.api.ResultRequest;
+import stroom.query.api.Row;
 import stroom.query.api.SearchRequest;
 import stroom.query.api.SearchResponse;
+import stroom.query.api.TableResult;
 import stroom.query.api.TableSettings;
 import stroom.query.api.TableSettingsBuilder;
 import stroom.stats.configuration.StatisticConfiguration;
@@ -32,7 +34,10 @@ import javax.ws.rs.core.Response;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class ApiResource_simpleQueries_IT extends AbstractAppIT {
 
@@ -57,10 +62,14 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
         Response todayResponse = req().body(() -> searchRequestForToday).getStats();
         SearchResponse todaySearchResponse = todayResponse.readEntity(SearchResponse.class);
 
-        System.out.println("sdfsdf");
-        //TODO do some correlation
-
         // Then
+        assertThat(((TableResult)yesterdaySearchResponse.getResults().get(0)).getTotalResults()).isEqualTo(3);
+        assertThat(((TableResult)todaySearchResponse.getResults().get(0)).getTotalResults()).isEqualTo(2);
+
+        List<Row> yesterday = yesterdaySearchResponse.getResults().get(0);
+        List<Row> today = todaySearchResponse.getResults().get(0);
+        yesterday.get(0).getValues()
+
         // TODO assert on the correlation
     }
 

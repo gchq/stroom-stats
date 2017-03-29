@@ -143,6 +143,10 @@ public class Period extends Range<Long> {
         super.setTo(to);
     }
 
+    public Long getToInclusive() {
+        return super.getTo() == null ? null : super.getTo() - 1;
+    }
+
     /**
      * Gets the duration as a user readable string.
      */

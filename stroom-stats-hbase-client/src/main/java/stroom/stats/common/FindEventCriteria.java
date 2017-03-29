@@ -21,7 +21,11 @@
 
 package stroom.stats.common;
 
+import com.google.common.base.Preconditions;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
+
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Set;
 
 public class FindEventCriteria {
@@ -30,13 +34,18 @@ public class FindEventCriteria {
     private final String statisticName;
     private final FilterTermsTree filterTermsTree;
     private final Set<String> rolledUpFieldNames;
+    private final EventStoreTimeIntervalEnum interval;
 
-    private FindEventCriteria(final Period period, final String statisticName, final FilterTermsTree filterTermsTree,
-                      final Set<String> rolledUpFieldNames) {
+    private FindEventCriteria(final Period period,
+                              final String statisticName,
+                              final FilterTermsTree filterTermsTree,
+                              final Set<String> rolledUpFieldNames,
+                              final EventStoreTimeIntervalEnum interval) {
         this.period = period;
         this.statisticName = statisticName;
         this.filterTermsTree = filterTermsTree;
         this.rolledUpFieldNames = rolledUpFieldNames;
+        this.interval = interval;
     }
 
     public Period getPeriod() {
@@ -47,9 +56,13 @@ public class FindEventCriteria {
         return statisticName;
     }
 
+    public Optional<EventStoreTimeIntervalEnum> getInterval() {
+        return Optional.ofNullable(interval);
+    }
+
     /**
      * @return A list names of fields that have a roll up operation applied to
-     *         them
+     * them
      */
     public Set<String> getRolledUpFieldNames() {
         return rolledUpFieldNames;
@@ -66,8 +79,13 @@ public class FindEventCriteria {
 
     @Override
     public String toString() {
-        return "FindEventCriteria [period=" + period + ", statisticName=" + statisticName + ", filterTermsTree="
-                + filterTermsTree + ", rolledUpFieldNames=" + rolledUpFieldNames + "]";
+        return "FindEventCriteria{" +
+                "period=" + period +
+                ", statisticName='" + statisticName + '\'' +
+                ", filterTermsTree=" + filterTermsTree +
+                ", rolledUpFieldNames=" + rolledUpFieldNames +
+                ", interval=" + interval +
+                '}';
     }
 
     public static FindEventCriteriaBuilder builder(final Period period, final String statisticName) {
@@ -79,25 +97,34 @@ public class FindEventCriteria {
         private String statisticName;
         private FilterTermsTree filterTermsTree = FilterTermsTree.emptyTree();
         private Set<String> rolledUpFieldNames = Collections.emptySet();
+        private EventStoreTimeIntervalEnum interval = null;
 
         FindEventCriteriaBuilder(final Period period, final String statisticName) {
+            Preconditions.checkNotNull(period);
+            Preconditions.checkNotNull(statisticName);
             this.period = period;
             this.statisticName = statisticName;
         }
 
-
         public FindEventCriteriaBuilder setFilterTermsTree(final FilterTermsTree filterTermsTree) {
+            Preconditions.checkNotNull(filterTermsTree);
             this.filterTermsTree = filterTermsTree;
             return this;
         }
 
         public FindEventCriteriaBuilder setRolledUpFieldNames(final Set<String> rolledUpFieldNames) {
+            Preconditions.checkNotNull(rolledUpFieldNames);
             this.rolledUpFieldNames = rolledUpFieldNames;
             return this;
         }
 
+        public void setInterval(final EventStoreTimeIntervalEnum interval) {
+            Preconditions.checkNotNull(interval);
+            this.interval = interval;
+        }
+
         public FindEventCriteria build() {
-            return new FindEventCriteria(period, statisticName, filterTermsTree, rolledUpFieldNames);
+            return new FindEventCriteria(period, statisticName, filterTermsTree, rolledUpFieldNames, interval);
         }
     }
 }

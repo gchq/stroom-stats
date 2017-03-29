@@ -21,6 +21,7 @@
 
 package stroom.stats.hbase;
 
+import org.apache.hadoop.hbase.util.Bytes;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.TimeAgnosticStatisticEvent;
 import stroom.stats.common.RolledUpStatisticEvent;
@@ -31,6 +32,7 @@ import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.TimeAgnosticRowKey;
 import stroom.stats.streams.StatKey;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -93,6 +95,17 @@ public interface RowKeyBuilder {
      */
     RowKey buildStartKey(String eventName, final RollUpBitMask rollUpBitMask, long rangeStartTime);
 
+    default byte[] buildStartKeyBytes(final String eventName, final RollUpBitMask rollUpBitMask, final long rangeStartTime) {
+       return buildStartKey(eventName, rollUpBitMask, rangeStartTime).asByteArray();
+    }
+
+    default byte[] buildStartKeyBytes(final String eventName, final RollUpBitMask rollUpBitMask) {
+        //the time portion is irrelevant so just use 0
+        RowKey rowKey = buildStartKey(eventName, rollUpBitMask, 0L);
+        return rowKey.getTimeAgnosticRowKey().asPartialKey();
+    }
+
+
     /**
      * Constructs a RowKey object for the end of a time range. This is intended
      * for use in retrieval of data within a time range.
@@ -109,6 +122,18 @@ public interface RowKeyBuilder {
      *         by the end range time.
      */
     RowKey buildEndKey(String eventName, final RollUpBitMask rollUpBitMask, long rangeEndTime);
+
+    default byte[] buildEndKeyBytes(final String eventName, final RollUpBitMask rollUpBitMask, final long rangeEndTime) {
+        return buildEndKey(eventName, rollUpBitMask, rangeEndTime).asByteArray();
+    }
+
+    default byte[] buildEndKeyBytes(final String eventName, final RollUpBitMask rollUpBitMask) {
+        //build a start key with any time value then copy it but with the highest possible
+        //partial timestamp
+        RowKey startKey = buildStartKey(eventName, rollUpBitMask, 0L);
+        RowKey endKey = new RowKey(startKey.getTypeId(), startKey.getRollUpBitMask(), Bytes.toBytes(Integer.MAX_VALUE), Collections.emptyList());
+        return endKey.asByteArray();
+    }
 
     /**
      * Returns the event name part (as plain text) of a given row key object.

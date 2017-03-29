@@ -15,9 +15,9 @@ import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
-import stroom.stats.streams.mapping.AbstractStatisticMapper;
-import stroom.stats.streams.mapping.CountStatToAggregateMapper;
-import stroom.stats.streams.mapping.ValueStatToAggregateMapper;
+import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
+import stroom.stats.streams.mapping.CountStatToAggregateFlatMapper;
+import stroom.stats.streams.mapping.ValueStatToAggregateFlatMapper;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -65,16 +65,16 @@ public class KafkaStreamService {
     private final ZookeeperConfig zookeeperConfig;
     private final StatisticsFlatMappingProcessor statisticsFlatMappingProcessor;
     private final StatisticsAggregationProcessor statisticsAggregationProcessor;
-    private final CountStatToAggregateMapper countStatToAggregateMapper;
-    private final ValueStatToAggregateMapper valueStatToAggregateMapper;
+    private final CountStatToAggregateFlatMapper countStatToAggregateMapper;
+    private final ValueStatToAggregateFlatMapper valueStatToAggregateMapper;
 
     @Inject
     public KafkaStreamService(final StroomPropertyService stroomPropertyService,
                               final Config config,
                               final StatisticsFlatMappingProcessor statisticsFlatMappingProcessor,
                               final StatisticsAggregationProcessor statisticsAggregationProcessor,
-                              final CountStatToAggregateMapper countStatToAggregateMapper,
-                              final ValueStatToAggregateMapper valueStatToAggregateMapper) {
+                              final CountStatToAggregateFlatMapper countStatToAggregateMapper,
+                              final ValueStatToAggregateFlatMapper valueStatToAggregateMapper) {
         this.stroomPropertyService = stroomPropertyService;
         this.zookeeperConfig = config.getZookeeperConfig();
         this.statisticsFlatMappingProcessor = statisticsFlatMappingProcessor;
@@ -154,18 +154,18 @@ public class KafkaStreamService {
 
     private Thread.UncaughtExceptionHandler buildUncaughtExceptionHandler(final String appId,
                                                                           final StatisticType statisticType,
-                                                                          final AbstractStatisticMapper abstractStatisticMapper) {
+                                                                          final AbstractStatisticFlatMapper abstractStatisticFlatMapper) {
         return (t, e) ->
                 LOGGER.error("Uncaught exception in stream processor with appId {} type {} and mapper {} in thread {}",
                         appId,
                         statisticType,
-                        abstractStatisticMapper.getClass().getSimpleName(),
+                        abstractStatisticFlatMapper.getClass().getSimpleName(),
                         t.getName(),
                         e);
     }
 
     private KafkaStreams startFlatMapProcessor(final StatisticType statisticType,
-                                               final AbstractStatisticMapper mapper) {
+                                               final AbstractStatisticFlatMapper mapper) {
 
         String appId = getName(PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX, statisticType);
 

@@ -23,18 +23,14 @@ package stroom.stats.hbase;
 
 import stroom.stats.api.StatisticType;
 import stroom.stats.common.FindEventCriteria;
-import stroom.stats.common.RolledUpStatisticEvent;
+import stroom.stats.common.Period;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.exception.StatisticsException;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.hbase.aggregator.EventStoresPutAggregator;
-import stroom.stats.hbase.structure.AddEventOperation;
-import stroom.stats.hbase.structure.CellQualifier;
 import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.server.common.AbstractStatisticsService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.StatKey;
 import stroom.stats.streams.aggregation.StatAggregate;
@@ -43,8 +39,7 @@ import stroom.stats.util.logging.LambdaLogger;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.time.Instant;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -56,7 +51,6 @@ public class EventStores {
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(EventStores.class);
 
     private final UniqueIdCache uidCache;
-    private final EventStoresPutAggregator eventStoresPutAggregator;
     private final EventStoreTableFactory eventStoreTableFactory;
     private final StroomPropertyService propertyService;
 
@@ -71,13 +65,11 @@ public class EventStores {
     @Inject
     public EventStores(final RowKeyCache rowKeyCache,
                        final UniqueIdCache uniqueIdCache,
-                       final EventStoresPutAggregator eventStoresPutAggregator,
                        final EventStoreTableFactory eventStoreTableFactory,
                        final StroomPropertyService propertyService) throws IOException {
 
         LOGGER.info("Initialising: {}", this.getClass().getCanonicalName());
 
-        this.eventStoresPutAggregator = eventStoresPutAggregator;
         this.eventStoreTableFactory = eventStoreTableFactory;
         this.propertyService = propertyService;
 
@@ -94,15 +86,6 @@ public class EventStores {
         }
     }
 
-//    public Map<EventStoreTimeIntervalEnum, Integer> getEventStorePutBufferSizes(final boolean isDeepCount) {
-//        final Map<EventStoreTimeIntervalEnum, Integer> map = new HashMap<>();
-//
-//        for (final EventStore eventStore : eventStoreMap.values()) {
-//            map.put(eventStore.getTimeInterval(), eventStore.getPutBufferCount(isDeepCount));
-//        }
-//        return map;
-//    }
-
     public Map<EventStoreTimeIntervalEnum, Long> getCellsPutCount(final StatisticType statisticType) {
         final Map<EventStoreTimeIntervalEnum, Long> map = new HashMap<>();
 
@@ -111,11 +94,6 @@ public class EventStores {
         }
         return map;
     }
-
-//    public int getAvailableBatchPutTaskPermits() {
-//        // it is a static property so just call it on one of the stores.
-//        return eventStoreMap.values().iterator().next().getAvailableBatchPutTaskPermits();
-//    }
 
     // method used to extract an instance of the unique id cache in testing
     @Deprecated
@@ -127,7 +105,6 @@ public class EventStores {
      * Flushes all events down to the datastore
      */
     public void flushAllEvents() {
-        eventStoresPutAggregator.flushAll();
 
         LOGGER.debug("flushAllEvents called");
         for (final EventStore eventStore : eventStoreMap.values()) {
@@ -150,62 +127,8 @@ public class EventStores {
                                     final EventStoreTimeIntervalEnum interval,
                                     final Map<StatKey, StatAggregate> aggregatedEvents) {
 
-//        aggregatedEvents.stream()
-//                .collect(Collectors.groupingBy(aggregatedEvent -> aggregatedEvent.getStatKey().getInterval()))
-//                .entrySet()
-//                .forEach(entry -> eventStoreMap.get(entry.getKey()).putAggregatedEvents(entry.getValue()));
-        eventStoreMap.get(interval).putAggregatedEvents(statisticType, aggregatedEvents);
-    }
-
-    /**
-     * Method determines which of the available event stores to use and puts the
-     * event into the smallest one. Processing further down the chain will roll
-     * the data up into the coarser event stores
-     *
-     * @param rolledUpStatisticEvent The event object to put into the appropriate event store
-     */
-    public void putEvent(final RolledUpStatisticEvent rolledUpStatisticEvent, final long precisionMs) {
-        LOGGER.trace("putEvent called for event: {}", rolledUpStatisticEvent);
-
-        putEvents(Collections.singletonList(rolledUpStatisticEvent), precisionMs, rolledUpStatisticEvent.getType());
-    }
-
-    public void putEvents(final List<RolledUpStatisticEvent> rolledUpStatisticEvents, final long precisionMs,
-                          final StatisticType statisticType) {
-        LOGGER.trace(() -> String.format("putEvent called for event count: %s and precision: %s",
-                rolledUpStatisticEvents.size(), precisionMs));
-
-        // get the smallest event store to use based on the desired granularity
-        final EventStoreTimeIntervalEnum desiredTimeInterval = EventStoreTimeIntervalHelper
-                .getMatchingInterval(precisionMs);
-
-        LOGGER.trace("Using timeInterval: {}", desiredTimeInterval);
-
-        final List<AddEventOperation> operations = new ArrayList<>();
-
-        for (final RolledUpStatisticEvent rolledUpStatisticEvent : rolledUpStatisticEvents) {
-            Optional<EventStoreTimeIntervalEnum> effectiveTimeInterval = Optional.of(desiredTimeInterval);
-
-            // see if the event is outside the purge retention period. This is
-            // an optimisation to deal with events that
-            // come in very late. If it is get the next biggest store. If the
-            // biggest store is outside then use a time
-            // interval of null
-            while (effectiveTimeInterval.isPresent() && !eventStoreMap.get(effectiveTimeInterval.get())
-                    .isTimeInsidePurgeRetention(rolledUpStatisticEvent.getTimeMs())) {
-                effectiveTimeInterval = EventStoreTimeIntervalHelper.getNextBiggest(effectiveTimeInterval.get());
-            }
-
-            if (effectiveTimeInterval.isPresent()) {
-                final List<CellQualifier> cellQualifiers = cachedRowKeyBuilders.get(effectiveTimeInterval.get())
-                        .buildCellQualifiers(rolledUpStatisticEvent);
-
-                for (final CellQualifier cellQualifier : cellQualifiers) {
-                    operations.add(new AddEventOperation(effectiveTimeInterval.get(), cellQualifier, rolledUpStatisticEvent));
-                }
-            }
-        }
-        eventStoresPutAggregator.putEvents(operations, statisticType);
+        eventStoreMap.get(interval)
+                .putAggregatedEvents(statisticType, aggregatedEvents);
     }
 
     /**
@@ -220,7 +143,13 @@ public class EventStores {
         // serve this query.
         EventStoreTimeIntervalEnum bestFitInterval;
 
-        final long periodMillis = criteria.getPeriod().duration();
+        Period effectivePeriod = buildEffectivePeriod(criteria);
+
+        final long periodMillis = effectivePeriod.duration();
+
+        if (periodMillis == 0) {
+            throw new RuntimeException(String.format("Not possible to calculate a best fit store for a zero length time period"));
+        }
 
         // Work out which store to pull data from based on the period requested
         // and an optimum number of data points
@@ -246,69 +175,72 @@ public class EventStores {
         // no/partial results back. It is possible
         // that the purge has not run or the purge retention has changed but
         // there is not a lot we can do to allow for
-        // that.
-        while (bestFitStore.isTimeInsidePurgeRetention(criteria.getPeriod().getFrom()) == false) {
-            bestFitStore = eventStoreMap
-                    .get(EventStoreTimeIntervalHelper.getNextBiggest(bestFitStore.getTimeInterval()));
+        // that. To support queries with no date term we will always return the largest store as a last resort
+        //irrespective of the purge retention
+        while (bestFitStore.isTimeInsidePurgeRetention(effectivePeriod.getFrom()) == false) {
+            EventStore nextBiggestStore = eventStoreMap.get(EventStoreTimeIntervalHelper.getNextBiggest(bestFitStore.getTimeInterval()));
 
-            if (bestFitStore == null) {
+            if (nextBiggestStore == null) {
                 // there is no next biggest so no point continuing
                 break;
             }
-
-            if (bestFitStore.getTimeInterval().equals(EventStoreTimeIntervalHelper.getLargestInterval())) {
-                // already at the biggest so break out and use this one and
-                // return null as there is no point in running
-                // the search if there is no data for this stat in any stores
-                bestFitStore = null;
-                break;
-            }
+            bestFitStore = nextBiggestStore;
         }
-        final EventStoreTimeIntervalEnum bestFitBasedOnRetention = bestFitStore.getTimeInterval();
+        final EventStoreTimeIntervalEnum bestFitBasedOnRetention = bestFitStore != null ? bestFitStore.getTimeInterval() : null;
+        bestFitInterval = bestFitBasedOnRetention;
 
         LOGGER.info("Using event store [{}] for search.  Best fit based on: period - [{}], data source - [{}] & retention - [{}]",
-                bestFitStore.getTimeInterval().longName(),
-                bestFitBasedOnPeriod.longName(),
-                bestFitBasedOnDataSource.longName(),
-                bestFitBasedOnRetention.longName());
+                nullSafePrintInterval(bestFitInterval),
+                nullSafePrintInterval(bestFitBasedOnPeriod),
+                nullSafePrintInterval(bestFitBasedOnDataSource),
+                nullSafePrintInterval(bestFitBasedOnRetention));
 
         return bestFitStore;
     }
 
+    private String nullSafePrintInterval(EventStoreTimeIntervalEnum interval) {
+        if (interval == null) {
+            return "NULL";
+        } else {
+            return interval.longName();
+        }
+    }
+
+    /**
+     * If parts are missing from the period then constrain it using the epoch and/or now
+     */
+    private Period buildEffectivePeriod(final FindEventCriteria criteria) {
+        Long from = criteria.getPeriod().getFrom();
+        Long to = criteria.getPeriod().getTo();
+        return new Period(from != null ? from : 0, to != null ? to : Instant.now().toEpochMilli());
+
+    }
+
     public StatisticDataSet getStatisticsData(final FindEventCriteria criteria,
                                               final StatisticConfiguration statisticConfiguration) {
+        LOGGER.info("Searching statistics store with criteria: {}", criteria);
         // Make sure a period has been requested.
         if (criteria.getPeriod() == null) {
             throw new StatisticsException("Results must be requested from a given period");
         }
 
-        // Determine what duration we are requesting.
-        final long duration = criteria.getPeriod().getTo() - criteria.getPeriod().getFrom();
-        if (duration < 0) {
-            throw new StatisticsException("The from time must be less than the to time");
-        }
-
         // Try to determine which store holds the data precision we will need to
         // serve this query.
-        EventStore bestFit;
+        EventStore bestFit = criteria.getInterval()
+                .flatMap(interval -> Optional.of(eventStoreMap.get(interval)))
+                .orElseGet(() ->
+                        findBestFit(criteria, statisticConfiguration)
+                );
 
-        bestFit = findBestFit(criteria, statisticConfiguration);
-
-        LOGGER.debug("using event store: " + (bestFit == null ? "NULL" : bestFit.getTimeInterval().longName()));
+        LOGGER.debug("Using event store: " + bestFit.getTimeInterval().longName());
 
         StatisticDataSet statisticDataSet;
 
-        final RollUpBitMask rollUpBitMask = AbstractStatisticsService.buildRollUpBitMaskFromCriteria(criteria,
+        final RollUpBitMask rollUpBitMask = HBaseStatisticsService.buildRollUpBitMaskFromCriteria(criteria,
                 statisticConfiguration);
 
-        if (bestFit == null) {
-            LOGGER.debug("No stats exist for this period and criteria so returning an empty chartData object");
-            final String statisticName = criteria.getStatisticName();
-            statisticDataSet = new StatisticDataSet(statisticName, statisticConfiguration.getStatisticType());
-        } else {
-            // Get results from the selected event store.
-            statisticDataSet = bestFit.getStatisticsData(uidCache, statisticConfiguration, rollUpBitMask, criteria);
-        }
+        // Get results from the selected event store.
+        statisticDataSet = bestFit.getStatisticsData(uidCache, statisticConfiguration, rollUpBitMask, criteria);
 
         return statisticDataSet;
     }

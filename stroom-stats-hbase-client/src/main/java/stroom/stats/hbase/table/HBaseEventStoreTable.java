@@ -59,11 +59,11 @@ import stroom.stats.hbase.exception.HBaseException;
 import stroom.stats.hbase.structure.CellQualifier;
 import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.CountCellIncrementHolder;
-import stroom.stats.hbase.structure.CountRowData;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.ValueCellValue;
 import stroom.stats.hbase.table.filter.StatisticsTagValueFilter;
 import stroom.stats.hbase.table.filter.TagValueFilterTreeBuilder;
+import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.hbase.util.bytes.ByteArrayUtils;
 import stroom.stats.properties.StroomPropertyService;
@@ -72,17 +72,14 @@ import stroom.stats.streams.StatKey;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
-import stroom.stats.task.api.TaskManager;
 import stroom.stats.util.DateUtil;
 import stroom.stats.util.logging.LambdaLogger;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Optional;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 
@@ -90,25 +87,23 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     private final String displayName;
     private final TableName tableName;
     private final EventStoreTimeIntervalEnum timeInterval;
-    private final TaskManager taskManager;
+//    private final TaskManager taskManager;
     private final StroomPropertyService propertyService;
-    private final HBaseCountPutBuffer countPutBuffer;
-    //TODO don't know why this is lazily initialised, just do it eagerly in the ctor
+//    private final HBaseCountPutBuffer countPutBuffer;
     private final RowKeyBuilder rowKeyBuilder;
 
     private static final String DISPLAY_NAME_POSTFIX = " EventStore";
     public static final String TABLE_NAME_POSTFIX = "es";
 
-    // private ScheduledExecutorService debugSnapshotScheduler;
-
     // static variable so we have a set of permits that work accross all event
     // store intervals
-    private static Semaphore maxConcurrentBatchPutTasksSemaphore = null;
-    private static final Object SEMAPHORE_LOCK_OBJECT = new Object();
+//    private static Semaphore maxConcurrentBatchPutTasksSemaphore = null;
+//    private static final Object SEMAPHORE_LOCK_OBJECT = new Object();
 
     // counters to track how many cell puts we do for the
-    private final LongAdder cellPutCounterCount = new LongAdder();
-    private final LongAdder cellPutCounterValue = new LongAdder();
+    private final Map<StatisticType, LongAdder> putCounterMap = new EnumMap<>(StatisticType.class);
+//    private final LongAdder cellPutCounterCount = new LongAdder();
+//    private final LongAdder cellPutCounterValue = new LongAdder();
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(HBaseEventStoreTable.class);
 
@@ -116,38 +111,44 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      * Private constructor
      */
     private HBaseEventStoreTable(final EventStoreTimeIntervalEnum eventStoreTimeIntervalEnum,
-                                 final TaskManager taskManager, final StroomPropertyService propertyService,
-                                 final HBaseConnection hBaseConnection, final UniqueIdCache uniqueIdCache) {
+                                 final StroomPropertyService propertyService,
+                                 final HBaseConnection hBaseConnection,
+                                 final UniqueIdCache uniqueIdCache) {
         super(hBaseConnection);
         this.displayName = eventStoreTimeIntervalEnum.longName() + DISPLAY_NAME_POSTFIX;
         this.tableName = TableName.valueOf(Bytes.toBytes(eventStoreTimeIntervalEnum.shortName() + TABLE_NAME_POSTFIX));
         this.timeInterval = eventStoreTimeIntervalEnum;
-        this.taskManager = taskManager;
         this.propertyService = propertyService;
         this.rowKeyBuilder = new SimpleRowKeyBuilder(uniqueIdCache, timeInterval);
 
-        countPutBuffer = new HBaseCountPutBuffer(getPutBufferSize());
+        for (StatisticType statisticType : StatisticType.values()) {
+            putCounterMap.put(statisticType, new LongAdder());
+        }
 
-        initMaxBatchPutTasksSemaphore();
+//        countPutBuffer = new HBaseCountPutBuffer(getPutBufferSize());
+
+//        initMaxBatchPutTasksSemaphore();
 
         init();
     }
 
-    private void initMaxBatchPutTasksSemaphore() {
-        synchronized (SEMAPHORE_LOCK_OBJECT) {
-            if (maxConcurrentBatchPutTasksSemaphore == null) {
-                maxConcurrentBatchPutTasksSemaphore = new Semaphore(getMaxConcurrentBatchPutTasks());
-            }
-        }
-    }
+//    private void initMaxBatchPutTasksSemaphore() {
+//        synchronized (SEMAPHORE_LOCK_OBJECT) {
+//            if (maxConcurrentBatchPutTasksSemaphore == null) {
+//                maxConcurrentBatchPutTasksSemaphore = new Semaphore(getMaxConcurrentBatchPutTasks());
+//            }
+//        }
+//    }
 
     /**
      * Static constructor
      */
     public static HBaseEventStoreTable getInstance(final EventStoreTimeIntervalEnum eventStoreTimeIntervalEnum,
-                                                   final TaskManager taskManager, final StroomPropertyService propertyService,
-                                                   final HBaseConnection hBaseConnection, final UniqueIdCache uniqueIdCache) {
-        return new HBaseEventStoreTable(eventStoreTimeIntervalEnum, taskManager, propertyService, hBaseConnection, uniqueIdCache);
+                                                   final StroomPropertyService propertyService,
+                                                   final HBaseConnection hBaseConnection,
+                                                   final UniqueIdCache uniqueIdCache) {
+
+        return new HBaseEventStoreTable(eventStoreTimeIntervalEnum, propertyService, hBaseConnection, uniqueIdCache);
     }
 
 
@@ -157,7 +158,8 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     }
 
     @Override
-    public void addAggregatedEvents(final StatisticType statisticType, final Map<StatKey, StatAggregate> aggregatedEvents) {
+    public void addAggregatedEvents(final StatisticType statisticType,
+                                    final Map<StatKey, StatAggregate> aggregatedEvents) {
 
         switch (statisticType) {
             case COUNT:
@@ -169,6 +171,11 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
             default:
                 throw new IllegalArgumentException("Unexpected statisticType " + statisticType);
         }
+
+        //keep a counter of the number of puts by stat type since this instance was last re-started
+        //useful as an indication of how it is functioning.  Could put the count to a stat of its own
+        //for long term tracking of performance
+        putCounterMap.get(statisticType).add(aggregatedEvents.size());
     }
 
     private void putAggregatedEventsCount(final Map<StatKey, StatAggregate> aggregatedEvents) {
@@ -217,19 +224,10 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         });
     }
 
-//    @Override
-//    public int getPutBufferCount(final boolean isDeepCount) {
-//        return isDeepCount ? countPutBuffer.getCellCount() : countPutBuffer.getQueueSize();
-//    }
-
-//    @Override
-//    public int getAvailableBatchPutTaskPermits() {
-//        return HBaseEventStoreTable.maxConcurrentBatchPutTasksSemaphore.availablePermits();
-//    }
-
     @Override
     public long getCellsPutCount(final StatisticType statisticType) {
-        return StatisticType.COUNT.equals(statisticType) ? cellPutCounterCount.sum() : cellPutCounterValue.sum();
+        //longaddr sum is not a concurrent snapshot but for this purpose is fine
+        return putCounterMap.get(statisticType).sum();
     }
 
     @Override
@@ -256,106 +254,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         return desc;
     }
 
-//    @Override
-//    public void bufferedAddCount(final CountRowData countRowData, final boolean isForcedFlushToDisk) {
-//        // try {
-//        // LOGGER.info("bufferedAddCount called for [%s] cells, waiting
-//        // forever", countRowData.getCells().size());
-//        // new Semaphore(0).acquire();
-//        // } catch (InterruptedException e) {
-//        // LOGGER.info("interupted");
-//        // }
-//
-//        LOGGER.trace(() -> String.format("bufferedAddCount called for interval: %s, rowKey: %s, cell count: %s", this.timeInterval,
-//                countRowData.getRowKey().toString(), countRowData.getCells().size()));
-//
-//        try {
-//            // queue will block its puts when it reaches its limit
-//            countPutBuffer.put(countRowData);
-//        } catch (final InterruptedException e1) {
-//            // something has interrupted this thread while it was waiting to do
-//            // the put
-//            // re-enable the interrupt status
-//            Thread.currentThread().interrupt();
-//        }
-//
-//        LOGGER.trace(() -> String.format("countPutBuffer size: %s, cell count: %s", countPutBuffer.getQueueSize(),
-//                countPutBuffer.getCellCount()));
-//
-//        processBatchFromQueue(isForcedFlushToDisk);
-//    }
-
-//    /**
-//     * If the deep cell count of the countPutBuffer has reach a certain point it
-//     * will attempt to repeatedly take items until it has a desired number. The
-//     * taken items are then sent on for persistence to HBase
-//     *
-//     * @param isForcedFlushToDisk
-//     *            true if you want it to flush everything to HBase regardless of
-//     *            how much is in the queue
-//     */
-//    private void processBatchFromQueue(final boolean isForcedFlushToDisk) {
-//        final List<CountRowData> rowsFromBuffer = new ArrayList<>();
-//        final int putBufferTakeCount = getPutTakeCount();
-//
-//        int cumulativeCellCount = 0;
-//        CountRowData rowFromQueue = null;
-//
-//        if (countPutBuffer.getCellCount() >= putBufferTakeCount || isForcedFlushToDisk)
-//            do {
-//                // grab one row's worth of data from the queue
-//                rowFromQueue = countPutBuffer.poll();
-//
-//                if (rowFromQueue != null) {
-//                    rowsFromBuffer.add(rowFromQueue);
-//                    cumulativeCellCount += rowFromQueue.getCells().size();
-//                }
-//            } while (rowFromQueue != null && cumulativeCellCount <= putBufferTakeCount);
-//
-//        if (rowsFromBuffer.size() > 0) {
-//            createMultiplePutsTask(rowsFromBuffer);
-//        }
-//    }
-
-//    //TODO do we realy need to do this rather than just firing increments at the tableinterface and
-//    //letting it buffer them?
-//    /**
-//     * Create an async task to persist a batch of count stats
-//     */
-//    private void createMultiplePutsTask(final List<CountRowData> rowsFromBuffer) {
-//        if (rowsFromBuffer != null && rowsFromBuffer.size() > 0) {
-//            final HBaseBatchPutTask task = new HBaseBatchPutTask(timeInterval, rowsFromBuffer);
-//
-//            LOGGER.debug(() -> String.format("About to get permit for batch put task with row count: %s.  Available permits: %s, max permits: %s",
-//                    rowsFromBuffer.size(), maxConcurrentBatchPutTasksSemaphore.availablePermits(),
-//                    getMaxConcurrentBatchPutTasks()));
-//
-//            try {
-//                maxConcurrentBatchPutTasksSemaphore.acquire();
-//            } catch (final InterruptedException e) {
-//                Thread.currentThread().interrupt();
-//            }
-//            try {
-//                taskManager.execAsync(task, new TaskCallbackAdaptor<VoidResult>() {
-//                    @Override
-//                    public void onSuccess(final VoidResult result) {
-//                        maxConcurrentBatchPutTasksSemaphore.release();
-//                        LOGGER.trace("EventStoreFlushTask completed successfully for store: {}", timeInterval);
-//                    }
-//
-//                    @Override
-//                    public void onFailure(final Throwable t) {
-//                        maxConcurrentBatchPutTasksSemaphore.release();
-//                        LOGGER.error("EventStoreFlushTask failed for store: {}", timeInterval, t);
-//
-//                    };
-//                });
-//            } catch (final Exception e) {
-//                maxConcurrentBatchPutTasksSemaphore.release();
-//            }
-//        }
-//    }
-
     private void addMultipleCounts(final Map<RowKey, List<CountCellIncrementHolder>> rowChanges) {
         LOGGER.trace(() -> String.format("addMultipleCounts called for %s rows", rowChanges.size()));
 
@@ -369,7 +267,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
         // long startTime = System.currentTimeMillis();
         doBatch(actions, results);
-        cellPutCounterCount.add(actions.size());
         LOGGER.trace(() -> String.format("%s puts sent to HBase", actions.size()));
 
         // LOGGER.info("Sent %s ADDs to HBase from thread %s in %s ms",
@@ -378,16 +275,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         // startTime));
 
     }
-
-//    @Override
-//    public void flushPutBuffer() {
-//        LOGGER.debug("flushPutBuffer called for store: {}", timeInterval);
-//
-//        // keep processing batches from the queue until it is empty
-//        while (countPutBuffer.getQueueSize() > 0) {
-//            processBatchFromQueue(true);
-//        }
-//    }
 
     /**
      * Builds a single {@link Increment} object for a row, with one-many cell
@@ -491,7 +378,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
                 if (hasPutSucceeded) {
                     // put worked so no need to retry
-                    cellPutCounterValue.increment();
                     break;
                 } else {
                     LOGGER.trace("CheckAndPut failed on retry {}, retrying", retryCounter);
@@ -512,32 +398,24 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     }
 
     @Override
-    public StatisticDataSet getStatisticsData(final UniqueIdCache uniqueIdCache, final StatisticConfiguration dataSource,
-                                              final RollUpBitMask rollUpBitMask, final FindEventCriteria criteria) {
-        LOGGER.debug("getChartData called for criteria: {}", criteria);
+    public StatisticDataSet getStatisticsData(final UniqueIdCache uniqueIdCache,
+                                              final StatisticConfiguration statisticConfiguration,
+                                              final RollUpBitMask rollUpBitMask,
+                                              final FindEventCriteria criteria) {
+
+        LOGGER.debug(() -> String.format("getStatisticsData called, store: %s, statName: %s, type: %s, mask: %s, criteria: %s",
+                timeInterval, statisticConfiguration.getName(), statisticConfiguration.getStatisticType(), rollUpBitMask, criteria));
 
         final Period period = criteria.getPeriod();
 
-        final StatisticType statisticType = dataSource.getStatisticType();
+        final StatisticType statisticType = statisticConfiguration.getStatisticType();
 
-        LOGGER.debug(() -> String.format("getChartData() called on eventStore: [%s]", timeInterval.longName()));
         LOGGER.debug(() -> String.format("Using time period: [%s] to [%s]", DateUtil.createNormalDateTimeString(period.getFrom()),
                 DateUtil.createNormalDateTimeString(period.getTo())));
 
-        final RowKey startRowKey = rowKeyBuilder.buildStartKey(criteria.getStatisticName(), rollUpBitMask,
-                criteria.getPeriod().getFrom());
-        // need to subtract one from the period to time as it is exclusive and
-        // we want to work from an inclusive
-        // time
-        final RowKey endRowKeyExclusive = rowKeyBuilder.buildEndKey(criteria.getStatisticName(), rollUpBitMask,
-                criteria.getPeriod().getTo() - 1L);
+        String statName = statisticConfiguration.getName();
 
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("startRowKey: " + rowKeyBuilder.toPlainTextString(startRowKey));
-            LOGGER.debug("startRowKey: " + ByteArrayUtils.byteArrayToHex(startRowKey.asByteArray()));
-            LOGGER.debug("endRowKey:   " + rowKeyBuilder.toPlainTextString(endRowKeyExclusive));
-            LOGGER.debug("endRowKey:   " + ByteArrayUtils.byteArrayToHex(endRowKeyExclusive.asByteArray()));
-        }
+        final Scan scan = buildBasicScan(rollUpBitMask, period, statisticType, statName);
 
         // Query the event store over the given range.
         // We may only want part of the row from the first row and last row
@@ -545,24 +423,9 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         // because the start/end time may not land exactly on the row key
         // time interval boundaries.
 
-        // TODO also may need to set decent values for setBatch and
-        // setCaching to ensure good performance
-
-        final Scan scan = new Scan(startRowKey.asByteArray(), endRowKeyExclusive.asByteArray());
-        scan.setMaxVersions(1);
-        scan.setCaching(1_000);
-
-        // determine which column family to use based on the kind of data we are
-        // trying to query
-        if (statisticType.equals(StatisticType.COUNT)) {
-            scan.addFamily(EventStoreColumnFamily.COUNTS.asByteArray());
-        } else {
-            scan.addFamily(EventStoreColumnFamily.VALUES.asByteArray());
-        }
-
         final Table tableInterface = getTable();
 
-        addScanFilter(scan, criteria, uniqueIdCache);
+        addTagValueFilter(scan, criteria, uniqueIdCache);
 
         final ResultScanner scanner = getScanner(tableInterface, scan);
 
@@ -570,8 +433,8 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         final StatisticDataSet statisticDataSet = new StatisticDataSet(criteria.getStatisticName(), statisticType);
 
         try {
-            final long periodFrom = period.getFrom();
-            final long periodTo = period.getTo();
+            final long periodFrom = period.getFromOrElse(0L);
+            final long periodTo = period.getToOrElse(Long.MAX_VALUE);
 
             // loop through each row in the result set from the scan, so
             // this is all rows
@@ -588,12 +451,9 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                 }
 
                 final CellScanner cellScanner = result.cellScanner();
-                // loop through each cell in the row
-                // each cell has a column qualifier that is the interval
-                // number in the row interval
-                // e.g. if the row interval is hourly then the 5s value will
-                // have a column qualifier of 5 and there will be up to 3600
-                // columns
+                // loop through each cell in the row each cell has a column qualifier that is the interval
+                // number in the row interval e.g. if the row interval is hourly then the 5s value will
+                // have a column qualifier of 5 and there will be up to 3600 columns
                 while (cellScanner.advance()) {
                     final Cell cell = cellScanner.current();
 
@@ -609,9 +469,9 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                                 + DateUtil.createNormalDateTimeString(fullTimestamp));
                     }
 
-                    // filter the cell to ensure it is in the period we are
-                    // after
-                    if (fullTimestamp >= periodFrom && fullTimestamp <= periodTo) {
+                    // filter the cell to ensure it is in the period we are after
+                    //periodTo is exclusive
+                    if (fullTimestamp >= periodFrom && fullTimestamp < periodTo) {
                         final StatisticDataPoint dataPoint;
 
                         if (statisticType.equals(StatisticType.COUNT)) {
@@ -645,6 +505,81 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         return statisticDataSet;
     }
 
+    private Scan buildBasicScan(final RollUpBitMask rollUpBitMask,
+                                final Period period,
+                                final StatisticType statisticType,
+                                final String statName) {
+
+        final Scan scan = new Scan();
+
+        final Optional<RowKey> optStartRowKey = Optional.ofNullable(period.getFrom())
+                .map(fromMsInc ->
+                        rowKeyBuilder.buildStartKey(statName, rollUpBitMask, fromMsInc));
+
+        // we want to work from an inclusive time as we are working in row intervals
+        final Optional<RowKey> optEndRowKeyExclusive = Optional.ofNullable(period.getToInclusive())
+                .map(toMsInc ->
+                        rowKeyBuilder.buildEndKey(statName, rollUpBitMask, toMsInc));
+
+        if (LOGGER.isDebugEnabled()) {
+            logStartStopKeys(optStartRowKey, optEndRowKeyExclusive);
+        }
+
+        if (period.isBounded()) {
+            // From --> To
+            optStartRowKey.map(RowKey::asByteArray).ifPresent(scan::setStartRow);
+            optEndRowKeyExclusive.map(RowKey::asByteArray).ifPresent(scan::setStopRow);
+
+        } else if(period.hasFrom() && !period.hasTo()) {
+            // From ---->
+            optStartRowKey.map(RowKey::asByteArray).ifPresent(scan::setStartRow);
+
+            //need an exclusive end key but the simplest thing is to build an end key from the last possible
+            //partial timestamp of the row key. While this isn't actually an exclusive stop key we
+            //will never get close to the last partial timestamp in this system's lifetime.
+            byte[] bStopKey = rowKeyBuilder.buildEndKeyBytes(statName, rollUpBitMask);
+
+        } else if(!period.hasFrom() && period.hasTo()) {
+            // ----> To
+            byte[] bStartKey = rowKeyBuilder.buildStartKeyBytes(statName,rollUpBitMask);
+            scan.setStartRow(bStartKey);
+            optEndRowKeyExclusive.map(RowKey::asByteArray).ifPresent(scan::setStopRow);
+        } else {
+           //No time bounds at all so set a row prefix
+            scan.setRowPrefixFilter(rowKeyBuilder.buildStartKeyBytes(statName, rollUpBitMask));
+        }
+
+        scan.setMaxVersions(1); //we should only be storing 1 version but setting anyway
+        //TODO make a prop in the prop service
+        scan.setCaching(1_000);
+
+        // determine which column family to use based on the kind of data we are trying to query
+        if (statisticType.equals(StatisticType.COUNT)) {
+            scan.addFamily(EventStoreColumnFamily.COUNTS.asByteArray());
+        } else {
+            scan.addFamily(EventStoreColumnFamily.VALUES.asByteArray());
+        }
+        return scan;
+    }
+
+
+    private void logStartStopKeys(final Optional<RowKey> optStartRowKey, final Optional<RowKey> optEndRowKeyExclusive) {
+        LOGGER.debug("optStartRowKey: " + optStartRowKey
+                .map(rowKeyBuilder::toPlainTextString)
+                .orElse("Empty"));
+        LOGGER.debug("optStartRowKey: " + optStartRowKey
+                .map(RowKey::asByteArray)
+                .map(ByteArrayUtils::byteArrayToHex)
+                .orElse("Empty"));
+        LOGGER.debug("endRowKey: " + optEndRowKeyExclusive
+                .map(rowKeyBuilder::toPlainTextString)
+                .orElse("Empty"));
+        LOGGER.debug("endRowKey: " + optEndRowKeyExclusive
+                .map(RowKey::asByteArray)
+                .map(ByteArrayUtils::byteArrayToHex)
+                .orElse("Empty"));
+    }
+
     /**
      * @param fullTimestamp
      * @param tags
@@ -653,8 +588,12 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      * @param cellValueLength The length of the cell value within bytes
      * @return
      */
-    private StatisticDataPoint buildCountDataPoint(final long fullTimestamp, final List<StatisticTag> tags,
-                                                   final byte[] bytes, final int cellValueOffset, final int cellValueLength) {
+    private StatisticDataPoint buildCountDataPoint(final long fullTimestamp,
+                                                   final List<StatisticTag> tags,
+                                                   final byte[] bytes,
+                                                   final int cellValueOffset,
+                                                   final int cellValueLength) {
+
         final long count = (cellValueLength == 0) ? 0 : Bytes.toLong(bytes, cellValueOffset, cellValueLength);
 
         return StatisticDataPoint.countInstance(fullTimestamp, timeInterval.columnInterval(), tags, count);
@@ -668,8 +607,11 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      * @param cellValueLength The length of the cell value within bytes
      * @return
      */
-    private StatisticDataPoint buildValueDataPoint(final long fullTimestamp, final List<StatisticTag> tags,
-                                                   final byte[] bytes, final int cellValueOffset, final int cellValueLength) {
+    private StatisticDataPoint buildValueDataPoint(final long fullTimestamp,
+                                                   final List<StatisticTag> tags,
+                                                   final byte[] bytes,
+                                                   final int cellValueOffset,
+                                                   final int cellValueLength) {
         final ValueCellValue cellValue = new ValueCellValue(bytes, cellValueOffset, cellValueLength);
 
         return StatisticDataPoint.valueInstance(fullTimestamp, timeInterval.columnInterval(), tags,
@@ -678,42 +620,22 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
     @Override
     public boolean doesStatisticExist(final UniqueIdCache uniqueIdCache,
-                                      final StatisticConfiguration statisticConfiguration, final RollUpBitMask rollUpBitMask, final Period period) {
+                                      final StatisticConfiguration statisticConfiguration,
+                                      final RollUpBitMask rollUpBitMask,
+                                      final Period period) {
         boolean isFound = false;
         final String statName = statisticConfiguration.getName();
 
-        final byte[] statNameUid = uniqueIdCache.getUniqueIdOrDefault(statName).getUidBytes();
+        final UID statNameUid = uniqueIdCache.getUniqueIdOrDefault(statName);
 
-        final Scan scan = new Scan();
-
-        if (period.getFrom() != null) {
-            final RowKey startRowKey = rowKeyBuilder.buildStartKey(statisticConfiguration.getName(), rollUpBitMask,
-                    period.getFrom());
-            scan.setStartRow(startRowKey.asByteArray());
-        }
-
-        if (period.getTo() != null) {
-            // need to subtract one from the period to time as it is exclusive
-            // and we want to work from an inclusive
-            // time
-            final RowKey endRowKeyExclusive = rowKeyBuilder.buildEndKey(statName, rollUpBitMask,
-                    period.getTo() - 1L);
-            scan.setStopRow(endRowKeyExclusive.asByteArray());
-        }
+        Scan scan = buildBasicScan(rollUpBitMask, period, statisticConfiguration.getStatisticType(), statName);
 
         // filter on rows with a key starting with the UID of our stat name
-        final Filter prefixFilter = new PrefixFilter(statNameUid);
-
+        final Filter prefixFilter = new PrefixFilter(statNameUid.getUidBytes());
         // filter on the first row found
         final Filter pageFilter = new PageFilter(1);
-
         final Filter keyOnlyFilter = new KeyOnlyFilter();
-
-        final FilterList filters = new FilterList();
-        filters.addFilter(prefixFilter);
-        filters.addFilter(pageFilter);
-        filters.addFilter(keyOnlyFilter);
-
+        final FilterList filters = new FilterList(prefixFilter, pageFilter, keyOnlyFilter);
         scan.setFilter(filters);
 
         final Table tableInterface = getTable();
@@ -721,16 +643,12 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
         try {
             // the page filter may return more than one row as it is run on each
-            // region so you may get one per
-            // region.
-            // we just want the first one we find
-
+            // region so you may get one per region. We just want the first one we find
             final Result result = scanner.next();
 
             if (result != null && result.getRow() != null) {
                 isFound = true;
             }
-
         } catch (final Throwable t) {
             closeScanner(scanner);
             closeTable(tableInterface);
@@ -741,7 +659,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         }
 
         return isFound;
-
     }
 
     @Override
@@ -761,12 +678,11 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      * @param uniqueIdCache The UID cache to convert strings into the UIDs understood by
      *                      HBase
      */
-    private void addScanFilter(final Scan scan, final FindEventCriteria criteria, final UniqueIdCache uniqueIdCache) {
+    private void addTagValueFilter(final Scan scan, final FindEventCriteria criteria, final UniqueIdCache uniqueIdCache) {
         // criteria may not have a filterTree on it
         if (!criteria.getFilterTermsTree().equals(FilterTermsTree.emptyTree())) {
-            Filter tagValueFilter = null;
 
-            tagValueFilter = new StatisticsTagValueFilter(
+            Filter tagValueFilter = new StatisticsTagValueFilter(
                     TagValueFilterTreeBuilder.buildTagValueFilterTree(criteria.getFilterTermsTree(), uniqueIdCache));
 
             scan.setFilter(tagValueFilter);
@@ -828,6 +744,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         LOGGER.debug("Using start key:       " + rowKeyBuilder.toPlainTextString(startRowKey));
         LOGGER.debug("Using end key (excl.): " + rowKeyBuilder.toPlainTextString(endRowKeyExclusive));
 
+        //TODO probably can use buildBasicScan() here
         final Scan scan = new Scan(startRowKey.asByteArray(), endRowKeyExclusive.asByteArray());
         scan.setMaxVersions(1);
 
@@ -835,8 +752,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         scan.setCaching(1_000);
 
         // add a keyOnlyFilter so we only get back the keys and not the data
-        final FilterList filters = new FilterList();
-        filters.addFilter(new KeyOnlyFilter());
+        final FilterList filters = new FilterList(new KeyOnlyFilter());
         scan.setFilter(filters);
 
         int rowCount = 0;
@@ -935,8 +851,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                 .getUidBytes();
 
         // add a keyOnlyFilter so we only get back the keys and not the data
-        final FilterList filters = new FilterList();
-        filters.addFilter(new KeyOnlyFilter());
+        final FilterList filters = new FilterList(new KeyOnlyFilter());
 
         final Scan scan = new Scan()
                 .setRowPrefixFilter(bRowKey)
@@ -995,45 +910,4 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         }
     }
 
-    /**
-     * Class to decorate a BlockingQueue such that we can keep track of the
-     * number of cell values in all of the queue entires, e.g. we may only have
-     * one entry in the queue but that entry may contain thousands of values.
-     */
-    private static class HBaseCountPutBuffer {
-        private final BlockingQueue<CountRowData> countPutBuffer;
-
-        private final AtomicInteger cellCount = new AtomicInteger(0);
-
-        public HBaseCountPutBuffer(final int queueSize) {
-            this.countPutBuffer = new LinkedBlockingQueue<>(queueSize);
-        }
-
-        public int getQueueSize() {
-            return countPutBuffer.size();
-        }
-
-        public int getCellCount() {
-            return cellCount.get();
-        }
-
-        public void put(final CountRowData row) throws InterruptedException {
-            countPutBuffer.put(row);
-            cellCount.addAndGet(row.getCells().size());
-        }
-
-        public CountRowData poll() {
-            final CountRowData countRowData = countPutBuffer.poll();
-            if (countRowData != null) {
-                cellCount.addAndGet(-countRowData.getCells().size());
-            }
-            return countRowData;
-        }
-
-        @Override
-        public String toString() {
-            return "HBaseCountPutBuffer [countPutBuffer count=" + countPutBuffer.size() + ", cellCount=" + cellCount
-                    + "]";
-        }
-    }
 }

@@ -41,7 +41,7 @@ public class CacheConfigurationServiceImpl implements CacheConfigurationService 
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CacheConfigurationServiceImpl.class);
 
-    static final String PROP_KEY_PREFIX_CACHE = "stroom.stats.cache.";
+    private static final String PROP_KEY_PREFIX_CACHE = "stroom.stats.cache.";
     static final String PROP_KEY_SUFFIX_MAX_ENTRIES_HEAP = ".maxEntriesHeap";
     static final String PROP_KEY_SUFFIX_MAX_MB_OFF_HEAP = ".maxEntriesOffHeap";
     static final String PROP_KEY_SUFFIX_MAX_MB_DISK = ".maxEntriesDisk";
@@ -51,12 +51,17 @@ public class CacheConfigurationServiceImpl implements CacheConfigurationService 
     private final StroomPropertyService stroomPropertyService;
 
     @FunctionalInterface
-    private interface BuilderFunction<T> {
+    private interface CacheConfigurationBuilderFunction<T extends CacheConfigurationBuilder<?, ?>> {
         T apply(T builder, int value);
     }
 
-    private static final Map<String, BuilderFunction<CacheConfigurationBuilder<?, ?>>> expiryFunctionMap = new HashMap<>();
-    private static final Map<String, BuilderFunction<ResourcePoolsBuilder>> entriesFunctionMap = new HashMap<>();
+    @FunctionalInterface
+    private interface ResourcePoolsBuilderFunction {
+        ResourcePoolsBuilder apply(ResourcePoolsBuilder builder, int value);
+    }
+
+    private static final Map<String, ResourcePoolsBuilderFunction> entriesFunctionMap = new HashMap<>();
+    private static final Map<String, CacheConfigurationBuilderFunction<CacheConfigurationBuilder<?, ?>>> expiryFunctionMap = new HashMap<>();
 
     static {
         //maps to hold the builder method that corresponds to the property suffix
@@ -100,12 +105,12 @@ public class CacheConfigurationServiceImpl implements CacheConfigurationService 
         //for each prop suffix apply the corresponding function to the builder
         entriesFunctionMap.entrySet().forEach(entry -> {
             final String suffix = entry.getKey();
-            final BuilderFunction func = entry.getValue();
+            final ResourcePoolsBuilderFunction func = entry.getValue();
             getPropertyValue(cacheName, suffix)
                     .ifPresent(val -> {
                         LOGGER.info("Applying configuration property {} and value {} to cache {}", suffix, val, cacheName);
                         final ResourcePoolsBuilder existingBuilder = resourcePoolsBuilderRef.get();
-                        resourcePoolsBuilderRef.set((ResourcePoolsBuilder) func.apply(existingBuilder, val));
+                        resourcePoolsBuilderRef.set(func.apply(existingBuilder, val));
                     });
         });
 
@@ -115,18 +120,19 @@ public class CacheConfigurationServiceImpl implements CacheConfigurationService 
         final AtomicInteger expiryCounter = new AtomicInteger(0);
         expiryFunctionMap.entrySet().forEach(entry -> {
             final String suffix = entry.getKey();
-            final BuilderFunction func = entry.getValue();
+            final CacheConfigurationBuilderFunction<CacheConfigurationBuilder<?, ?>> func = entry.getValue();
             getPropertyValue(cacheName, suffix)
-                    .ifPresent(val -> {
-                        LOGGER.info("Applying configuration property {} and value {} to cache {}", suffix, val, cacheName);
-                        cacheConfigurationBuilderRef.set((CacheConfigurationBuilder<K, V>) func.apply(cacheConfigurationBuilderRef.get(), val));
+                    .ifPresent(propertyValue -> {
+                        LOGGER.info("Applying configuration property {} and value {} to cache {}", suffix, propertyValue, cacheName);
+                        CacheConfigurationBuilder<K, V> newBuilder = (CacheConfigurationBuilder<K, V>) func.apply(cacheConfigurationBuilderRef.get(), propertyValue);
+                        cacheConfigurationBuilderRef.set(newBuilder);
                         if (expiryCounter.incrementAndGet() > 1) {
                             throw new RuntimeException(String.format("Only one expiry setting can be applied to a cache. Cache name %s", cacheName));
                         }
                     });
         });
 
-        //return the build so the caller can chain more methods on it
+        //return the builder so the caller can chain more methods on it
         return cacheConfigurationBuilderRef.get();
     }
 

@@ -21,7 +21,7 @@
 
 package stroom.stats.api;
 
-import stroom.query.api.Query;
+import stroom.query.api.SearchRequest;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -36,29 +36,15 @@ public interface StatisticsService {
     /**
      * Puts multiple aggregated events into the appropriate store.
      * @param statisticType The type of ALL the events in the aggregatedEvents
-     * @param interval The time interval that the aggregatedEvents have been aggregated to
+     * @param interval The time interval that ALL the aggregatedEvents have been aggregated to
      * @param aggregatedEvents An event that has been aggregated from zero-many source events
      */
     void putAggregatedEvents(final StatisticType statisticType,
                              final EventStoreTimeIntervalEnum interval,
                              final Map<StatKey, StatAggregate> aggregatedEvents);
 
-    /**
-     * @param statisticEvents Puts multiple statistic events to the store. The statistic events can be for different
-     *                        statistic configurations
-     *
-     * @return
-     */
-    boolean putEvents(final List<StatisticEvent> statisticEvents);
-
-    /**
-     * @param statisticConfiguration The statistic configuration for ALL statisticEvent objects in the list. This will not be validated.
-     * @param statisticEvents List of statisticEvent objects to put to the store
-     * @return
-     */
-    boolean putEvents(final StatisticConfiguration statisticConfiguration, final List<StatisticEvent> statisticEvents);
-
-    StatisticDataSet searchStatisticsData(final Query query, StatisticConfiguration statisticConfiguration);
+    StatisticDataSet searchStatisticsData(final SearchRequest searchRequest,
+                                          final StatisticConfiguration statisticConfiguration);
 
     /**
      * For a given statistic tag name, it returns all known values existing in

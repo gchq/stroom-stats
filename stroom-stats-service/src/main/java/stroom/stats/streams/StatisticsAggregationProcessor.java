@@ -47,26 +47,28 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * The following shows how the aggregation processing works for a singel stat type
+ * The following shows how the aggregation processing works for a single stat type
  * e.g. COUNT.  Events come in on one topic per interval. Each interval topic is
- * consumed and the events have their time truncated to that interval and then
- * aggregated together.  Periodic flushes of the aggregated events are then forked to
+ * consumed and the events are aggregated together by StatKey (which all have their
+ * time truncated to the interval of the topic they came from.
+ *
+ * Periodic flushes of the aggregated events are then forked to
  * the stat service for persistence and to the next biggest interval topic for another
  * iteration. This waterfall approach imposes increasing latency as the intervals get bigger
  * but this should be fine as a query on the current DAY bucket will yield partial results as
  * the day is not yet over.
- *
+ * <p>
  * -------> consumer/producer SEC  -------->    statisticsService.putAggregatedEvents
  *       __________________________|
- *       V
+ *      V
  * -------> consumer/producer MIN  -------->    statisticsService.putAggregatedEvents
  *       __________________________|
- *       V
+ *      V
  * -------> consumer/producer HOUR -------->    statisticsService.putAggregatedEvents
  *       __________________________|
- *       V
+ *      V
  * -------> consumer/producer DAY  -------->    statisticsService.putAggregatedEvents
- *
+ * <p>
  * If the system goes down unexpectedly then events that have been read off a topic but not yet committed
  * may be re-processed to some extent depending on when the shutdown happened, e.g duplicate events may go to
  * the next topic and/or to the stat service. The size of the StatAggregator is a trade off between in memory aggregation
@@ -176,7 +178,8 @@ class StatisticsAggregationProcessor {
 
     /**
      * Drain the aggregator and pass all aggregated events to the stat service to persist to the event store
-     * @param statisticType The type of events being processed
+     *
+     * @param statisticType  The type of events being processed
      * @param statAggregator
      * @return The list of aggregates events drained from the aggregator and sent to the event store
      */
@@ -274,12 +277,6 @@ class StatisticsAggregationProcessor {
 //
 //        return null;
 //    }
-
-
-
-
-
-
 
 
 }

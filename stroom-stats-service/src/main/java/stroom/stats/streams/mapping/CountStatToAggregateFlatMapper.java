@@ -19,6 +19,7 @@
 
 package stroom.stats.streams.mapping;
 
+import com.google.common.base.Preconditions;
 import org.apache.kafka.streams.KeyValue;
 import stroom.stats.api.MultiPartIdentifier;
 import stroom.stats.hbase.uid.UniqueIdCache;
@@ -26,43 +27,51 @@ import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.Statistics;
 import stroom.stats.streams.StatKey;
 import stroom.stats.streams.StatisticWrapper;
+import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
-import stroom.stats.streams.aggregation.ValueAggregate;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
 import java.util.List;
 
-public class ValueStatToAggregateMapper extends AbstractStatisticMapper {
+public class CountStatToAggregateFlatMapper extends AbstractStatisticFlatMapper {
 
-    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(ValueStatToAggregateMapper.class);
+    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(CountStatToAggregateFlatMapper.class);
 
     private final UniqueIdCache uniqueIdCache;
     private final StroomPropertyService stroomPropertyService;
 
     @Inject
-    public ValueStatToAggregateMapper(final UniqueIdCache uniqueIdCache,
-                                      final StroomPropertyService stroomPropertyService) {
-
+    public CountStatToAggregateFlatMapper(UniqueIdCache uniqueIdCache,
+                                          StroomPropertyService stroomPropertyService) {
         super(uniqueIdCache, stroomPropertyService);
-        LOGGER.info("Initialising {}", this.getClass().getCanonicalName());
+        LOGGER.debug("Initialising {}", this.getClass().getCanonicalName());
+
         this.uniqueIdCache = uniqueIdCache;
         this.stroomPropertyService = stroomPropertyService;
     }
 
+    /**
+     * Convert the Statistic object into a StatKey and a StatAggregate pair. The StatKey is a byte array representation of
+     * the parts that make up the statistic key, i.e. name, tavValues. The StatAggregate is just a container for the stat value
+     * ready for downstream aggregation
+     */
     @Override
     public Iterable<KeyValue<StatKey, StatAggregate>> flatMap(String statName, StatisticWrapper statisticWrapper) {
+        Preconditions.checkNotNull(statName);
+        Preconditions.checkNotNull(statisticWrapper);
+
         int maxEventIds = stroomPropertyService.getIntProperty(StatAggregate.PROP_KEY_MAX_AGGREGATED_EVENT_IDS, Integer.MAX_VALUE);
-        Statistics.Statistic statistic = statisticWrapper.getStatistic();
+        Statistics.Statistic statistic = Preconditions.checkNotNull(statisticWrapper.getStatistic());
 
         List<MultiPartIdentifier> eventIds = convertEventIds(statistic, maxEventIds);
 
         //convert stat value
-        ValueAggregate statAggregate = new ValueAggregate(eventIds, statistic.getValue());
-
+        StatAggregate statAggregate = new CountAggregate(eventIds, statistic.getCount());
         List<KeyValue<StatKey, StatAggregate>> keyValues = buildKeyValues(statName, statisticWrapper, statAggregate);
 
         LOGGER.trace(() -> String.format("Flat mapping event into %s events", keyValues.size()));
         return keyValues;
     }
+
 }

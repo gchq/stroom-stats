@@ -21,6 +21,7 @@
 
 package stroom.stats.hbase;
 
+import com.google.common.base.Preconditions;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.ArrayList;
@@ -66,10 +67,9 @@ public class EventStoreTimeIntervalHelper {
      * between the column intervals of two enums then both, plus all greater
      * will be returned.
      *
-     * @param smallestTimeInterval
-     *            time interval in milliseconds
+     * @param smallestTimeInterval time interval in milliseconds
      * @return The enums that best fit the pass time interval. See method
-     *         description.
+     * description.
      */
     public static List<EventStoreTimeIntervalEnum> getMatchingIntervals(final long smallestTimeInterval) {
         // look up the interval in the matchCache. This function will always
@@ -131,10 +131,9 @@ public class EventStoreTimeIntervalHelper {
      * passed time interval. If there is no exact match then it will return the
      * closest enum with a interval lower than the passed value.
      *
-     * @param smallestTimeInterval
-     *            time interval in milliseconds
+     * @param smallestTimeInterval time interval in milliseconds
      * @return The enums that best fit the pass time interval. See method
-     *         description.
+     * description.
      */
     public static EventStoreTimeIntervalEnum getMatchingInterval(final long smallestTimeInterval) {
         EventStoreTimeIntervalEnum matchingInterval = matchingIntervalCache.get(smallestTimeInterval);
@@ -157,21 +156,17 @@ public class EventStoreTimeIntervalHelper {
      * this would return the next biggest interval size (if not matching
      * exactly), i.e. the MINUTE interval object.
      *
-     * @param searchPeriodMillis
-     *            The duration in millis that the search is over.
-     * @param desiredMaxIntervalsInPeriod
-     *            The desired maximum number of time intervals in the period.
+     * @param searchPeriodMillis          The duration in millis that the search is over.
+     * @param desiredMaxIntervalsInPeriod The desired maximum number of time intervals in the period.
      * @return The {@link EventStoreTimeIntervalHelper} object that best matches
-     *         the arguments supplied
+     * the arguments supplied
      */
     public static EventStoreTimeIntervalEnum getBestFit(final long searchPeriodMillis,
-            final int desiredMaxIntervalsInPeriod) {
+                                                        final int desiredMaxIntervalsInPeriod) {
+        Preconditions.checkArgument(desiredMaxIntervalsInPeriod > 0, "desiredMaxIntervalsInPeriod must be > 0");
+
         if (searchPeriodMillis == 0) {
             throw new IllegalArgumentException("searchPeriodMillis cannot be zero");
-        }
-
-        if (desiredMaxIntervalsInPeriod == 0) {
-            throw new IllegalArgumentException("desiredMaxIntervalsInPeriod cannot be zero");
         }
 
         final long desiredIntervalMillis = searchPeriodMillis / desiredMaxIntervalsInPeriod;

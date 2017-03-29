@@ -50,6 +50,7 @@ import stroom.query.api.ExpressionOperator.Op;
 import stroom.query.api.ExpressionTerm;
 import stroom.query.api.ExpressionTerm.Condition;
 import stroom.query.api.Query;
+import stroom.query.api.SearchRequest;
 import stroom.stats.api.StatisticEvent;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
@@ -66,8 +67,11 @@ import stroom.stats.hbase.SimpleRowKeyBuilder;
 import stroom.stats.hbase.connection.HBaseConnection;
 import stroom.stats.hbase.structure.RowKey;
 import stroom.stats.hbase.structure.ValueCellValue;
-import stroom.stats.hbase.table.*;
+import stroom.stats.hbase.table.EventStoreColumnFamily;
 import stroom.stats.hbase.table.EventStoreTableFactory;
+import stroom.stats.hbase.table.HBaseEventStoreTable;
+import stroom.stats.hbase.table.HBaseTable;
+import stroom.stats.hbase.table.HBaseUniqueIdForwardMapTable;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.hbase.util.bytes.ByteArrayUtils;
@@ -82,6 +86,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.file.Files;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -154,7 +159,8 @@ public final class StatisticsTestService {
 
         final EventStoreTimeIntervalEnum workingTimeInterval = EventStoreTimeIntervalEnum.HOUR;
 
-        final HBaseEventStoreTable hBaseTable = HBaseEventStoreTable.getInstance(workingTimeInterval, null, propertyService,
+        final HBaseEventStoreTable hBaseTable = HBaseEventStoreTable.getInstance(
+                workingTimeInterval, propertyService,
                 hBaseConnection, uniqueIdCache);
 
         // HTableInterface table =
@@ -185,7 +191,7 @@ public final class StatisticsTestService {
 
             LOGGER.trace("Putting event: " + event.toString());
 
-            statisticEventStore.putEvents(Collections.singletonList(event));
+//            statisticEventStore.putEvents(Collections.singletonList(event));
         }
 
         // get all the results back from the hourly event store to see what we
@@ -250,7 +256,7 @@ public final class StatisticsTestService {
 
             LOGGER.trace("Putting event: " + event.toString());
 
-            statisticEventStore.putEvents(Collections.singletonList(event));
+//            statisticEventStore.putEvents(Collections.singletonList(event));
         }
 
         scanAllData(hBaseTable, simpleRowKeyBuilder, EventStoreColumnFamily.VALUES);
@@ -294,7 +300,7 @@ public final class StatisticsTestService {
 
         final Query query = new Query(docRef, root, null);
 
-        statisticDataSet = statisticEventStore.searchStatisticsData(query, statisticConfiguration);
+        statisticDataSet = statisticEventStore.searchStatisticsData(wrapQuery(query), statisticConfiguration);
 
         return statisticDataSet;
     }
@@ -470,7 +476,7 @@ public final class StatisticsTestService {
                 public void run() {
                     // LOGGER.info("Starting thread: " +
                     // Thread.currentThread().getName());
-                    statisticEventStore.putEvents(Collections.singletonList(statisticEvent));
+//                    statisticEventStore.putEvents(Collections.singletonList(statisticEvent));
                 }
             };
 
@@ -488,7 +494,7 @@ public final class StatisticsTestService {
             public void run() {
                 // LOGGER.info("Starting thread: " +
                 // Thread.currentThread().getName());
-                statisticEventStore.putEvents(Collections.singletonList(event));
+//                statisticEventStore.putEvents(Collections.singletonList(event));
             }
         };
 
@@ -503,11 +509,11 @@ public final class StatisticsTestService {
             public void run() {
                 // LOGGER.info("Starting thread: " +
                 // Thread.currentThread().getName());
-                try {
-                    statisticEventStore.putEvents(Collections.singletonList(queue.take()));
-                } catch (final InterruptedException e) {
-                    e.printStackTrace();
-                }
+//                try {
+////                    statisticEventStore.putEvents(Collections.singletonList(queue.take()));
+//                } catch (final InterruptedException e) {
+//                    e.printStackTrace();
+//                }
             }
         };
 
@@ -969,7 +975,7 @@ public final class StatisticsTestService {
     private void clearDownAllTables(final HBaseConnection tableConfiguration) throws IOException {
         HBaseTable hBaseTable;
         for (final EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
-            hBaseTable = HBaseEventStoreTable.getInstance(interval, null, propertyService, hBaseConnection, uniqueIdCache);
+            hBaseTable = HBaseEventStoreTable.getInstance(interval,propertyService, hBaseConnection, uniqueIdCache);
             final Table tableInterface = hBaseTable.getTable();
             clearDownTable(tableInterface);
             tableInterface.close();
@@ -980,7 +986,7 @@ public final class StatisticsTestService {
     private void countAllTables(final HBaseConnection tableConfiguration) throws IOException {
         HBaseTable hBaseTable;
         for (final EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
-            hBaseTable = HBaseEventStoreTable.getInstance(interval, null, propertyService, hBaseConnection, uniqueIdCache);
+            hBaseTable = HBaseEventStoreTable.getInstance(interval, propertyService, hBaseConnection, uniqueIdCache);
             final Table tableInterface = hBaseTable.getTable();
             LOGGER.info("Row count for " + hBaseTable.getName() + " (" + countRows(tableInterface) + ")");
             tableInterface.close();
@@ -1067,5 +1073,9 @@ public final class StatisticsTestService {
         final StatisticsTestService statisticsTestServiceBean = injector.getInstance(StatisticsTestService.class);
 
         statisticsTestServiceBean.run();
+    }
+
+    private SearchRequest wrapQuery(Query query) {
+        return new SearchRequest(null, query, Collections.emptyList(), ZoneOffset.UTC.getId(), false);
     }
 }

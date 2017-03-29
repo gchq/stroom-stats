@@ -45,9 +45,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public abstract class AbstractStatisticMapper {
+public abstract class AbstractStatisticFlatMapper {
 
-    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(AbstractStatisticMapper.class);
+    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(AbstractStatisticFlatMapper.class);
 
     public static final String NULL_VALUE_STRING = "<<<<NULL_VALUE>>>>";
 
@@ -55,8 +55,8 @@ public abstract class AbstractStatisticMapper {
     private final StroomPropertyService stroomPropertyService;
     private final UID rolledUpValue;
 
-    public AbstractStatisticMapper(final UniqueIdCache uniqueIdCache,
-                                   final StroomPropertyService stroomPropertyService) {
+    public AbstractStatisticFlatMapper(final UniqueIdCache uniqueIdCache,
+                                       final StroomPropertyService stroomPropertyService) {
         this.uniqueIdCache = uniqueIdCache;
         this.stroomPropertyService = stroomPropertyService;
 
@@ -68,6 +68,7 @@ public abstract class AbstractStatisticMapper {
     public abstract Iterable<KeyValue<StatKey, StatAggregate>> flatMap(String statName, StatisticWrapper statisticWrapper);
 
     private TagValue buildTagValue(String tag, Optional<String> value) {
+
         LOGGER.trace(() -> String.format("Creating TagValue tag: %s value %s", tag, value.orElse("NULL")));
         UID tagUid = uniqueIdCache.getOrCreateId(tag);
         UID valueUid = uniqueIdCache.getOrCreateId(value.orElse(NULL_VALUE_STRING));
@@ -75,6 +76,7 @@ public abstract class AbstractStatisticMapper {
     }
 
     protected List<MultiPartIdentifier> convertEventIds(final Statistics.Statistic statistic, final int maxEventIds) {
+
         if (statistic.getIdentifiers() == null || statistic.getIdentifiers().getCompoundIdentifier() == null) {
             return Collections.emptyList();
         }
@@ -209,6 +211,7 @@ public abstract class AbstractStatisticMapper {
         StatisticConfiguration statisticConfiguration = statisticWrapper.getOptionalStatisticConfiguration()
                 .orElseThrow(() -> new RuntimeException("Statistic configuration should never be null here as it has already been through validation"));
 
+        //bad jaxb naming
         final int tagListSize = statistic.getTags().getTag().size();
         final StatisticRollUpType rollUpType = statisticConfiguration.getRollUpType();
 
@@ -253,5 +256,4 @@ public abstract class AbstractStatisticMapper {
             return keyValuePerms;
         }
     }
-
 }

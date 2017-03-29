@@ -24,6 +24,7 @@ package stroom.stats.hbase.structure;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.util.bytes.ByteArrayUtils;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -68,6 +69,18 @@ public class TimeAgnosticRowKey {
 
     public byte[] getRollUpBitMask() {
         return rollUpBitMask;
+    }
+
+    /**
+     * @return Just the TypeId and rollUpMask parts
+     */
+    public byte[] asPartialKey() {
+        byte[] partialKey = new byte[UID_ARRAY_LENGTH + ROLL_UP_BIT_MASK_LENGTH];
+        ByteBuffer byteBuffer = ByteBuffer.wrap(partialKey);
+        byteBuffer.put(typeId.getBackingArray(), typeId.getOffset(), UID.length());
+        byteBuffer.put(rollUpBitMask);
+
+        return byteBuffer.array();
     }
 
     @Override

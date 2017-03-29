@@ -28,6 +28,7 @@ import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -50,49 +51,24 @@ public class TestStatKey {
         tagValues.add(new TagValue(UID.from(new byte[] {9,0,2,1}), UID.from(new byte[] {9,0,2,2})));
         tagValues.add(new TagValue(UID.from(new byte[] {9,0,3,1}), UID.from(new byte[] {9,0,3,2})));
 
-        return new StatKey(statNameUid, rollUpBitMask, interval, timeMs, tagValues);
+        StatKey statKey = new StatKey(statNameUid, rollUpBitMask, interval, timeMs, tagValues);
+
+        //make sure the time in the statkey has been truncated to the interval of the statkey
+        Assertions.assertThat(statKey.getTimeMs()).isEqualTo(Instant.ofEpochMilli(timeMs).truncatedTo(ChronoUnit.MINUTES).toEpochMilli());
+
+        return statKey;
     }
 
-    @Test
-    public void cloneAndIncrementInterval() throws Exception {
-
-        StatKey statKey = buildStatKey();
-
-        StatKey statKey2 = statKey.cloneAndIncrementInterval();
-
-        EventStoreTimeIntervalEnum expectedInterval = EventStoreTimeIntervalEnum.HOUR;
-
-        Assertions.assertThat(statKey2.getInterval()).isEqualTo(expectedInterval);
-        Assertions.assertThat(statKey2.getInterval()).isNotEqualTo(statKey.getInterval());
-
-        Assertions.assertThat(statKey2.getTimeMs()).isNotEqualTo(statKey.getTimeMs());
-        Assertions.assertThat(statKey2.getTimeMs()).isEqualTo(time.toInstant(ZoneOffset.UTC).truncatedTo(ChronoUnit.HOURS).toEpochMilli());
-
-        //Tags unchanged
-        Assertions.assertThat(statKey2.getTagValues().get(0).getTag()).isEqualTo(statKey.getTagValues().get(0).getTag());
-        Assertions.assertThat(statKey2.getTagValues().get(1).getTag()).isEqualTo(statKey.getTagValues().get(1).getTag());
-        Assertions.assertThat(statKey2.getTagValues().get(2).getTag()).isEqualTo(statKey.getTagValues().get(2).getTag());
-
-        //values unchanged
-        Assertions.assertThat(statKey2.getTagValues().get(0).getValue()).isEqualTo(statKey.getTagValues().get(0).getValue());
-        Assertions.assertThat(statKey2.getTagValues().get(1).getValue()).isEqualTo(statKey.getTagValues().get(1).getValue());
-        Assertions.assertThat(statKey2.getTagValues().get(2).getValue()).isEqualTo(statKey.getTagValues().get(2).getValue());
-
-        //other props unchanged
-        Assertions.assertThat(statKey2.getStatName()).isEqualTo(statKey.getStatName());
-        Assertions.assertThat(statKey2.getRollupMask()).isEqualTo(statKey.getRollupMask());
-
-    }
 
     @Test
-    public void cloneAndTruncateTimeToInterval() throws Exception {
+    public void cloneAndChangeInterval() throws Exception {
 
         StatKey statKey = buildStatKey();
 
 
         EventStoreTimeIntervalEnum expectedInterval = EventStoreTimeIntervalEnum.DAY;
 
-        StatKey statKey2 = statKey.cloneAndTruncateTimeToInterval(expectedInterval);
+        StatKey statKey2 = statKey.cloneAndChangeInterval(expectedInterval);
 
         Assertions.assertThat(statKey2.getInterval()).isEqualTo(expectedInterval);
         Assertions.assertThat(statKey2.getInterval()).isNotEqualTo(statKey.getInterval());

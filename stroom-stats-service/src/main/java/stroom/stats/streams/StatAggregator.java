@@ -55,10 +55,13 @@ class StatAggregator {
     public void add(final StatKey statKey, final StatAggregate statAggregate){
         Preconditions.checkNotNull(statKey);
         Preconditions.checkNotNull(statAggregate);
+        Preconditions.checkArgument(statKey.getInterval().equals(aggregationInterval),
+                "statKey %s doesn't match aggregator interval %s", statKey, aggregationInterval);
 
         LOGGER.trace("Adding statKey {} and statAggregate {} to aggregator {}", statKey, statAggregate, aggregationInterval);
 
-        statKey.cloneAndTruncateTimeToInterval();
+        //The passed StatKey will already have its time truncated to the interval of this aggregator
+        //so we don't need to do anything to it.
 
         //aggregate the passed aggregate and key into the existing aggregates
         buffer.merge(

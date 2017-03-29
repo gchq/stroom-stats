@@ -80,7 +80,7 @@ public class HBaseEventStoreTableFactory implements EventStoreTableFactory {
 
     private void addEventStoreTable(final EventStoreTimeIntervalEnum timeInterval, final UniqueIdCache uniqueIdCache) {
         eventStoreTables.put(timeInterval,
-                HBaseEventStoreTable.getInstance(timeInterval, taskManager, propertyService, hBaseConnection, uniqueIdCache));
+                HBaseEventStoreTable.getInstance(timeInterval, propertyService, hBaseConnection, uniqueIdCache));
     }
 
 
