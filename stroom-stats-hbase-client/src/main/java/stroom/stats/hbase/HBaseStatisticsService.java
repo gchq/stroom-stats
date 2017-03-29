@@ -28,7 +28,6 @@ import stroom.query.api.ExpressionOperator;
 import stroom.query.api.ExpressionTerm;
 import stroom.query.api.Query;
 import stroom.query.api.SearchRequest;
-import stroom.stats.api.StatisticEvent;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
@@ -37,10 +36,8 @@ import stroom.stats.common.FilterTermsTreeBuilder;
 import stroom.stats.common.FindEventCriteria;
 import stroom.stats.common.Period;
 import stroom.stats.common.Range;
-import stroom.stats.common.RolledUpStatisticEvent;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.rollup.RollUpBitMask;
-import stroom.stats.configuration.CustomRollUpMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -242,39 +239,6 @@ public class HBaseStatisticsService implements StatisticsService {
         return queryableFields;
     }
 
-    @Deprecated //now done in kafka streams
-    static RolledUpStatisticEvent generateTagRollUps(final StatisticEvent event,
-                                                     final StatisticConfiguration statisticConfiguration) {
-        RolledUpStatisticEvent rolledUpStatisticEvent = null;
-
-        final int eventTagListSize = event.getTagList().size();
-
-        final StatisticRollUpType rollUpType = statisticConfiguration.getRollUpType();
-
-        if (eventTagListSize == 0 || StatisticRollUpType.NONE.equals(rollUpType)) {
-            rolledUpStatisticEvent = new RolledUpStatisticEvent(event);
-        } else if (StatisticRollUpType.ALL.equals(rollUpType)) {
-            final List<List<StatisticTag>> tagListPerms = generateStatisticTagPerms(event.getTagList(),
-                    RollUpBitMask.getRollUpPermutationsAsBooleans(eventTagListSize));
-
-            // wrap the original event along with the perms list
-            rolledUpStatisticEvent = new RolledUpStatisticEvent(event, tagListPerms);
-
-        } else if (StatisticRollUpType.CUSTOM.equals(rollUpType)) {
-            final Set<List<Boolean>> perms = new HashSet<>();
-            for (final CustomRollUpMask mask : statisticConfiguration.getCustomRollUpMasks()) {
-                final RollUpBitMask rollUpBitMask = RollUpBitMask.fromTagPositions(mask.getRolledUpTagPositions());
-
-                perms.add(rollUpBitMask.getBooleanMask(eventTagListSize));
-            }
-            final List<List<StatisticTag>> tagListPerms = generateStatisticTagPerms(event.getTagList(), perms);
-
-            rolledUpStatisticEvent = new RolledUpStatisticEvent(event, tagListPerms);
-        }
-
-        return rolledUpStatisticEvent;
-    }
-
     private static Range<Long> extractRange(final ExpressionTerm dateTerm,
                                             final String timeZoneId,
                                             final long nowEpochMilli) {
@@ -409,20 +373,11 @@ public class HBaseStatisticsService implements StatisticsService {
         }
     }
 
-
     @Override
     public void putAggregatedEvents(final StatisticType statisticType,
                                     final EventStoreTimeIntervalEnum interval,
                                     final Map<StatKey, StatAggregate> aggregatedEvents) {
-        //TODO
-        //Think we need to change the javadoc on this method to state that message should belong to the same stat type
-        //and interval. This is is to save having to group them by type/interval again if they we already divided up
-        //that way in the topics.
-        //Change EventStores to take a list of AggregatedEvents
-        //Change EventStore to take a list of AggregatedEvents
-        //in HBaseEventStoreTable change to take a list of AggregatedEvents and convert these into CellQualifiers
-        //revisit buffering in HBEST as we want to consume a batch, put that batch then commit kafka
-        //kafka partitioning should mean similarity between stat keys in the batch
+
         eventStores.putAggregatedEvents(statisticType, interval, aggregatedEvents);
     }
 

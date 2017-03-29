@@ -31,10 +31,8 @@ import stroom.query.api.Query;
 import stroom.query.api.SearchRequest;
 import stroom.stats.api.StatisticEvent;
 import stroom.stats.api.StatisticTag;
-import stroom.stats.api.TimeAgnosticStatisticEvent;
 import stroom.stats.common.FilterTermsTree;
 import stroom.stats.common.FindEventCriteria;
-import stroom.stats.common.RolledUpStatisticEvent;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.MockCustomRollupMask;
 import stroom.stats.configuration.MockStatisticConfiguration;
@@ -48,9 +46,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static stroom.query.api.ExpressionOperator.Op;
 
 public class TestHBaseStatisticsService {
@@ -66,162 +61,6 @@ public class TestHBaseStatisticsService {
 
     private static final String ROLLED_UP_VALUE = RollUpBitMask.ROLL_UP_TAG_VALUE;
 
-    @Test
-    public void testGenerateTagRollUpsTwoTagsAllRollUps() {
-        final StatisticEvent event = buildEvent(buildTagList());
-
-        final StatisticConfiguration statisticConfiguration = buildStatisticConfiguration();
-
-        final RolledUpStatisticEvent rolledUpStatisticEvent = HBaseStatisticsService.generateTagRollUps(event,
-                statisticConfiguration);
-
-        assertEquals(4, rolledUpStatisticEvent.getPermutationCount());
-
-        final List<TimeAgnosticStatisticEvent> timeAgnosticStatisticEvents = new ArrayList<>();
-
-        // define all the tag/value perms we expect to get back
-        final List<List<StatisticTag>> expectedTagPerms = new ArrayList<>();
-        expectedTagPerms
-                .add(Arrays.asList(new StatisticTag(TAG1_NAME, TAG1_VALUE), new StatisticTag(TAG2_NAME, TAG2_VALUE)));
-        expectedTagPerms.add(
-                Arrays.asList(new StatisticTag(TAG1_NAME, TAG1_VALUE), new StatisticTag(TAG2_NAME, ROLLED_UP_VALUE)));
-        expectedTagPerms.add(
-                Arrays.asList(new StatisticTag(TAG1_NAME, ROLLED_UP_VALUE), new StatisticTag(TAG2_NAME, TAG2_VALUE)));
-        expectedTagPerms.add(Arrays.asList(new StatisticTag(TAG1_NAME, ROLLED_UP_VALUE),
-                new StatisticTag(TAG2_NAME, ROLLED_UP_VALUE)));
-
-        System.out.println("-------------------------------------------------");
-        for (final List<StatisticTag> expectedTagList : expectedTagPerms) {
-            System.out.println(expectedTagList);
-        }
-        System.out.println("-------------------------------------------------");
-
-        for (final TimeAgnosticStatisticEvent eventPerm : rolledUpStatisticEvent) {
-            // make sure we don't already have one like this.
-            assertFalse(timeAgnosticStatisticEvents.contains(eventPerm));
-
-            assertEquals(event.getName(), eventPerm.getName());
-            assertEquals(event.getType(), eventPerm.getType());
-            assertEquals(event.getCount(), eventPerm.getCount());
-            assertEquals(event.getTagList().size(), eventPerm.getTagList().size());
-
-            System.out.println(eventPerm.getTagList());
-
-            assertTrue(expectedTagPerms.contains(eventPerm.getTagList()));
-
-            for (int i = 0; i < event.getTagList().size(); i++) {
-                assertEquals(event.getTagList().get(i).getTag(), eventPerm.getTagList().get(i).getTag());
-                Assert.assertTrue(event.getTagList().get(i).getValue().equals(eventPerm.getTagList().get(i).getValue())
-                        || RollUpBitMask.ROLL_UP_TAG_VALUE.equals(eventPerm.getTagList().get(i).getValue()));
-            }
-        }
-    }
-
-    @Test
-    public void testGenerateTagRollUpsTwoTagsCustomRollUps() {
-        final StatisticEvent event = buildEvent(buildTagList());
-
-        final StatisticConfiguration statisticConfiguration = buildStatisticConfiguration(StatisticRollUpType.CUSTOM);
-
-        final RolledUpStatisticEvent rolledUpStatisticEvent = HBaseStatisticsService.generateTagRollUps(event,
-                statisticConfiguration);
-
-        assertEquals(3, rolledUpStatisticEvent.getPermutationCount());
-
-        final List<TimeAgnosticStatisticEvent> timeAgnosticStatisticEvents = new ArrayList<>();
-
-        // define all the tag/value perms we expect to get back
-        final List<List<StatisticTag>> expectedTagPerms = new ArrayList<>();
-
-        // nothing rolled up
-        expectedTagPerms
-                .add(Arrays.asList(new StatisticTag(TAG1_NAME, TAG1_VALUE), new StatisticTag(TAG2_NAME, TAG2_VALUE)));
-
-        // tag 2 rolled up
-        expectedTagPerms.add(
-                Arrays.asList(new StatisticTag(TAG1_NAME, TAG1_VALUE), new StatisticTag(TAG2_NAME, ROLLED_UP_VALUE)));
-
-        // tags 1 and 2 rolled up
-        expectedTagPerms.add(Arrays.asList(new StatisticTag(TAG1_NAME, ROLLED_UP_VALUE),
-                new StatisticTag(TAG2_NAME, ROLLED_UP_VALUE)));
-
-        System.out.println("-------------------------------------------------");
-        for (final List<StatisticTag> expectedTagList : expectedTagPerms) {
-            System.out.println(expectedTagList);
-        }
-        System.out.println("-------------------------------------------------");
-
-        for (final TimeAgnosticStatisticEvent eventPerm : rolledUpStatisticEvent) {
-            // make sure we don't already have one like this.
-            assertFalse(timeAgnosticStatisticEvents.contains(eventPerm));
-
-            assertEquals(event.getName(), eventPerm.getName());
-            assertEquals(event.getType(), eventPerm.getType());
-            assertEquals(event.getCount(), eventPerm.getCount());
-            assertEquals(event.getTagList().size(), eventPerm.getTagList().size());
-
-            System.out.println(eventPerm.getTagList());
-
-            assertTrue(expectedTagPerms.contains(eventPerm.getTagList()));
-
-            for (int i = 0; i < event.getTagList().size(); i++) {
-                assertEquals(event.getTagList().get(i).getTag(), eventPerm.getTagList().get(i).getTag());
-                Assert.assertTrue(event.getTagList().get(i).getValue().equals(eventPerm.getTagList().get(i).getValue())
-                        || RollUpBitMask.ROLL_UP_TAG_VALUE.equals(eventPerm.getTagList().get(i).getValue()));
-            }
-        }
-    }
-
-    @Test
-    public void testGenerateTagRollUpsNoTags() {
-        final StatisticEvent event = buildEvent(new ArrayList<StatisticTag>());
-
-        final StatisticConfiguration statisticConfiguration = buildStatisticConfiguration();
-
-        final RolledUpStatisticEvent rolledUpStatisticEvent = HBaseStatisticsService.generateTagRollUps(event,
-                statisticConfiguration);
-
-        assertEquals(1, rolledUpStatisticEvent.getPermutationCount());
-
-        for (final TimeAgnosticStatisticEvent eventPerm : rolledUpStatisticEvent) {
-            assertEquals(event.getName(), eventPerm.getName());
-            assertEquals(event.getType(), eventPerm.getType());
-            assertEquals(event.getCount(), eventPerm.getCount());
-            assertEquals(event.getTagList().size(), eventPerm.getTagList().size());
-
-            for (int i = 0; i < event.getTagList().size(); i++) {
-                assertEquals(event.getTagList().get(i).getTag(), eventPerm.getTagList().get(i).getTag());
-                Assert.assertTrue(event.getTagList().get(i).getValue().equals(eventPerm.getTagList().get(i).getValue())
-                        || RollUpBitMask.ROLL_UP_TAG_VALUE.equals(eventPerm.getTagList().get(i).getValue()));
-            }
-        }
-
-    }
-
-    @Test
-    public void testGenerateTagRollUpsNotEnabled() {
-        final StatisticEvent event = buildEvent(buildTagList());
-
-        final StatisticConfiguration statisticConfiguration = buildStatisticConfiguration(StatisticRollUpType.NONE);
-
-        final RolledUpStatisticEvent rolledUpStatisticEvent = HBaseStatisticsService.generateTagRollUps(event,
-                statisticConfiguration);
-
-        assertEquals(1, rolledUpStatisticEvent.getPermutationCount());
-
-        for (final TimeAgnosticStatisticEvent eventPerm : rolledUpStatisticEvent) {
-            assertEquals(event.getName(), eventPerm.getName());
-            assertEquals(event.getType(), eventPerm.getType());
-            assertEquals(event.getCount(), eventPerm.getCount());
-            assertEquals(event.getTagList().size(), eventPerm.getTagList().size());
-
-            for (int i = 0; i < event.getTagList().size(); i++) {
-                assertEquals(event.getTagList().get(i).getTag(), eventPerm.getTagList().get(i).getTag());
-                Assert.assertTrue(event.getTagList().get(i).getValue().equals(eventPerm.getTagList().get(i).getValue())
-                        || RollUpBitMask.ROLL_UP_TAG_VALUE.equals(eventPerm.getTagList().get(i).getValue()));
-            }
-        }
-    }
 
 
     private StatisticEvent buildEvent(final List<StatisticTag> tagList) {

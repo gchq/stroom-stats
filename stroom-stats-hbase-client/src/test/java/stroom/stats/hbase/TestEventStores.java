@@ -28,13 +28,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.MockitoJUnitRunner;
-import stroom.stats.api.StatisticEvent;
-import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.common.CommonStatisticConstants;
-import stroom.stats.common.RolledUpStatisticEvent;
-import stroom.stats.configuration.MockStatisticConfiguration;
-import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.hbase.structure.AddEventOperation;
 import stroom.stats.hbase.table.EventStoreTable;
 import stroom.stats.hbase.table.EventStoreTableFactory;
@@ -152,22 +147,22 @@ public class TestEventStores {
     }
 
 
-    private RolledUpStatisticEvent buildEvent(final long timeMs) {
-        return buildEvent(timeMs, null);
-    }
-
-    private RolledUpStatisticEvent buildEvent(final long timeMs, final List<StatisticTag> tags) {
-        final StatisticEvent statisticEvent = new StatisticEvent(timeMs, "MyStat", tags, 1);
-
-        final MockStatisticConfiguration statisticConfiguration = new MockStatisticConfiguration();
-
-        statisticConfiguration.setRollUpType(StatisticRollUpType.ALL);
-
-        final RolledUpStatisticEvent rolledUpStatisticEvent = HBaseStatisticsService.generateTagRollUps(statisticEvent,
-                statisticConfiguration);
-
-        return rolledUpStatisticEvent;
-    }
+//    private RolledUpStatisticEvent buildEvent(final long timeMs) {
+//        return buildEvent(timeMs, null);
+//    }
+//
+//    private RolledUpStatisticEvent buildEvent(final long timeMs, final List<StatisticTag> tags) {
+//        final StatisticEvent statisticEvent = new StatisticEvent(timeMs, "MyStat", tags, 1);
+//
+//        final MockStatisticConfiguration statisticConfiguration = new MockStatisticConfiguration();
+//
+//        statisticConfiguration.setRollUpType(StatisticRollUpType.ALL);
+//
+//        final RolledUpStatisticEvent rolledUpStatisticEvent = HBaseStatisticsService.generateTagRollUps(statisticEvent,
+//                statisticConfiguration);
+//
+//        return rolledUpStatisticEvent;
+//    }
 
     public static class MockEventStoreTableFactory implements EventStoreTableFactory {
         @Override

@@ -36,7 +36,7 @@ public interface StatisticsService {
     /**
      * Puts multiple aggregated events into the appropriate store.
      * @param statisticType The type of ALL the events in the aggregatedEvents
-     * @param interval The time interval that the aggregatedEvents have been aggregated to
+     * @param interval The time interval that ALL the aggregatedEvents have been aggregated to
      * @param aggregatedEvents An event that has been aggregated from zero-many source events
      */
     void putAggregatedEvents(final StatisticType statisticType,
