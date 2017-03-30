@@ -321,12 +321,12 @@ public final class StatisticsTestService {
 
         final ExpressionTerm termNodeUser = new ExpressionTerm("userId", Condition.EQUALS, "someuser");
 
-        // FindEventCriteria criteria = new FindEventCriteria(new
+        // SearchStatisticsCriteria criteria = new SearchStatisticsCriteria(new
         // Period(rangeFrom, rangeTo), seriesList, filterTree,
         // AggregationMode.COUNT, new
         // BucketSize(BucketSize.PredefinedBucketSize.MINUTE));
 
-        // FindEventCriteria criteria = new FindEventCriteria(new
+        // SearchStatisticsCriteria criteria = new SearchStatisticsCriteria(new
         // Period(rangeFrom, rangeTo), seriesList,
         // AggregationMode.COUNT, new
         // BucketSize(BucketSize.PredefinedBucketSize.SECOND));

@@ -32,7 +32,7 @@ import stroom.query.api.SearchRequest;
 import stroom.stats.api.StatisticEvent;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.common.FilterTermsTree;
-import stroom.stats.common.FindEventCriteria;
+import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.MockCustomRollupMask;
 import stroom.stats.configuration.MockStatisticConfiguration;
@@ -108,7 +108,7 @@ public class TestHBaseStatisticsService {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
+        SearchStatisticsCriteria criteria = HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
 
         Assert.assertNotNull(criteria);
         Assertions.assertThat(criteria.getPeriod().getFrom()).isNull();
@@ -155,7 +155,7 @@ public class TestHBaseStatisticsService {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        final FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
+        final SearchStatisticsCriteria criteria = HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
 
         Assert.assertNotNull(criteria);
         Assert.assertEquals(fromDate, criteria.getPeriod().getFrom().longValue());
@@ -227,7 +227,7 @@ public class TestHBaseStatisticsService {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        final FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
+        final SearchStatisticsCriteria criteria = HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
 
         Assert.assertNotNull(criteria);
         Assert.assertEquals("[MyField=]", criteria.getFilterTermsTree().toString());
@@ -252,7 +252,7 @@ public class TestHBaseStatisticsService {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        final FindEventCriteria criteria = HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
+        final SearchStatisticsCriteria criteria = HBaseStatisticsService.buildCriteria(wrapQuery(query), dataSource);
 
     }
 

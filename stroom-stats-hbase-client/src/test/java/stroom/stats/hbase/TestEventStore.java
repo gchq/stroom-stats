@@ -24,7 +24,7 @@ package stroom.stats.hbase;
 import org.junit.Assert;
 import org.junit.Test;
 import stroom.stats.api.StatisticType;
-import stroom.stats.common.FindEventCriteria;
+import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.common.Period;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.rollup.RollUpBitMask;
@@ -345,7 +345,7 @@ public class TestEventStore {
         @Override
         public StatisticDataSet getStatisticsData(final UniqueIdCache uniqueIdCache,
                 final StatisticConfiguration statisticConfiguration, final RollUpBitMask rollUpBitMask,
-                final FindEventCriteria criteria) {
+                final SearchStatisticsCriteria criteria) {
             throw new UnsupportedOperationException("Not used by this mock");
         }
 

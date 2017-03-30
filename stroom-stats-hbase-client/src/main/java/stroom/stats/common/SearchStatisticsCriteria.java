@@ -28,7 +28,7 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 
-public class FindEventCriteria {
+public class SearchStatisticsCriteria {
 
     private final Period period;
     private final String statisticName;
@@ -36,11 +36,11 @@ public class FindEventCriteria {
     private final Set<String> rolledUpFieldNames;
     private final EventStoreTimeIntervalEnum interval;
 
-    private FindEventCriteria(final Period period,
-                              final String statisticName,
-                              final FilterTermsTree filterTermsTree,
-                              final Set<String> rolledUpFieldNames,
-                              final EventStoreTimeIntervalEnum interval) {
+    private SearchStatisticsCriteria(final Period period,
+                                     final String statisticName,
+                                     final FilterTermsTree filterTermsTree,
+                                     final Set<String> rolledUpFieldNames,
+                                     final EventStoreTimeIntervalEnum interval) {
         this.period = period;
         this.statisticName = statisticName;
         this.filterTermsTree = filterTermsTree;
@@ -79,7 +79,7 @@ public class FindEventCriteria {
 
     @Override
     public String toString() {
-        return "FindEventCriteria{" +
+        return "SearchStatisticsCriteria{" +
                 "period=" + period +
                 ", statisticName='" + statisticName + '\'' +
                 ", filterTermsTree=" + filterTermsTree +
@@ -123,8 +123,8 @@ public class FindEventCriteria {
             this.interval = interval;
         }
 
-        public FindEventCriteria build() {
-            return new FindEventCriteria(period, statisticName, filterTermsTree, rolledUpFieldNames, interval);
+        public SearchStatisticsCriteria build() {
+            return new SearchStatisticsCriteria(period, statisticName, filterTermsTree, rolledUpFieldNames, interval);
         }
     }
 }

@@ -31,12 +31,8 @@ import stroom.query.api.SearchRequest;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
-import stroom.stats.common.FilterTermsTree;
-import stroom.stats.common.FilterTermsTreeBuilder;
-import stroom.stats.common.FindEventCriteria;
-import stroom.stats.common.Period;
-import stroom.stats.common.Range;
-import stroom.stats.common.StatisticDataSet;
+import stroom.stats.common.*;
+import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
@@ -87,8 +83,8 @@ public class HBaseStatisticsService implements StatisticsService {
         this.eventStores = eventStores;
     }
 
-    static FindEventCriteria buildCriteria(final SearchRequest searchRequest,
-                                           final StatisticConfiguration statisticConfiguration) {
+    static SearchStatisticsCriteria buildCriteria(final SearchRequest searchRequest,
+                                                  final StatisticConfiguration statisticConfiguration) {
         LOGGER.trace(() -> String.format("buildCriteria called for statisticConfiguration %s", statisticConfiguration));
 
         Preconditions.checkNotNull(searchRequest);
@@ -162,7 +158,7 @@ public class HBaseStatisticsService implements StatisticsService {
         final FilterTermsTree filterTermsTree = FilterTermsTreeBuilder
                 .convertExpresionItemsTree(topLevelExpressionOperator, blackListedFieldNames);
 
-        final FindEventCriteria.FindEventCriteriaBuilder criteriaBuilder = FindEventCriteria
+        final SearchStatisticsCriteria.FindEventCriteriaBuilder criteriaBuilder = SearchStatisticsCriteria
                 .builder(new Period(range.getFrom(), range.getTo()), statisticConfiguration.getName())
                 .setFilterTermsTree(filterTermsTree)
                 .setRolledUpFieldNames(rolledUpFieldNames);
@@ -329,7 +325,7 @@ public class HBaseStatisticsService implements StatisticsService {
      * assume that the user tag is being rolled up so user=user1 would never be
      * found in the data and thus would return no data.
      */
-    public static RollUpBitMask buildRollUpBitMaskFromCriteria(final FindEventCriteria criteria,
+    public static RollUpBitMask buildRollUpBitMaskFromCriteria(final SearchStatisticsCriteria criteria,
                                                                final StatisticConfiguration statisticConfiguration) {
         final Set<String> rolledUpTagsFound = criteria.getRolledUpFieldNames();
 
@@ -386,7 +382,7 @@ public class HBaseStatisticsService implements StatisticsService {
                                                  final List<String> requestedFields,
                                                  final StatisticConfiguration statisticConfiguration) {
 
-        final FindEventCriteria criteria = buildCriteria(searchRequest, statisticConfiguration);
+        final SearchStatisticsCriteria criteria = buildCriteria(searchRequest, statisticConfiguration);
 
         return eventStores.getStatisticsData(criteria, statisticConfiguration);
     }
