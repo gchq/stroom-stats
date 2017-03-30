@@ -1,8 +1,6 @@
 package stroom.stats.correlation;
 
 import com.google.inject.Injector;
-import javaslang.control.Try;
-import org.hibernate.SessionFactory;
 import org.junit.Test;
 import stroom.query.api.DocRef;
 import stroom.query.api.ExpressionOperator;
@@ -18,19 +16,12 @@ import stroom.query.api.TableResult;
 import stroom.query.api.TableSettings;
 import stroom.query.api.TableSettingsBuilder;
 import stroom.stats.AbstractAppIT;
+import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.configuration.StatisticConfigurationEntity;
-import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
-import stroom.stats.properties.StroomPropertyService;
+import stroom.stats.schema.ObjectFactory;
+import stroom.stats.schema.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.KafkaStreamService;
-import stroom.stats.streams.TopicNameFactory;
-import stroom.stats.test.StatisticConfigurationEntityHelper;
-import stroom.stats.correlation.testdata.DummyStat;
-import stroom.stats.correlation.testdata.KafkaHelper;
-import stroom.stats.correlation.testdata.TestData;
-import stroom.stats.xml.StatisticsMarshaller;
-import stroom.util.thread.ThreadUtil;
+import stroom.stats.test.StatisticsHelper;
 
 import javax.ws.rs.core.Response;
 import java.time.ZonedDateTime;
@@ -45,38 +36,44 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
 
     private Injector injector = getApp().getInjector();
 
+    private static final String USER_TAG = "user";
+    private static final String DOOR_TAG = "door";
+
     @Test
     public void test1(){
-        // Given 1 - setup data
+        // Given 1 - create a StatisticConfiguration, create and send Statistics
         ZonedDateTime now = ZonedDateTime.now();
-        DummyStat usersEnteringTheBuildingData = setupStatisticConfigurations(now, injector);
-        sendStatistics(usersEnteringTheBuildingData, injector);
+        StatisticType statisticType = StatisticType.COUNT;
+        EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.DAY;
+        String statName = "UsersEnteringTheBuilding-" + now.toString() + "-" + statisticType + "-" + interval;
+        String statisticConfigurationUuid = StatisticConfigurationCreator.create(injector, statName, statisticType, interval, USER_TAG, DOOR_TAG);
+        StatisticSender.sendStatistics(injector, getStats(statName, now), statisticType);
 
-        // Given 2 - get queries together
-        String uuid = usersEnteringTheBuildingData.statisticConfigurationEntity().getUuid();
-        SearchRequest searchRequestForYesterday = getUsersDoorsRequest(uuid, getDateRangeFor(now.minusDays(1)));
-        SearchRequest searchRequestForToday = getUsersDoorsRequest(uuid, getDateRangeFor(now));
+        // Given 2 - get queries ready
+        SearchRequest searchRequestForYesterday = getUsersDoorsRequest(statisticConfigurationUuid, getDateRangeFor(now.minusDays(1)));
+        SearchRequest searchRequestForToday = getUsersDoorsRequest(statisticConfigurationUuid, getDateRangeFor(now));
 
-        // When
+        // When 1 - send the query for yesterday
         Response yesterdayResponse = req().body(() -> searchRequestForYesterday).getStats();
         SearchResponse yesterdaySearchResponse = yesterdayResponse.readEntity(SearchResponse.class);
 
+        // When 2 - send the query for today
         Response todayResponse = req().body(() -> searchRequestForToday).getStats();
         SearchResponse todaySearchResponse = todayResponse.readEntity(SearchResponse.class);
 
-        // Then
+        // Then 1 - basic checks
         assertThat(((TableResult)yesterdaySearchResponse.getResults().get(0)).getTotalResults()).isEqualTo(3);
         assertThat(((TableResult)todaySearchResponse.getResults().get(0)).getTotalResults()).isEqualTo(2);
 
+        // Then 2 - correlations
         List<Row> yesterday = ((TableResult) yesterdaySearchResponse.getResults().get(0)).getRows();
         List<Row> today = ((TableResult) todaySearchResponse.getResults().get(0)).getRows();
-
-        List<Row> yesterdayAndNotToday = new CorrelationBuilder()
-                .addSet(CorrelationBuilder.SetName.A, yesterday)
-                .addSet(CorrelationBuilder.SetName.B, today)
-                .complement(CorrelationBuilder.SetName.A);
+        List<Row> yesterdayAndNotToday = new Correlator()
+                .addSet(Correlator.SetName.A, yesterday)
+                .addSet(Correlator.SetName.B, today)
+                .complement(Correlator.SetName.B);
         assertThat(yesterdayAndNotToday.size()).isEqualTo(1);
-        assertThat(yesterdayAndNotToday.get(0).getValues().get(0)).isEqualTo("user1");
+        assertThat(yesterdayAndNotToday.get(0).getValues().get(0)).isEqualTo("user3");
         assertThat(yesterdayAndNotToday.get(0).getValues().get(1)).isEqualTo("door1");
     }
 
@@ -86,31 +83,48 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
         return range;
     }
 
-
-    private static DummyStat setupStatisticConfigurations(ZonedDateTime dateTime, Injector injector){
-        SessionFactory sessionFactory = injector.getInstance(SessionFactory.class);
-        StatisticConfigurationEntityMarshaller statisticConfigurationMarshaller = injector.getInstance(StatisticConfigurationEntityMarshaller.class);
-        DummyStat usersEnteringTheBuildingData = TestData.usersEnteringTheBuilding(dateTime);
-        Try<StatisticConfigurationEntity>  statisticConfigurationEntity = StatisticConfigurationEntityHelper.addStatConfig(
-                sessionFactory, statisticConfigurationMarshaller, usersEnteringTheBuildingData.statisticConfigurationEntity());
-        usersEnteringTheBuildingData.statisticConfigurationEntity(statisticConfigurationEntity.get());
-        return usersEnteringTheBuildingData;
+    private static Statistics getStats(String statName, ZonedDateTime dateTime){
+        Statistics statistics = new ObjectFactory().createStatistics();
+        statistics.getStatistic().addAll(buildStatsForYesterday(statName, dateTime));
+        statistics.getStatistic().addAll(buildStatsForToday(statName, dateTime));
+        return statistics;
     }
 
-    private static void sendStatistics(DummyStat usersEnteringTheBuildingData, Injector injector){
-        StroomPropertyService stroomPropertyService = injector.getInstance(StroomPropertyService.class);
-        StatisticsMarshaller statisticsMarshaller = injector.getInstance(StatisticsMarshaller.class);
-        String topicPrefix = stroomPropertyService.getPropertyOrThrow(KafkaStreamService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX);
-        String topic = TopicNameFactory.getStatisticTypedName(topicPrefix, usersEnteringTheBuildingData.statisticConfigurationEntity().getStatisticType());
-        KafkaHelper.sendDummyStatistics(
-                KafkaHelper.buildKafkaProducer(stroomPropertyService),
-                topic,
-                Arrays.asList(usersEnteringTheBuildingData.statistics()),
-                statisticsMarshaller);
-        // Waiting for a bit so that we know the Statistics have been processed
-        ThreadUtil.sleep(60_000);
-        //TODO it'd be useful to check HBase and see if the stats have been created
+    private static List<Statistics.Statistic> buildStatsForYesterday(String statName, ZonedDateTime now) {
+        return Arrays.asList(
+                StatisticsHelper.buildCountStatistic(
+                        statName, now.minusDays(1), 1,
+                        StatisticsHelper.buildTagType(USER_TAG, "user1"),
+                        StatisticsHelper.buildTagType(DOOR_TAG, "door1")),
+
+                StatisticsHelper.buildCountStatistic(
+                        statName, now.minusDays(1), 1,
+                        StatisticsHelper.buildTagType(USER_TAG, "user2"),
+                        StatisticsHelper.buildTagType(DOOR_TAG, "door1")),
+
+
+                StatisticsHelper.buildCountStatistic(
+                        statName, now.minusDays(1), 1,
+                        StatisticsHelper.buildTagType(USER_TAG, "user3"),
+                        StatisticsHelper.buildTagType(DOOR_TAG, "door1"))
+        );
     }
+
+    private static List<Statistics.Statistic> buildStatsForToday(String statName, ZonedDateTime now) {
+        return Arrays.asList(
+                StatisticsHelper.buildCountStatistic(
+                        statName, now, 1,
+                        StatisticsHelper.buildTagType(USER_TAG, "user1"),
+                        StatisticsHelper.buildTagType(DOOR_TAG, "door1")),
+
+                StatisticsHelper.buildCountStatistic(
+                        statName, now, 1,
+                        StatisticsHelper.buildTagType(USER_TAG, "user2"),
+                        StatisticsHelper.buildTagType(DOOR_TAG, "door1"))
+        );
+    }
+
+
 
     private static SearchRequest getUsersDoorsRequest(String statisticConfigurationUuid, String timeConstraint) {
 

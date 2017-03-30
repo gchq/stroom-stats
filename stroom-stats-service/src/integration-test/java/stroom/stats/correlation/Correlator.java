@@ -8,11 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class CorrelationBuilder {
+public class Correlator {
 
     private Map<SetName, ImmutableList<Row>> sets = new HashMap<>();
 
-    public CorrelationBuilder addSet(SetName setName, List<Row> set){
+    public Correlator addSet(SetName setName, List<Row> set){
         sets.put(setName, ImmutableList.copyOf(set));
         return this;
     }

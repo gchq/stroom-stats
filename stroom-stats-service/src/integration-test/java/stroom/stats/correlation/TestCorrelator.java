@@ -9,7 +9,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class TestCorrelationBuilder {
+public class TestCorrelator {
 
     @Test
     public void test(){
@@ -21,10 +21,10 @@ public class TestCorrelationBuilder {
         b.add(new Row("groupKey", Arrays.asList("user1", "door1"), 1));
         b.add(new Row("groupKey", Arrays.asList("user2", "door1"), 1));
 
-        List<Row> complementOfB = new CorrelationBuilder()
-                .addSet(CorrelationBuilder.SetName.A, a)
-                .addSet(CorrelationBuilder.SetName.B, b)
-                .complement(CorrelationBuilder.SetName.B);
+        List<Row> complementOfB = new Correlator()
+                .addSet(Correlator.SetName.A, a)
+                .addSet(Correlator.SetName.B, b)
+                .complement(Correlator.SetName.B);
 
         assertThat(complementOfB.size()).isEqualTo(1);
         assertThat(complementOfB.get(0).getValues().get(0)).isEqualTo("user3");
