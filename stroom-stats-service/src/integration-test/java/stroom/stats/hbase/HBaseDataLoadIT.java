@@ -23,20 +23,14 @@ import com.google.inject.Injector;
 import javaslang.Tuple2;
 import org.hibernate.SessionFactory;
 import org.junit.Test;
-import stroom.query.api.DocRef;
-import stroom.query.api.ExpressionItem;
-import stroom.query.api.ExpressionOperator;
-import stroom.query.api.ExpressionTerm;
-import stroom.query.api.Query;
-import stroom.query.api.SearchRequest;
+import stroom.query.api.*;
 import stroom.stats.AbstractAppIT;
+import stroom.stats.HBaseClient;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
-import stroom.stats.common.CountStatisticDataPoint;
-import stroom.stats.common.StatisticDataPoint;
-import stroom.stats.common.StatisticDataSet;
-import stroom.stats.common.ValueStatisticDataPoint;
+import stroom.stats.common.*;
+import stroom.stats.common.FilterTermsTree.OperatorNode;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationEntity;
@@ -77,6 +71,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     private Injector injector = getApp().getInjector();
     private UniqueIdCache uniqueIdCache = injector.getInstance(UniqueIdCache.class);
     private StatisticsService statisticsService = injector.getInstance(StatisticsService.class);
+    private HBaseClient hBaseClient = injector.getInstance(HBaseClient.class);
     private SessionFactory sessionFactory = injector.getInstance(SessionFactory.class);
     private StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller = injector.getInstance(StatisticConfigurationEntityMarshaller.class);
 
@@ -108,31 +103,31 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     private UID tag2val1 = uniqueIdCache.getOrCreateId(tag2Val1Str);
     private UID tag2val2 = uniqueIdCache.getOrCreateId(tag2Val2Str);
 
-    private ExpressionItem dateTerm = new ExpressionTerm(
-            StatisticConfiguration.FIELD_NAME_DATE_TIME,
-            ExpressionTerm.Condition.BETWEEN,
-            String.format("%s,%s",
-                    DateUtil.createNormalDateTimeString(Instant.now().minus(10, workingChronoUnit).toEpochMilli()),
-                    DateUtil.createNormalDateTimeString(Instant.now().plus(10, workingChronoUnit).toEpochMilli())));
+//    private FilterTermsTree.TermNode dateTerm = new FilterTermsTree.TermNode(
+//            StatisticConfiguration.FIELD_NAME_DATE_TIME,
+//            ExpressionTerm.Condition.BETWEEN,
+//            String.format("%s,%s",
+//                    DateUtil.createNormalDateTimeString(Instant.now().minus(10, workingChronoUnit).toEpochMilli()),
+//                    DateUtil.createNormalDateTimeString(Instant.now().plus(10, workingChronoUnit).toEpochMilli())));
 
-    private ExpressionItem precisionTerm = new ExpressionTerm(
+    private ExpressionTerm precisionTerm = new ExpressionTerm(
             StatisticConfiguration.FIELD_NAME_PRECISION,
             ExpressionTerm.Condition.EQUALS,
             interval.toString().toLowerCase());
 
-    private ExpressionItem tag1Term = new ExpressionTerm(
+    private FilterTermsTree.TermNode tag1Term = new FilterTermsTree.TermNode(
             tag1Str,
-            ExpressionTerm.Condition.EQUALS,
+            FilterTermsTree.Condition.EQUALS,
             tag1Val1Str);
 
-    private ExpressionItem tag2Term = new ExpressionTerm(
+    private FilterTermsTree.TermNode tag2Term = new FilterTermsTree.TermNode(
             tag2Str,
-            ExpressionTerm.Condition.EQUALS,
+            FilterTermsTree.Condition.EQUALS,
             tag2Val1Str);
 
-    private ExpressionItem tag2TermNotFound = new ExpressionTerm(
+    private FilterTermsTree.TermNode tag2TermNotFound = new FilterTermsTree.TermNode(
             tag2Str,
-            ExpressionTerm.Condition.EQUALS,
+            FilterTermsTree.Condition.EQUALS,
             "ValueThatDoesn'tExist");
 
     /**
@@ -191,26 +186,27 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
 
-        Query queryAllData = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
-                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm));
+        SearchStatisticsCriteria criteriaAllData = buildSearchStatisticsCriteria(statNameStr,
+                statisticConfigurationEntity);
 
-        Query querySpecificRow = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
-                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, tag1Term, tag2Term));
+        SearchStatisticsCriteria criteriaSpecificRow = buildSearchStatisticsCriteria(statNameStr,
+                statisticConfigurationEntity,
+                tag1Term,
+                tag2Term);
 
-        Query queryNoDataFound = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
-                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, tag1Term, tag2TermNotFound));
+        SearchStatisticsCriteria criteriaNoDataFound = buildSearchStatisticsCriteria(statNameStr,
+                statisticConfigurationEntity,
+                tag1Term,
+                tag2TermNotFound);
 
-        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, queryAllData, statisticConfigurationEntity, 2);
+        List<StatisticDataPoint> dataPoints = runCriteria(statisticsService, criteriaAllData, statisticConfigurationEntity, 2);
 
         //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str, tag2Val2Str);
         assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo((statValue1) + (statValue2));
 
-        dataPoints = runQuery(statisticsService, querySpecificRow, statisticConfigurationEntity, 1);
+        dataPoints = runCriteria(statisticsService, criteriaSpecificRow, statisticConfigurationEntity, 1);
 
         //should only get two distinct tag values as we have just one row back
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
@@ -218,19 +214,19 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo(statValue1);
 
         //should get nothing back as the requested tagvalue is not in the store
-        runQuery(statisticsService, queryNoDataFound, statisticConfigurationEntity, 0);
+        runCriteria(statisticsService, criteriaNoDataFound, statisticConfigurationEntity, 0);
 
         //No put the same events again so the values should be aggregated by HBase
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
 
-        dataPoints = runQuery(statisticsService, queryAllData, statisticConfigurationEntity, 2);
+        dataPoints = runCriteria(statisticsService, criteriaAllData, statisticConfigurationEntity, 2);
 
         //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str, tag2Val2Str);
         assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo((statValue1 * 2) + (statValue2 * 2));
 
-        dataPoints = runQuery(statisticsService, querySpecificRow, statisticConfigurationEntity, 1);
+        dataPoints = runCriteria(statisticsService, criteriaSpecificRow, statisticConfigurationEntity, 1);
 
         //should only get two distinct tag values as we have just one row back
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
@@ -238,7 +234,22 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo(statValue1 * 2);
 
         //should get nothing back as the requested tagvalue is not in the store
-        runQuery(statisticsService, queryNoDataFound, statisticConfigurationEntity, 0);
+        runCriteria(statisticsService, criteriaNoDataFound, statisticConfigurationEntity, 0);
+    }
+
+    private SearchStatisticsCriteria buildSearchStatisticsCriteria(String statNameStr,
+                                                                   StatisticConfigurationEntity statisticConfigurationEntity,
+                                                                   FilterTermsTree.Node... childNodes) {
+
+        SearchStatisticsCriteria.SearchStatisticsCriteriaBuilder builder = SearchStatisticsCriteria
+                .builder(new Period(), statNameStr)
+                .setInterval(interval)
+                .setRequiredDynamicFields(statisticConfigurationEntity.getFieldNames());
+        if (childNodes != null) {
+            builder.setFilterTermsTree(new FilterTermsTree(new OperatorNode(
+                    FilterTermsTree.Operator.AND, childNodes)));
+        }
+        return builder.build();
     }
 
     /**
@@ -298,27 +309,27 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
 
+        SearchStatisticsCriteria criteriaAllData = buildSearchStatisticsCriteria(statNameStr,
+                statisticConfigurationEntity);
 
-        Query queryAllData = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
-                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm));
+        SearchStatisticsCriteria criteriaSpecificRow = buildSearchStatisticsCriteria(statNameStr,
+                statisticConfigurationEntity,
+                tag1Term,
+                tag2Term);
 
-        Query querySpecificRow = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
-                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, tag1Term, tag2Term));
+        SearchStatisticsCriteria criteriaNoDataFound = buildSearchStatisticsCriteria(statNameStr,
+                statisticConfigurationEntity,
+                tag1Term,
+                tag2TermNotFound);
 
-        Query queryNoDataFound = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
-                new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, tag1Term, tag2TermNotFound));
-
-        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, queryAllData, statisticConfigurationEntity, 2);
+        List<StatisticDataPoint> dataPoints = runCriteria(statisticsService, criteriaAllData, statisticConfigurationEntity, 2);
 
         //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str, tag2Val2Str);
         assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo((statValue1) + (statValue2));
 
-        dataPoints = runQuery(statisticsService, querySpecificRow, statisticConfigurationEntity, 1);
+        dataPoints = runCriteria(statisticsService, criteriaSpecificRow, statisticConfigurationEntity, 1);
 
         //should only get two distinct tag values as we have just one row back
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
@@ -326,12 +337,12 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo(statValue1);
 
         //should get nothing back as the requested tagvalue is not in the store
-        runQuery(statisticsService, queryNoDataFound, statisticConfigurationEntity, 0);
+        runCriteria(statisticsService, criteriaNoDataFound, statisticConfigurationEntity, 0);
 
         //now put the same events again so HBase should aggregated the values in the cells
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
 
-        dataPoints = runQuery(statisticsService, queryAllData, statisticConfigurationEntity, 2);
+        dataPoints = runCriteria(statisticsService, criteriaAllData, statisticConfigurationEntity, 2);
 
         //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
@@ -339,7 +350,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         assertThat(computeSumOfValueValues(dataPoints)).isEqualTo((statValue1) + (statValue2));
         assertThat(computeSumOfValueCounts(dataPoints)).isEqualTo(2 + 2);
 
-        dataPoints = runQuery(statisticsService, querySpecificRow, statisticConfigurationEntity, 1);
+        dataPoints = runCriteria(statisticsService, criteriaSpecificRow, statisticConfigurationEntity, 1);
 
         //should only get two distinct tag values as we have just one row back
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
@@ -348,7 +359,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         assertThat(computeSumOfValueCounts(dataPoints)).isEqualTo(2);
 
         //should get nothing back as the requested tagvalue is not in the store
-        runQuery(statisticsService, queryNoDataFound, statisticConfigurationEntity, 0);
+        runCriteria(statisticsService, criteriaNoDataFound, statisticConfigurationEntity, 0);
     }
 
     @Test
@@ -361,7 +372,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 new ExpressionOperator(true, ExpressionOperator.Op.AND));
 
         //all records should come back
-        runQuery(statisticsService, query, statisticConfigurationEntity,times.size());
+        runQuery(statisticsService, wrapQuery(query), statisticConfigurationEntity, times.size());
     }
 
     @Test
@@ -380,7 +391,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
 
         //only find the the one we equal
-        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, query, statisticConfigurationEntity, 1);
+        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, wrapQuery(query), statisticConfigurationEntity, 1);
         assertThat(dataPoints.get(0).getTimeMs()).isEqualTo(timesTruncated.get(2).toEpochMilli());
     }
 
@@ -400,10 +411,10 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
 
         //should only get the two times below the middle one we have aimed for
-        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, query, statisticConfigurationEntity, 2);
+        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, wrapQuery(query), statisticConfigurationEntity, 2);
         assertThat(dataPoints.stream()
-                        .map(point -> Instant.ofEpochMilli(point.getTimeMs()))
-                        .collect(Collectors.toList()))
+                .map(point -> Instant.ofEpochMilli(point.getTimeMs()))
+                .collect(Collectors.toList()))
                 .containsExactlyInAnyOrder(timesTruncated.get(0), timesTruncated.get(1));
     }
 
@@ -423,7 +434,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
 
         //should only get the two times below the middle one we have aimed for
-        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, query, statisticConfigurationEntity, 3);
+        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, wrapQuery(query), statisticConfigurationEntity, 3);
         assertThat(dataPoints.stream()
                 .map(point -> Instant.ofEpochMilli(point.getTimeMs()))
                 .collect(Collectors.toList()))
@@ -446,7 +457,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
 
         //should only get the two times below the middle one we have aimed for
-        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, query, statisticConfigurationEntity, 2);
+        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, wrapQuery(query), statisticConfigurationEntity, 2);
         assertThat(dataPoints.stream()
                 .map(point -> Instant.ofEpochMilli(point.getTimeMs()))
                 .collect(Collectors.toList()))
@@ -469,7 +480,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
 
         //should only get the two times below the middle one we have aimed for
-        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, query, statisticConfigurationEntity, 3);
+        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, wrapQuery(query), statisticConfigurationEntity, 3);
         assertThat(dataPoints.stream()
                 .map(point -> Instant.ofEpochMilli(point.getTimeMs()))
                 .collect(Collectors.toList()))
@@ -494,7 +505,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
 
         //should only get the two times below the middle one we have aimed for
-        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, query, statisticConfigurationEntity, 3);
+        List<StatisticDataPoint> dataPoints = runQuery(statisticsService, wrapQuery(query), statisticConfigurationEntity, 3);
         assertThat(dataPoints.stream()
                 .map(point -> Instant.ofEpochMilli(point.getTimeMs()))
                 .collect(Collectors.toList()))
@@ -559,16 +570,28 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         return entities.get(1);
     }
 
-    private List<StatisticDataPoint> runQuery(
+    private List<StatisticDataPoint> runCriteria(
             StatisticsService statisticsService,
-            Query query,
+            SearchStatisticsCriteria searchStatisticsCriteria,
             StatisticConfigurationEntity statisticConfigurationEntity,
             int expectedRecCount) {
-        StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(wrapQuery(query), statisticConfigurationEntity);
+        StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(searchStatisticsCriteria, statisticConfigurationEntity);
 
         assertThat(statisticDataSet).isNotNull();
         assertThat(statisticDataSet).size().isEqualTo(expectedRecCount);
         return statisticDataSet.getStatisticDataPoints();
+    }
+
+    private SearchResponse runQuery(
+            StatisticsService statisticsService,
+            SearchRequest searchRequest,
+            StatisticConfigurationEntity statisticConfigurationEntity,
+            int expectedRecCount) {
+        SearchResponse searchResponse = hBaseClient.query(searchRequest);
+
+        assertThat(searchResponse).isNotNull();
+        assertThat(searchResponse.getResults()).hasSize(expectedRecCount);
+        return searchResponse;
     }
 
 
@@ -579,7 +602,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     private static long computeSumOfCountCounts(List<StatisticDataPoint> dataPoints) {
 
         return dataPoints.stream()
-                .map(point -> (CountStatisticDataPoint)point)
+                .map(point -> (CountStatisticDataPoint) point)
                 .map(CountStatisticDataPoint::getCount)
                 .mapToLong(Long::longValue)
                 .sum();
@@ -588,7 +611,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     private static long computeSumOfValueCounts(List<StatisticDataPoint> dataPoints) {
 
         return dataPoints.stream()
-                .map(point -> (ValueStatisticDataPoint)point)
+                .map(point -> (ValueStatisticDataPoint) point)
                 .map(ValueStatisticDataPoint::getCount)
                 .mapToLong(Long::longValue)
                 .sum();
@@ -597,7 +620,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     private static double computeSumOfValueValues(List<StatisticDataPoint> dataPoints) {
 
         return dataPoints.stream()
-                .map(point -> (ValueStatisticDataPoint)point)
+                .map(point -> (ValueStatisticDataPoint) point)
                 .map(ValueStatisticDataPoint::getValue)
                 .mapToDouble(Double::doubleValue)
                 .sum();

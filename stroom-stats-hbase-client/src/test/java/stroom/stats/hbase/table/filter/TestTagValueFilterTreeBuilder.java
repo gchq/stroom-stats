@@ -85,13 +85,13 @@ public class TestTagValueFilterTreeBuilder {
         userNodes.add(termNodeUser1);
         userNodes.add(termNodeUser2);
 
-        final OperatorNode usersNode = new OperatorNode(FilterOperationMode.OR, userNodes);
+        final OperatorNode usersNode = new OperatorNode(FilterTermsTree.Operator.OR, userNodes);
 
         final List<FilterTermsTree.Node> childNodes = new ArrayList<>();
         childNodes.add(termNodeFeed);
         childNodes.add(usersNode);
 
-        final OperatorNode rootNode = new OperatorNode(FilterOperationMode.AND, childNodes);
+        final OperatorNode rootNode = new OperatorNode(FilterTermsTree.Operator.AND, childNodes);
 
         final FilterTermsTree filterTermsTree = new FilterTermsTree(rootNode);
 

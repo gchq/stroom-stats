@@ -116,9 +116,13 @@ public class TagValueFilterTreeBuilder {
             children.add(convertNode(oldChild, uniqueIdCache));
         }
         final TagValueOperatorNode newNode = new TagValueOperatorNode(
-                oldNode.getFilterOperationMode(),
+                convertOperator(oldNode.getFilterOperationMode()),
                 children);
 
         return newNode;
+    }
+
+    private static FilterOperationMode convertOperator(final FilterTermsTree.Operator operator) {
+        return FilterOperationMode.valueOf(operator.name());
     }
 }

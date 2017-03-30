@@ -27,7 +27,6 @@ import stroom.query.api.ExpressionTerm;
 import stroom.query.api.ExpressionTerm.Condition;
 import stroom.stats.common.FilterTermsTree.OperatorNode;
 import stroom.stats.common.FilterTermsTree.TermNode;
-import stroom.stats.hbase.table.filter.FilterOperationMode;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,13 +48,12 @@ public class FilterTermsTreeBuilder {
      * {@link ExpressionItem} tree are not supported so it may throw a
      * {@link RuntimeException}.
      *
-     * @param rootItem
-     *            The {@link ExpressionItem} object that is the root of the tree
+     * @param rootItem The {@link ExpressionItem} object that is the root of the tree
      * @return A {@link FilterTermsTree} object containing a tree of
-     *         {@link FilterTermsTree.Node} objects
+     * {@link FilterTermsTree.Node} objects
      */
     public static FilterTermsTree convertExpresionItemsTree(final ExpressionOperator rootItem,
-            final Set<String> blackListedFieldNames) {
+                                                            final Set<String> blackListedFieldNames) {
         final FilterTermsTree.Node newRootNode = convertNode(rootItem, blackListedFieldNames);
 
         // we may have black listed all our terms and been left with a null root
@@ -121,7 +119,7 @@ public class FilterTermsTreeBuilder {
                             orTermNodes.add(convertTermNode(
                                     new ExpressionTerm(oldNode.getField(), Condition.EQUALS, value), fieldBlackList));
                         }
-                        newNode = new OperatorNode(FilterOperationMode.OR, orTermNodes);
+                        newNode = new OperatorNode(FilterTermsTree.Operator.OR, orTermNodes);
                     }
                 }
             } else {
@@ -143,7 +141,7 @@ public class FilterTermsTreeBuilder {
         if (oldNode.getChildren() == null || oldNode.getChildren().size() == 0) {
             return null;
         } else {
-            final FilterOperationMode operationMode = FilterOperationMode.valueOf(oldNode.getOp().getDisplayValue().toString());
+            final FilterTermsTree.Operator operator = convertOp(oldNode.getOp());
 
             final List<FilterTermsTree.Node> children = new ArrayList<>();
 
@@ -160,16 +158,20 @@ public class FilterTermsTreeBuilder {
             FilterTermsTree.Node newNode = null;
             // term nodes may have been returned as null if they were expression
             // terms that this tree does not support
-            if (children.size() == 1 && !operationMode.equals(FilterOperationMode.NOT)) {
+            if (children.size() == 1 && !operator.equals(FilterTermsTree.Operator.NOT)) {
                 // only have one child for an AND or OR so no point in keeping
                 // the operator node, just had the one child
                 // to the tree instead
                 newNode = children.get(0);
             } else if (!children.isEmpty()) {
-                newNode = new OperatorNode(operationMode, children);
+                newNode = new OperatorNode(operator, children);
             }
 
             return newNode;
         }
+    }
+
+    private static FilterTermsTree.Operator convertOp(final ExpressionOperator.Op op) {
+        return FilterTermsTree.Operator.valueOf(op.getDisplayValue());
     }
 }

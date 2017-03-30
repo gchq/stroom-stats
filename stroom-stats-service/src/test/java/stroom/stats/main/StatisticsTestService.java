@@ -51,13 +51,13 @@ import stroom.query.api.ExpressionTerm;
 import stroom.query.api.ExpressionTerm.Condition;
 import stroom.query.api.Query;
 import stroom.query.api.SearchRequest;
+import stroom.stats.HBaseClient;
 import stroom.stats.api.StatisticEvent;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
 import stroom.stats.cache.AbstractReadOnlyCacheLoaderWriter;
-import stroom.stats.common.StatisticDataPoint;
-import stroom.stats.common.StatisticDataSet;
+import stroom.stats.common.*;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.hbase.EventStores;
@@ -117,7 +117,8 @@ public final class StatisticsTestService {
     private StatisticConfigurationService statisticConfigurationService;
     private EventStores eventStores;
     // MockStroomPropertyService propertyService = new MockStroomPropertyService();
-    private StatisticsService statisticEventStore;
+    private HBaseClient hBaseClient;
+    private StatisticsService statisticsService;
     private StroomPropertyService propertyService;
     private HBaseConnection hBaseConnection;
     private long id = 0;
@@ -128,7 +129,8 @@ public final class StatisticsTestService {
                                  final UniqueIdCache uniqueIdCache,
                                  final StatisticConfigurationService statisticConfigurationService,
                                  final EventStores eventStores,
-                                 final StatisticsService statisticEventStore,
+                                 final HBaseClient hBaseClient,
+                                 final StatisticsService statisticsService,
                                  final StroomPropertyService propertyService,
                                  final HBaseConnection hBaseConnection) {
         this.statCacheManager = statCacheManager;
@@ -136,7 +138,8 @@ public final class StatisticsTestService {
         this.uniqueIdCache = uniqueIdCache;
         this.statisticConfigurationService = statisticConfigurationService;
         this.eventStores = eventStores;
-        this.statisticEventStore = statisticEventStore;
+        this.hBaseClient = hBaseClient;
+        this.statisticsService = statisticsService;
         this.propertyService = propertyService;
         this.hBaseConnection = hBaseConnection;
 
@@ -220,11 +223,10 @@ public final class StatisticsTestService {
         rangeFrom = DateUtil.parseNormalDateTimeString("2010-01-01T03:00:00.000Z");
         rangeTo = DateUtil.parseNormalDateTimeString("2010-01-01T09:00:00.000Z");
 
-        final ExpressionOperator opNodeOr = new ExpressionOperator(
-                true,
-                Op.OR,
-                new ExpressionTerm("user", Condition.EQUALS, "user31"),
-                new ExpressionTerm("feed", Condition.EQUALS, "TEST-EVENTS_3"));
+        final FilterTermsTree.OperatorNode opNodeOr = new FilterTermsTree.OperatorNode(
+                FilterTermsTree.Operator.OR,
+                new FilterTermsTree.TermNode("user",  "user31"),
+                new FilterTermsTree.TermNode("feed",  "TEST-EVENTS_3"));
 
         // if it hangs here then it is probably because you have not deployed
         // the TagValueFilter jar onto the HBase
@@ -264,13 +266,13 @@ public final class StatisticsTestService {
 
         statisticDataSet = performSearch(eventName, rangeFrom, rangeTo, null);
 
-        ((HBaseStatisticsService) statisticEventStore).getEventStoresForTesting().flushAllEvents();
+        ((HBaseStatisticsService) statisticsService).getEventStoresForTesting().flushAllEvents();
 
         LOGGER.info("All done!");
     }
 
     private StatisticDataSet performSearch(final String eventName, final long rangeFrom, final long rangeTo,
-                                           final ExpressionItem additionalFilterBranch) {
+                                           final FilterTermsTree.Node additionalFilterBranch) {
         StatisticDataSet statisticDataSet;
 
         final StatisticConfiguration statisticConfiguration = statisticConfigurationService
@@ -279,26 +281,24 @@ public final class StatisticsTestService {
 
         final DocRef docRef = new DocRef(statisticConfiguration.getType(), statisticConfiguration.getUuid());
 
-        final ExpressionTerm dateTerm = new ExpressionTerm(
-                StatisticConfiguration.FIELD_NAME_DATE_TIME,
-                Condition.BETWEEN,
-                rangeFrom + "," + rangeTo);
 
-        List<ExpressionItem> children = new ArrayList<>();
-        children.add(dateTerm);
+        List<FilterTermsTree.Node> children = new ArrayList<>();
         if (additionalFilterBranch != null) {
             children.add(additionalFilterBranch);
         }
-        final ExpressionOperator root = new ExpressionOperator(
-                true,
-                Op.AND,
+        final FilterTermsTree.Node root = new FilterTermsTree.OperatorNode(
+                FilterTermsTree.Operator.AND,
                 children
         );
 
 
-        final Query query = new Query(docRef, root, null);
+        SearchStatisticsCriteria searchStatisticsCriteria = SearchStatisticsCriteria
+                .builder(new Period(rangeFrom, rangeTo), statisticConfiguration.getName())
+                .setFilterTermsTree(new FilterTermsTree(root))
+                .setRequiredDynamicFields(statisticConfiguration.getFieldNames())
+                .build();
 
-        statisticDataSet = statisticEventStore.searchStatisticsData(wrapQuery(query), statisticConfiguration);
+        statisticDataSet = statisticsService.searchStatisticsData(searchStatisticsCriteria, statisticConfiguration);
 
         return statisticDataSet;
     }
@@ -319,7 +319,7 @@ public final class StatisticsTestService {
         rangeFrom = DateUtil.parseNormalDateTimeString("2014-11-08T01:30:00.000Z");
         rangeTo = DateUtil.parseNormalDateTimeString("2014-11-11T23:00:00.000Z");
 
-        final ExpressionTerm termNodeUser = new ExpressionTerm("userId", Condition.EQUALS, "someuser");
+        final FilterTermsTree.TermNode termNodeUser = new FilterTermsTree.TermNode("userId", "someuser");
 
         // SearchStatisticsCriteria criteria = new SearchStatisticsCriteria(new
         // Period(rangeFrom, rangeTo), seriesList, filterTree,
@@ -360,7 +360,7 @@ public final class StatisticsTestService {
 
         final ScheduledExecutorService debugSnapshotScheduler = Executors.newScheduledThreadPool(1);
 
-        final UniqueIdCache uniqueIdCache = ((HBaseStatisticsService) statisticEventStore).getEventStoresForTesting()
+        final UniqueIdCache uniqueIdCache = ((HBaseStatisticsService) statisticsService).getEventStoresForTesting()
                 .getUniqueIdCache();
 
         final int itemsPutOnQueue = 10_000;
@@ -566,22 +566,22 @@ public final class StatisticsTestService {
         LOGGER.info("Starting preloading");
         // pre load the UI cache with all the tag values
         for (final StatisticTag statisticTag : allStatisticTags) {
-            ((HBaseStatisticsService) statisticEventStore).getEventStoresForTesting().getUniqueIdCache()
+            ((HBaseStatisticsService) statisticsService).getEventStoresForTesting().getUniqueIdCache()
                     .getOrCreateId(statisticTag.getValue());
-            ((HBaseStatisticsService) statisticEventStore).getEventStoresForTesting().getUniqueIdCache()
+            ((HBaseStatisticsService) statisticsService).getEventStoresForTesting().getUniqueIdCache()
                     .getOrCreateId(statisticTag.getTag());
         }
 
         LOGGER.info("Preloading finished in " + (System.currentTimeMillis() - startTime) + "ms");
 
-        LOGGER.info("EHCache size:" + ((HBaseStatisticsService) statisticEventStore).getEventStoresForTesting()
+        LOGGER.info("EHCache size:" + ((HBaseStatisticsService) statisticsService).getEventStoresForTesting()
                 .getUniqueIdCache().getCacheSize());
 
         // Thread.sleep(40_000);
 
         LOGGER.info("Starting cache test");
 
-        final UniqueIdCache uniqueIdCache = ((HBaseStatisticsService) statisticEventStore).getEventStoresForTesting()
+        final UniqueIdCache uniqueIdCache = ((HBaseStatisticsService) statisticsService).getEventStoresForTesting()
                 .getUniqueIdCache();
 
         startTime = System.currentTimeMillis();
@@ -595,7 +595,7 @@ public final class StatisticsTestService {
 
         // Thread.sleep(2_000_000);
 
-        LOGGER.info("EHCache size:" + ((HBaseStatisticsService) statisticEventStore).getEventStoresForTesting()
+        LOGGER.info("EHCache size:" + ((HBaseStatisticsService) statisticsService).getEventStoresForTesting()
                 .getUniqueIdCache().getCacheSize());
 
         LOGGER.info("Load into hashmap");

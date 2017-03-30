@@ -25,6 +25,7 @@ import com.google.common.base.Preconditions;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -34,17 +35,20 @@ public class SearchStatisticsCriteria {
     private final String statisticName;
     private final FilterTermsTree filterTermsTree;
     private final Set<String> rolledUpFieldNames;
+    private final List<String> requiredDynamicFields;
     private final EventStoreTimeIntervalEnum interval;
 
     private SearchStatisticsCriteria(final Period period,
                                      final String statisticName,
                                      final FilterTermsTree filterTermsTree,
                                      final Set<String> rolledUpFieldNames,
+                                     final List<String> requiredDynamicFields,
                                      final EventStoreTimeIntervalEnum interval) {
         this.period = period;
         this.statisticName = statisticName;
         this.filterTermsTree = filterTermsTree;
         this.rolledUpFieldNames = rolledUpFieldNames;
+        this.requiredDynamicFields = requiredDynamicFields;
         this.interval = interval;
     }
 
@@ -68,6 +72,11 @@ public class SearchStatisticsCriteria {
         return rolledUpFieldNames;
     }
 
+
+    public List<String> getRequiredDynamicFields() {
+        return requiredDynamicFields;
+    }
+
     /**
      * Return the {@link FilterTermsTree} object on this criteria
      *
@@ -88,43 +97,51 @@ public class SearchStatisticsCriteria {
                 '}';
     }
 
-    public static FindEventCriteriaBuilder builder(final Period period, final String statisticName) {
-        return new FindEventCriteriaBuilder(period, statisticName);
+    public static SearchStatisticsCriteriaBuilder builder(final Period period, final String statisticName) {
+        return new SearchStatisticsCriteriaBuilder(period, statisticName);
     }
 
-    public static class FindEventCriteriaBuilder {
+    public static class SearchStatisticsCriteriaBuilder {
         private Period period;
         private String statisticName;
         private FilterTermsTree filterTermsTree = FilterTermsTree.emptyTree();
         private Set<String> rolledUpFieldNames = Collections.emptySet();
+        private List<String> requiredDynamicFields = Collections.emptyList();
         private EventStoreTimeIntervalEnum interval = null;
 
-        FindEventCriteriaBuilder(final Period period, final String statisticName) {
+        SearchStatisticsCriteriaBuilder(final Period period, final String statisticName) {
             Preconditions.checkNotNull(period);
             Preconditions.checkNotNull(statisticName);
             this.period = period;
             this.statisticName = statisticName;
         }
 
-        public FindEventCriteriaBuilder setFilterTermsTree(final FilterTermsTree filterTermsTree) {
+        public SearchStatisticsCriteriaBuilder setFilterTermsTree(final FilterTermsTree filterTermsTree) {
             Preconditions.checkNotNull(filterTermsTree);
             this.filterTermsTree = filterTermsTree;
             return this;
         }
 
-        public FindEventCriteriaBuilder setRolledUpFieldNames(final Set<String> rolledUpFieldNames) {
+        public SearchStatisticsCriteriaBuilder setRolledUpFieldNames(final Set<String> rolledUpFieldNames) {
             Preconditions.checkNotNull(rolledUpFieldNames);
             this.rolledUpFieldNames = rolledUpFieldNames;
             return this;
         }
 
-        public void setInterval(final EventStoreTimeIntervalEnum interval) {
+        public SearchStatisticsCriteriaBuilder setRequiredDynamicFields(final List<String> requiredDynamicFields) {
+            Preconditions.checkNotNull(requiredDynamicFields);
+            this.requiredDynamicFields = requiredDynamicFields;
+            return this;
+        }
+
+        public SearchStatisticsCriteriaBuilder setInterval(final EventStoreTimeIntervalEnum interval) {
             Preconditions.checkNotNull(interval);
             this.interval = interval;
+            return this;
         }
 
         public SearchStatisticsCriteria build() {
-            return new SearchStatisticsCriteria(period, statisticName, filterTermsTree, rolledUpFieldNames, interval);
+            return new SearchStatisticsCriteria(period, statisticName, filterTermsTree, rolledUpFieldNames, requiredDynamicFields, interval);
         }
     }
 }
