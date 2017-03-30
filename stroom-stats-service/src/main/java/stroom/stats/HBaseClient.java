@@ -82,10 +82,8 @@ public class HBaseClient implements Managed {
 
         DocRef statisticStoreRef = searchRequest.getQuery().getDataSource();
         //TODO Need to consider how to handle an unknown docref
-//        final Try<StatisticConfiguration> optStatisticConfiguration =
         return statisticConfigurationService.fetchStatisticConfigurationByUuid(statisticStoreRef.getUuid())
                 .map(statisticConfiguration -> {
-
 
                     // TODO: possibly the mapping from the componentId to the coprocessorsettings map is a bit odd.
                     final CoprocessorSettingsMap coprocessorSettingsMap = CoprocessorSettingsMap.create(searchRequest);
@@ -138,24 +136,15 @@ public class HBaseClient implements Managed {
                     for (StatisticDataPoint statisticDataPoint : statisticDataSet) {
                         String[] dataArray = new String[fieldIndexMap.size()];
 
-                        //TODO should drive this off new fieldIndexMap.getEntries() method or similar
+                        //TODO should probably drive this off a new fieldIndexMap.getEntries() method or similar
                         //then we only loop round fields we car about
-                        //get all the dynamic fields
-                        statisticDataPoint.getTags().forEach(statisticTag -> {
-                            int i = fieldIndexMap.get(statisticTag.getTag());
-                            if (i != -1) {
-                                dataArray[i] = statisticTag.getValue();
+                        statisticConfiguration.getAllFieldNames().forEach(fieldName -> {
+                            int posInDataArray = fieldIndexMap.get(fieldName);
+                            //if the fieldIndexMap returns -1 the field has not been requested
+                            if (posInDataArray != -1) {
+                                dataArray[posInDataArray] = statisticDataPoint.getFieldValue(fieldName);
                             }
                         });
-
-                        //TODO see TODO above about driving this off fieldIndexMap.getEntries()
-                        StatisticConfiguration.STATIC_FIELDS_MAP.get(statisticDataSet.getStatisticType())
-                                .forEach(staticFieldName -> {
-                                    int j = fieldIndexMap.get(staticFieldName);
-                                    if (j != -1) {
-                                        dataArray[j] = statisticDataPoint.getFieldValue(staticFieldName);
-                                    }
-                                });
 
                         coprocessorMap.entrySet().forEach(coprocessor -> {
                             coprocessor.getValue().receive(dataArray);
@@ -179,7 +168,6 @@ public class HBaseClient implements Managed {
                             }
                         }
                     }
-
 
                     StatisticsStore store = new StatisticsStore();
                     store.process(coprocessorSettingsMap);

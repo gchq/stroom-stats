@@ -23,10 +23,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import stroom.stats.api.StatisticType;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 
 /**
@@ -86,9 +83,18 @@ public interface StatisticConfiguration {
     boolean isEnabled();
 
     /**
-     * All the dynamic field names (aka tags) for this statistic, in alphanumeric order
+     * @return All the dynamic field names (aka tags) for this statistic, in alphanumeric order
      */
     List<String> getFieldNames();
+
+    /**
+     * @return All fields, static and dynamic, for this statistic taking into account the type of the statistic
+     */
+    default List<String> getAllFieldNames() {
+        List<String> allFieldNames = new ArrayList<>(STATIC_FIELDS_MAP.get(getStatisticType()));
+        allFieldNames.addAll(getFieldNames());
+        return allFieldNames;
+    }
 
     Set<? extends CustomRollUpMask> getCustomRollUpMasks();
 
