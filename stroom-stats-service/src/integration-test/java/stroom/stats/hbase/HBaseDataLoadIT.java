@@ -33,8 +33,10 @@ import stroom.stats.AbstractAppIT;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
+import stroom.stats.common.CountStatisticDataPoint;
 import stroom.stats.common.StatisticDataPoint;
 import stroom.stats.common.StatisticDataSet;
+import stroom.stats.common.ValueStatisticDataPoint;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationEntity;
@@ -206,14 +208,14 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str, tag2Val2Str);
-        assertThat(dataPoints.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo((statValue1) + (statValue2));
+        assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo((statValue1) + (statValue2));
 
         dataPoints = runQuery(statisticsService, querySpecificRow, statisticConfigurationEntity, 1);
 
         //should only get two distinct tag values as we have just one row back
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str);
-        assertThat(dataPoints.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo(statValue1);
+        assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo(statValue1);
 
         //should get nothing back as the requested tagvalue is not in the store
         runQuery(statisticsService, queryNoDataFound, statisticConfigurationEntity, 0);
@@ -226,14 +228,14 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str, tag2Val2Str);
-        assertThat(dataPoints.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo((statValue1 * 2) + (statValue2 * 2));
+        assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo((statValue1 * 2) + (statValue2 * 2));
 
         dataPoints = runQuery(statisticsService, querySpecificRow, statisticConfigurationEntity, 1);
 
         //should only get two distinct tag values as we have just one row back
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str);
-        assertThat(dataPoints.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo(statValue1 * 2);
+        assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo(statValue1 * 2);
 
         //should get nothing back as the requested tagvalue is not in the store
         runQuery(statisticsService, queryNoDataFound, statisticConfigurationEntity, 0);
@@ -314,14 +316,14 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str, tag2Val2Str);
-        assertThat(dataPoints.stream().map(StatisticDataPoint::getValue).mapToDouble(Double::doubleValue).sum()).isEqualTo((statValue1) + (statValue2));
+        assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo((statValue1) + (statValue2));
 
         dataPoints = runQuery(statisticsService, querySpecificRow, statisticConfigurationEntity, 1);
 
         //should only get two distinct tag values as we have just one row back
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str);
-        assertThat(dataPoints.stream().map(StatisticDataPoint::getValue).mapToDouble(Double::doubleValue).sum()).isEqualTo(statValue1);
+        assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo(statValue1);
 
         //should get nothing back as the requested tagvalue is not in the store
         runQuery(statisticsService, queryNoDataFound, statisticConfigurationEntity, 0);
@@ -334,16 +336,16 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str, tag2Val2Str);
-        assertThat(dataPoints.stream().map(StatisticDataPoint::getValue).mapToDouble(Double::doubleValue).sum()).isEqualTo((statValue1) + (statValue2));
-        assertThat(dataPoints.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo(2 + 2);
+        assertThat(computeSumOfValueValues(dataPoints)).isEqualTo((statValue1) + (statValue2));
+        assertThat(computeSumOfValueCounts(dataPoints)).isEqualTo(2 + 2);
 
         dataPoints = runQuery(statisticsService, querySpecificRow, statisticConfigurationEntity, 1);
 
         //should only get two distinct tag values as we have just one row back
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str);
-        assertThat(dataPoints.stream().map(StatisticDataPoint::getValue).mapToDouble(Double::doubleValue).sum()).isEqualTo(statValue1);
-        assertThat(dataPoints.stream().map(StatisticDataPoint::getCount).mapToLong(Long::longValue).sum()).isEqualTo(2);
+        assertThat(computeSumOfValueValues(dataPoints)).isEqualTo(statValue1);
+        assertThat(computeSumOfValueCounts(dataPoints)).isEqualTo(2);
 
         //should get nothing back as the requested tagvalue is not in the store
         runQuery(statisticsService, queryNoDataFound, statisticConfigurationEntity, 0);
@@ -572,6 +574,33 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
     private SearchRequest wrapQuery(Query query) {
         return new SearchRequest(null, query, Collections.emptyList(), ZoneOffset.UTC.getId(), false);
+    }
+
+    private static long computeSumOfCountCounts(List<StatisticDataPoint> dataPoints) {
+
+        return dataPoints.stream()
+                .map(point -> (CountStatisticDataPoint)point)
+                .map(CountStatisticDataPoint::getCount)
+                .mapToLong(Long::longValue)
+                .sum();
+    }
+
+    private static long computeSumOfValueCounts(List<StatisticDataPoint> dataPoints) {
+
+        return dataPoints.stream()
+                .map(point -> (ValueStatisticDataPoint)point)
+                .map(ValueStatisticDataPoint::getCount)
+                .mapToLong(Long::longValue)
+                .sum();
+    }
+
+    private static double computeSumOfValueValues(List<StatisticDataPoint> dataPoints) {
+
+        return dataPoints.stream()
+                .map(point -> (ValueStatisticDataPoint)point)
+                .map(ValueStatisticDataPoint::getValue)
+                .mapToDouble(Double::doubleValue)
+                .sum();
     }
 
 

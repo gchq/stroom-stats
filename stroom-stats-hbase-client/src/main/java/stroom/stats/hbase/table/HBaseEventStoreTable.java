@@ -60,6 +60,8 @@ import stroom.stats.hbase.structure.CellQualifier;
 import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.CountCellIncrementHolder;
 import stroom.stats.hbase.structure.RowKey;
+import stroom.stats.hbase.structure.StatisticDataPointAdapter;
+import stroom.stats.hbase.structure.StatisticDataPointAdapterFactory;
 import stroom.stats.hbase.structure.ValueCellValue;
 import stroom.stats.hbase.table.filter.StatisticsTagValueFilter;
 import stroom.stats.hbase.table.filter.TagValueFilterTreeBuilder;
@@ -87,23 +89,16 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     private final String displayName;
     private final TableName tableName;
     private final EventStoreTimeIntervalEnum timeInterval;
-//    private final TaskManager taskManager;
     private final StroomPropertyService propertyService;
-//    private final HBaseCountPutBuffer countPutBuffer;
     private final RowKeyBuilder rowKeyBuilder;
+    private final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory;
 
     private static final String DISPLAY_NAME_POSTFIX = " EventStore";
     public static final String TABLE_NAME_POSTFIX = "es";
 
-    // static variable so we have a set of permits that work accross all event
-    // store intervals
-//    private static Semaphore maxConcurrentBatchPutTasksSemaphore = null;
-//    private static final Object SEMAPHORE_LOCK_OBJECT = new Object();
 
     // counters to track how many cell puts we do for the
     private final Map<StatisticType, LongAdder> putCounterMap = new EnumMap<>(StatisticType.class);
-//    private final LongAdder cellPutCounterCount = new LongAdder();
-//    private final LongAdder cellPutCounterValue = new LongAdder();
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(HBaseEventStoreTable.class);
 
@@ -113,32 +108,23 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     private HBaseEventStoreTable(final EventStoreTimeIntervalEnum eventStoreTimeIntervalEnum,
                                  final StroomPropertyService propertyService,
                                  final HBaseConnection hBaseConnection,
-                                 final UniqueIdCache uniqueIdCache) {
+                                 final UniqueIdCache uniqueIdCache,
+                                 final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory) {
         super(hBaseConnection);
         this.displayName = eventStoreTimeIntervalEnum.longName() + DISPLAY_NAME_POSTFIX;
         this.tableName = TableName.valueOf(Bytes.toBytes(eventStoreTimeIntervalEnum.shortName() + TABLE_NAME_POSTFIX));
         this.timeInterval = eventStoreTimeIntervalEnum;
         this.propertyService = propertyService;
         this.rowKeyBuilder = new SimpleRowKeyBuilder(uniqueIdCache, timeInterval);
+        this.statisticDataPointAdapterFactory = statisticDataPointAdapterFactory;
 
         for (StatisticType statisticType : StatisticType.values()) {
             putCounterMap.put(statisticType, new LongAdder());
         }
 
-//        countPutBuffer = new HBaseCountPutBuffer(getPutBufferSize());
-
-//        initMaxBatchPutTasksSemaphore();
-
         init();
     }
 
-//    private void initMaxBatchPutTasksSemaphore() {
-//        synchronized (SEMAPHORE_LOCK_OBJECT) {
-//            if (maxConcurrentBatchPutTasksSemaphore == null) {
-//                maxConcurrentBatchPutTasksSemaphore = new Semaphore(getMaxConcurrentBatchPutTasks());
-//            }
-//        }
-//    }
 
     /**
      * Static constructor
@@ -146,9 +132,14 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     public static HBaseEventStoreTable getInstance(final EventStoreTimeIntervalEnum eventStoreTimeIntervalEnum,
                                                    final StroomPropertyService propertyService,
                                                    final HBaseConnection hBaseConnection,
-                                                   final UniqueIdCache uniqueIdCache) {
+                                                   final UniqueIdCache uniqueIdCache,
+                                                   final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory) {
 
-        return new HBaseEventStoreTable(eventStoreTimeIntervalEnum, propertyService, hBaseConnection, uniqueIdCache);
+        return new HBaseEventStoreTable(eventStoreTimeIntervalEnum,
+                propertyService,
+                hBaseConnection,
+                uniqueIdCache,
+                statisticDataPointAdapterFactory);
     }
 
 
@@ -161,6 +152,12 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     public void addAggregatedEvents(final StatisticType statisticType,
                                     final Map<StatKey, StatAggregate> aggregatedEvents) {
 
+        //TODO if we introduce another stat type of STATE then the STATE and VALUE value objects used
+        //for checking and setting should share an interface that has an aggregate method
+        //and knows how to (de)serialize itself, thus this class doesn't have to care about the type of aggregate.
+        //Could change StatAggregate to be an interface for this purpose with the EventID stuff changed to composition
+        //instead.
+        //Count stats will need to be handled differently though as they use a different approach, i.e. increments
         switch (statisticType) {
             case COUNT:
                 putAggregatedEventsCount(aggregatedEvents);
@@ -472,15 +469,14 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                     // filter the cell to ensure it is in the period we are after
                     //periodTo is exclusive
                     if (fullTimestamp >= periodFrom && fullTimestamp < periodTo) {
-                        final StatisticDataPoint dataPoint;
 
-                        if (statisticType.equals(StatisticType.COUNT)) {
-                            dataPoint = buildCountDataPoint(fullTimestamp, tags, cell.getValueArray(),
-                                    cell.getValueOffset(), cell.getValueLength());
-                        } else {
-                            dataPoint = buildValueDataPoint(fullTimestamp, tags, cell.getValueArray(),
-                                    cell.getValueOffset(), cell.getValueLength());
-                        }
+                        final StatisticDataPointAdapter adapter = statisticDataPointAdapterFactory.getAdapter(statisticType);
+                        final StatisticDataPoint dataPoint = adapter.convertCell(fullTimestamp,
+                                timeInterval,
+                                tags,
+                                cell.getValueArray(),
+                                cell.getValueOffset(),
+                                cell.getValueLength());
 
                         statisticDataSet.addDataPoint(dataPoint);
 
@@ -530,7 +526,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
             optStartRowKey.map(RowKey::asByteArray).ifPresent(scan::setStartRow);
             optEndRowKeyExclusive.map(RowKey::asByteArray).ifPresent(scan::setStopRow);
 
-        } else if(period.hasFrom() && !period.hasTo()) {
+        } else if (period.hasFrom() && !period.hasTo()) {
             // From ---->
             optStartRowKey.map(RowKey::asByteArray).ifPresent(scan::setStartRow);
 
@@ -539,13 +535,13 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
             //will never get close to the last partial timestamp in this system's lifetime.
             byte[] bStopKey = rowKeyBuilder.buildEndKeyBytes(statName, rollUpBitMask);
 
-        } else if(!period.hasFrom() && period.hasTo()) {
+        } else if (!period.hasFrom() && period.hasTo()) {
             // ----> To
-            byte[] bStartKey = rowKeyBuilder.buildStartKeyBytes(statName,rollUpBitMask);
+            byte[] bStartKey = rowKeyBuilder.buildStartKeyBytes(statName, rollUpBitMask);
             scan.setStartRow(bStartKey);
             optEndRowKeyExclusive.map(RowKey::asByteArray).ifPresent(scan::setStopRow);
         } else {
-           //No time bounds at all so set a row prefix
+            //No time bounds at all so set a row prefix
             scan.setRowPrefixFilter(rowKeyBuilder.buildStartKeyBytes(statName, rollUpBitMask));
         }
 
@@ -578,44 +574,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                 .map(RowKey::asByteArray)
                 .map(ByteArrayUtils::byteArrayToHex)
                 .orElse("Empty"));
-    }
-
-    /**
-     * @param fullTimestamp
-     * @param tags
-     * @param bytes           An array of bytes which contains the cell value within it
-     * @param cellValueOffset The start position of the cell value within bytes
-     * @param cellValueLength The length of the cell value within bytes
-     * @return
-     */
-    private StatisticDataPoint buildCountDataPoint(final long fullTimestamp,
-                                                   final List<StatisticTag> tags,
-                                                   final byte[] bytes,
-                                                   final int cellValueOffset,
-                                                   final int cellValueLength) {
-
-        final long count = (cellValueLength == 0) ? 0 : Bytes.toLong(bytes, cellValueOffset, cellValueLength);
-
-        return StatisticDataPoint.countInstance(fullTimestamp, timeInterval.columnInterval(), tags, count);
-    }
-
-    /**
-     * @param fullTimestamp
-     * @param tags
-     * @param bytes           An array of bytes which contains the cell value within it
-     * @param cellValueOffset The start position of the cell value within bytes
-     * @param cellValueLength The length of the cell value within bytes
-     * @return
-     */
-    private StatisticDataPoint buildValueDataPoint(final long fullTimestamp,
-                                                   final List<StatisticTag> tags,
-                                                   final byte[] bytes,
-                                                   final int cellValueOffset,
-                                                   final int cellValueLength) {
-        final ValueCellValue cellValue = new ValueCellValue(bytes, cellValueOffset, cellValueLength);
-
-        return StatisticDataPoint.valueInstance(fullTimestamp, timeInterval.columnInterval(), tags,
-                cellValue.getAverageValue(), cellValue.getCount(), cellValue.getMinValue(), cellValue.getMaxValue());
     }
 
     @Override

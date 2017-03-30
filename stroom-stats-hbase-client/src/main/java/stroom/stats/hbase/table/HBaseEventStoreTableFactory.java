@@ -22,6 +22,7 @@
 package stroom.stats.hbase.table;
 
 import stroom.stats.hbase.connection.HBaseConnection;
+import stroom.stats.hbase.structure.StatisticDataPointAdapterFactory;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -56,9 +57,10 @@ public class HBaseEventStoreTableFactory implements EventStoreTableFactory {
     public HBaseEventStoreTableFactory(final TaskManager taskManager,
                                        final StroomPropertyService propertyService,
                                        final HBaseConnection hBaseConnection,
-                                       final UniqueIdCache uniqueIdCache) {
+                                       final UniqueIdCache uniqueIdCache,
+                                        final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory) {
 
-        LOGGER.info(() -> String.format("Initialising: %s", this.getClass().getCanonicalName()));
+        LOGGER.debug(() -> String.format("Initialising: %s", this.getClass().getCanonicalName()));
 
         this.taskManager = taskManager;
         this.propertyService = propertyService;
@@ -69,18 +71,25 @@ public class HBaseEventStoreTableFactory implements EventStoreTableFactory {
         // set up an event store table object for each time interval that we
         // use
         for (final EventStoreTimeIntervalEnum timeIntervalEnum : EventStoreTimeIntervalEnum.values()) {
-            addEventStoreTable(timeIntervalEnum, uniqueIdCache);
+            addEventStoreTable(timeIntervalEnum, uniqueIdCache, statisticDataPointAdapterFactory);
         }
     }
 
     @Override
     public EventStoreTable getEventStoreTable(final EventStoreTimeIntervalEnum timeInterval) {
-        return (EventStoreTable) eventStoreTables.get(timeInterval);
+        return eventStoreTables.get(timeInterval);
     }
 
-    private void addEventStoreTable(final EventStoreTimeIntervalEnum timeInterval, final UniqueIdCache uniqueIdCache) {
+    private void addEventStoreTable(final EventStoreTimeIntervalEnum timeInterval,
+                                    final UniqueIdCache uniqueIdCache,
+                                    final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory) {
+
         eventStoreTables.put(timeInterval,
-                HBaseEventStoreTable.getInstance(timeInterval, propertyService, hBaseConnection, uniqueIdCache));
+                HBaseEventStoreTable.getInstance(timeInterval,
+                        propertyService,
+                        hBaseConnection,
+                        uniqueIdCache,
+                        statisticDataPointAdapterFactory));
     }
 
 

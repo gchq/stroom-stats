@@ -82,10 +82,8 @@ public class HBaseClient implements Managed {
 
         DocRef statisticStoreRef = searchRequest.getQuery().getDataSource();
         //TODO Need to consider how to handle an unknown docref
-//        final Try<StatisticConfiguration> optStatisticConfiguration =
         return statisticConfigurationService.fetchStatisticConfigurationByUuid(statisticStoreRef.getUuid())
                 .map(statisticConfiguration -> {
-
 
                     // TODO: possibly the mapping from the componentId to the coprocessorsettings map is a bit odd.
                     final CoprocessorSettingsMap coprocessorSettingsMap = CoprocessorSettingsMap.create(searchRequest);
@@ -109,7 +107,7 @@ public class HBaseClient implements Managed {
                             }
 
                             final Coprocessor coprocessor = createCoprocessor(
-                                    coprocessorSettings, fieldIndexMap, paramMap, new HasTerminate(){
+                                    coprocessorSettings, fieldIndexMap, paramMap, new HasTerminate() {
                                         //TODO do something about this
                                         @Override
                                         public void terminate() {
@@ -128,27 +126,30 @@ public class HBaseClient implements Managed {
                         }
                     }
 
-                    StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(searchRequest, statisticConfiguration);
+                    List<String> requestedFields = getRequestedFields(statisticConfiguration, fieldIndexMap);
+
+                    StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(searchRequest, requestedFields, statisticConfiguration);
                     SearchResponse.Builder searchResponseBuilder = new SearchResponse.Builder(true);
 
                     //TODO TableCoprocessor is doing a lot of work to pre-process and aggregate the datas
 
+                    for (StatisticDataPoint statisticDataPoint : statisticDataSet) {
+                        String[] dataArray = new String[fieldIndexMap.size()];
 
-                    for(StatisticDataPoint statisticDataPoint : statisticDataSet){
-                        String[] tags = new String[fieldIndexMap.size()];
-                        statisticDataPoint.getTags().forEach(statisticTag -> {
-                            int position = fieldIndexMap.get(statisticTag.getTag());
-                            if(position != -1){
-                                tags[position] = statisticTag.getValue();
+                        //TODO should probably drive this off a new fieldIndexMap.getEntries() method or similar
+                        //then we only loop round fields we car about
+                        statisticConfiguration.getAllFieldNames().forEach(fieldName -> {
+                            int posInDataArray = fieldIndexMap.get(fieldName);
+                            //if the fieldIndexMap returns -1 the field has not been requested
+                            if (posInDataArray != -1) {
+                                dataArray[posInDataArray] = statisticDataPoint.getFieldValue(fieldName);
                             }
-                            //TODO what are the special names for the other values in the data point? Ask Andy!
                         });
 
                         coprocessorMap.entrySet().forEach(coprocessor -> {
-                            coprocessor.getValue().receive(tags);
+                            coprocessor.getValue().receive(dataArray);
                         });
                     }
-
 
 
                     // TODO pyutting things into a payload and taking them out again is a waste of time in this case. We could use a queue instead and that'd be fine.
@@ -168,7 +169,6 @@ public class HBaseClient implements Managed {
                         }
                     }
 
-
                     StatisticsStore store = new StatisticsStore();
                     store.process(coprocessorSettingsMap);
                     store.coprocessorMap(coprocessorMap);
@@ -187,6 +187,23 @@ public class HBaseClient implements Managed {
                             true);
                     return searchResponse;
                 });
+    }
+
+    private List<String> getRequestedFields(final StatisticConfiguration statisticConfiguration,
+                                            final FieldIndexMap fieldIndexMap) {
+
+        List<String> requestedFields = new ArrayList<>();
+
+        //TODO this is not ideal.  Need to expose the underlying map of FieldIndexMap so we can iterate over that
+        //instead of iterating over all possible fields and seeing if they have been request by their presence
+        //in the FieldIndexMap.  In reality the number of fields will never be more than 15 so
+        //it is not a massive performance hit, just a bit grim.  Requires a change to the API to improve this.
+
+        statisticConfiguration.getFieldNames().stream()
+                .filter(staticField -> fieldIndexMap.get(staticField) != -1)
+                .forEach(requestedFields::add);
+
+        return requestedFields;
     }
 
     //TODO need an endpoint to kick off a purge for a list of docrefs
@@ -214,7 +231,6 @@ public class HBaseClient implements Managed {
     //to fire cluster level scheduled events
 
 
-
     @Override
     public void start() throws Exception {
 
@@ -225,33 +241,31 @@ public class HBaseClient implements Managed {
         statisticsService.shutdown();
     }
 
-        //TODO Delete this when we have something more sensible to return.
+    //TODO Delete this when we have something more sensible to return.
 
     private SearchResponse getDummySearchResponse() {
         SearchResponse searchResponse = new SearchResponse(
                 Arrays.asList("highlight1", "highlight2"),
                 Arrays.asList(
-                new TableResult(
-                    "componentId",
-                    new ArrayList<>(Arrays.asList(
-                            new Row("groupKey", Arrays.asList("value1", "value2"), 5))),
-                    new OffsetRange(1, 2),
-                    1,
-                    "tableResultError"
-                )),
+                        new TableResult(
+                                "componentId",
+                                new ArrayList<>(Arrays.asList(
+                                        new Row("groupKey", Arrays.asList("value1", "value2"), 5))),
+                                new OffsetRange(1, 2),
+                                1,
+                                "tableResultError"
+                        )),
                 Arrays.asList("error1", "error2"),
-            false
+                false
         );
 
         return searchResponse;
     }
 
 
-
-
     //TODO This lives in stroom and should have a copy here
     public static Coprocessor createCoprocessor(final CoprocessorSettings settings,
-                              final FieldIndexMap fieldIndexMap, final Map<String, String> paramMap, final HasTerminate taskMonitor) {
+                                                final FieldIndexMap fieldIndexMap, final Map<String, String> paramMap, final HasTerminate taskMonitor) {
         if (settings instanceof TableCoprocessorSettings) {
             final TableCoprocessorSettings tableCoprocessorSettings = (TableCoprocessorSettings) settings;
             final TableCoprocessor tableCoprocessor = new TableCoprocessor(tableCoprocessorSettings,

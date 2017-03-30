@@ -88,7 +88,7 @@ public class HBaseStatisticsService implements StatisticsService {
     }
 
     static FindEventCriteria buildCriteria(final SearchRequest searchRequest,
-                                                     final StatisticConfiguration statisticConfiguration) {
+                                           final StatisticConfiguration statisticConfiguration) {
         LOGGER.trace(() -> String.format("buildCriteria called for statisticConfiguration %s", statisticConfiguration));
 
         Preconditions.checkNotNull(searchRequest);
@@ -233,7 +233,7 @@ public class HBaseStatisticsService implements StatisticsService {
         }
     }
 
-    List<String> getQueryableFields(final StatisticConfiguration statisticConfiguration) {
+    private List<String> getQueryableFields(final StatisticConfiguration statisticConfiguration) {
         List<String> queryableFields = new ArrayList<>(statisticConfiguration.getFieldNames());
         queryableFields.addAll(SUPPORTED_QUERYABLE_STATIC_FIELDS);
         return queryableFields;
@@ -382,11 +382,13 @@ public class HBaseStatisticsService implements StatisticsService {
     }
 
     @Override
-    public StatisticDataSet searchStatisticsData(final SearchRequest searchRequest, final StatisticConfiguration dataSource) {
+    public StatisticDataSet searchStatisticsData(final SearchRequest searchRequest,
+                                                 final List<String> requestedFields,
+                                                 final StatisticConfiguration statisticConfiguration) {
 
-        final FindEventCriteria criteria = buildCriteria(searchRequest, dataSource);
+        final FindEventCriteria criteria = buildCriteria(searchRequest, statisticConfiguration);
 
-        return eventStores.getStatisticsData(criteria, dataSource);
+        return eventStores.getStatisticsData(criteria, statisticConfiguration);
     }
 
     @Override
@@ -450,16 +452,17 @@ public class HBaseStatisticsService implements StatisticsService {
                                            final List<ExpressionItem> currentParents,
                                            final List<List<ExpressionItem>> foundPaths) {
 
-        currentParents.add(item);
         if (item instanceof ExpressionTerm) {
             ExpressionTerm term = (ExpressionTerm) item;
             Preconditions.checkArgument(term.getField() != null);
             if (term.getField().equals(targetFieldName) && term.enabled()) {
+                currentParents.add(item);
                 List<ExpressionItem> path = new ArrayList<>(currentParents);
                 foundPaths.add(path);
             }
         } else if (item instanceof ExpressionOperator) {
             ExpressionOperator op = (ExpressionOperator) item;
+            currentParents.add(item);
             Preconditions.checkNotNull(op.getChildren());
             op.getChildren().stream()
                     .filter(ExpressionItem::enabled)

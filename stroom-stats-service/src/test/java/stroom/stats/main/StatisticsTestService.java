@@ -159,9 +159,7 @@ public final class StatisticsTestService {
 
         final EventStoreTimeIntervalEnum workingTimeInterval = EventStoreTimeIntervalEnum.HOUR;
 
-        final HBaseEventStoreTable hBaseTable = HBaseEventStoreTable.getInstance(
-                workingTimeInterval, propertyService,
-                hBaseConnection, uniqueIdCache);
+        final HBaseEventStoreTable hBaseTable = (HBaseEventStoreTable) eventStoreTableFactory.getEventStoreTable(workingTimeInterval);
 
         // HTableInterface table =
         // tableConfiguration.getTable(TableName.valueOf("hes"));
@@ -737,8 +735,8 @@ public final class StatisticsTestService {
         final List<String> records = new ArrayList<>();
 
         for (final StatisticDataPoint dataPoint : statisticDataSet) {
-            records.add("  " + DateUtil.createNormalDateTimeString(dataPoint.getTimeMs()) + " - " + dataPoint.getCount()
-                    + " - " + dataPoint.getValue());
+            records.add("  " + DateUtil.createNormalDateTimeString(dataPoint.getTimeMs()) + " - " + dataPoint.getFieldValue(StatisticConfiguration.FIELD_NAME_COUNT)
+                    + " - " + dataPoint.getFieldValue(StatisticConfiguration.FIELD_NAME_VALUE));
         }
 
         Collections.sort(records);
@@ -975,7 +973,7 @@ public final class StatisticsTestService {
     private void clearDownAllTables(final HBaseConnection tableConfiguration) throws IOException {
         HBaseTable hBaseTable;
         for (final EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
-            hBaseTable = HBaseEventStoreTable.getInstance(interval,propertyService, hBaseConnection, uniqueIdCache);
+            hBaseTable = (HBaseTable) eventStoreTableFactory.getEventStoreTable(interval);
             final Table tableInterface = hBaseTable.getTable();
             clearDownTable(tableInterface);
             tableInterface.close();
@@ -986,7 +984,7 @@ public final class StatisticsTestService {
     private void countAllTables(final HBaseConnection tableConfiguration) throws IOException {
         HBaseTable hBaseTable;
         for (final EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
-            hBaseTable = HBaseEventStoreTable.getInstance(interval, propertyService, hBaseConnection, uniqueIdCache);
+            hBaseTable = (HBaseTable) eventStoreTableFactory.getEventStoreTable(interval);
             final Table tableInterface = hBaseTable.getTable();
             LOGGER.info("Row count for " + hBaseTable.getName() + " (" + countRows(tableInterface) + ")");
             tableInterface.close();

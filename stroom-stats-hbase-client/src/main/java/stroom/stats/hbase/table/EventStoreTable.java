@@ -49,7 +49,8 @@ public interface EventStoreTable extends GenericTable {
 
 
     StatisticDataSet getStatisticsData(final UniqueIdCache uniqueIdCache,
-                                       final StatisticConfiguration statisticConfiguration, final RollUpBitMask rollUpBitMask,
+                                       final StatisticConfiguration statisticConfiguration,
+                                       final RollUpBitMask rollUpBitMask,
                                        final FindEventCriteria criteria);
 
     /**
