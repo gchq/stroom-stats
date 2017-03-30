@@ -21,6 +21,7 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
 import stroom.stats.properties.StroomPropertyService;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.KafkaStreamService;
 import stroom.stats.streams.TopicNameFactory;
 import stroom.stats.test.StatisticConfigurationEntityHelper;
@@ -110,6 +111,9 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
         ExpressionOperator expressionOperator = new ExpressionOperator(
                 true,
                 ExpressionOperator.Op.AND,
+                new ExpressionTerm(StatisticConfiguration.FIELD_NAME_PRECISION,
+                        ExpressionTerm.Condition.EQUALS,
+                        EventStoreTimeIntervalEnum.DAY.longName()),
                 new ExpressionTerm("door", ExpressionTerm.Condition.EQUALS, "door1"),
                 new ExpressionTerm(
                         StatisticConfiguration.FIELD_NAME_DATE_TIME,
