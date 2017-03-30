@@ -32,7 +32,7 @@ import java.util.List;
  * equals on an object type/value pair
  */
 public class FilterTermsTree {
-    PrintableNode root;
+    Node root;
 
     private static FilterTermsTree emptyTree;
 
@@ -43,7 +43,7 @@ public class FilterTermsTree {
     public FilterTermsTree() {
     }
 
-    public FilterTermsTree(final PrintableNode rootNode) {
+    public FilterTermsTree(final Node rootNode) {
         this.root = rootNode;
     }
 
@@ -51,19 +51,29 @@ public class FilterTermsTree {
         return emptyTree;
     }
 
-    public PrintableNode getRootNode() {
+    public Node getRootNode() {
         return root;
     }
 
-    public void setRootNode(final PrintableNode rootNode) {
+    public void setRootNode(final Node rootNode) {
         this.root = rootNode;
+    }
+
+    /**
+     * Interface that is common to all nodes in the filter tree
+     */
+    public interface Node {
+        @Override
+        String toString();
+
+        void printNode(StringBuilder sb);
     }
 
     /**
      * This class represents an actual filter term node in the filter tree, i.e.
      * X=Y
      */
-    public static class TermNode implements PrintableNode {
+    public static class TermNode implements Node {
         private final String tag;
         private final String value;
 
@@ -104,9 +114,9 @@ public class FilterTermsTree {
      * This class represents an operator node in the filter tree, i.e.
      * AND/OR/NOT
      */
-    public static class OperatorNode implements PrintableNode {
+    public static class OperatorNode implements Node {
         private FilterOperationMode filterOperationMode;
-        private List<PrintableNode> children = new ArrayList<>();
+        private List<Node> children = new ArrayList<>();
 
         /**
          * Need to supply a list of children as there is no point in creating an
@@ -114,7 +124,7 @@ public class FilterTermsTree {
          *
          * @param childNodes
          */
-        public OperatorNode(final FilterOperationMode filterOperationMode, final List<PrintableNode> childNodes) {
+        public OperatorNode(final FilterOperationMode filterOperationMode, final List<Node> childNodes) {
             if (filterOperationMode.equals(FilterOperationMode.NOT) && childNodes.size() < 1) {
                 throw new FilterTermsTreeException("Cannot create an operator node with no child nodes");
             }
@@ -129,11 +139,11 @@ public class FilterTermsTree {
             this.children.addAll(childNodes);
         }
 
-        public List<PrintableNode> getChildren() {
+        public List<Node> getChildren() {
             return children;
         }
 
-        public void setChildren(final List<PrintableNode> children) {
+        public void setChildren(final List<Node> children) {
             this.children = children;
         }
 
@@ -154,7 +164,7 @@ public class FilterTermsTree {
             sb.append("(");
 
             // print each of the child nodes
-            for (final PrintableNode childNode : operatorNode.getChildren()) {
+            for (final Node childNode : operatorNode.getChildren()) {
                 childNode.printNode(sb);
                 sb.append(",");
             }
@@ -192,4 +202,5 @@ public class FilterTermsTree {
 
         return sb.toString();
     }
+
 }

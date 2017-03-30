@@ -25,7 +25,6 @@ import stroom.stats.api.StatisticTag;
 import stroom.stats.common.FilterTermsTree;
 import stroom.stats.common.FilterTermsTree.OperatorNode;
 import stroom.stats.common.FilterTermsTree.TermNode;
-import stroom.stats.common.PrintableNode;
 import stroom.stats.hbase.structure.RowKeyTagValue;
 import stroom.stats.hbase.structure.TagValueFilterTreeNode;
 import stroom.stats.hbase.uid.UID;
@@ -66,7 +65,7 @@ public class TagValueFilterTreeBuilder {
         return tagValueFilterTree;
     }
 
-    private static TagValueFilterTreeNode convertNode(final PrintableNode oldNode,
+    private static TagValueFilterTreeNode convertNode(final FilterTermsTree.Node oldNode,
             final UniqueIdCache uniqueIdCache) {
         if (oldNode instanceof TermNode) {
             return convertTermNode((TermNode) oldNode, uniqueIdCache);
@@ -113,7 +112,7 @@ public class TagValueFilterTreeBuilder {
 
         final List<TagValueFilterTreeNode> children = new ArrayList<>();
 
-        for (final PrintableNode oldChild : oldNode.getChildren()) {
+        for (final FilterTermsTree.Node oldChild : oldNode.getChildren()) {
             children.add(convertNode(oldChild, uniqueIdCache));
         }
         final TagValueOperatorNode newNode = new TagValueOperatorNode(

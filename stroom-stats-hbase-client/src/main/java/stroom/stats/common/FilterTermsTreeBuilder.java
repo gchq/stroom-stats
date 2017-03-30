@@ -52,19 +52,19 @@ public class FilterTermsTreeBuilder {
      * @param rootItem
      *            The {@link ExpressionItem} object that is the root of the tree
      * @return A {@link FilterTermsTree} object containing a tree of
-     *         {@link PrintableNode} objects
+     *         {@link FilterTermsTree.Node} objects
      */
     public static FilterTermsTree convertExpresionItemsTree(final ExpressionOperator rootItem,
             final Set<String> blackListedFieldNames) {
-        final PrintableNode newRootNode = convertNode(rootItem, blackListedFieldNames);
+        final FilterTermsTree.Node newRootNode = convertNode(rootItem, blackListedFieldNames);
 
         // we may have black listed all our terms and been left with a null root
         // node so handle that
         return newRootNode != null ? new FilterTermsTree(newRootNode) : FilterTermsTree.emptyTree();
     }
 
-    private static PrintableNode convertNode(final ExpressionItem oldNode, final Set<String> fieldBlackList) {
-        PrintableNode newNode;
+    private static FilterTermsTree.Node convertNode(final ExpressionItem oldNode, final Set<String> fieldBlackList) {
+        FilterTermsTree.Node newNode;
 
         if (oldNode.enabled()) {
             if (oldNode instanceof ExpressionTerm) {
@@ -84,8 +84,8 @@ public class FilterTermsTreeBuilder {
         return newNode;
     }
 
-    private static PrintableNode convertTermNode(final ExpressionTerm oldNode, final Set<String> fieldBlackList) {
-        PrintableNode newNode;
+    private static FilterTermsTree.Node convertTermNode(final ExpressionTerm oldNode, final Set<String> fieldBlackList) {
+        FilterTermsTree.Node newNode;
 
         if (fieldBlackList != null && fieldBlackList.contains(oldNode.getField())) {
             // this term is black listed so ignore it
@@ -115,7 +115,7 @@ public class FilterTermsTreeBuilder {
                     } else {
                         // multiple values in the IN list so convert it into a
                         // set of EQUALS terms under and OR node
-                        final List<PrintableNode> orTermNodes = new ArrayList<>();
+                        final List<FilterTermsTree.Node> orTermNodes = new ArrayList<>();
 
                         for (final String value : values) {
                             orTermNodes.add(convertTermNode(
@@ -134,8 +134,8 @@ public class FilterTermsTreeBuilder {
     /**
      * @return The converted node, null if the old node has no children
      */
-    private static PrintableNode convertOperatorNode(final ExpressionOperator oldNode,
-            final Set<String> fieldBlackList) {
+    private static FilterTermsTree.Node convertOperatorNode(final ExpressionOperator oldNode,
+                                                            final Set<String> fieldBlackList) {
         // ExpressionOperator can be created with no child nodes so if that is
         // the case just return null and handle for
         // the null in the calling method
@@ -145,10 +145,10 @@ public class FilterTermsTreeBuilder {
         } else {
             final FilterOperationMode operationMode = FilterOperationMode.valueOf(oldNode.getOp().getDisplayValue().toString());
 
-            final List<PrintableNode> children = new ArrayList<>();
+            final List<FilterTermsTree.Node> children = new ArrayList<>();
 
             for (final ExpressionItem oldChild : oldNode.getChildren()) {
-                final PrintableNode newChild = convertNode(oldChild, fieldBlackList);
+                final FilterTermsTree.Node newChild = convertNode(oldChild, fieldBlackList);
 
                 // if the newChild is null it means it was probably an
                 // ExpressionOperator with no children
@@ -157,7 +157,7 @@ public class FilterTermsTreeBuilder {
                 }
             }
 
-            PrintableNode newNode = null;
+            FilterTermsTree.Node newNode = null;
             // term nodes may have been returned as null if they were expression
             // terms that this tree does not support
             if (children.size() == 1 && !operationMode.equals(FilterOperationMode.NOT)) {
