@@ -265,7 +265,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 .builder(new Period(), statNameStr)
                 .setInterval(interval)
                 .setRequiredDynamicFields(statisticConfigurationEntity.getFieldNames());
-        if (childNodes != null) {
+        if (childNodes != null && childNodes.length > 0) {
             builder.setFilterTermsTree(new FilterTermsTree(new OperatorNode(
                     FilterTermsTree.Operator.AND, childNodes)));
         }
@@ -347,14 +347,14 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str, tag2Val2Str);
-        assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo((statValue1) + (statValue2));
+        assertThat(computeSumOfValueValues(dataPoints)).isEqualTo((statValue1) + (statValue2));
 
         dataPoints = runCriteria(statisticsService, criteriaSpecificRow, statisticConfigurationEntity, 1);
 
         //should only get two distinct tag values as we have just one row back
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str);
-        assertThat(computeSumOfCountCounts(dataPoints)).isEqualTo(statValue1);
+        assertThat(computeSumOfValueValues(dataPoints)).isEqualTo(statValue1);
 
         //should get nothing back as the requested tagvalue is not in the store
         runCriteria(statisticsService, criteriaNoDataFound, statisticConfigurationEntity, 0);
