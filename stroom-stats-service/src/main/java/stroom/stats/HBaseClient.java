@@ -139,9 +139,12 @@ public class HBaseClient implements Managed {
 
         List<String> requestedFields = getRequestedFields(statisticConfiguration, fieldIndexMap);
 
+        //convert the generic query API SerachRequset object into a criteria object specific to
+        //the way stats can be queried.
         SearchStatisticsCriteria criteria = buildCriteria(searchRequest, statisticConfiguration);
 
         StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(criteria, statisticConfiguration);
+
         SearchResponse.Builder searchResponseBuilder = new SearchResponse.Builder(true);
 
         //TODO TableCoprocessor is doing a lot of work to pre-process and aggregate the datas
