@@ -531,6 +531,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
             //partial timestamp of the row key. While this isn't actually an exclusive stop key we
             //will never get close to the last partial timestamp in this system's lifetime.
             byte[] bStopKey = rowKeyBuilder.buildEndKeyBytes(statName, rollUpBitMask);
+            scan.setStopRow(bStopKey);
 
         } else if (!period.hasFrom() && period.hasTo()) {
             // ----> To
