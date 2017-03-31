@@ -15,14 +15,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class Correlator {
 
-    private Map<SetName, ImmutableSet<Row>> sets = new HashMap<>();
+    private Map<String, ImmutableSet<Row>> sets = new HashMap<>();
 
-    public Correlator addSet(SetName setName, Set<Row> set){
+    public Correlator addSet(String setName, Set<Row> set){
         sets.put(setName, ImmutableSet.copyOf(set));
         return this;
     }
 
-    public List<Row> complement(SetName setName){
+    public List<Row> complement(String setName){
         ImmutableSet<Row> set = sets.get(setName);
         List<Row> complementOfSet = sets.entrySet().stream()
                 .filter(entry -> entry.getKey() != setName) // Get rid of our complement set
@@ -32,7 +32,7 @@ public class Correlator {
         return complementOfSet;
     }
 
-    public Set<Row> intersection(SetName... setNames) {
+    public Set<Row> intersection(String... setNames) {
         assertThat(setNames.length).isGreaterThanOrEqualTo(2);
         List<ImmutableSet<Row>> setsForIntersection = new ArrayList<>();
         Stream.of(setNames).forEach(setName -> setsForIntersection.add(sets.get(setName)));
@@ -52,15 +52,10 @@ public class Correlator {
 
     private Set<Row> intersection(Set<Row> intersectionAccumulator, List<ImmutableSet<Row>> remainingSets){
         if(remainingSets.size() > 0) {
-//            intersectionAccumulator.retainAll(remainingSets.get(0));
             Set<Row> newIntersection = intersectionAccumulator.stream().filter(remainingSets.get(0)::contains).collect(Collectors.toSet());
             remainingSets.remove(0);
             return intersection(newIntersection, remainingSets);
         }
         return intersectionAccumulator;
-    }
-
-    public enum SetName {
-        A, B, C, D, E;
     }
 }

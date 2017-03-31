@@ -13,6 +13,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class TestCorrelator {
 
+    private static final String SET_A = "A";
+    private static final String SET_B = "B";
+    private static final String SET_C = "C";
+    private static final String SET_D = "D";
+    private static final String SET_E = "E";
+
     @Test
     public void testComplement(){
         Set<Row> a = new HashSet<>();
@@ -24,9 +30,9 @@ public class TestCorrelator {
         b.add(new Row("groupKey", Arrays.asList("user2", "door1"), 1));
 
         List<Row> complementOfB = new Correlator()
-                .addSet(Correlator.SetName.A, a)
-                .addSet(Correlator.SetName.B, b)
-                .complement(Correlator.SetName.B);
+                .addSet(SET_A, a)
+                .addSet(SET_B, b)
+                .complement(SET_B);
 
         assertThat(complementOfB.size()).isEqualTo(1);
         assertThat(complementOfB.get(0).getValues().get(0)).isEqualTo("user3");
@@ -44,9 +50,9 @@ public class TestCorrelator {
         b.add(new Row("groupKey", Arrays.asList("user2", "door1"), 1));
 
         Set<Row> intersectionOfAandB = new Correlator()
-                .addSet(Correlator.SetName.A, a)
-                .addSet(Correlator.SetName.B, b)
-                .intersection(Correlator.SetName.A, Correlator.SetName.B);
+                .addSet(SET_A, a)
+                .addSet(SET_B, b)
+                .intersection(SET_A, SET_B);
         List<Row> intersection = new ArrayList<>(intersectionOfAandB);
 
         assertThat(intersection.size()).isEqualTo(2);
@@ -80,11 +86,11 @@ public class TestCorrelator {
         d.add(new Row("groupKey", Arrays.asList("user2", "door1"), 1));
         d.add(new Row("groupKey", Arrays.asList("user3", "door1"), 1));
         Set<Row> intersectionOfAandB = new Correlator()
-                .addSet(Correlator.SetName.A, a)
-                .addSet(Correlator.SetName.B, b)
-                .addSet(Correlator.SetName.C, c)
-                .addSet(Correlator.SetName.D, d)
-                .intersection(Correlator.SetName.A, Correlator.SetName.B, Correlator.SetName.C, Correlator.SetName.D);
+                .addSet(SET_A, a)
+                .addSet(SET_B, b)
+                .addSet(SET_C, c)
+                .addSet(SET_D, d)
+                .intersection(SET_A, SET_B, SET_C, SET_D);
         List<Row> intersection = new ArrayList<>(intersectionOfAandB);
 
         assertThat(intersection.size()).isEqualTo(3);
@@ -121,12 +127,12 @@ public class TestCorrelator {
         Set<Row> e = new HashSet<>();
         e.add(new Row("groupKey", Arrays.asList("user3", "door1"), 1));
         Set<Row> intersectionOfAandB = new Correlator()
-                .addSet(Correlator.SetName.A, a)
-                .addSet(Correlator.SetName.B, b)
-                .addSet(Correlator.SetName.C, c)
-                .addSet(Correlator.SetName.D, d)
-                .addSet(Correlator.SetName.E, e)
-                .intersection(Correlator.SetName.A, Correlator.SetName.B, Correlator.SetName.C, Correlator.SetName.D, Correlator.SetName.E);
+                .addSet(SET_A, a)
+                .addSet(SET_B, b)
+                .addSet(SET_C, c)
+                .addSet(SET_D, d)
+                .addSet(SET_E, e)
+                .intersection(SET_A, SET_B, SET_C, SET_D, SET_E);
         List<Row> intersection = new ArrayList<>(intersectionOfAandB);
 
         assertThat(intersection.size()).isEqualTo(1);
@@ -162,12 +168,12 @@ public class TestCorrelator {
         Set<Row> e = new HashSet<>();
         e.add(new Row("groupKey", Arrays.asList("user3", "door1"), 1));
         Set<Row> intersectionOfAandB = new Correlator()
-                .addSet(Correlator.SetName.A, a)
-                .addSet(Correlator.SetName.B, b)
-                .addSet(Correlator.SetName.C, c)
-                .addSet(Correlator.SetName.D, d)
-                .addSet(Correlator.SetName.E, e)
-                .intersection(Correlator.SetName.B, Correlator.SetName.C);
+                .addSet(SET_A, a)
+                .addSet(SET_B, b)
+                .addSet(SET_C, c)
+                .addSet(SET_D, d)
+                .addSet(SET_E, e)
+                .intersection(SET_B, SET_C);
         List<Row> intersection = new ArrayList<>(intersectionOfAandB);
 
         assertThat(intersection.size()).isEqualTo(5);

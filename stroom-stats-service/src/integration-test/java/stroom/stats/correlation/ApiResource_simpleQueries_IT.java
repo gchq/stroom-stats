@@ -70,9 +70,9 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
         List<Row> yesterday = ((TableResult) yesterdaySearchResponse.getResults().get(0)).getRows();
         List<Row> today = ((TableResult) todaySearchResponse.getResults().get(0)).getRows();
         List<Row> yesterdayAndNotToday = new Correlator()
-                .addSet(Correlator.SetName.A, new HashSet<>(yesterday))
-                .addSet(Correlator.SetName.B, new HashSet<>(today))
-                .complement(Correlator.SetName.B);
+                .addSet("A", new HashSet<>(yesterday))
+                .addSet("B", new HashSet<>(today))
+                .complement("B");
         assertThat(yesterdayAndNotToday.size()).isEqualTo(1);
         assertThat(yesterdayAndNotToday.get(0).getValues().get(0)).isEqualTo("user3");
         assertThat(yesterdayAndNotToday.get(0).getValues().get(1)).isEqualTo("door1");
