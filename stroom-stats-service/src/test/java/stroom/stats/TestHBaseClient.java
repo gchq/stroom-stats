@@ -1,6 +1,5 @@
 package stroom.stats;
 
-import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 import stroom.query.api.ExpressionOperator;
@@ -13,7 +12,6 @@ import stroom.stats.common.FilterTermsTree;
 import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.configuration.MockStatisticConfiguration;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.hbase.HBaseStatisticsService;
 import stroom.stats.util.DateUtil;
 
 import java.time.ZoneOffset;
@@ -21,7 +19,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
 
 public class TestHBaseClient {
 
@@ -34,7 +32,7 @@ public class TestHBaseClient {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        SearchStatisticsCriteria criteria = HBaseClient.buildCriteria(wrapQuery(query), dataSource);
+        SearchStatisticsCriteria criteria = HBaseClient.buildCriteria(wrapQuery(query), Collections.emptyList(), dataSource);
 
         assertNotNull(criteria);
         assertThat(criteria.getPeriod().getFrom()).isNull();
@@ -59,7 +57,7 @@ public class TestHBaseClient {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        HBaseClient.buildCriteria(wrapQuery(query), dataSource);
+        HBaseClient.buildCriteria(wrapQuery(query), Collections.emptyList(), dataSource);
 
     }
 
@@ -81,7 +79,7 @@ public class TestHBaseClient {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        final SearchStatisticsCriteria criteria = HBaseClient.buildCriteria(wrapQuery(query), dataSource);
+        final SearchStatisticsCriteria criteria = HBaseClient.buildCriteria(wrapQuery(query), Collections.emptyList(), dataSource);
 
         assertNotNull(criteria);
         Assert.assertEquals(fromDate, criteria.getPeriod().getFrom().longValue());
@@ -108,7 +106,7 @@ public class TestHBaseClient {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        HBaseClient.buildCriteria(wrapQuery(query), dataSource);
+        HBaseClient.buildCriteria(wrapQuery(query), Collections.emptyList(), dataSource);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -131,7 +129,7 @@ public class TestHBaseClient {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        HBaseClient.buildCriteria(wrapQuery(query), dataSource);
+        HBaseClient.buildCriteria(wrapQuery(query), Collections.emptyList(), dataSource);
     }
 
     @Test
@@ -153,7 +151,7 @@ public class TestHBaseClient {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        final SearchStatisticsCriteria criteria = HBaseClient.buildCriteria(wrapQuery(query), dataSource);
+        final SearchStatisticsCriteria criteria = HBaseClient.buildCriteria(wrapQuery(query), Collections.emptyList(), dataSource);
 
         assertNotNull(criteria);
         Assert.assertEquals("[MyField=]", criteria.getFilterTermsTree().toString());
@@ -178,7 +176,7 @@ public class TestHBaseClient {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        final SearchStatisticsCriteria criteria = HBaseClient.buildCriteria(wrapQuery(query), dataSource);
+        final SearchStatisticsCriteria criteria = HBaseClient.buildCriteria(wrapQuery(query), Collections.emptyList(), dataSource);
 
     }
 
@@ -206,7 +204,7 @@ public class TestHBaseClient {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        HBaseClient.buildCriteria(wrapQuery(query), dataSource);
+        HBaseClient.buildCriteria(wrapQuery(query), Collections.emptyList(), dataSource);
 
     }
 
@@ -235,7 +233,7 @@ public class TestHBaseClient {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        HBaseClient.buildCriteria(wrapQuery(query), dataSource);
+        HBaseClient.buildCriteria(wrapQuery(query), Collections.emptyList(), dataSource);
     }
 
     @Test(expected = UnsupportedOperationException.class)
@@ -256,7 +254,7 @@ public class TestHBaseClient {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        HBaseClient.buildCriteria(wrapQuery(query), dataSource);
+        HBaseClient.buildCriteria(wrapQuery(query), Collections.emptyList(), dataSource);
     }
 
     @Test(expected = UnsupportedOperationException.class)
@@ -273,7 +271,7 @@ public class TestHBaseClient {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        HBaseClient.buildCriteria(wrapQuery(query), dataSource);
+        HBaseClient.buildCriteria(wrapQuery(query), Collections.emptyList(), dataSource);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -289,7 +287,7 @@ public class TestHBaseClient {
         final MockStatisticConfiguration dataSource = new MockStatisticConfiguration();
         dataSource.setName("MyDataSource");
 
-        HBaseClient.buildCriteria(wrapQuery(query), dataSource);
+        HBaseClient.buildCriteria(wrapQuery(query), Collections.emptyList(), dataSource);
     }
 
     private SearchRequest wrapQuery(Query query) {

@@ -137,11 +137,11 @@ public class HBaseClient implements Managed {
             }
         }
 
-        List<String> requestedFields = getRequestedFields(statisticConfiguration, fieldIndexMap);
+        List<String> requiredDynamicFields = getRequestedFields(statisticConfiguration, fieldIndexMap);
 
         //convert the generic query API SerachRequset object into a criteria object specific to
         //the way stats can be queried.
-        SearchStatisticsCriteria criteria = buildCriteria(searchRequest, statisticConfiguration);
+        SearchStatisticsCriteria criteria = buildCriteria(searchRequest, requiredDynamicFields, statisticConfiguration);
 
         StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(criteria, statisticConfiguration);
 
@@ -206,7 +206,7 @@ public class HBaseClient implements Managed {
         //in the FieldIndexMap.  In reality the number of fields will never be more than 15 so
         //it is not a massive performance hit, just a bit grim.  Requires a change to the API to improve this.
 
-        statisticConfiguration.getAllFieldNames().stream()
+        statisticConfiguration.getFieldNames().stream()
                 .filter(staticField -> fieldIndexMap.get(staticField) != -1)
                 .forEach(requestedFields::add);
 
@@ -283,11 +283,13 @@ public class HBaseClient implements Managed {
     }
 
     static SearchStatisticsCriteria buildCriteria(final SearchRequest searchRequest,
+                                                  final List<String> requiredDynamicFields,
                                                   final StatisticConfiguration statisticConfiguration) {
 
         LOGGER.trace(() -> String.format("buildCriteria called for statisticConfiguration %s", statisticConfiguration));
 
         Preconditions.checkNotNull(searchRequest);
+        Preconditions.checkNotNull(requiredDynamicFields);
         Preconditions.checkNotNull(statisticConfiguration);
         Query query = searchRequest.getQuery();
         Preconditions.checkNotNull(query);
@@ -361,12 +363,14 @@ public class HBaseClient implements Managed {
         final SearchStatisticsCriteria.SearchStatisticsCriteriaBuilder criteriaBuilder = SearchStatisticsCriteria
                 .builder(new Period(range.getFrom(), range.getTo()), statisticConfiguration.getName())
                 .setFilterTermsTree(filterTermsTree)
+                .setRequiredDynamicFields(requiredDynamicFields)
                 .setRolledUpFieldNames(rolledUpFieldNames);
 
         optInterval.ifPresent(criteriaBuilder::setInterval);
 
         return criteriaBuilder.build();
     }
+
 
     /**
      * Identify the date term in the search criteria. Currently we must have
