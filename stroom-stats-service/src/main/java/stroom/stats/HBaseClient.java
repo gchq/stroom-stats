@@ -155,7 +155,7 @@ public class HBaseClient implements Managed {
             //TODO should probably drive this off a new fieldIndexMap.getEntries() method or similar
             //then we only loop round fields we car about
             statisticConfiguration.getAllFieldNames().forEach(fieldName -> {
-                int posInDataArray = fieldIndexMap.get(fieldName);
+                int posInDataArray = fieldIndexMap.get(fieldName.toLowerCase());
                 //if the fieldIndexMap returns -1 the field has not been requested
                 if (posInDataArray != -1) {
                     dataArray[posInDataArray] = statisticDataPoint.getFieldValue(fieldName);
@@ -206,7 +206,7 @@ public class HBaseClient implements Managed {
         //in the FieldIndexMap.  In reality the number of fields will never be more than 15 so
         //it is not a massive performance hit, just a bit grim.  Requires a change to the API to improve this.
 
-        statisticConfiguration.getFieldNames().stream()
+        statisticConfiguration.getAllFieldNames().stream()
                 .filter(staticField -> fieldIndexMap.get(staticField) != -1)
                 .forEach(requestedFields::add);
 
