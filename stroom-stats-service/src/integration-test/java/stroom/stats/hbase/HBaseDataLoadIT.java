@@ -31,6 +31,7 @@ import stroom.query.api.Field;
 import stroom.query.api.FieldBuilder;
 import stroom.query.api.Query;
 import stroom.query.api.ResultRequest;
+import stroom.query.api.Row;
 import stroom.query.api.SearchRequest;
 import stroom.query.api.SearchResponse;
 import stroom.query.api.TableResult;
@@ -620,7 +621,8 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         SearchResponse searchResponse = hBaseClient.query(searchRequest);
 
         assertThat(searchResponse).isNotNull();
-        assertThat(searchResponse.getResults()).hasSize(expectedRecCount);
+        List<Row> rows = ((TableResult) searchResponse.getResults().get(0)).getRows();
+        assertThat(rows).hasSize(expectedRecCount);
         return searchResponse;
     }
 
