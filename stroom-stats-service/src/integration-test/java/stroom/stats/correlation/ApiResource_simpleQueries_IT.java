@@ -27,6 +27,7 @@ import javax.ws.rs.core.Response;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,7 +41,7 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
     private static final String DOOR_TAG = "door";
 
     @Test
-    public void test1(){
+    public void compare_yesterday_to_today(){
         // Given 1 - create a StatisticConfiguration, create and send Statistics
         ZonedDateTime now = ZonedDateTime.now();
         StatisticType statisticType = StatisticType.COUNT;
@@ -69,8 +70,8 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
         List<Row> yesterday = ((TableResult) yesterdaySearchResponse.getResults().get(0)).getRows();
         List<Row> today = ((TableResult) todaySearchResponse.getResults().get(0)).getRows();
         List<Row> yesterdayAndNotToday = new Correlator()
-                .addSet(Correlator.SetName.A, yesterday)
-                .addSet(Correlator.SetName.B, today)
+                .addSet(Correlator.SetName.A, new HashSet<>(yesterday))
+                .addSet(Correlator.SetName.B, new HashSet<>(today))
                 .complement(Correlator.SetName.B);
         assertThat(yesterdayAndNotToday.size()).isEqualTo(1);
         assertThat(yesterdayAndNotToday.get(0).getValues().get(0)).isEqualTo("user3");

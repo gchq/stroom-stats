@@ -1,6 +1,6 @@
 package stroom.stats.correlation;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import stroom.query.api.Row;
 
 import java.util.ArrayList;
@@ -11,17 +11,19 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 public class Correlator {
 
-    private Map<SetName, ImmutableList<Row>> sets = new HashMap<>();
+    private Map<SetName, ImmutableSet<Row>> sets = new HashMap<>();
 
-    public Correlator addSet(SetName setName, List<Row> set){
-        sets.put(setName, ImmutableList.copyOf(set));
+    public Correlator addSet(SetName setName, Set<Row> set){
+        sets.put(setName, ImmutableSet.copyOf(set));
         return this;
     }
 
     public List<Row> complement(SetName setName){
-        ImmutableList<Row> set = sets.get(setName);
+        ImmutableSet<Row> set = sets.get(setName);
         List<Row> complementOfSet = sets.entrySet().stream()
                 .filter(entry -> entry.getKey() != setName) // Get rid of our complement set
                 .flatMap(entry -> entry.getValue().stream()) // We don't care about sets now, just about rows
@@ -30,24 +32,32 @@ public class Correlator {
         return complementOfSet;
     }
 
-    public List<Row> intersection(SetName... setNames) {
-        List<ImmutableList<Row>> setsForIntersection = new ArrayList<>();
+    public Set<Row> intersection(SetName... setNames) {
+        assertThat(setNames.length).isGreaterThanOrEqualTo(2);
+        List<ImmutableSet<Row>> setsForIntersection = new ArrayList<>();
         Stream.of(setNames).forEach(setName -> setsForIntersection.add(sets.get(setName)));
 
-        if(setsForIntersection.size() >= 2){
-//            intersection(se)
-        }
-        return null; //TODO
-    }
+        Set<Row> firstIntersection = setsForIntersection.get(0).stream()
+                    .filter(setsForIntersection.get(1)::contains).collect(Collectors.toSet());
 
-    private Set<Row> intersection(Set<Row> intersectionAccumulator, List<Row>... remainingSets){
-        if(remainingSets.length >= 2) {
-            return intersectionAccumulator.stream().filter(remainingSets[0]::contains).collect(Collectors.toSet());
+        if(setsForIntersection.size() >= 3 ) {
+            List<ImmutableSet<Row>> remainingSets = setsForIntersection.subList(2, setsForIntersection.size());
+            return intersection(firstIntersection, remainingSets);
         }
         else{
-            return intersectionAccumulator;
+            return firstIntersection;
         }
-        //TODO recurse
+    }
+
+
+    private Set<Row> intersection(Set<Row> intersectionAccumulator, List<ImmutableSet<Row>> remainingSets){
+        if(remainingSets.size() > 0) {
+//            intersectionAccumulator.retainAll(remainingSets.get(0));
+            Set<Row> newIntersection = intersectionAccumulator.stream().filter(remainingSets.get(0)::contains).collect(Collectors.toSet());
+            remainingSets.remove(0);
+            return intersection(newIntersection, remainingSets);
+        }
+        return intersectionAccumulator;
     }
 
     public enum SetName {
