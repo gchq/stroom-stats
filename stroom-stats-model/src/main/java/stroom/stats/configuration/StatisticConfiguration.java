@@ -22,8 +22,14 @@ package stroom.stats.configuration;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import stroom.stats.api.StatisticType;
+import stroom.stats.common.rollup.RollUpBitMask;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 
 /**
@@ -97,6 +103,12 @@ public interface StatisticConfiguration {
     }
 
     Set<? extends CustomRollUpMask> getCustomRollUpMasks();
+
+    default Set<RollUpBitMask> getCustomRollUpMasksAsBitMasks() {
+        return getCustomRollUpMasks().stream()
+                .map(customMask -> RollUpBitMask.fromTagPositions(customMask.getRolledUpTagPositions()))
+                .collect(Collectors.toSet());
+    }
 
     /**
      * The position of the passed fieldName in the output of getFieldNames,

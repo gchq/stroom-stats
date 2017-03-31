@@ -22,17 +22,15 @@
 package stroom.stats.hbase;
 
 import com.google.common.base.Preconditions;
-import stroom.query.DateExpressionParser;
 import stroom.query.api.ExpressionItem;
 import stroom.query.api.ExpressionOperator;
 import stroom.query.api.ExpressionTerm;
-import stroom.query.api.Query;
-import stroom.query.api.SearchRequest;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
-import stroom.stats.common.*;
+import stroom.stats.common.FilterTermsTree;
 import stroom.stats.common.SearchStatisticsCriteria;
+import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
@@ -42,15 +40,11 @@ import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * This class is the entry point for all interactions with the HBase backed statistics store, e.g.
@@ -71,10 +65,6 @@ public class HBaseStatisticsService implements StatisticsService {
 
         this.eventStores = eventStores;
     }
-
-
-
-
 
     private static List<List<StatisticTag>> generateStatisticTagPerms(final List<StatisticTag> eventTags,
                                                                       final Set<List<Boolean>> perms) {
@@ -98,41 +88,100 @@ public class HBaseStatisticsService implements StatisticsService {
         return tagListPerms;
     }
 
-    /**
-     * TODO: This is a bit simplistic as a user could create a filter that said
-     * user=user1 AND user='*' which makes no sense. At the moment we would
-     * assume that the user tag is being rolled up so user=user1 would never be
-     * found in the data and thus would return no data.
-     */
     public static RollUpBitMask buildRollUpBitMaskFromCriteria(final SearchStatisticsCriteria criteria,
                                                                final StatisticConfiguration statisticConfiguration) {
-        final Set<String> rolledUpTagsFound = criteria.getRolledUpFieldNames();
+        //attempt to roll up all fields not in the list of required fields
+        //e.g. We have fields A B C D and A is part of the filter and A+C are needed in the results.
+        //Thus a roll up combo of A * C * would be optimum.  If that doesn't exist then any combo
+        //with A & C not rolled up and as many of the other fields rolled up as possible would be
+        //preferable to non rolled up.  The middle ground between none rolled up and the optimum would ideally
+        //take cardinality into account for best performance but we don't have that info.
+        StatisticRollUpType rollUpType = Preconditions.checkNotNull(statisticConfiguration.getRollUpType());
+        switch (rollUpType) {
+            case NONE:
+                return RollUpBitMask.ZERO_MASK;
+            default:
+                final List<String> requiredDynamicFields = criteria.getRequiredDynamicFields();
 
-        final RollUpBitMask result;
+                final Set<String> fieldsInFilter = new HashSet<>();
+                criteria.getFilterTermsTree().walkTree(node -> {
+                    if (node instanceof FilterTermsTree.TermNode) {
+                        fieldsInFilter.add(((FilterTermsTree.TermNode) node).getTag());
+                    }
+                });
 
-        if (rolledUpTagsFound.size() > 0) {
-            final List<Integer> rollUpTagPositionList = new ArrayList<>();
+                //get a set of all fields that feature in either the query filter or are required
+                //in the result set
+                final Set<String> fieldsOfInterest = fieldsInFilter;
+                fieldsOfInterest.addAll(requiredDynamicFields);
 
-            for (final String tag : rolledUpTagsFound) {
-                final Integer position = statisticConfiguration.getPositionInFieldList(tag);
-                if (position == null) {
-                    throw new RuntimeException(String.format("No field position found for tag %s", tag));
+                //now find all fields we don't care about as these are the ones to roll up
+                final Set<String> fieldsNotOfInterest = new HashSet<>(statisticConfiguration.getFieldNames());
+                fieldsNotOfInterest.removeAll(fieldsOfInterest);
+
+                final RollUpBitMask optimumMask;
+                if (!fieldsOfInterest.isEmpty()) {
+                    final List<Integer> optimumRollUpPositionList = new ArrayList<>();
+
+                    for (final String field : fieldsNotOfInterest) {
+                        final Integer position = statisticConfiguration.getPositionInFieldList(field);
+                        if (position == null) {
+                            //should never happen
+                            throw new RuntimeException(String.format("No field position found for tag %s", field));
+                        }
+                        optimumRollUpPositionList.add(position);
+                    }
+                    optimumMask = RollUpBitMask.fromTagPositions(optimumRollUpPositionList);
+
+                } else {
+                    optimumMask = RollUpBitMask.ZERO_MASK;
                 }
-                rollUpTagPositionList.add(position);
-            }
-            result = RollUpBitMask.fromTagPositions(rollUpTagPositionList);
 
-        } else {
-            result = RollUpBitMask.ZERO_MASK;
+                switch (rollUpType) {
+                    case ALL:
+                        return optimumMask;
+                    case CUSTOM:
+                        return selectBestAvailableCustomMask(optimumMask, statisticConfiguration);
+                    default:
+                        throw new RuntimeException(String.format("Should never get here"));
+                }
         }
-        return result;
     }
 
+    private static RollUpBitMask selectBestAvailableCustomMask(RollUpBitMask optimumMask,
+                                                               StatisticConfiguration statisticConfiguration) {
+
+        Set<RollUpBitMask> availableMasks = statisticConfiguration.getCustomRollUpMasksAsBitMasks();
+
+        if (availableMasks.contains(optimumMask)) {
+            return optimumMask;
+        } else {
+            RollUpBitMask bestSoFar = null;
+            availableMasks.forEach(customMask -> {
+
+                //TODO compare each custom mask to the optimum one
+                //disregard any that have fields rolled up that are not rolled up in the optimum one
+                //then count the number of rolled up fields that match the optimum.
+                //keep the one on the highest count
+
+
+
+
+
+
+
+            });
+            return bestSoFar;
+        }
+    }
+
+
     /**
-     * Recursive method to populates the passed list with all enabled
+     * Recursive method to populate the passed list with all enabled
      * {@link ExpressionTerm} nodes found in the tree.
      */
-    public static void findAllTermNodes(final ExpressionItem node, final List<ExpressionTerm> termsFound) {
+    public static List<ExpressionTerm> findAllTermNodes(final ExpressionItem node, final List<ExpressionTerm> termsFound) {
+        Preconditions.checkNotNull(termsFound);
         // Don't go any further down this branch if this node is disabled.
         if (node.enabled()) {
             if (node instanceof ExpressionTerm) {
@@ -146,6 +195,7 @@ public class HBaseStatisticsService implements StatisticsService {
                 }
             }
         }
+        return termsFound;
     }
 
     @Override

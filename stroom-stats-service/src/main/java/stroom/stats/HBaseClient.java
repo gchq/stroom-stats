@@ -282,6 +282,10 @@ public class HBaseClient implements Managed {
         return null;
     }
 
+    /**
+     * @param requiredDynamicFields A List of the dynamic fields (aka Tags) thare are required in the result set
+     * @return A search criteria object specific to searching the stat store
+     */
     static SearchStatisticsCriteria buildCriteria(final SearchRequest searchRequest,
                                                   final List<String> requiredDynamicFields,
                                                   final StatisticConfiguration statisticConfiguration) {
