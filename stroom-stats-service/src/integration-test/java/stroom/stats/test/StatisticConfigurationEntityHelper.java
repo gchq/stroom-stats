@@ -50,7 +50,14 @@ public class StatisticConfigurationEntityHelper {
                     sessionFactory,
                     statisticConfigurationEntityMarshaller);
 
-            StatisticConfigurationEntity persistedStatConfEntity = statConfDao.persist(statisticConfigurationEntity);
+            LOGGER.debug("Persisting statConfig {} with uuid {}", statisticConfigurationEntity.getName(), statisticConfigurationEntity.getUuid());
+            StatisticConfigurationEntity persistedStatConfEntity = null;
+            try {
+                persistedStatConfEntity = statConfDao.persist(statisticConfigurationEntity);
+            } catch (HibernateException e) {
+                throw new RuntimeException(String.format("Error persisting statConfig %s, %s", statisticConfigurationEntity.getName(), e.getMessage()), e);
+            }
+            LOGGER.debug("Persisted statConfig {} with uuid {}", statisticConfigurationEntity.getName(), statisticConfigurationEntity.getUuid());
 
             transaction.commit();
             return Try.success(persistedStatConfEntity);

@@ -570,7 +570,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //create stats for multiple stat names to make sure we are not picking up other records
         Arrays.asList("A", "B", "C").forEach(postFix -> {
 
-            String statNameStr = statNameBase + "A";
+            String statNameStr = statNameBase + "-" + postFix;
             StatisticConfigurationEntity statisticConfigurationEntity = createStatConfEntity(statNameStr, statisticType);
             entities.add(statisticConfigurationEntity);
 
