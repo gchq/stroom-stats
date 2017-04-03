@@ -25,7 +25,7 @@ before_script:
 install: "./.travis.install.sh"
 
 # We need to run shadowJar otherwise we won't be able to publish to DockerHub
-script: ./gradlew clean build shadowJar
+script: ./gradlew clean build shadowJar -x integrationTest
 
 # TODO: reinstate image releases and GitHub releases
 
