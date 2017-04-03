@@ -21,16 +21,17 @@
 
 package stroom.stats.hbase;
 
+import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 import stroom.stats.api.StatisticType;
+import stroom.stats.common.FilterTermsTree;
+import stroom.stats.common.FilterTermsTree.OperatorNode;
 import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.common.Period;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.rollup.RollUpBitMask;
-import stroom.stats.configuration.MockStatisticConfiguration;
-import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.configuration.StatisticRollUpType;
+import stroom.stats.configuration.*;
 import stroom.stats.hbase.connection.HBaseConnection;
 import stroom.stats.hbase.table.EventStoreTable;
 import stroom.stats.hbase.table.EventStoreTableFactory;
@@ -42,17 +43,208 @@ import stroom.stats.streams.StatKey;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.util.DateUtil;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class TestEventStore {
     EventStoreForTesting eventStore;
     MockEventStoreTable mockEventStoreTable;
     MockEventStoreTableFactory mockTableFactory;
+
+    private static final String STAT_NAME = "MyStatName";
+    private static final String TAG0 = "tag0";
+    private static final String TAG1 = "tag1";
+    private static final String TAG2 = "tag2";
+    private static final String TAG3 = "tag3";
+
+    private static final StatisticConfiguration STAT_CONFIG_ROLLUP_NONE = new MockStatisticConfiguration(
+            STAT_NAME,
+            StatisticType.COUNT,
+            StatisticRollUpType.NONE,
+            1000L,
+            Collections.emptySet());
+
+    private static final StatisticConfiguration STAT_CONFIG_ROLLUP_ALL = new MockStatisticConfiguration(
+                STAT_NAME,
+                StatisticType.COUNT,
+                StatisticRollUpType.ALL,
+                1000L,
+                Collections.emptySet(),
+                TAG0,
+                TAG1,
+                TAG2,
+                TAG3);
+
+    private static final StatisticConfiguration STAT_CONFIG_ROLLUP_CUSTOM = new MockStatisticConfiguration(
+            STAT_NAME,
+            StatisticType.COUNT,
+            StatisticRollUpType.CUSTOM,
+            1000L,
+            new HashSet<>(Arrays.asList(
+                    new MockCustomRollupMask(Collections.emptyList()), //zero mask
+                    new MockCustomRollupMask(Arrays.asList(0, 1, 2, 3)), //all rolled up
+                    new MockCustomRollupMask(Arrays.asList(0, 2)),
+                    new MockCustomRollupMask(Arrays.asList(1, 3)),
+                    new MockCustomRollupMask(Arrays.asList(0, 1)),
+                    new MockCustomRollupMask(Arrays.asList(2, 3)))),
+            TAG0,
+            TAG1,
+            TAG2,
+            TAG3);
+
+    private static final FilterTermsTree FILTER_TREE_TAG1_TAG3 = new FilterTermsTree(
+                        new OperatorNode(FilterTermsTree.Operator.AND,
+                                new FilterTermsTree.TermNode(TAG1, FilterTermsTree.Condition.EQUALS, "someValue"),
+                                new FilterTermsTree.TermNode(TAG3, FilterTermsTree.Condition.EQUALS, "someValue")));
+
+    private static final FilterTermsTree FILTER_TREE_TAG1 = new FilterTermsTree(
+            new OperatorNode(FilterTermsTree.Operator.AND,
+                    new FilterTermsTree.TermNode(TAG1, FilterTermsTree.Condition.EQUALS, "someValue")));
+
+    @Test
+    public void testBuildRollUpBitMaskFromCriteria_noFilterTerms_noRequiredFields_allRollups() {
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(new Period(), STAT_NAME)
+                .build();
+
+        RollUpBitMask rollUpBitMask = EventStore.buildRollUpBitMaskFromCriteria(criteria, STAT_CONFIG_ROLLUP_ALL);
+
+        //no filter terms and no required fields so we can roll everything up
+        RollUpBitMask expectedRollUpBitMask = RollUpBitMask.fromTagPositions(Arrays.asList(0,1,2,3));
+
+        Assertions.assertThat(rollUpBitMask).isEqualTo(expectedRollUpBitMask);
+    }
+
+    @Test
+    public void testBuildRollUpBitMaskFromCriteria_noFilterTerms_twoRequiredFields() {
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(new Period(), STAT_NAME)
+                .setRequiredDynamicFields(Arrays.asList(TAG0, TAG2))
+                .build();
+
+        RollUpBitMask rollUpBitMask = EventStore.buildRollUpBitMaskFromCriteria(criteria, STAT_CONFIG_ROLLUP_ALL);
+
+        RollUpBitMask expectedRollUpBitMask = RollUpBitMask.fromTagPositions(Arrays.asList(1,3));
+
+        Assertions.assertThat(rollUpBitMask).isEqualTo(expectedRollUpBitMask);
+    }
+
+    @Test
+    public void testBuildRollUpBitMaskFromCriteria_twoFilterTerms_noRequiredFields_allRollups() {
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(new Period(), STAT_NAME)
+                .setFilterTermsTree(FILTER_TREE_TAG1_TAG3)
+                .build();
+
+        RollUpBitMask rollUpBitMask = EventStore.buildRollUpBitMaskFromCriteria(criteria, STAT_CONFIG_ROLLUP_ALL);
+
+        RollUpBitMask expectedRollUpBitMask = RollUpBitMask.fromTagPositions(Arrays.asList(0,2));
+
+        Assertions.assertThat(rollUpBitMask).isEqualTo(expectedRollUpBitMask);
+    }
+
+    @Test
+    public void testBuildRollUpBitMaskFromCriteria_twoFilterTerms_twoRequiredFields_allRollups() {
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(new Period(), STAT_NAME)
+                .setFilterTermsTree(FILTER_TREE_TAG1_TAG3)
+                .setRequiredDynamicFields(Arrays.asList(TAG0, TAG2))
+                .build();
+
+        RollUpBitMask rollUpBitMask = EventStore.buildRollUpBitMaskFromCriteria(criteria, STAT_CONFIG_ROLLUP_ALL);
+
+        RollUpBitMask expectedRollUpBitMask = RollUpBitMask.ZERO_MASK;
+
+        Assertions.assertThat(rollUpBitMask).isEqualTo(expectedRollUpBitMask);
+    }
+
+    @Test
+    public void testBuildRollUpBitMaskFromCriteria_oneFilterTerms_oneRequiredFields_allRollups() {
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(new Period(), STAT_NAME)
+                .setFilterTermsTree(FILTER_TREE_TAG1)
+                .setRequiredDynamicFields(Arrays.asList(TAG2))
+                .build();
+
+        RollUpBitMask rollUpBitMask = EventStore.buildRollUpBitMaskFromCriteria(criteria, STAT_CONFIG_ROLLUP_ALL);
+
+        RollUpBitMask expectedRollUpBitMask = RollUpBitMask.fromTagPositions(Arrays.asList(0,3));
+
+        Assertions.assertThat(rollUpBitMask).isEqualTo(expectedRollUpBitMask);
+    }
+
+    @Test
+    public void testBuildRollUpBitMaskFromCriteria_noFilterTerms_noRequiredFields_customRollups() {
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(new Period(), STAT_NAME)
+                .build();
+
+        RollUpBitMask rollUpBitMask = EventStore.buildRollUpBitMaskFromCriteria(criteria, STAT_CONFIG_ROLLUP_CUSTOM);
+
+        //no filter terms and no required fields so we can roll everything up
+        RollUpBitMask expectedRollUpBitMask = RollUpBitMask.fromTagPositions(Arrays.asList(0,1,2,3));
+
+        Assertions.assertThat(rollUpBitMask).isEqualTo(expectedRollUpBitMask);
+    }
+
+    @Test
+    public void testBuildRollUpBitMaskFromCriteria_twoFilterTerms_noRequiredFields_customRollups() {
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(new Period(), STAT_NAME)
+                .setFilterTermsTree(FILTER_TREE_TAG1_TAG3)
+                .build();
+
+        RollUpBitMask rollUpBitMask = EventStore.buildRollUpBitMaskFromCriteria(criteria, STAT_CONFIG_ROLLUP_CUSTOM);
+
+
+        RollUpBitMask expectedRollUpBitMask = RollUpBitMask.fromTagPositions(Arrays.asList(0,2));
+
+        Assertions.assertThat(rollUpBitMask).isEqualTo(expectedRollUpBitMask);
+    }
+
+    @Test
+    public void testBuildRollUpBitMaskFromCriteria_noFilterTerms_twoRequiredFields_customRollups() {
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(new Period(), STAT_NAME)
+                .setRequiredDynamicFields(Arrays.asList(TAG0, TAG2))
+                .build();
+
+        RollUpBitMask rollUpBitMask = EventStore.buildRollUpBitMaskFromCriteria(criteria, STAT_CONFIG_ROLLUP_CUSTOM);
+
+
+        RollUpBitMask expectedRollUpBitMask = RollUpBitMask.fromTagPositions(Arrays.asList(1,3));
+
+        Assertions.assertThat(rollUpBitMask).isEqualTo(expectedRollUpBitMask);
+    }
+
+    @Test
+    public void testBuildRollUpBitMaskFromCriteria_twoFilterTerms_twoRequiredFields_customRollups() {
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(new Period(), STAT_NAME)
+                .setFilterTermsTree(FILTER_TREE_TAG1_TAG3)
+                .setRequiredDynamicFields(Arrays.asList(TAG0, TAG2))
+                .build();
+
+        RollUpBitMask rollUpBitMask = EventStore.buildRollUpBitMaskFromCriteria(criteria, STAT_CONFIG_ROLLUP_CUSTOM);
+
+
+        RollUpBitMask expectedRollUpBitMask = RollUpBitMask.ZERO_MASK;
+
+        Assertions.assertThat(rollUpBitMask).isEqualTo(expectedRollUpBitMask);
+    }
+
+    @Test
+    public void testBuildRollUpBitMaskFromCriteria_noFilterTerms_noRequiredFields_noRollups() {
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(new Period(), STAT_NAME)
+                .build();
+
+        RollUpBitMask rollUpBitMask = EventStore.buildRollUpBitMaskFromCriteria(criteria, STAT_CONFIG_ROLLUP_NONE);
+
+        //stat has rollups set to NONE so will always be a zero mask
+        RollUpBitMask expectedRollUpBitMask = RollUpBitMask.ZERO_MASK;
+
+        Assertions.assertThat(rollUpBitMask).isEqualTo(expectedRollUpBitMask);
+    }
 
     @Test
     public void testPurgeStatisticDataSourceDataOneDataSourceNoTagsSecondStore() {

@@ -115,7 +115,7 @@ public class EventStore {
                 fieldsNotOfInterest.removeAll(fieldsOfInterest);
 
                 final RollUpBitMask optimumMask;
-                if (!fieldsOfInterest.isEmpty()) {
+                if (!fieldsNotOfInterest.isEmpty()) {
                     final List<Integer> optimumRollUpPositionList = new ArrayList<>();
 
                     for (final String field : fieldsNotOfInterest) {
