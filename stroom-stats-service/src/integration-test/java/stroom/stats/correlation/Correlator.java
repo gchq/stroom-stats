@@ -25,7 +25,7 @@ public class Correlator {
     public List<Row> complement(String setName){
         ImmutableSet<Row> set = sets.get(setName);
         List<Row> complementOfSet = sets.entrySet().stream()
-                .filter(entry -> entry.getKey() != setName) // Get rid of our complement set
+                .filter(entry -> !entry.getKey().equals(setName)) // Get rid of our complement set
                 .flatMap(entry -> entry.getValue().stream()) // We don't care about sets now, just about rows
                 .filter(row -> !set.contains(row)) // We only want stuff not in our main set
                 .collect(Collectors.toList());
