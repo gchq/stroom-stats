@@ -21,8 +21,11 @@
 
 package stroom.stats.common.rollup;
 
+import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import stroom.stats.hbase.util.bytes.ByteArrayUtils;
 
 import javax.xml.bind.DatatypeConverter;
@@ -36,6 +39,9 @@ import java.util.Set;
 import java.util.SortedSet;
 
 public class TestRollUpBitMask {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestRollUpBitMask.class);
+
     @Test
     public void testHex() {
         final RollUpBitMask rowKeyBitMap = RollUpBitMask.fromTagPositions(new ArrayList<>());
@@ -468,5 +474,64 @@ public class TestRollUpBitMask {
         final String rolledUpTags = "tag3,tagBad";
 
         final int maskVal = RollUpBitMask.intValueFromTagList(allTags, rolledUpTags);
+    }
+
+    @Test
+    public void testGetRollUpPositionMatchCount() {
+
+        doMatchCountTest(Collections.emptyList(), Collections.emptyList(), 0);
+        doMatchCountTest(Arrays.asList(0,1,2,3), Arrays.asList(0,1,2,3), 4);
+        doMatchCountTest(Arrays.asList(0,2), Arrays.asList(0,1,2,3), 2);
+        doMatchCountTest(Arrays.asList(0,2), Arrays.asList(1,3), 0);
+    }
+
+    private void doMatchCountTest(List<Integer> mask1, List<Integer> mask2, int expectedMatchCount) {
+
+        RollUpBitMask mask1Obj = RollUpBitMask.fromTagPositions(mask1);
+        RollUpBitMask mask2Obj = RollUpBitMask.fromTagPositions(mask2);
+
+        LOGGER.info("Comparing {} to {}, expecting {}", mask1Obj.toString(), mask2Obj.toString(), expectedMatchCount);
+
+        int matchCount = RollUpBitMask.fromTagPositions(mask1).getRollUpPositionMatchCount(RollUpBitMask.fromTagPositions(mask2));
+        Assertions.assertThat(matchCount).isEqualTo(expectedMatchCount);
+    }
+    @Test
+    public void testShortCompare() {
+        RollUpBitMask optimumMask = RollUpBitMask.fromTagPositions(Arrays.asList(0, 1));
+        Set<Integer> optimumMaskPositions = optimumMask.getTagPositions();
+        Set<RollUpBitMask> allMasks = RollUpBitMask.getRollUpBitMasks(4);
+
+        int bestCountSoFar = -1;
+        RollUpBitMask bestMaskSoFar = null;
+
+        for (RollUpBitMask mask : allMasks) {
+            short optimumMaskVal = optimumMask.asShort();
+            short maskVal = mask.asShort();
+
+            LOGGER.info("--------------------");
+            LOGGER.info(optimumMask.toString());
+            LOGGER.info(mask.toString());
+            RollUpBitMask andMask = RollUpBitMask.fromShort((short) (optimumMaskVal & maskVal));
+
+//            int rolledUpPositionCount = andMask.getTagPositions().size();
+            int rolledUpPositionCount = Integer.bitCount(andMask.asShort());
+            LOGGER.info("{} rolledUpPositionCount {} bestMaskSoFar {}",
+                    andMask, rolledUpPositionCount, bestMaskSoFar != null ? bestMaskSoFar.toString() : "NULL");
+
+            boolean isValid = !mask.getTagPositions().stream().anyMatch(pos -> !optimumMaskPositions.contains(pos));
+            if (isValid) {
+                LOGGER.info("Valid");
+            } else {
+                LOGGER.info("Invalid");
+            }
+
+            if (rolledUpPositionCount > bestCountSoFar && isValid) {
+                bestCountSoFar = rolledUpPositionCount;
+                bestMaskSoFar = andMask;
+                LOGGER.info("BestSoFar: {} {}", bestCountSoFar, bestMaskSoFar.toString());
+            }
+
+        }
+
     }
 }

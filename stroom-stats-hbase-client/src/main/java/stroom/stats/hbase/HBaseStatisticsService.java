@@ -139,8 +139,11 @@ public class HBaseStatisticsService implements StatisticsService {
 
                 switch (rollUpType) {
                     case ALL:
+                        //stat has all masks so just use the optimum
                         return optimumMask;
                     case CUSTOM:
+                        //find the best available from what he have.  The custom masks should always include
+                        //the zero mask so that will always be the last resort
                         return selectBestAvailableCustomMask(optimumMask, statisticConfiguration);
                     default:
                         throw new RuntimeException(String.format("Should never get here"));
@@ -148,33 +151,53 @@ public class HBaseStatisticsService implements StatisticsService {
         }
     }
 
+    /**
+     * Compares the optimum mask against all of the custom masks of the stat config to find the one
+     * that is as close as possible to the optimum.  The definition of closest is having as many fields
+     * rolled up as possible, without rolling up any that are NOT rolled up in the optimum mask
+     */
     private static RollUpBitMask selectBestAvailableCustomMask(RollUpBitMask optimumMask,
                                                                StatisticConfiguration statisticConfiguration) {
 
-        Set<RollUpBitMask> availableMasks = statisticConfiguration.getCustomRollUpMasksAsBitMasks();
+        Set<Integer> optimumRolledUpPositions = Preconditions.checkNotNull(optimumMask).getTagPositions();
+        Set<RollUpBitMask> availableCustomMasks = Preconditions.checkNotNull(
+                statisticConfiguration.getCustomRollUpMasksAsBitMasks());
 
-        if (availableMasks.contains(optimumMask)) {
-            return optimumMask;
-        } else {
-            RollUpBitMask bestSoFar = null;
-            availableMasks.forEach(customMask -> {
+        RollUpBitMask bestSoFar = null;
+        int bestMatchCountSoFar = -1;
+        for (RollUpBitMask customMask : availableCustomMasks) {
 
-                //TODO compare each custom mask to the optimum one
-                //disregard any that have fields rolled up that are not rolled up in the optimum one
-                //then count the number of rolled up fields that match the optimum.
-                //keep the one on the highest count
+            //e.g. tags ABCD and we want A & B NOT rolled up.  Here we can pick from either of
+            //the last two permutations. ('.'=not rolled up, '*'=rolled up)
+            //A B C D
+            //. . . .
+            //. * . .
+            //. . * .
+            //. . . *
 
+            int matchCount = optimumMask.getRollUpPositionMatchCount(customMask);
 
+            if (matchCount > bestMatchCountSoFar) {
+                //invalid if the custom mask contains any positions that are NOT rolled up in the optimum
+                boolean isValid = !customMask.getTagPositions().stream()
+                        .anyMatch(pos -> !optimumRolledUpPositions.contains(pos));
 
+                if (isValid) {
+                    //new bast so far
+                    bestSoFar = customMask;
+                    bestMatchCountSoFar = matchCount;
 
-
-
-
-            });
-            return bestSoFar;
+                    if (matchCount == optimumRolledUpPositions.size()) {
+                        //will never get any better than this
+                        break;
+                    }
+                }
+            }
         }
-    }
 
+        return Preconditions.checkNotNull(bestSoFar,
+                "Should never get here, maybe the zero mask is not present in the set of custom masks");
+    }
 
     /**
      * Recursive method to populate the passed list with all enabled

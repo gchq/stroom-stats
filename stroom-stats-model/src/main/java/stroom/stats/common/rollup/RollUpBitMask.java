@@ -76,6 +76,9 @@ public class RollUpBitMask {
     // can't be any bigger than 15 as the max value for a short is (2^15 -1)
     private static final short MASK_LENGTH = 15;
 
+    private static final int MIN_SHORT_VALUE = 0;
+    private static final int MAX_SHORT_VALUE = (int) (Math.pow(2, MASK_LENGTH) - 1);
+
     // eternal static cache of the different permutations that have been asked
     // for so far. Objects are tiny so the
     // memory footprint should be low.
@@ -107,11 +110,10 @@ public class RollUpBitMask {
      *            rolled up)
      */
     public static RollUpBitMask fromShort(final short maskValue) {
-        final int maxVal = (int) (Math.pow(2, MASK_LENGTH) - 1);
-        final int minVal = 0;
 
-        if (maskValue > maxVal || maskValue < 0) {
-            throw new RuntimeException(String.format("Mask value must be between [%s] and [%s]", minVal, maxVal));
+        if (maskValue > MAX_SHORT_VALUE || maskValue < MIN_SHORT_VALUE) {
+            throw new RuntimeException(String.format("Mask value must be between [%s] and [%s]",
+                    MIN_SHORT_VALUE, MAX_SHORT_VALUE));
         }
 
         return new RollUpBitMask(maskValue);
@@ -308,6 +310,14 @@ public class RollUpBitMask {
         }
 
         return getTagPositions().contains(tagPosition);
+    }
+
+    /**
+     * @return The number of positions where both this and the other {@link RollUpBitMask}
+     * are rolled up. e.g. '0111' and '1110' returns 2.
+     */
+    public int getRollUpPositionMatchCount(final RollUpBitMask other) {
+        return Integer.bitCount((short) (this.mask & other.mask));
     }
 
     /**
