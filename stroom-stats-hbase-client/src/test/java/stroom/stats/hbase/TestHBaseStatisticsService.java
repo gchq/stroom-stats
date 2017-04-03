@@ -62,10 +62,13 @@ public class TestHBaseStatisticsService {
     private static final String ROLLED_UP_VALUE = RollUpBitMask.ROLL_UP_TAG_VALUE;
 
 
+    @Test
+    public void testBuildRollUpBitMaskFromCriteria() {
 
-    private StatisticEvent buildEvent(final List<StatisticTag> tagList) {
-        return new StatisticEvent(EVENT_TIME, EVENT_NAME, tagList, EVENT_COUNT);
+//        HBaseStatisticsService.
+
     }
+
 
     private List<StatisticTag> buildTagList() {
         final List<StatisticTag> tagList = new ArrayList<StatisticTag>();

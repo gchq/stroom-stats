@@ -199,28 +199,6 @@ public class HBaseStatisticsService implements StatisticsService {
                 "Should never get here, maybe the zero mask is not present in the set of custom masks");
     }
 
-    /**
-     * Recursive method to populate the passed list with all enabled
-     * {@link ExpressionTerm} nodes found in the tree.
-     */
-    public static List<ExpressionTerm> findAllTermNodes(final ExpressionItem node, final List<ExpressionTerm> termsFound) {
-        Preconditions.checkNotNull(termsFound);
-        // Don't go any further down this branch if this node is disabled.
-        if (node.enabled()) {
-            if (node instanceof ExpressionTerm) {
-                final ExpressionTerm termNode = (ExpressionTerm) node;
-
-                termsFound.add(termNode);
-
-            } else if (node instanceof ExpressionOperator) {
-                for (final ExpressionItem childNode : ((ExpressionOperator) node).getChildren()) {
-                    findAllTermNodes(childNode, termsFound);
-                }
-            }
-        }
-        return termsFound;
-    }
-
     @Override
     public void putAggregatedEvents(final StatisticType statisticType,
                                     final EventStoreTimeIntervalEnum interval,
