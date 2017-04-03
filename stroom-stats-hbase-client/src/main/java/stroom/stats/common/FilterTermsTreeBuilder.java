@@ -27,7 +27,6 @@ import stroom.query.api.ExpressionTerm;
 import stroom.query.api.ExpressionTerm.Condition;
 import stroom.stats.common.FilterTermsTree.OperatorNode;
 import stroom.stats.common.FilterTermsTree.TermNode;
-import stroom.stats.hbase.table.filter.FilterOperationMode;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,22 +48,21 @@ public class FilterTermsTreeBuilder {
      * {@link ExpressionItem} tree are not supported so it may throw a
      * {@link RuntimeException}.
      *
-     * @param rootItem
-     *            The {@link ExpressionItem} object that is the root of the tree
+     * @param rootItem The {@link ExpressionItem} object that is the root of the tree
      * @return A {@link FilterTermsTree} object containing a tree of
-     *         {@link PrintableNode} objects
+     * {@link FilterTermsTree.Node} objects
      */
     public static FilterTermsTree convertExpresionItemsTree(final ExpressionOperator rootItem,
-            final Set<String> blackListedFieldNames) {
-        final PrintableNode newRootNode = convertNode(rootItem, blackListedFieldNames);
+                                                            final Set<String> blackListedFieldNames) {
+        final FilterTermsTree.Node newRootNode = convertNode(rootItem, blackListedFieldNames);
 
         // we may have black listed all our terms and been left with a null root
         // node so handle that
         return newRootNode != null ? new FilterTermsTree(newRootNode) : FilterTermsTree.emptyTree();
     }
 
-    private static PrintableNode convertNode(final ExpressionItem oldNode, final Set<String> fieldBlackList) {
-        PrintableNode newNode;
+    private static FilterTermsTree.Node convertNode(final ExpressionItem oldNode, final Set<String> fieldBlackList) {
+        FilterTermsTree.Node newNode;
 
         if (oldNode.enabled()) {
             if (oldNode instanceof ExpressionTerm) {
@@ -84,8 +82,8 @@ public class FilterTermsTreeBuilder {
         return newNode;
     }
 
-    private static PrintableNode convertTermNode(final ExpressionTerm oldNode, final Set<String> fieldBlackList) {
-        PrintableNode newNode;
+    private static FilterTermsTree.Node convertTermNode(final ExpressionTerm oldNode, final Set<String> fieldBlackList) {
+        FilterTermsTree.Node newNode;
 
         if (fieldBlackList != null && fieldBlackList.contains(oldNode.getField())) {
             // this term is black listed so ignore it
@@ -115,13 +113,13 @@ public class FilterTermsTreeBuilder {
                     } else {
                         // multiple values in the IN list so convert it into a
                         // set of EQUALS terms under and OR node
-                        final List<PrintableNode> orTermNodes = new ArrayList<>();
+                        final List<FilterTermsTree.Node> orTermNodes = new ArrayList<>();
 
                         for (final String value : values) {
                             orTermNodes.add(convertTermNode(
                                     new ExpressionTerm(oldNode.getField(), Condition.EQUALS, value), fieldBlackList));
                         }
-                        newNode = new OperatorNode(FilterOperationMode.OR, orTermNodes);
+                        newNode = new OperatorNode(FilterTermsTree.Operator.OR, orTermNodes);
                     }
                 }
             } else {
@@ -134,8 +132,8 @@ public class FilterTermsTreeBuilder {
     /**
      * @return The converted node, null if the old node has no children
      */
-    private static PrintableNode convertOperatorNode(final ExpressionOperator oldNode,
-            final Set<String> fieldBlackList) {
+    private static FilterTermsTree.Node convertOperatorNode(final ExpressionOperator oldNode,
+                                                            final Set<String> fieldBlackList) {
         // ExpressionOperator can be created with no child nodes so if that is
         // the case just return null and handle for
         // the null in the calling method
@@ -143,12 +141,12 @@ public class FilterTermsTreeBuilder {
         if (oldNode.getChildren() == null || oldNode.getChildren().size() == 0) {
             return null;
         } else {
-            final FilterOperationMode operationMode = FilterOperationMode.valueOf(oldNode.getOp().getDisplayValue().toString());
+            final FilterTermsTree.Operator operator = convertOp(oldNode.getOp());
 
-            final List<PrintableNode> children = new ArrayList<>();
+            final List<FilterTermsTree.Node> children = new ArrayList<>();
 
             for (final ExpressionItem oldChild : oldNode.getChildren()) {
-                final PrintableNode newChild = convertNode(oldChild, fieldBlackList);
+                final FilterTermsTree.Node newChild = convertNode(oldChild, fieldBlackList);
 
                 // if the newChild is null it means it was probably an
                 // ExpressionOperator with no children
@@ -157,19 +155,23 @@ public class FilterTermsTreeBuilder {
                 }
             }
 
-            PrintableNode newNode = null;
+            FilterTermsTree.Node newNode = null;
             // term nodes may have been returned as null if they were expression
             // terms that this tree does not support
-            if (children.size() == 1 && !operationMode.equals(FilterOperationMode.NOT)) {
+            if (children.size() == 1 && !operator.equals(FilterTermsTree.Operator.NOT)) {
                 // only have one child for an AND or OR so no point in keeping
                 // the operator node, just had the one child
                 // to the tree instead
                 newNode = children.get(0);
             } else if (!children.isEmpty()) {
-                newNode = new OperatorNode(operationMode, children);
+                newNode = new OperatorNode(operator, children);
             }
 
             return newNode;
         }
+    }
+
+    private static FilterTermsTree.Operator convertOp(final ExpressionOperator.Op op) {
+        return FilterTermsTree.Operator.valueOf(op.getDisplayValue());
     }
 }

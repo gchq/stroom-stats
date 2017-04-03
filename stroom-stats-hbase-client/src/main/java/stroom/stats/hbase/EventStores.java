@@ -22,7 +22,7 @@
 package stroom.stats.hbase;
 
 import stroom.stats.api.StatisticType;
-import stroom.stats.common.FindEventCriteria;
+import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.common.Period;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.exception.StatisticsException;
@@ -138,7 +138,7 @@ public class EventStores {
      * data for that stat over that period. Null if there is no data in
      * any store for that period
      */
-    private EventStore findBestFit(final FindEventCriteria criteria, final StatisticConfiguration statisticConfiguration) {
+    private EventStore findBestFit(final SearchStatisticsCriteria criteria, final StatisticConfiguration statisticConfiguration) {
         // Try to determine which store holds the data precision we will need to
         // serve this query.
         EventStoreTimeIntervalEnum bestFitInterval;
@@ -209,14 +209,14 @@ public class EventStores {
     /**
      * If parts are missing from the period then constrain it using the epoch and/or now
      */
-    private Period buildEffectivePeriod(final FindEventCriteria criteria) {
+    private Period buildEffectivePeriod(final SearchStatisticsCriteria criteria) {
         Long from = criteria.getPeriod().getFrom();
         Long to = criteria.getPeriod().getTo();
         return new Period(from != null ? from : 0, to != null ? to : Instant.now().toEpochMilli());
 
     }
 
-    public StatisticDataSet getStatisticsData(final FindEventCriteria criteria,
+    public StatisticDataSet getStatisticsData(final SearchStatisticsCriteria criteria,
                                               final StatisticConfiguration statisticConfiguration) {
 
         LOGGER.info("Searching statistics store with criteria: {}", criteria);

@@ -23,7 +23,7 @@ package stroom.stats.hbase;
 
 import org.hibernate.cache.CacheException;
 import stroom.stats.api.StatisticType;
-import stroom.stats.common.FindEventCriteria;
+import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.common.Period;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.rollup.RollUpBitMask;
@@ -104,7 +104,7 @@ public class EventStore {
     public StatisticDataSet getStatisticsData(final UniqueIdCache uniqueIdCache,
                                               final StatisticConfiguration statisticConfiguration,
                                               final RollUpBitMask rollUpBitMask,
-                                              final FindEventCriteria criteria) {
+                                              final SearchStatisticsCriteria criteria) {
 
         return eventStoreTable.getStatisticsData(uniqueIdCache, statisticConfiguration, rollUpBitMask, criteria);
     }

@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 import stroom.stats.common.FilterTermsTree;
 import stroom.stats.common.FilterTermsTree.OperatorNode;
 import stroom.stats.common.FilterTermsTree.TermNode;
-import stroom.stats.common.PrintableNode;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
 import stroom.stats.hbase.uid.UID;
 
@@ -78,21 +77,21 @@ public class TestTagValueFilterTreeBuilder {
     @Test
     public void test_buildTagValueFilterTree() {
         // build a filter tree
-        final PrintableNode termNodeUser1 = new TermNode(USER, USER1);
-        final PrintableNode termNodeUser2 = new TermNode(USER, USER2);
-        final PrintableNode termNodeFeed = new TermNode(FEED, FEED1);
+        final FilterTermsTree.Node termNodeUser1 = new TermNode(USER, USER1);
+        final FilterTermsTree.Node termNodeUser2 = new TermNode(USER, USER2);
+        final FilterTermsTree.Node termNodeFeed = new TermNode(FEED, FEED1);
 
-        final List<PrintableNode> userNodes = new ArrayList<>();
+        final List<FilterTermsTree.Node> userNodes = new ArrayList<>();
         userNodes.add(termNodeUser1);
         userNodes.add(termNodeUser2);
 
-        final OperatorNode usersNode = new OperatorNode(FilterOperationMode.OR, userNodes);
+        final OperatorNode usersNode = new OperatorNode(FilterTermsTree.Operator.OR, userNodes);
 
-        final List<PrintableNode> childNodes = new ArrayList<>();
+        final List<FilterTermsTree.Node> childNodes = new ArrayList<>();
         childNodes.add(termNodeFeed);
         childNodes.add(usersNode);
 
-        final OperatorNode rootNode = new OperatorNode(FilterOperationMode.AND, childNodes);
+        final OperatorNode rootNode = new OperatorNode(FilterTermsTree.Operator.AND, childNodes);
 
         final FilterTermsTree filterTermsTree = new FilterTermsTree(rootNode);
 

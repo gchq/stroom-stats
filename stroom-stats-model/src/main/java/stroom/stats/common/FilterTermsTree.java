@@ -21,9 +21,8 @@
 
 package stroom.stats.common;
 
-import stroom.stats.hbase.table.filter.FilterOperationMode;
-
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -32,7 +31,7 @@ import java.util.List;
  * equals on an object type/value pair
  */
 public class FilterTermsTree {
-    PrintableNode root;
+    Node root;
 
     private static FilterTermsTree emptyTree;
 
@@ -43,7 +42,7 @@ public class FilterTermsTree {
     public FilterTermsTree() {
     }
 
-    public FilterTermsTree(final PrintableNode rootNode) {
+    public FilterTermsTree(final Node rootNode) {
         this.root = rootNode;
     }
 
@@ -51,33 +50,55 @@ public class FilterTermsTree {
         return emptyTree;
     }
 
-    public PrintableNode getRootNode() {
+    public Node getRootNode() {
         return root;
     }
 
-    public void setRootNode(final PrintableNode rootNode) {
+    public void setRootNode(final Node rootNode) {
         this.root = rootNode;
+    }
+
+    /**
+     * Interface that is common to all nodes in the filter tree
+     */
+    public interface Node {
+        @Override
+        String toString();
+
+        void printNode(StringBuilder sb);
     }
 
     /**
      * This class represents an actual filter term node in the filter tree, i.e.
      * X=Y
      */
-    public static class TermNode implements PrintableNode {
+    public static class TermNode implements Node {
         private final String tag;
+        private final Condition condition;
         private final String value;
 
-        public TermNode(final String tag, final String value) {
+        //TODO will need to add a Condition enum into the TermNode to support wild carded and regex searches
+        public TermNode(final String tag, final Condition condition, final String value) {
             if (tag == null) {
                 throw new FilterTermsTreeException("Must have a tag to be added as a filter term");
             }
 
             this.tag = tag;
+            this.condition = condition;
             this.value = value;
+        }
+
+        public TermNode(final String tag, final String value) {
+            this(tag, Condition.EQUALS, value);
         }
 
         public String getTag() {
             return this.tag;
+        }
+
+        @SuppressWarnings("unused") //added in to save migration when regex matches are added
+        public Condition getCondition() {
+            return condition;
         }
 
         public String getValue() {
@@ -104,9 +125,9 @@ public class FilterTermsTree {
      * This class represents an operator node in the filter tree, i.e.
      * AND/OR/NOT
      */
-    public static class OperatorNode implements PrintableNode {
-        private FilterOperationMode filterOperationMode;
-        private List<PrintableNode> children = new ArrayList<>();
+    public static class OperatorNode implements Node {
+        private Operator filterOperationMode;
+        private List<Node> children = new ArrayList<>();
 
         /**
          * Need to supply a list of children as there is no point in creating an
@@ -114,8 +135,8 @@ public class FilterTermsTree {
          *
          * @param childNodes
          */
-        public OperatorNode(final FilterOperationMode filterOperationMode, final List<PrintableNode> childNodes) {
-            if (filterOperationMode.equals(FilterOperationMode.NOT) && childNodes.size() < 1) {
+        public OperatorNode(final Operator filterOperationMode, final List<Node> childNodes) {
+            if (filterOperationMode.equals(Operator.NOT) && childNodes.size() < 1) {
                 throw new FilterTermsTreeException("Cannot create an operator node with no child nodes");
             }
             // else if (filterOperationMode.equals(FilterOperationMode.OR) &&
@@ -129,19 +150,23 @@ public class FilterTermsTree {
             this.children.addAll(childNodes);
         }
 
-        public List<PrintableNode> getChildren() {
+        public OperatorNode(final Operator filterOperationMode, Node... childNodes) {
+            this(filterOperationMode, Arrays.asList(childNodes));
+        }
+
+        public List<Node> getChildren() {
             return children;
         }
 
-        public void setChildren(final List<PrintableNode> children) {
+        public void setChildren(final List<Node> children) {
             this.children = children;
         }
 
-        public FilterOperationMode getFilterOperationMode() {
+        public Operator getFilterOperationMode() {
             return this.filterOperationMode;
         }
 
-        public void setFilterOperationMode(final FilterOperationMode filterOperationMode) {
+        public void setFilterOperationMode(final Operator filterOperationMode) {
             this.filterOperationMode = filterOperationMode;
         }
 
@@ -154,7 +179,7 @@ public class FilterTermsTree {
             sb.append("(");
 
             // print each of the child nodes
-            for (final PrintableNode childNode : operatorNode.getChildren()) {
+            for (final Node childNode : operatorNode.getChildren()) {
                 childNode.printNode(sb);
                 sb.append(",");
             }
@@ -191,5 +216,14 @@ public class FilterTermsTree {
         sb.append("]");
 
         return sb.toString();
+    }
+
+    public enum Operator {
+        AND, OR, NOT
+    }
+
+    public enum Condition {
+        EQUALS
+       //TODO add REGEX_MATCH (non-match could be handled by NOT(REGEX_MATCH ...)
     }
 }

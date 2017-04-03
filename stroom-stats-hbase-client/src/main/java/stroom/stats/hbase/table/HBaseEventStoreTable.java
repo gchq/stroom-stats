@@ -44,11 +44,8 @@ import org.apache.hadoop.hbase.filter.PrefixFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
-import stroom.stats.common.FilterTermsTree;
-import stroom.stats.common.FindEventCriteria;
-import stroom.stats.common.Period;
-import stroom.stats.common.StatisticDataPoint;
-import stroom.stats.common.StatisticDataSet;
+import stroom.stats.common.*;
+import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.hbase.HBaseStatisticConstants;
@@ -398,7 +395,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     public StatisticDataSet getStatisticsData(final UniqueIdCache uniqueIdCache,
                                               final StatisticConfiguration statisticConfiguration,
                                               final RollUpBitMask rollUpBitMask,
-                                              final FindEventCriteria criteria) {
+                                              final SearchStatisticsCriteria criteria) {
 
         LOGGER.debug(() -> String.format("getStatisticsData called, store: %s, statName: %s, type: %s, mask: %s, criteria: %s",
                 timeInterval, statisticConfiguration.getName(), statisticConfiguration.getStatisticType(), rollUpBitMask, criteria));
@@ -534,6 +531,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
             //partial timestamp of the row key. While this isn't actually an exclusive stop key we
             //will never get close to the last partial timestamp in this system's lifetime.
             byte[] bStopKey = rowKeyBuilder.buildEndKeyBytes(statName, rollUpBitMask);
+            scan.setStopRow(bStopKey);
 
         } else if (!period.hasFrom() && period.hasTo()) {
             // ----> To
@@ -636,7 +634,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      * @param uniqueIdCache The UID cache to convert strings into the UIDs understood by
      *                      HBase
      */
-    private void addTagValueFilter(final Scan scan, final FindEventCriteria criteria, final UniqueIdCache uniqueIdCache) {
+    private void addTagValueFilter(final Scan scan, final SearchStatisticsCriteria criteria, final UniqueIdCache uniqueIdCache) {
         // criteria may not have a filterTree on it
         if (!criteria.getFilterTermsTree().equals(FilterTermsTree.emptyTree())) {
 
