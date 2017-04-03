@@ -78,6 +78,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -396,6 +397,32 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     }
 
     @Test
+    public void testRollUpSelection() {
+
+        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(StatisticType.COUNT);
+
+        Query query = new Query(
+                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new ExpressionOperator(true, ExpressionOperator.Op.AND));
+
+        SearchRequest searchRequest = wrapQuery(query, statisticConfigurationEntity,
+                () -> StatisticConfiguration.STATIC_FIELDS_MAP.get(StatisticType.COUNT));
+
+        //all records should come back
+        SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfigurationEntity, times.size());
+
+        List<String> fields = searchRequest.getResultRequests().get(0).getMappings().get(0).getFields().stream()
+                .map(Field::getName)
+                .collect(Collectors.toList());
+
+
+
+        assertThat(fields).doesNotContain(
+                statisticConfigurationEntity.getFieldNames().toArray(
+                        new String[statisticConfigurationEntity.getFieldNames().size()]));
+    }
+
+    @Test
     public void testDateHandling_equals() {
 
         StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(StatisticType.COUNT);
@@ -618,6 +645,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
             SearchRequest searchRequest,
             StatisticConfigurationEntity statisticConfigurationEntity,
             int expectedRecCount) {
+
         SearchResponse searchResponse = hBaseClient.query(searchRequest);
 
         assertThat(searchResponse).isNotNull();
@@ -627,9 +655,11 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     }
 
 
-    private SearchRequest wrapQuery(Query query, StatisticConfiguration statisticConfiguration) {
+    private SearchRequest wrapQuery(Query query,
+                                    StatisticConfiguration statisticConfiguration,
+                                    Supplier<List<String>> fieldSupplier) {
 
-        List<Field> fields = statisticConfiguration.getAllFieldNames().stream()
+        List<Field> fields = fieldSupplier.get().stream()
                 .map(String::toLowerCase)
                 .map(field -> new FieldBuilder().name(field).expression("${" + field + "}").build())
                 .collect(Collectors.toList());
@@ -645,6 +675,12 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 Collections.singletonList(resultRequest),
                 ZoneOffset.UTC.getId(),
                 false);
+
+
+    }
+
+    private SearchRequest wrapQuery(Query query, StatisticConfiguration statisticConfiguration) {
+        return wrapQuery(query, statisticConfiguration, statisticConfiguration::getAllFieldNames);
     }
 
     private static long computeSumOfCountCounts(List<StatisticDataPoint> dataPoints) {
