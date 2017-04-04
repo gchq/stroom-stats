@@ -30,6 +30,7 @@ import stroom.stats.util.logging.LambdaLogger;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -45,7 +46,7 @@ import java.util.List;
  * The time element in a {@link StatKey} will ALWAYS be truncated down to the nearest {@link EventStoreTimeIntervalEnum}.
  * This truncation will happen in the public constructors and in certain clone operations
  */
-public class StatKey {
+public class StatKey implements Comparable<StatKey> {
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatKey.class);
 
@@ -63,12 +64,22 @@ public class StatKey {
     static int TAG_VALUE_PAIR_LENGTH = UID_ARRAY_LENGTH * 2;
     static int TAG_VALUE_PAIRS_OFFSET = TIME_PART_OFFSET + TIME_PART_LENGTH;
 
+    public static final Comparator<StatKey> COMPARATOR = Comparator
+            .comparing(StatKey::getStatName)
+            .thenComparing(StatKey::getInterval)
+            .thenComparing(StatKey::getRollupMask)
+            .thenComparingLong(StatKey::getTimeMs)
+            .thenComparing(StatKey::getTagValues, TagValue.TAG_VALUES_COMPARATOR);
+
+
     private final UID statName;
     private final RollUpBitMask rollupMask;
     private EventStoreTimeIntervalEnum interval;
     private long timeMs;
     private final List<TagValue> tagValues;
+
     private int hashCode;
+
 
     private enum TimeTruncation {
         TRUNCATE,
@@ -264,14 +275,17 @@ public class StatKey {
     @Override
     public String toString() {
         return "StatKey{" +
-//                "statName=" + ByteArrayUtils.byteBufferToHex(statName) +
                 "statName=" + statName +
-//                ", rollupMask=" + rollupMask +
+                ", rollupMask=" + rollupMask +
                 ", interval=" + interval +
                 ", timeMs=" + timeMs +
                 ", tagValues=" + tagValues +
                 '}';
     }
 
+    @Override
+    public int compareTo(final StatKey that) {
+        return COMPARATOR.compare(this, that);
+    }
 
 }

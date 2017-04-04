@@ -69,7 +69,7 @@ import java.util.stream.Collectors;
  * the rollup mask of 010 can be used, i.e. where all tags of interest are zero (not rolled up)
  * if it is available, else it can use any mask matching 0?0
  */
-public class RollUpBitMask {
+public class RollUpBitMask implements Comparable<RollUpBitMask> {
     private final short mask;
     private final byte[] maskAsBytes;
 
@@ -631,5 +631,10 @@ public class RollUpBitMask {
 
         tempList.add(element);
         return tempList;
+    }
+
+    @Override
+    public int compareTo(final RollUpBitMask o) {
+        return Short.compare(this.mask, o.mask);
     }
 }
