@@ -45,11 +45,11 @@ public class ServiceDiscoveryManager {
 
     // "When using Curator 2.x (Zookeeper 3.4.x) it's essential that service provider objects are cached by your
     // application and reused." - http://curator.apache.org/curator-x-discovery/
-    private ServiceProvider hbaseServiceProvider; // TODO: this instance isn't currently used - make it so or remove it
-    private ServiceProvider kafkaServiceProvider;
-    private ServiceProvider stroomDBServiceProvider; //TODO: this instance isn't currently used - make it so or remove ir
+    private ServiceProvider<String> hbaseServiceProvider; // TODO: this instance isn't currently used - make it so or remove it
+    private ServiceProvider<String> kafkaServiceProvider;
+    private ServiceProvider<String> stroomDBServiceProvider; //TODO: this instance isn't currently used - make it so or remove ir
 
-    private final ServiceDiscovery serviceDiscovery;
+    private final ServiceDiscovery<String> serviceDiscovery;
 
     @Inject
     public ServiceDiscoveryManager(Config config) throws Exception {

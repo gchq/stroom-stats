@@ -141,12 +141,6 @@ public class App extends Application<Config> {
 
     private void registerHealthChecks(Environment environment){
 
-        environment.healthChecks().register("KafkaConsumerForStatisticsHealthCheck", new HealthCheck() {
-            @Override
-            protected Result check() throws Exception {
-                return injector.getInstance(KafkaConsumerForStatistics.class).getHealth();
-            }
-        });
         environment.healthChecks().register("ServiceDiscoveryManager_Kafka", new HealthCheck() {
             @Override
             protected Result check() throws Exception {

@@ -53,7 +53,7 @@ public class StatisticSender {
                         LOGGER.trace("Sending stat with name {}, count {} and value {}", statistic.getName(), statistic.getCount(), statistic.getValue())
                 );
 
-                LOGGER.trace(() -> String.format("Sending %s stat events to topic $s", statistics.getStatistic().size(), topic));
+                LOGGER.trace(() -> String.format("Sending %s stat events to topic %s", statistics.getStatistic().size(), topic));
                 kafkaProducer.send(producerRecord);
             });
 

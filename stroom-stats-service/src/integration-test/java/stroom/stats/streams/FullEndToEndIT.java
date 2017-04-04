@@ -220,7 +220,7 @@ public class FullEndToEndIT extends AbstractAppIT {
                                     LOGGER.trace("Sending stat with name {}, count {} and value {}", statistic.getName(), statistic.getCount(), statistic.getValue())
                             );
 
-                            LOGGER.trace(() -> String.format("Sending %s stat events to topic $s", statistics.getStatistic().size(), entry.getKey()));
+                            LOGGER.trace(() -> String.format("Sending %s stat events to topic %s", statistics.getStatistic().size(), entry.getKey()));
                             kafkaProducer.send(producerRecord);
                         }));
 
