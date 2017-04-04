@@ -2,8 +2,6 @@
 
 [![Build Status](https://travis-ci.org/gchq/stroom-stats.svg?branch=master)](https://travis-ci.org/gchq/stroom-stats)
 
-https://travis-ci.org/gchq/stroom-stats.svg?branch=master
-
 Stroom-Stats is currently work in progress and not in a usable state. More details will be provided when it is in a working state.
 
 ## Building
