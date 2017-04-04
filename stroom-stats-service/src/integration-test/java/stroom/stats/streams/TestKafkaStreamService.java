@@ -229,6 +229,8 @@ public class TestKafkaStreamService {
         //no bad events
         assertThat(badEvents).hasSize(expectedBadMsgCount);
 
+        //now verify the right data vas passed to the stat service
+
         List<Map.Entry<StatKey, StatAggregate>> passedStats = statServiceArguments.stream()
                 .flatMap(invocation -> invocation._3().entrySet().stream())
                 .sorted(Comparator.comparing(entry -> entry.getKey()))
