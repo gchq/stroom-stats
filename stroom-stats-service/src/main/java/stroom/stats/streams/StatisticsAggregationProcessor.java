@@ -186,7 +186,7 @@ class StatisticsAggregationProcessor {
     private Map<StatKey, StatAggregate> flushToStatStore(final StatisticType statisticType, final StatAggregator statAggregator) {
         Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.drain();
         LOGGER.trace(() -> String.format("Flushing %s events of type %s, interval %s to the StatisticsService",
-                statAggregator.size(), statisticType, statAggregator.getAggregationInterval()));
+                aggregatedEvents.size(), statisticType, statAggregator.getAggregationInterval()));
         statisticsService.putAggregatedEvents(statisticType, statAggregator.getAggregationInterval(), aggregatedEvents);
         return aggregatedEvents;
     }
