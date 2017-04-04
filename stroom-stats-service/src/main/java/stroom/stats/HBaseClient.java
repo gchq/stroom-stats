@@ -188,7 +188,7 @@ public class HBaseClient implements Managed {
         }
 
 
-        // TODO pyutting things into a payload and taking them out again is a waste of time in this case. We could use a queue instead and that'd be fine.
+        // TODO putting things into a payload and taking them out again is a waste of time in this case. We could use a queue instead and that'd be fine.
         //TODO: 'Payload' is a cluster specific name - what lucene ships back from a node.
         // Produce payloads for each coprocessor.
         Map<CoprocessorSettingsMap.CoprocessorKey, Payload> payloadMap = null;
