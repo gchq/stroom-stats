@@ -34,6 +34,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.hibernate.SessionFactory;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -76,6 +77,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -179,7 +181,7 @@ public class TestKafkaStreamService {
                         StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
                         StatisticsHelper.buildTagType(tag2, tag2 + "val1")
                 ),
-                StatisticsHelper.buildCountStatistic(statName, time.plusHours(2), 1L,
+                StatisticsHelper.buildCountStatistic(statName, time.plusDays(2), 1L,
                         StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
                         StatisticsHelper.buildTagType(tag2, tag2 + "val1")
                 )
@@ -227,12 +229,17 @@ public class TestKafkaStreamService {
         //no bad events
         assertThat(badEvents).hasSize(expectedBadMsgCount);
 
-        //Make sure all events get passed to the StatService
-        assertThat(statServiceArguments.stream()
+        List<Map.Entry<StatKey, StatAggregate>> passedStats = statServiceArguments.stream()
                 .flatMap(invocation -> invocation._3().entrySet().stream())
-                .count()
-        )
-                .isEqualTo(expectedGoodMsgCount);
+                .sorted(Comparator.comparing(entry -> entry.getKey()))
+                .collect(Collectors.toList());
+
+        if (passedStats.size() != expectedGoodMsgCount) {
+            Assert.fail();
+        }
+
+        //Make sure all events get passed to the StatService
+        assertThat(passedStats.size()).isEqualTo(expectedGoodMsgCount);
     }
 
     @Test

@@ -53,6 +53,7 @@ class StatAggregator {
      * with any existing aggregates for that {@link StatKey}
      */
     public void add(final StatKey statKey, final StatAggregate statAggregate){
+
         Preconditions.checkNotNull(statKey);
         Preconditions.checkNotNull(statAggregate);
         Preconditions.checkArgument(statKey.getInterval().equals(aggregationInterval),
