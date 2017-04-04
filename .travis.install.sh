@@ -41,3 +41,7 @@ mysql -e "CREATE DATABASE IF NOT EXISTS stroom;"
 mysql -e "CREATE USER 'stroomuser'@'localhost' IDENTIFIED BY 'stroompassword1';"
 mysql -e "GRANT ALL PRIVILEGES ON * . * TO 'stroomuser'@'localhost';"
 mysql -e "FLUSH PRIVILEGES"
+
+git clone https://github.com/gchq/stroom-resources.git
+cd stroom-resources
+docker-compose -f stats.yml up
