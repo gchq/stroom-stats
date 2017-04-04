@@ -45,6 +45,11 @@ import javax.inject.Inject;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -139,19 +144,32 @@ class StatisticsFlatMappingProcessor {
                 .branch(intervalPredicates);
 
         //Following line if uncommented can be useful for debugging
-//        final ConcurrentMap<EventStoreTimeIntervalEnum, AtomicLong> counters = new ConcurrentHashMap<>();
+        final ConcurrentMap<EventStoreTimeIntervalEnum, AtomicLong> counters = new ConcurrentHashMap<>();
         //Route each from the stream interval specific branches to the appropriate topic
         for (int i = 0; i < intervalStreams.length; i++) {
             intervalStreams[i]
-//                    .filter((key, value) -> {
-//                        //This is in effect a peek operation for debugging as it always returns true
-//                        counters.computeIfAbsent(key.getInterval(), interval -> new AtomicLong(0)).incrementAndGet();
+                    .filter((key, value) -> {
+                        //This is in effect a peek operation for debugging as it always returns true
+                        counters.computeIfAbsent(key.getInterval(), interval -> new AtomicLong(0)).incrementAndGet();
 //                        LOGGER.info(String.format("interval %s class %s cumCount %s",
 //                                key.getInterval(), value.getClass().getName(), counters.get(key.getInterval()).get()));
-//                        return true;
-//                    })
+                        return true;
+                    })
                     .to(statKeySerde, statAggregateSerde, intervalTopicPairs.get(i).getTopic());
         }
+
+        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
+            try {
+                StringBuilder sb = new StringBuilder("Current state of the " + intervalTopicPrefix + "flatMapper:\n");
+                counters.keySet().stream()
+                        .sorted()
+                        .forEach(key -> sb.append(key + " - " + counters.get(key).get() + "\n"));
+                LOGGER.debug(sb.toString());
+            } catch (Exception e) {
+                LOGGER.error("Got error in executor: {}", e.getMessage(), e);
+            }
+        }, 0, 3, TimeUnit.SECONDS);
+
         return new KafkaStreams(builder, streamsConfig);
     }
 

@@ -80,6 +80,7 @@ class StatisticsAggregationProcessor {
 
     public static final String PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE = "stroom.stats.aggregation.minBatchSize";
     public static final String PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS = "stroom.stats.aggregation.maxFlushIntervalMs";
+    public static final String PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS = "stroom.stats.aggregation.pollTimeoutMs";
 
     private final StatisticsService statisticsService;
     private final StroomPropertyService stroomPropertyService;
@@ -89,6 +90,7 @@ class StatisticsAggregationProcessor {
     public StatisticsAggregationProcessor(final StatisticsService statisticsService, final StroomPropertyService stroomPropertyService) {
         this.statisticsService = statisticsService;
         this.stroomPropertyService = stroomPropertyService;
+
         maxEventIds = stroomPropertyService.getIntProperty(StatAggregate.PROP_KEY_MAX_AGGREGATED_EVENT_IDS, Integer.MAX_VALUE);
     }
 
@@ -105,7 +107,7 @@ class StatisticsAggregationProcessor {
 
         int maxEventIds = stroomPropertyService.getIntProperty(StatAggregate.PROP_KEY_MAX_AGGREGATED_EVENT_IDS, Integer.MAX_VALUE);
         int maxFlushIntervalMs = stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 60_000);
-        long minBatchSize = stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 1_000);
+        long minBatchSize = stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000);
 
         Map<String, Object> customConsumerProps = new HashMap<>();
         customConsumerProps.putAll(consumerProps);
@@ -139,7 +141,7 @@ class StatisticsAggregationProcessor {
             try {
                 while (true) {
                     try {
-                        ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(1000);
+                        ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(getPollTimeout());
 
                         LOGGER.ifTraceIsEnabled(() -> {
                             int recCount = records.count();
@@ -211,6 +213,10 @@ class StatisticsAggregationProcessor {
                 .forEach(producer::send);
 
         producer.flush();
+    }
+
+    private int getPollTimeout() {
+        return 200;
     }
 
 //    KafkaStreams buildStream(final StreamsConfig streamsConfig,

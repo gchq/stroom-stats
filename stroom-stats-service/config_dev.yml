@@ -28,9 +28,9 @@ server:
 logging:
     level: WARN
     loggers:
-        stroom.stats: DEBUG
-        stroom.stats.streams.FullEndToEndIT: TRACE
-        stroom.stats.hbase.table.HBaseEventStoreTable: TRACE
+        stroom.stats: INFO
+#        stroom.stats.streams.FullEndToEndIT: TRACE
+#        stroom.stats.hbase.table.HBaseEventStoreTable: TRACE
         org.ehcache: INFO
         org.eclipse.jetty: INFO
 
