@@ -87,6 +87,10 @@ public class StatisticDataSet implements Iterable<StatisticDataPoint> {
         return statisticDataPoints.size();
     }
 
+    public boolean isEmpty() {
+        return statisticDataPoints.isEmpty();
+    }
+
     @Override
     public Iterator<StatisticDataPoint> iterator() {
         return statisticDataPoints.iterator();

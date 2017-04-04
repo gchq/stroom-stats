@@ -58,6 +58,12 @@ public class HBaseClient implements Managed {
             StatisticConfiguration.FIELD_NAME_DATE_TIME,
             StatisticConfiguration.FIELD_NAME_PRECISION);
 
+    private static final SearchResponse EMPTY_SEARCH_RESPONSE = new SearchResponse(
+            Collections.emptyList(),
+            Collections.emptyList(),
+            Collections.emptyList(),
+            true);
+
     private final StatisticsService statisticsService;
     private final StatisticConfigurationService statisticConfigurationService;
 
@@ -104,12 +110,12 @@ public class HBaseClient implements Managed {
         return statisticConfigurationService.fetchStatisticConfigurationByUuid(statisticStoreRef.getUuid())
                 .map(statisticConfiguration ->
                         performSearch(searchRequest, statisticConfiguration))
-                .orElseGet(() ->
-                        new SearchResponse(
-                                Arrays.asList(),
-                                Arrays.asList(),
-                                Arrays.asList("Statistic configuration could not be found for uuid " + statisticStoreRef.getUuid()),
-                                true)
+                .orElseGet(() -> new SearchResponse(
+                        Collections.emptyList(),
+                        Collections.emptyList(),
+                        Collections.singletonList(
+                                "Statistic configuration could not be found for uuid " + statisticStoreRef.getUuid()),
+                        true)
                 );
     }
 
@@ -165,55 +171,56 @@ public class HBaseClient implements Managed {
 
         StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(criteria, statisticConfiguration);
 
-        SearchResponse.Builder searchResponseBuilder = new SearchResponse.Builder(true);
+        if (!statisticDataSet.isEmpty()) {
 
-        //TODO TableCoprocessor is doing a lot of work to pre-process and aggregate the datas
+            //TODO TableCoprocessor is doing a lot of work to pre-process and aggregate the datas
 
-        for (StatisticDataPoint statisticDataPoint : statisticDataSet) {
-            String[] dataArray = new String[fieldIndexMap.size()];
+            for (StatisticDataPoint statisticDataPoint : statisticDataSet) {
+                String[] dataArray = new String[fieldIndexMap.size()];
 
-            //TODO should probably drive this off a new fieldIndexMap.getEntries() method or similar
-            //then we only loop round fields we car about
-            statisticConfiguration.getAllFieldNames().forEach(fieldName -> {
-                int posInDataArray = fieldIndexMap.get(fieldName.toLowerCase());
-                //if the fieldIndexMap returns -1 the field has not been requested
-                if (posInDataArray != -1) {
-                    dataArray[posInDataArray] = statisticDataPoint.getFieldValue(fieldName);
-                }
-            });
-
-            coprocessorMap.entrySet().forEach(coprocessor -> {
-                coprocessor.getValue().receive(dataArray);
-            });
-        }
-
-
-        // TODO putting things into a payload and taking them out again is a waste of time in this case. We could use a queue instead and that'd be fine.
-        //TODO: 'Payload' is a cluster specific name - what lucene ships back from a node.
-        // Produce payloads for each coprocessor.
-        Map<CoprocessorSettingsMap.CoprocessorKey, Payload> payloadMap = null;
-        if (coprocessorMap != null && coprocessorMap.size() > 0) {
-            for (final Map.Entry<CoprocessorSettingsMap.CoprocessorKey, Coprocessor> entry : coprocessorMap.entrySet()) {
-                final Payload payload = entry.getValue().createPayload();
-                if (payload != null) {
-                    if (payloadMap == null) {
-                        payloadMap = new HashMap<>();
+                //TODO should probably drive this off a new fieldIndexMap.getEntries() method or similar
+                //then we only loop round fields we car about
+                statisticConfiguration.getAllFieldNames().forEach(fieldName -> {
+                    int posInDataArray = fieldIndexMap.get(fieldName.toLowerCase());
+                    //if the fieldIndexMap returns -1 the field has not been requested
+                    if (posInDataArray != -1) {
+                        dataArray[posInDataArray] = statisticDataPoint.getFieldValue(fieldName);
                     }
+                });
 
-                    payloadMap.put(entry.getKey(), payload);
+                coprocessorMap.entrySet().forEach(coprocessor -> {
+                    coprocessor.getValue().receive(dataArray);
+                });
+            }
+
+            // TODO putting things into a payload and taking them out again is a waste of time in this case. We could use a queue instead and that'd be fine.
+            //TODO: 'Payload' is a cluster specific name - what lucene ships back from a node.
+            // Produce payloads for each coprocessor.
+            Map<CoprocessorSettingsMap.CoprocessorKey, Payload> payloadMap = null;
+            if (coprocessorMap != null && coprocessorMap.size() > 0) {
+                for (final Map.Entry<CoprocessorSettingsMap.CoprocessorKey, Coprocessor> entry : coprocessorMap.entrySet()) {
+                    final Payload payload = entry.getValue().createPayload();
+                    if (payload != null) {
+                        if (payloadMap == null) {
+                            payloadMap = new HashMap<>();
+                        }
+                        payloadMap.put(entry.getKey(), payload);
+                    }
                 }
             }
+
+            StatisticsStore store = new StatisticsStore();
+            store.process(coprocessorSettingsMap);
+            store.coprocessorMap(coprocessorMap);
+            store.payloadMap(payloadMap);
+
+            SearchResponseCreator searchResponseCreator = new SearchResponseCreator(store);
+            SearchResponse searchResponse = searchResponseCreator.create(searchRequest);
+
+            return searchResponse;
+        } else {
+            return EMPTY_SEARCH_RESPONSE;
         }
-
-        StatisticsStore store = new StatisticsStore();
-        store.process(coprocessorSettingsMap);
-        store.coprocessorMap(coprocessorMap);
-        store.payloadMap(payloadMap);
-
-        SearchResponseCreator searchResponseCreator = new SearchResponseCreator(store);
-        SearchResponse searchResponse = searchResponseCreator.create(searchRequest);
-
-        return searchResponse;
     }
 
     private List<String> getRequestedFields(final StatisticConfiguration statisticConfiguration,
