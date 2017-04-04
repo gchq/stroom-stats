@@ -21,6 +21,13 @@
 
 package stroom.stats.configuration;
 
+import stroom.stats.configuration.common.SharedObject;
+
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlTransient;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,14 +35,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.XmlTransient;
-
-import stroom.stats.configuration.common.SharedObject;
 
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlRootElement(name = "data")
@@ -223,7 +222,6 @@ public class StatisticConfigurationEntityData implements SharedObject {
         Set<StatisticField> tempSet = new HashSet<>(statisticFields);
         statisticFields.clear();
         statisticFields.addAll(tempSet);
-        tempSet = null;
 
         Collections.sort(statisticFields);
 
@@ -248,13 +246,5 @@ public class StatisticConfigurationEntityData implements SharedObject {
         }
 
         return new StatisticConfigurationEntityData(newFieldList, newMaskList);
-    }
-
-    /**
-     * Added to ensure map is not made final which would break GWT
-     * serialisation.
-     */
-    public void setFieldPositionMap(final Map<String, Integer> fieldPositionMap) {
-        this.fieldPositionMap = fieldPositionMap;
     }
 }

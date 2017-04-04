@@ -77,7 +77,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -97,7 +99,9 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
     private EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.DAY;
     private ChronoUnit workingChronoUnit = ChronoUnit.DAYS;
-    private RollUpBitMask rollUpBitMask = RollUpBitMask.ZERO_MASK;
+    private static final RollUpBitMask ROLL_UP_BIT_MASK = RollUpBitMask.ZERO_MASK;
+    private static int MAX_EVENT_IDS = 100;
+
     private final Instant time1 = ZonedDateTime.now().toInstant();
     private final Instant time2 = time1.plus(5, workingChronoUnit);
 
@@ -122,6 +126,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     private UID tag2 = uniqueIdCache.getOrCreateId(tag2Str);
     private UID tag2val1 = uniqueIdCache.getOrCreateId(tag2Val1Str);
     private UID tag2val2 = uniqueIdCache.getOrCreateId(tag2Val2Str);
+    private UID rolledUpValue = uniqueIdCache.getOrCreateId(RollUpBitMask.ROLL_UP_TAG_VALUE);
 
 //    private FilterTermsTree.TermNode dateTerm = new FilterTermsTree.TermNode(
 //            StatisticConfiguration.FIELD_NAME_DATE_TIME,
@@ -179,7 +184,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         assertThat(statName).isNotNull();
 
         StatKey statKey1 = new StatKey(statName,
-                rollUpBitMask,
+                ROLL_UP_BIT_MASK,
                 interval,
                 time1.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
@@ -192,7 +197,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         aggregatedEvents.put(statKey1, statAggregate1);
 
         StatKey statKey2 = new StatKey(statName,
-                rollUpBitMask,
+                ROLL_UP_BIT_MASK,
                 interval,
                 time2.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
@@ -302,7 +307,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         assertThat(statName).isNotNull();
 
         StatKey statKey1 = new StatKey(statName,
-                rollUpBitMask,
+                ROLL_UP_BIT_MASK,
                 interval,
                 time1.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
@@ -315,7 +320,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         aggregatedEvents.put(statKey1, statAggregate1);
 
         StatKey statKey2 = new StatKey(statName,
-                rollUpBitMask,
+                ROLL_UP_BIT_MASK,
                 interval,
                 time2.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
@@ -393,6 +398,33 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         //all records should come back
         runQuery(statisticsService, wrapQuery(query, statisticConfigurationEntity), statisticConfigurationEntity, times.size());
+    }
+
+    @Test
+    public void testRollUpSelection_noFilterTerms_noTagsInTable() {
+
+        Set<RollUpBitMask> rollUpBitMasks = RollUpBitMask.getRollUpBitMasks(2);
+
+        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(StatisticType.COUNT, rollUpBitMasks);
+
+        Query query = new Query(
+                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new ExpressionOperator(true, ExpressionOperator.Op.AND));
+
+        //only put the static fields in the table settings so we will expect it to roll up all the tags
+        SearchRequest searchRequest = wrapQuery(query,
+                () -> StatisticConfiguration.STATIC_FIELDS_MAP.get(StatisticType.COUNT));
+
+        //all records should come back
+        SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfigurationEntity, times.size());
+
+        List<String> fields = searchRequest.getResultRequests().get(0).getMappings().get(0).getFields().stream()
+                .map(Field::getName)
+                .collect(Collectors.toList());
+
+        assertThat(fields).doesNotContain(
+                statisticConfigurationEntity.getFieldNames().toArray(
+                        new String[statisticConfigurationEntity.getFieldNames().size()]));
     }
 
     @Test
@@ -564,6 +596,10 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     }
 
     private StatisticConfigurationEntity loadStatData(final StatisticType statisticType) {
+        return loadStatData(statisticType, Collections.singleton(ROLL_UP_BIT_MASK));
+    }
+
+    private StatisticConfigurationEntity loadStatData(final StatisticType statisticType, Set<RollUpBitMask> rollUpBitMasks) {
         //Put time in the statName to allow us to re-run the test without an empty HBase
         String statNameBase = this.getClass().getName() + "-test-" + Instant.now().toString();
         List<StatisticConfigurationEntity> entities = new ArrayList<>();
@@ -579,20 +615,25 @@ public class HBaseDataLoadIT extends AbstractAppIT {
             assertThat(statName).isNotNull();
 
             Map<StatKey, StatAggregate> aggregatedEvents = times.stream()
-                    .map(time -> {
-                        StatKey statKey = new StatKey(statName,
-                                rollUpBitMask,
+                    .flatMap(time -> {
+                        StatKey baseKey = new StatKey(statName,
+                                RollUpBitMask.ZERO_MASK,
                                 interval,
                                 time.toEpochMilli(),
                                 new TagValue(tag1, tag1val1),
                                 new TagValue(tag2, tag2val1));
 
-                        StatAggregate statAggregate = new CountAggregate(100L);
-                        return new Tuple2<>(statKey, statAggregate);
-                    })
-                    .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2));
+                        return rollUpBitMasks.stream()
+                                .map(newMask -> {
+                                    StatKey statKey = baseKey.cloneAndRollUpTags(newMask, rolledUpValue);
 
-            assertThat(aggregatedEvents).hasSize(times.size());
+                                    StatAggregate statAggregate = new CountAggregate(100L);
+                                    return new Tuple2<>(statKey, statAggregate);
+                                });
+                    })
+                    .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2, (agg1, agg2) -> agg1.aggregate(agg2, MAX_EVENT_IDS)));
+
+            assertThat(aggregatedEvents).hasSize(times.size() * rollUpBitMasks.size());
 
             statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
         });
@@ -618,6 +659,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
             SearchRequest searchRequest,
             StatisticConfigurationEntity statisticConfigurationEntity,
             int expectedRecCount) {
+
         SearchResponse searchResponse = hBaseClient.query(searchRequest);
 
         assertThat(searchResponse).isNotNull();
@@ -627,9 +669,11 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     }
 
 
-    private SearchRequest wrapQuery(Query query, StatisticConfiguration statisticConfiguration) {
+    private SearchRequest wrapQuery(Query query,
+                                    Supplier<List<String>> fieldSupplier) {
 
-        List<Field> fields = statisticConfiguration.getAllFieldNames().stream()
+        //build the fields for the search response table settings
+        List<Field> fields = fieldSupplier.get().stream()
                 .map(String::toLowerCase)
                 .map(field -> new FieldBuilder().name(field).expression("${" + field + "}").build())
                 .collect(Collectors.toList());
@@ -645,6 +689,12 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 Collections.singletonList(resultRequest),
                 ZoneOffset.UTC.getId(),
                 false);
+
+
+    }
+
+    private SearchRequest wrapQuery(Query query, StatisticConfiguration statisticConfiguration) {
+        return wrapQuery(query, statisticConfiguration::getAllFieldNames);
     }
 
     private static long computeSumOfCountCounts(List<StatisticDataPoint> dataPoints) {

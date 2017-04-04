@@ -36,6 +36,8 @@ public class StatisticConfigurationEntityMarshaller extends EntityMarshaller<Sta
 
     @Override
     public void setObject(final StatisticConfigurationEntity entity, final StatisticConfigurationEntityData object) {
+        //ensure the field order map is populated and the field list is sorted
+        object.reOrderStatisticFields();
         entity.setStatisticDataSourceDataObject(object);
 
     }

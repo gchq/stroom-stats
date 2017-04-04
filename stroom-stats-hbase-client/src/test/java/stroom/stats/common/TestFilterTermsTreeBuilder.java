@@ -21,25 +21,31 @@
 
 package stroom.stats.common;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-
 import org.junit.Test;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import stroom.query.api.ExpressionItem;
 import stroom.query.api.ExpressionOperator;
 import stroom.query.api.ExpressionOperator.Op;
 import stroom.query.api.ExpressionTerm;
 import stroom.query.api.ExpressionTerm.Condition;
+import stroom.stats.common.FilterTermsTree.Node;
 import stroom.stats.common.FilterTermsTree.OperatorNode;
 import stroom.stats.common.FilterTermsTree.TermNode;
 import stroom.stats.configuration.StatisticConfiguration;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 public class TestFilterTermsTreeBuilder {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestFilterTermsTreeBuilder.class);
+
     Set<String> fieldBlackList = new HashSet<>(Arrays.asList(StatisticConfiguration.FIELD_NAME_DATE_TIME));
 
     /**
@@ -206,4 +212,67 @@ public class TestFilterTermsTreeBuilder {
         assertEquals("", term2Node.getValue());
     }
 
+    @Test
+    public void testDisabledBranch() {
+        final ExpressionTerm term1 = new ExpressionTerm(StatisticConfiguration.FIELD_NAME_DATE_TIME,
+                Condition.BETWEEN, "1,2");
+        final ExpressionTerm term2 = new ExpressionTerm("term2field", Condition.IN, "2");
+        final ExpressionTerm term3 = new ExpressionTerm("term3field", Condition.IN, "3");
+
+        final ExpressionTerm term4 = new ExpressionTerm("term4field", Condition.IN, "4");
+        final ExpressionTerm term5 = new ExpressionTerm("term5field", Condition.IN, "5");
+        final ExpressionOperator disabledBranch = new ExpressionOperator(false, Op.AND, term4, term5);
+
+        final ExpressionOperator op1 = new ExpressionOperator(true, Op.AND, term1, term2, term3, disabledBranch);
+
+        final FilterTermsTree filterTermsTree = FilterTermsTreeBuilder.convertExpresionItemsTree(op1, fieldBlackList);
+
+        LOGGER.debug(filterTermsTree.toString());
+
+        //date term is blacklisted, disabled branch is ignored so only terms 2 and 3 feature
+        List<Node> level1Nodes = checkNode(filterTermsTree.getRootNode(), FilterTermsTree.Operator.AND, 2);
+        checkNode(level1Nodes.get(0), term2.getField(), FilterTermsTree.Condition.EQUALS, term2.getValue());
+        checkNode(level1Nodes.get(1), term3.getField(), FilterTermsTree.Condition.EQUALS, term3.getValue());
+    }
+
+    @Test
+    public void testDisabledTerms() {
+        final ExpressionTerm term1 = new ExpressionTerm(StatisticConfiguration.FIELD_NAME_DATE_TIME,
+                Condition.BETWEEN, "1,2");
+        final ExpressionTerm term2 = new ExpressionTerm(true, "term2field", Condition.IN, "2", null);
+        final ExpressionTerm term3 = new ExpressionTerm(false, "term3field", Condition.IN, "3", null);
+        final ExpressionTerm term4 = new ExpressionTerm(true, "term4field", Condition.IN, "4", null);
+        final ExpressionTerm term5 = new ExpressionTerm(false, "term5field", Condition.IN, "5", null);
+
+        final ExpressionOperator op1 = new ExpressionOperator(true, Op.AND, term1, term2, term3, term4, term5);
+
+        final FilterTermsTree filterTermsTree = FilterTermsTreeBuilder.convertExpresionItemsTree(op1, fieldBlackList);
+
+        LOGGER.debug(filterTermsTree.toString());
+
+        //date term is blacklisted, terms 3 and 5 are disabled, so only 2 and 4 remain.
+        List<Node> level1Nodes = checkNode(filterTermsTree.getRootNode(), FilterTermsTree.Operator.AND, 2);
+        checkNode(level1Nodes.get(0), term2.getField(), FilterTermsTree.Condition.EQUALS, term2.getValue());
+        checkNode(level1Nodes.get(1), term4.getField(), FilterTermsTree.Condition.EQUALS, term4.getValue());
+    }
+
+    private List<Node> checkNode(Node node, FilterTermsTree.Operator expectedOperator, int expectedChildCount) {
+        assertThat(node).isInstanceOf(OperatorNode.class);
+        OperatorNode operatorNode = (OperatorNode) node;
+        assertThat(operatorNode.getFilterOperationMode()).isEqualTo(expectedOperator);
+        assertThat(operatorNode.getChildren()).hasSize(expectedChildCount);
+        return operatorNode.getChildren();
+    }
+
+    private TermNode checkNode(Node node,
+                           String expectedTag,
+                           FilterTermsTree.Condition expectedCondition,
+                           String expectedValue) {
+        assertThat(node).isInstanceOf(TermNode.class);
+        TermNode termNode = (TermNode) node;
+        assertThat(termNode.getTag()).isEqualTo(expectedTag);
+        assertThat(termNode.getCondition()).isEqualTo(expectedCondition);
+        assertThat(termNode.getValue()).isEqualTo(expectedValue);
+        return termNode;
+    }
 }

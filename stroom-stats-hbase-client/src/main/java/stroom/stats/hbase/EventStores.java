@@ -237,11 +237,9 @@ public class EventStores {
 
         StatisticDataSet statisticDataSet;
 
-        final RollUpBitMask rollUpBitMask = HBaseStatisticsService.buildRollUpBitMaskFromCriteria(criteria,
-                statisticConfiguration);
 
         // Get results from the selected event store.
-        statisticDataSet = bestFit.getStatisticsData(uidCache, statisticConfiguration, rollUpBitMask, criteria);
+        statisticDataSet = bestFit.getStatisticsData(uidCache, statisticConfiguration,  criteria);
 
         return statisticDataSet;
     }
