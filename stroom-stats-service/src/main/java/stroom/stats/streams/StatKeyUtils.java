@@ -38,6 +38,6 @@ public class StatKeyUtils {
                                 uniqueIdCache.getName(tagValue.getValue()
                                 ))
                 .collect(Collectors.joining(","));
-        LOGGER.info("StatKey - {}, {}, {}, {}", statName, statKey.getRollupMask(), statKey.getInterval(), tagValues);
+        LOGGER.debug("StatKey - {}, {}, {}, {}", statName, statKey.getRollupMask(), statKey.getInterval(), tagValues);
     }
 }
