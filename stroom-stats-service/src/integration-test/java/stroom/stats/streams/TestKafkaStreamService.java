@@ -145,10 +145,10 @@ public class TestKafkaStreamService {
     }
 
     private void setAppIdPrefixes(final String extraPrefix) {
-        String existingPrefix = mockStroomPropertyService.getPropertyOrThrow(KafkaStreamService.PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX);
+        String existingPrefix = mockStroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX);
 
         String newPrefix = extraPrefix + existingPrefix;
-        mockStroomPropertyService.setProperty(KafkaStreamService.PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX, newPrefix);
+        mockStroomPropertyService.setProperty(StatisticsIngestService.PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX, newPrefix);
 
         //TODO will also need to change the prefix for the aggregator processor
     }
@@ -1081,8 +1081,8 @@ public class TestKafkaStreamService {
 
         String bootStrapServersConfig = (String) senderProps.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
         //Override the kafka bootstrap servers prop to point to the embedded kafka rather than the docker one
-        mockStroomPropertyService.setProperty(KafkaStreamService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS, bootStrapServersConfig);
-        mockStroomPropertyService.setProperty(KafkaStreamService.PROP_KEY_KAFKA_COMMIT_INTERVAL_MS, 1_000);
+        mockStroomPropertyService.setProperty(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS, bootStrapServersConfig);
+        mockStroomPropertyService.setProperty(StatisticsIngestService.PROP_KEY_KAFKA_COMMIT_INTERVAL_MS, 1_000);
 
         SessionFactory mockSessionFactory = Mockito.mock(SessionFactory.class);
         StatisticsService mockStatisticsService = Mockito.mock(StatisticsService.class);
@@ -1114,7 +1114,7 @@ public class TestKafkaStreamService {
         Injector injector = Guice.createInjector(embeddedServiceModule);
 
         //get an instance of the kafkaStreamService so we know it has started up
-        injector.getInstance(KafkaStreamService.class);
+        injector.getInstance(StatisticsIngestService.class);
 
         uniqueIdCache = injector.getInstance(UniqueIdCache.class);
 
@@ -1145,7 +1145,7 @@ public class TestKafkaStreamService {
 
     private void setNumStreamThreads(final int newValue) {
         mockStroomPropertyService.setProperty(
-                KafkaStreamService.PROP_KEY_KAFKA_STREAM_THREADS, newValue);
+                StatisticsIngestService.PROP_KEY_KAFKA_STREAM_THREADS, newValue);
     }
 
     private void setAggregationProps(final int minBatchSize, final int maxFlushIntervalMs, final int pollTimeoutMs) {

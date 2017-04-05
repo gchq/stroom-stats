@@ -81,7 +81,7 @@ public class FullEndToEndIT extends AbstractAppIT {
 
         Map<String, List<Statistics>> statistics = createDummyStatistics(
                 statNameMap,
-                stroomPropertyService.getPropertyOrThrow(KafkaStreamService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX),
+                stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX),
                 startTime);
 
 
@@ -231,7 +231,7 @@ public class FullEndToEndIT extends AbstractAppIT {
     private static KafkaProducer<String, String> buildKafkaProducer(StroomPropertyService stroomPropertyService){
         Map<String, Object> producerProps = new HashMap<>();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                stroomPropertyService.getPropertyOrThrow(KafkaStreamService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
+                stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
         producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
         producerProps.put(ProducerConfig.RETRIES_CONFIG, 0);
         producerProps.put(ProducerConfig.LINGER_MS_CONFIG, 10);

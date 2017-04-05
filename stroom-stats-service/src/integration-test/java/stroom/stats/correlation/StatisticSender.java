@@ -10,7 +10,7 @@ import stroom.stats.api.StatisticType;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.Statistics;
 import stroom.stats.streams.FullEndToEndIT;
-import stroom.stats.streams.KafkaStreamService;
+import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.streams.TopicNameFactory;
 import stroom.stats.util.logging.LambdaLogger;
 import stroom.stats.xml.StatisticsMarshaller;
@@ -27,7 +27,7 @@ public class StatisticSender {
     public static void sendStatistics(Injector injector, Statistics statistics, StatisticType statisticType){
         StroomPropertyService stroomPropertyService = injector.getInstance(StroomPropertyService.class);
         StatisticsMarshaller statisticsMarshaller = injector.getInstance(StatisticsMarshaller.class);
-        String topicPrefix = stroomPropertyService.getPropertyOrThrow(KafkaStreamService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX);
+        String topicPrefix = stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX);
         String topic = TopicNameFactory.getStatisticTypedName(topicPrefix, statisticType);
         StatisticSender.sendStatistics(
                 StatisticSender.buildKafkaProducer(stroomPropertyService),
@@ -64,7 +64,7 @@ public class StatisticSender {
     private static KafkaProducer<String, String> buildKafkaProducer(StroomPropertyService stroomPropertyService){
         Map<String, Object> producerProps = new HashMap<>();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                stroomPropertyService.getPropertyOrThrow(KafkaStreamService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
+                stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
         producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
         producerProps.put(ProducerConfig.RETRIES_CONFIG, 0);
         producerProps.put(ProducerConfig.LINGER_MS_CONFIG, 10);

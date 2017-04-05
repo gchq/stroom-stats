@@ -2,26 +2,16 @@ package stroom.stats.streams;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.StatisticsAggregationService;
 import stroom.stats.api.StatisticType;
-import stroom.stats.config.Config;
-import stroom.stats.config.ZookeeperConfig;
 import stroom.stats.hbase.EventStoreTimeIntervalHelper;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.aggregation.CountAggregate;
-import stroom.stats.streams.aggregation.StatAggregate;
-import stroom.stats.streams.aggregation.ValueAggregate;
-import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
-import stroom.stats.streams.mapping.CountStatToAggregateFlatMapper;
-import stroom.stats.streams.mapping.ValueStatToAggregateFlatMapper;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -36,9 +26,9 @@ import java.util.Optional;
  partition by stat name, so single lookup of StatConfig per partition
  */
 @Singleton
-public class KafkaStreamService {
+public class StatisticsIngestService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsIngestService.class);
 
 
     public static final String PROP_KEY_PREFIX_KAFKA = "stroom.stats.streams.kafka.";
@@ -49,156 +39,94 @@ public class KafkaStreamService {
     public static final String PROP_KEY_KAFKA_STREAM_THREADS = PROP_KEY_PREFIX_KAFKA + "num.stream.threads";
 
     public static final String PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX = PROP_KEY_PREFIX_STATS_STREAMS + "flatMapProcessorAppIdPrefix";
-    public static final String PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX = PROP_KEY_PREFIX_STATS_STREAMS + "aggregationProcessorAppIdPrefix";
 
     public static final String PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX = "stroom.stats.topics.statisticEventsPrefix";
     public static final String PROP_KEY_BAD_STATISTIC_EVENTS_TOPIC_PREFIX = "stroom.stats.topics.badStatisticEventsPrefix";
     public static final String PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX = "stroom.stats.topics.statisticRollupPermsPrefix";
 
-    private static final EnumMap<StatisticType, Class<? extends StatAggregate>> statTypeToStatAggregateTypeMap = new EnumMap<>(StatisticType.class);
-    static {
-        statTypeToStatAggregateTypeMap.put(StatisticType.COUNT, CountAggregate.class);
-        statTypeToStatAggregateTypeMap.put(StatisticType.VALUE, ValueAggregate.class);
-    }
+//    private static final EnumMap<StatisticType, Class<? extends StatAggregate>> statTypeToStatAggregateTypeMap = new EnumMap<>(StatisticType.class);
+//
+//    static {
+//        statTypeToStatAggregateTypeMap.put(StatisticType.COUNT, CountAggregate.class);
+//        statTypeToStatAggregateTypeMap.put(StatisticType.VALUE, ValueAggregate.class);
+//    }
 
     private final StroomPropertyService stroomPropertyService;
-    private final ZookeeperConfig zookeeperConfig;
-    private final StatisticsFlatMappingProcessor statisticsFlatMappingProcessor;
+    private final StatisticsFlatMappingService statisticsFlatMappingService;
+    private final StatisticsAggregationService statisticsAggregationService;
+//    private final ZookeeperConfig zookeeperConfig;
     private final StatisticsAggregationProcessor statisticsAggregationProcessor;
-    private final CountStatToAggregateFlatMapper countStatToAggregateMapper;
-    private final ValueStatToAggregateFlatMapper valueStatToAggregateMapper;
 
     @Inject
-    public KafkaStreamService(final StroomPropertyService stroomPropertyService,
-                              final Config config,
-                              final StatisticsFlatMappingProcessor statisticsFlatMappingProcessor,
-                              final StatisticsAggregationProcessor statisticsAggregationProcessor,
-                              final CountStatToAggregateFlatMapper countStatToAggregateMapper,
-                              final ValueStatToAggregateFlatMapper valueStatToAggregateMapper) {
+    public StatisticsIngestService(final StroomPropertyService stroomPropertyService,
+//                                   final Config config,
+                                   final StatisticsFlatMappingService statisticsFlatMappingService,
+                                   final StatisticsAggregationService statisticsAggregationService,
+                                   final StatisticsAggregationProcessor statisticsAggregationProcessor) {
+
         this.stroomPropertyService = stroomPropertyService;
-        this.zookeeperConfig = config.getZookeeperConfig();
-        this.statisticsFlatMappingProcessor = statisticsFlatMappingProcessor;
+        this.statisticsFlatMappingService = statisticsFlatMappingService;
+        this.statisticsAggregationService = statisticsAggregationService;
+//        this.zookeeperConfig = config.getZookeeperConfig();
         this.statisticsAggregationProcessor = statisticsAggregationProcessor;
-        this.countStatToAggregateMapper = countStatToAggregateMapper;
-        this.valueStatToAggregateMapper = valueStatToAggregateMapper;
     }
 
 
 
+
+    @SuppressWarnings("unused") //only called by guice
     @Inject
-    public void start() {
+    public void startProcessors() {
+
+        //StatisticsIngestService - singleton
+        //  StatisticsFlatMappingService implements StatisticsProcessor, Stopable, Startable - singelton
+        //      StatisticsFlatMappingStreamFactory implements TopicConsumer, Stopable, Startable - one per stat type
+        //          StatisticsFlatMappingStreamBuilder
+        //  StatisticsAggregationService implements StatisticsProcessor, Stopable, Startable - singelton
+        //      StatisticsAggregationProcessor... implements TopicConsumer, Stopable, Startable - one per stat type, interval and thread
+
 
         //TODO We probably want to separate the flatMapProcessors out into their own headless dropwiz service
-        //so that we can scale the flat mapping independantly from the aggregation/putting to hbase.
+        //so that we can scale the flat mapping independently from the aggregation/putting to hbase.
         //The alternative is for everything to be in one main app but with each instance configured to have a set of
         //roles, e.g. just flatMapping or just aggregation/putting or both.
         //We may want to go even further by also splitting the aggregation/putting step out by stat type and
         //interval for total tuning control
 
-        startFlatMapProcessing();
+//        startFlatMapProcessing();
 
         //TODO commented out until it is in a working state
         startAggregationProcessing();
+
+
+        statisticsFlatMappingService.start();
+
+
+        statisticsAggregationService.start();
     }
 
-    private void startFlatMapProcessing() {
-        LOGGER.info("Starting count flat map processor");
-        KafkaStreams countFlatMapProcessor = startFlatMapProcessor(
-                StatisticType.COUNT,
-                countStatToAggregateMapper);
-
-        LOGGER.info("Starting value flat map processor");
-        KafkaStreams valueFlatMapProcessor = startFlatMapProcessor(
-                StatisticType.VALUE,
-                valueStatToAggregateMapper);
-    }
 
     private void startAggregationProcessing() {
 
         //TODO currently each processor will spawn a thread to consume from the appropriate topic,
         //so 8 threads.  Long term we will want finer control, e.g. more threads for Count stats
         //and more for the finer granularities
+
+
+        //TODO congfigure the instance count on a per type and interval basis as some intervals/types will need
+        //more processing than others
+        int instanceCount = 1;
         for (StatisticType statisticType : StatisticType.values()) {
             for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
-                LOGGER.info("Starting aggregation processor for type {} and interval {}", statisticType, interval);
-                startAggregationProcessor(statisticType, interval);
+                for (int i = 0; i<= instanceCount; i++) {
+                    //TODO construct the StatAggPro instance here and add it to a list on this
+                    LOGGER.info("Starting aggregation processor for type {}, interval {}, and instance id {}", statisticType, interval, i);
+                    startAggregationProcessor(statisticType, interval);
+                }
             }
         }
     }
 
-    private StreamsConfig buildStreamsConfig(String appId, final Map<String, Object> additionalProps) {
-        Map<String, Object> props = new HashMap<>();
-
-        String kafkaBootstrapServers = stroomPropertyService.getPropertyOrThrow(PROP_KEY_KAFKA_BOOTSTRAP_SERVERS);
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootstrapServers);
-
-        long commitIntervalMs = stroomPropertyService.getLongProperty(PROP_KEY_KAFKA_COMMIT_INTERVAL_MS, 30_000);
-        props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, commitIntervalMs);
-
-        //TODO not clear if this is needed for not. Normal Kafka doesn't need it but streams may do
-        //leaving it in seems to cause zookeeper connection warnings in the tests.  Tests seem to work ok
-        //without it
-//        props.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeperConfig.getQuorum());
-
-        //serdes will be defined explicitly in code
-
-        //Add any additional props, overwriting any from above
-        props.putAll(additionalProps);
-
-        props.forEach((key, value) ->
-            LOGGER.info("Setting Kafka Streams property {} for appId {} to [{}]", key, appId, value.toString())
-        );
-
-        return new StreamsConfig(props);
-    }
-
-    private Thread.UncaughtExceptionHandler buildUncaughtExceptionHandler(final String appId,
-                                                                          final StatisticType statisticType,
-                                                                          final AbstractStatisticFlatMapper abstractStatisticFlatMapper) {
-        return (t, e) ->
-                LOGGER.error("Uncaught exception in stream processor with appId {} type {} and mapper {} in thread {}",
-                        appId,
-                        statisticType,
-                        abstractStatisticFlatMapper.getClass().getSimpleName(),
-                        t.getName(),
-                        e);
-    }
-
-    private KafkaStreams startFlatMapProcessor(final StatisticType statisticType,
-                                               final AbstractStatisticFlatMapper mapper) {
-
-        String appId = getName(PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX, statisticType);
-
-        LOGGER.info("Building processor {}", appId);
-
-        String inputTopic = getName(PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX, statisticType);
-        String badEventTopic = getName(PROP_KEY_BAD_STATISTIC_EVENTS_TOPIC_PREFIX, statisticType);
-        String permsTopicsPrefix = getName(PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType);
-
-        Map<String, Object> props = new HashMap<>();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, appId);
-
-        //TODO need to specify number of threads in the yml as it could be box specific
-        int streamThreads = stroomPropertyService.getIntProperty(PROP_KEY_KAFKA_STREAM_THREADS, 1);
-        props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, streamThreads);
-
-        StreamsConfig streamsConfig = buildStreamsConfig(appId, props);
-
-        KafkaStreams flatMapProcessor = statisticsFlatMappingProcessor.buildStream(
-                streamsConfig,
-                inputTopic,
-                badEventTopic,
-                permsTopicsPrefix,
-                mapper);
-
-        flatMapProcessor.setUncaughtExceptionHandler(buildUncaughtExceptionHandler(appId, statisticType, mapper));
-
-        flatMapProcessor.start();
-
-        LOGGER.info("Started processor {} for input topic {}", appId, inputTopic);
-
-        return flatMapProcessor;
-    }
 
     private void startAggregationProcessor(
             final StatisticType statisticType,
@@ -263,10 +191,6 @@ public class KafkaStreamService {
                 interval);
     }
 
-    private String getName(final String propKey, final StatisticType statisticType) {
-        String prefix = stroomPropertyService.getPropertyOrThrow(propKey);
-        return TopicNameFactory.getStatisticTypedName(prefix, statisticType);
-    }
 
 
 //        new KStreamBuilder().

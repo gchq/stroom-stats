@@ -27,8 +27,11 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.Serde;
+import stroom.stats.StatisticsProcessor;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
+import stroom.stats.mixins.Startable;
+import stroom.stats.mixins.Stoppable;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.StatAggregate;
@@ -74,7 +77,7 @@ import java.util.concurrent.Executors;
  * the next topic and/or to the stat service. The size of the StatAggregator is a trade off between in memory aggregation
  * benefits and the risk of more duplicate data in the stat store
  */
-class StatisticsAggregationProcessor {
+class StatisticsAggregationProcessor implements StatisticsProcessor, Startable, Stoppable {
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatisticsAggregationProcessor.class);
 
@@ -86,8 +89,11 @@ class StatisticsAggregationProcessor {
     private final StroomPropertyService stroomPropertyService;
     private final int maxEventIds;
 
+    //TODO get the StatAggService to create these and hold the instances for subsequent management
     @Inject
-    public StatisticsAggregationProcessor(final StatisticsService statisticsService, final StroomPropertyService stroomPropertyService) {
+    public StatisticsAggregationProcessor(final StatisticsService statisticsService,
+                                          final StroomPropertyService stroomPropertyService) {
+
         this.statisticsService = statisticsService;
         this.stroomPropertyService = stroomPropertyService;
 
@@ -102,6 +108,7 @@ class StatisticsAggregationProcessor {
                                final StatisticType statisticType,
                                final EventStoreTimeIntervalEnum aggregationInterval) {
 
+        //TODO split this method into configuring the consumer and initiating the polling
         Serde<StatKey> statKeySerde = StatKeySerde.instance();
         Serde<StatAggregate> statAggregateSerde = StatAggregateSerde.instance();
 
@@ -139,6 +146,7 @@ class StatisticsAggregationProcessor {
             final Instant lastCommitTime = Instant.now();
 
             try {
+                //TODO test for a flag set by the close methods to allow the polling to stop cleanly
                 while (true) {
                     try {
                         ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(getPollTimeout());
@@ -222,6 +230,20 @@ class StatisticsAggregationProcessor {
 
     private int getPollTimeout() {
         return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS, 100);
+    }
+
+    @Override
+    public void stop() {
+
+        //TODO set a flag to initiate a clean stop
+
+    }
+
+    @Override
+    public void start() {
+
+        //TODO initiate the polling
+
     }
 
 //    KafkaStreams buildStream(final StreamsConfig streamsConfig,

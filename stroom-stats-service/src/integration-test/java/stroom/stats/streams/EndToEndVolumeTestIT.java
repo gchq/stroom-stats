@@ -137,7 +137,7 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
 
 //    private void setNumStreamThreads(final int newValue) {
 //        stroomPropertyService.setProperty(
-//                KafkaStreamService.PROP_KEY_KAFKA_STREAM_THREADS, newValue);
+//                StatisticsIngestService.PROP_KEY_KAFKA_STREAM_THREADS, newValue);
 //    }
 //
 //    private static void configure(StroomPropertyService stroomPropertyService) {
@@ -152,13 +152,13 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
 //        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10);
 //        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 500);
 //
-//        stroomPropertyService.setProperty(KafkaStreamService.PROP_KEY_KAFKA_STREAM_THREADS, 1);
+//        stroomPropertyService.setProperty(StatisticsIngestService.PROP_KEY_KAFKA_STREAM_THREADS, 1);
 //    }
 
     private static KafkaProducer<String, String> buildKafkaProducer(StroomPropertyService stroomPropertyService) {
         Map<String, Object> producerProps = new HashMap<>();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                stroomPropertyService.getPropertyOrThrow(KafkaStreamService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
+                stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
         producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
         producerProps.put(ProducerConfig.RETRIES_CONFIG, 0);
         producerProps.put(ProducerConfig.LINGER_MS_CONFIG, 10);
@@ -184,7 +184,7 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
     private void startBadEventsConsumer(Map<String, List<String>> messages) {
 
         Properties consumerProps = new Properties();
-        consumerProps.put("bootstrap.servers", stroomPropertyService.getProperty(KafkaStreamService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS).get());
+        consumerProps.put("bootstrap.servers", stroomPropertyService.getProperty(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS).get());
         consumerProps.put("group.id", this.getClass().getName() + "-groupId");
         consumerProps.put("enable.auto.commit", "true");
         consumerProps.put("auto.commit.interval.ms", "1000");
