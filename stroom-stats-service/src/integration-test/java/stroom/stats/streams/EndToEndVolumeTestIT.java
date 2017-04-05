@@ -20,6 +20,7 @@
 package stroom.stats.streams;
 
 import com.google.inject.Injector;
+import javaslang.Tuple2;
 import javaslang.Tuple3;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -36,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.api.StatisticType;
+import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
@@ -60,6 +62,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
@@ -72,6 +75,8 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
     public static final String BAD_STATISTIC_EVENTS_TOPIC_PREFIX = "badStatisticEvents";
     private static final Map<StatisticType, String> INPUT_TOPICS_MAP = new HashMap<>();
     private static final Map<StatisticType, String> BAD_TOPICS_MAP = new HashMap<>();
+
+    public static final EventStoreTimeIntervalEnum SMALLEST_INTERVAL = EventStoreTimeIntervalEnum.SECOND;
 
     private Injector injector = getApp().getInjector();
     private StroomPropertyService stroomPropertyService = injector.getInstance(StroomPropertyService.class);
@@ -94,103 +99,46 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
 
     }
 
-    private Map<Tuple3<String, StatisticType, EventStoreTimeIntervalEnum>, Long> loadData() {
+    private void loadData() {
 
-        int statNameCnt = 10;
-        int msgCntPerStatNameAndIntervalAndType = 100;
-
-        List<ProducerRecord<String, String>> producerRecords = new ArrayList<>();
-
-        long counter = Instant.now().toEpochMilli();
+        final KafkaProducer<String, String> kafkaProducer = buildKafkaProducer(stroomPropertyService);
 
 //        StatisticType[] types = new StatisticType[] {StatisticType.COUNT};
         StatisticType[] types = StatisticType.values();
-//        EventStoreTimeIntervalEnum[] intervals = new EventStoreTimeIntervalEnum[]{EventStoreTimeIntervalEnum.MINUTE};
-        EventStoreTimeIntervalEnum[] intervals = EventStoreTimeIntervalEnum.values();
 
-        Map<Tuple3<String, StatisticType, EventStoreTimeIntervalEnum>, Long> expectedCounts = new HashMap<>();
         for (StatisticType statisticType : types) {
+
+            String statNameStr = "VolumeTest-" + Instant.now().toString() + "-" + statisticType + "-" + SMALLEST_INTERVAL;
+
+            Tuple2<StatisticConfigurationEntity, List<Statistics>> testData = GenerateSampleStatisticsData.generateData(
+                    statNameStr,
+                    statisticType,
+                    SMALLEST_INTERVAL,
+                    StatisticRollUpType.ALL,
+                    500);
+
+            persistStatConfig(testData._1());
+
             String inputTopic = INPUT_TOPICS_MAP.get(statisticType);
+            testData._2().forEach(statisticsObj -> {
+                ProducerRecord<String, String> producerRecord = buildProducerRecord(
+                        inputTopic,
+                        statisticsObj,
+                        injector.getInstance(StatisticsMarshaller.class));
 
-            for (EventStoreTimeIntervalEnum interval : intervals) {
-//                EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.MINUTE;
-
-
-                for (int statNum : IntStream.rangeClosed(1, statNameCnt).toArray()) {
-                    int cnt = 0;
-                    String statName = TopicNameFactory.getIntervalTopicName("MyStat-" + statNum, statisticType, interval);
-
-                    String tag1 = "tag1-" + statName;
-                    String tag2 = "tag2-" + statName;
-
-                    addStatConfig(statName, statisticType, interval, tag1, tag2);
-
-                    for (int i : IntStream.rangeClosed(1, msgCntPerStatNameAndIntervalAndType).toArray()) {
-
-                        Random random = new Random();
-                        //Give each source event a different time to aid debugging
-                        ZonedDateTime time = ZonedDateTime.ofInstant(Instant.ofEpochMilli(counter), ZoneOffset.UTC);
-                        Statistics statistics;
-                        if (statisticType.equals(StatisticType.COUNT)) {
-                            statistics = StatisticsHelper.buildStatistics(
-                                    StatisticsHelper.buildCountStatistic(statName, time, 1L,
-                                            StatisticsHelper.buildTagType(tag1, tag1 + "val" + random.nextInt(3)),
-                                            StatisticsHelper.buildTagType(tag2, tag2 + "val" + random.nextInt(3))
-                                    )
-                            );
-                        } else {
-                            statistics = StatisticsHelper.buildStatistics(
-                                    StatisticsHelper.buildValueStatistic(statName, time, 1.0,
-                                            StatisticsHelper.buildTagType(tag1, tag1 + "val" + random.nextInt(3)),
-                                            StatisticsHelper.buildTagType(tag2, tag2 + "val" + random.nextInt(3))
-                                    )
-                            );
-                        }
-//                        dumpStatistics(statistics);
-                        producerRecords.add(buildProducerRecord(inputTopic, statistics, injector.getInstance(StatisticsMarshaller.class)));
-                        counter++;
-                        cnt++;
-                    }
-                    LOGGER.info("Added {} records for type {} and interval {}", cnt, statisticType, interval);
-                    expectedCounts.put(new Tuple3<>(statName, statisticType, interval), (long) cnt);
+                try {
+                    kafkaProducer.send(producerRecord).get()
+                } catch (InterruptedException e) {
+                    //just used in testing so bomb out
+                    throw new RuntimeException(String.format("Thread interrupted"), e);
+                } catch (ExecutionException e) {
+                    throw new RuntimeException(String.format("Error sending record to kafka topic %s", inputTopic), e);
                 }
-            }
+            });
         }
 
-        //shuffle all the msgs so the streams consumer gets them in a random order
-        Collections.shuffle(producerRecords, new Random());
-        KafkaProducer<String, String> producer = buildKafkaProducer(stroomPropertyService);
-        LOGGER.info("Sending {} stat events", producerRecords.size());
-
-        //use multiple threads to send the messages asynchronously
-        producerRecords
-//                .parallelStream()
-                .stream()
-                .forEach(rec -> {
-                    try {
-                        producer.send(rec);
-                    } catch (Exception e) {
-                        throw new RuntimeException("exception sending mesg", e);
-                    }
-                });
-
-
         Map<String, List<String>> badEvents = new HashMap<>();
-
-        int expectedTopicsPerStatType = intervals.length;
-        int expectedTopicCount = types.length * expectedTopicsPerStatType;
-        int expectedPermsPerMsg = 4;
-        int expectedGoodMsgCountPerStatTypeAndInterval = statNameCnt *
-                expectedPermsPerMsg * msgCntPerStatNameAndIntervalAndType;
-        int expectedGoodMsgCountPerStatType = intervals.length * expectedGoodMsgCountPerStatTypeAndInterval;
-        int expectedBadMsgCount = 0;
-
-        LOGGER.info("Expecting {} msgs per stat type and interval, {} per stat type",
-                expectedGoodMsgCountPerStatTypeAndInterval, expectedGoodMsgCountPerStatType);
-
         startBadEventsConsumer(badEvents);
-
-        return expectedCounts;
 
     }
 
@@ -200,7 +148,7 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
                 KafkaStreamService.PROP_KEY_KAFKA_STREAM_THREADS, newValue);
     }
 
-    private static void configure(StroomPropertyService stroomPropertyService){
+    private static void configure(StroomPropertyService stroomPropertyService) {
         //make sure the purge retention periods are very large so no stats get purged
         Arrays.stream(EventStoreTimeIntervalEnum.values()).forEach(interval ->
                 stroomPropertyService.setProperty(
@@ -287,6 +235,10 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
                 .addFields(fieldNames)
                 .build();
 
+        persistStatConfig(statisticConfigurationEntity);
+    }
+
+    private void persistStatConfig(final StatisticConfigurationEntity statisticConfigurationEntity) {
         StatisticConfigurationEntityHelper.addStatConfig(
                 injector.getInstance(SessionFactory.class),
                 injector.getInstance(StatisticConfigurationEntityMarshaller.class),
