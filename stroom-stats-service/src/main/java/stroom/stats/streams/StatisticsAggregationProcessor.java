@@ -162,6 +162,7 @@ class StatisticsAggregationProcessor {
                             //flush all the aggregated stats down to the StatStore and onto the next biggest interval topic
                             //(if there is one) for coarser aggregation
                             Map<StatKey, StatAggregate> aggregatedEvents = flushToStatStore(statisticType, statAggregator);
+
                             if (nextInterval.isPresent()) {
                                 flushToTopic(aggregatedEvents, nextIntervalTopic.get(), nextInterval.get(), kafkaProducer);
                             }
@@ -189,6 +190,7 @@ class StatisticsAggregationProcessor {
         Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.drain();
         LOGGER.trace(() -> String.format("Flushing %s events of type %s, interval %s to the StatisticsService",
                 aggregatedEvents.size(), statisticType, statAggregator.getAggregationInterval()));
+
         statisticsService.putAggregatedEvents(statisticType, statAggregator.getAggregationInterval(), aggregatedEvents);
         return aggregatedEvents;
     }
@@ -200,6 +202,9 @@ class StatisticsAggregationProcessor {
 
         Preconditions.checkNotNull(aggregatedEvents);
         Preconditions.checkNotNull(producer);
+
+        LOGGER.trace(() -> String.format("Flushing %s records with new interval %s to topic %s",
+                aggregatedEvents.size(), newInterval, topic));
 
         //Uplift the statkey to the new interval and put it on the topic
         //We will not be trying to uplift the statKey if we are already at the highest interval
@@ -216,7 +221,7 @@ class StatisticsAggregationProcessor {
     }
 
     private int getPollTimeout() {
-        return 200;
+        return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS, 100);
     }
 
 //    KafkaStreams buildStream(final StreamsConfig streamsConfig,

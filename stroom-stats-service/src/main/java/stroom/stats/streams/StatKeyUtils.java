@@ -31,13 +31,26 @@ public class StatKeyUtils {
 
     public static void logStatKey(final UniqueIdCache uniqueIdCache, final StatKey statKey) {
 
-        String statName = uniqueIdCache.getName(statKey.getStatName());
-        String tagValues = statKey.getTagValues().stream()
+        String statName = getStatName(uniqueIdCache, statKey);
+        String tagValues = getTagValues(uniqueIdCache, statKey, ",", "|");
+
+        LOGGER.debug("StatKey - {}, {}, {}, {}", statName, statKey.getRollupMask(), statKey.getInterval(), tagValues);
+    }
+
+    public static String getStatName(final UniqueIdCache uniqueIdCache, final StatKey statKey) {
+        return uniqueIdCache.getName(statKey.getStatName());
+    }
+
+    public static String getTagValues(final UniqueIdCache uniqueIdCache,
+                                      final StatKey statKey,
+                                      final String tagValueDelimiter,
+                                      final String pairDelimiter) {
+
+        return statKey.getTagValues().stream()
                 .map(tagValue ->
-                        uniqueIdCache.getName(tagValue.getTag()) + "|" +
+                        uniqueIdCache.getName(tagValue.getTag()) + pairDelimiter +
                                 uniqueIdCache.getName(tagValue.getValue()
                                 ))
-                .collect(Collectors.joining(","));
-        LOGGER.debug("StatKey - {}, {}, {}, {}", statName, statKey.getRollupMask(), statKey.getInterval(), tagValues);
+                .collect(Collectors.joining(tagValueDelimiter));
     }
 }

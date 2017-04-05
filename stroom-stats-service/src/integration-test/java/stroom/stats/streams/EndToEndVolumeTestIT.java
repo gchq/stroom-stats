@@ -17,7 +17,7 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats;
+package stroom.stats.streams;
 
 import com.google.inject.Injector;
 import javaslang.Tuple3;
@@ -34,6 +34,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.AbstractAppIT;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticRollUpType;
@@ -42,8 +43,6 @@ import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.KafkaStreamService;
-import stroom.stats.streams.TopicNameFactory;
 import stroom.stats.test.StatisticConfigurationEntityBuilder;
 import stroom.stats.test.StatisticConfigurationEntityHelper;
 import stroom.stats.test.StatisticsHelper;
@@ -96,11 +95,6 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
     }
 
     private Map<Tuple3<String, StatisticType, EventStoreTimeIntervalEnum>, Long> loadData() {
-        setNumStreamThreads(1);
-
-        for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
-            setPurgeRetention(interval, 10_000);
-        }
 
         int statNameCnt = 10;
         int msgCntPerStatNameAndIntervalAndType = 100;
@@ -200,15 +194,25 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
 
     }
 
-    private void setPurgeRetention(final EventStoreTimeIntervalEnum interval, final int newValue) {
-        stroomPropertyService.setProperty(
-                HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX +
-                        interval.name().toLowerCase(), newValue);
-    }
 
     private void setNumStreamThreads(final int newValue) {
         stroomPropertyService.setProperty(
                 KafkaStreamService.PROP_KEY_KAFKA_STREAM_THREADS, newValue);
+    }
+
+    private static void configure(StroomPropertyService stroomPropertyService){
+        //make sure the purge retention periods are very large so no stats get purged
+        Arrays.stream(EventStoreTimeIntervalEnum.values()).forEach(interval ->
+                stroomPropertyService.setProperty(
+                        HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX +
+                                interval.name().toLowerCase(), 10_000));
+
+        //set small batch size and flush interval so we don't have to wait ages for data to come through
+
+        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10);
+        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 500);
+
+        stroomPropertyService.setProperty(KafkaStreamService.PROP_KEY_KAFKA_STREAM_THREADS, 1);
     }
 
     private static KafkaProducer<String, String> buildKafkaProducer(StroomPropertyService stroomPropertyService) {
