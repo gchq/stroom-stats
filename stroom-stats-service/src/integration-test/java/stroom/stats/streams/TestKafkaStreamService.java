@@ -665,7 +665,7 @@ public class TestKafkaStreamService {
     //    @Ignore
     @Test
     public void test_ManyEventsOnMultipleThreads() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
-        setNumStreamThreads(1);
+        setNumStreamThreads(4);
         StroomStatsEmbeddedOverrideModule module = initStreamProcessing();
 
         Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
