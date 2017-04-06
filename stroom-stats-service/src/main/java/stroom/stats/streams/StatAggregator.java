@@ -25,9 +25,9 @@ import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Supplier;
 
 @NotThreadSafe
 class StatAggregator {
@@ -35,16 +35,21 @@ class StatAggregator {
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatAggregator.class);
 
     private Map<StatKey, StatAggregate> buffer;
+    private final int minSize;
     private final int maxEventIds;
+    private final Instant expiredTime;
     private final EventStoreTimeIntervalEnum aggregationInterval;
 
-    private Supplier<Map<StatKey, StatAggregate>> bufferSupplier;
 
-    public StatAggregator(final int expectedSize, final int maxEventIds, final EventStoreTimeIntervalEnum aggregationInterval) {
-        //initial size to avoid it rehashing
-        this.bufferSupplier = () -> new HashMap<>((int)Math.ceil(expectedSize / 0.75));
-        this.buffer = bufferSupplier.get();
+    public StatAggregator(final int minSize,
+                          final int maxEventIds,
+                          final EventStoreTimeIntervalEnum aggregationInterval,
+                          final long timeToLiveMs) {
+        //initial size to avoid it rehashing. x1.2 to allow for it going a bit over the min value
+        this.buffer = new HashMap<>((int)Math.ceil((minSize * 1.2) / 0.75));
+        this.minSize = minSize;
         this.maxEventIds = maxEventIds;
+        this.expiredTime = Instant.now().plusMillis(timeToLiveMs);
         this.aggregationInterval = aggregationInterval;
     }
 
@@ -75,16 +80,21 @@ class StatAggregator {
         return buffer.size();
     }
 
+    public boolean isEmpty() {
+        return buffer.isEmpty();
+    }
+
+    public boolean isReadyForFlush() {
+        return (Instant.now().isAfter(expiredTime) || buffer.size() > minSize);
+    }
+
     public EventStoreTimeIntervalEnum getAggregationInterval() {
         return aggregationInterval;
     }
 
-    public Map<StatKey, StatAggregate> drain() {
-        LOGGER.trace(() -> String.format("drain called, return %s events", buffer.size()));
+    public Map<StatKey, StatAggregate> getAggregates() {
+        LOGGER.trace(() -> String.format("getAggregates called, return %s events", buffer.size()));
 
-        //Grab the reference to the map and point buffer at a new map ready for new data
-        Map<StatKey, StatAggregate> aggregatedEvents = buffer;
-        buffer = bufferSupplier.get();
-        return aggregatedEvents;
+        return buffer;
     }
 }

@@ -41,7 +41,7 @@ public class TestStatAggregator {
 
         LocalDateTime baseTime = LocalDateTime.of(2016, 2, 15, 10, 2, 0);
         EventStoreTimeIntervalEnum aggregationInterval = EventStoreTimeIntervalEnum.MINUTE;
-                StatAggregator statAggregator = new StatAggregator(10, 10, aggregationInterval);
+                StatAggregator statAggregator = new StatAggregator(10, 10, aggregationInterval, 10_000);
         long statValue = 10L;
         int loopSize = 10;
         IntStream.rangeClosed(1,loopSize).forEach(i -> {
@@ -53,10 +53,9 @@ public class TestStatAggregator {
 
         Assertions.assertThat(statAggregator.size()).isEqualTo(1);
 
-        Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.drain();
+        Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.getAggregates();
 
         Assertions.assertThat(aggregatedEvents).hasSize(1);
-        Assertions.assertThat(statAggregator.size()).isEqualTo(0);
 
         CountAggregate countAggregate = (CountAggregate) aggregatedEvents.values().stream().findFirst().get();
         Assertions.assertThat(countAggregate.getAggregatedCount())
@@ -71,7 +70,7 @@ public class TestStatAggregator {
         LocalDateTime baseTime1 = LocalDateTime.of(2016, 2, 15, 10, 2, 0);
         LocalDateTime baseTime2 = baseTime1.plusMinutes(1);
         EventStoreTimeIntervalEnum aggregationInterval = EventStoreTimeIntervalEnum.MINUTE;
-        StatAggregator statAggregator = new StatAggregator(10, 10, aggregationInterval);
+        StatAggregator statAggregator = new StatAggregator(10, 10, aggregationInterval, 10_000);
         long statValue1 = 10L;
         long statValue2 = 20L;
         int loopSize = 10;
@@ -89,13 +88,12 @@ public class TestStatAggregator {
 
         Assertions.assertThat(statAggregator.size()).isEqualTo(2);
 
-        Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.drain();
+        Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.getAggregates();
         List<Tuple2<StatKey, StatAggregate>> pairs = aggregatedEvents.entrySet().stream()
                 .map(entry -> new Tuple2<>(entry.getKey(), entry.getValue()))
                 .collect(Collectors.toList());
 
         Assertions.assertThat(aggregatedEvents).hasSize(2);
-        Assertions.assertThat(statAggregator.size()).isEqualTo(0);
 
         Tuple2<StatKey, StatAggregate> expectedEvent1 = new Tuple2<>(
                 StatKeyHelper.buildStatKey(baseTime1, aggregationInterval),

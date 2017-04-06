@@ -19,21 +19,126 @@
 
 package stroom.stats;
 
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.Serde;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import stroom.stats.api.StatisticType;
+import stroom.stats.api.StatisticsService;
 import stroom.stats.mixins.Startable;
 import stroom.stats.mixins.Stoppable;
+import stroom.stats.properties.StroomPropertyService;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatisticsAggregationProcessor;
+import stroom.stats.streams.StatisticsIngestService;
+import stroom.stats.streams.aggregation.StatAggregate;
+import stroom.stats.streams.serde.StatAggregateSerde;
+import stroom.stats.streams.serde.StatKeySerde;
 
+import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Singleton
 public class StatisticsAggregationService implements Startable, Stoppable {
 
-    @Override
-    public void stop() {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsAggregationService.class);
 
+    private final StroomPropertyService stroomPropertyService;
+    private final StatisticsService statisticsService;
+    private final List<StatisticsAggregationProcessor> processors = new ArrayList<>();
+
+    private final KafkaProducer<StatKey, StatAggregate> kafkaProducer;
+
+    @Inject
+    public StatisticsAggregationService(final StroomPropertyService stroomPropertyService,
+                                        final StatisticsService statisticsService) {
+
+        this.stroomPropertyService = stroomPropertyService;
+        this.statisticsService = statisticsService;
+
+        //producer is thread safe so hold a single instance and share it with all processors
+        //this assumes all processor instances have the same producer config
+        kafkaProducer = buildProducer();
+
+        buildProcessors();
     }
 
     @Override
     public void start() {
 
+        LOGGER.info("Starting the Statistics Aggregation Service");
+
+        processors.forEach(StatisticsAggregationProcessor::start);
+    }
+
+    @Override
+    public void stop() {
+
+        LOGGER.info("Stopping the Statistics Aggregation Service");
+
+        processors.forEach(StatisticsAggregationProcessor::stop);
+    }
+
+    private void buildProcessors() {
+
+        //TODO currently each processor will spawn a thread to consume from the appropriate topic,
+        //so 8 threads.  Long term we will want finer control, e.g. more threads for Count stats
+        //and more for the finer granularities
+
+
+        //TODO congfigure the instance count on a per type and interval basis as some intervals/types will need
+        //more processing than others
+        int instanceCount = 1;
+        for (StatisticType statisticType : StatisticType.values()) {
+            for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
+                for (int instanceId = 0; instanceId <= instanceCount; instanceId++) {
+
+                    StatisticsAggregationProcessor processor = new StatisticsAggregationProcessor(
+                            statisticsService,
+                            stroomPropertyService,
+                            statisticType,
+                            interval,
+                            kafkaProducer,
+                            instanceId);
+
+                    processors.add(processor);
+                }
+            }
+        }
+    }
+
+    private KafkaProducer<StatKey, StatAggregate> buildProducer() {
+
+        //Configure the producers
+        Map<String, Object> producerProps = getProducerProps();
+
+        Serde<StatKey> statKeySerde = StatKeySerde.instance();
+        Serde<StatAggregate> statAggregateSerde = StatAggregateSerde.instance();
+
+        return new KafkaProducer<>(
+                producerProps,
+                    statKeySerde.serializer(),
+                    statAggregateSerde.serializer());
+
+    }
+
+    private Map<String, Object> getProducerProps() {
+        Map<String, Object> producerProps = new HashMap<>();
+        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
+        producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
+        producerProps.put(ProducerConfig.RETRIES_CONFIG, 0);
+        producerProps.put(ProducerConfig.LINGER_MS_CONFIG, 10);
+        producerProps.put(ProducerConfig.BATCH_SIZE_CONFIG,
+                stroomPropertyService.getIntProperty(
+                        StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000));
+        producerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 50_000_000);
+        return producerProps;
     }
 }

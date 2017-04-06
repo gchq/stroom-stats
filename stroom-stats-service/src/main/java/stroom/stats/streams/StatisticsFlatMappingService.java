@@ -75,7 +75,7 @@ public class StatisticsFlatMappingService implements Startable, Stoppable {
     @Override
     public void start() {
 
-//        startFlatMapProcessing();
+        LOGGER.info("Starting the Statistics Flat Mapping Service");
 
         processors.forEach(processor ->
                 processor.start());
@@ -83,6 +83,8 @@ public class StatisticsFlatMappingService implements Startable, Stoppable {
 
     @Override
     public void stop() {
+        LOGGER.info("Stopping the Statistics Flat Mapping Service");
+
         processors.forEach(processor ->
                 processor.stop());
     }
