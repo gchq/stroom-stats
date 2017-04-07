@@ -1,20 +1,15 @@
 package stroom.stats.streams;
 
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.ProducerConfig;
+import io.dropwizard.lifecycle.Managed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.StatisticsAggregationService;
-import stroom.stats.api.StatisticType;
-import stroom.stats.hbase.EventStoreTimeIntervalHelper;
-import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.mixins.Startable;
+import stroom.stats.mixins.Stoppable;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  *This is the coordinator for the streams applications
@@ -26,7 +21,7 @@ import java.util.Optional;
  partition by stat name, so single lookup of StatConfig per partition
  */
 @Singleton
-public class StatisticsIngestService {
+public class StatisticsIngestService implements Startable, Stoppable, Managed {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsIngestService.class);
 
@@ -43,30 +38,80 @@ public class StatisticsIngestService {
     public static final String PROP_KEY_BAD_STATISTIC_EVENTS_TOPIC_PREFIX = "stroom.stats.topics.badStatisticEventsPrefix";
     public static final String PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX = "stroom.stats.topics.statisticRollupPermsPrefix";
 
-
-    private final StroomPropertyService stroomPropertyService;
     private final StatisticsFlatMappingService statisticsFlatMappingService;
     private final StatisticsAggregationService statisticsAggregationService;
-    private final StatisticsAggregationProcessor statisticsAggregationProcessor;
 
-    @Inject
-    public StatisticsIngestService(final StroomPropertyService stroomPropertyService,
-                                   final StatisticsFlatMappingService statisticsFlatMappingService,
-                                   final StatisticsAggregationService statisticsAggregationService,
-                                   final StatisticsAggregationProcessor statisticsAggregationProcessor) {
-
-        this.stroomPropertyService = stroomPropertyService;
-        this.statisticsFlatMappingService = statisticsFlatMappingService;
-        this.statisticsAggregationService = statisticsAggregationService;
-        this.statisticsAggregationProcessor = statisticsAggregationProcessor;
+    private enum RunState {
+        STOPPED,
+        STOPPING,
+        STARTING,
+        RUNNING
     }
 
-    @SuppressWarnings("unused") //only called by guice
+    AtomicReference<RunState> runState = new AtomicReference<>(RunState.STOPPED);
+
+    //used for thread synchronization
+    private final Object startStopMonitor = new Object();
+
     @Inject
-    public void startProcessors() {
+    public StatisticsIngestService(final StatisticsFlatMappingService statisticsFlatMappingService,
+                                   final StatisticsAggregationService statisticsAggregationService) {
 
-        statisticsFlatMappingService.start();
+        this.statisticsFlatMappingService = statisticsFlatMappingService;
+        this.statisticsAggregationService = statisticsAggregationService;
+    }
 
-        statisticsAggregationService.start();
+    @SuppressWarnings("unused") //called by DropWizard's lifecycle manager
+    @Override
+    public void start() {
+
+
+        //TODO may want to break this up to allow individual processor services or even
+        //individual processor instances to be started/stopped.
+
+        synchronized (startStopMonitor) {
+            if (runState.compareAndSet(RunState.STOPPED, RunState.STARTING)) {
+                LOGGER.info("Starting all processing");
+                //start the aggregation processor first so it is ready to receive
+                statisticsAggregationService.start();
+
+                //start the stream processing
+                statisticsFlatMappingService.start();
+
+                changeRunState(RunState.STARTING, RunState.RUNNING);
+
+            } else {
+                throw new RuntimeException(String.format("Unable to start processing as current state is %s", runState));
+            }
+        }
+    }
+
+    @SuppressWarnings("unused") //called by DropWizard's lifecycle manager
+    @Override
+    public void stop() {
+
+        synchronized (startStopMonitor) {
+            if (runState.compareAndSet(RunState.RUNNING, RunState.STOPPING)) {
+                LOGGER.info("Stopping all processing");
+                //start the stream processing
+                statisticsFlatMappingService.stop();
+
+                //start the aggregation processor first so it is ready to receive
+                statisticsAggregationService.stop();
+
+                changeRunState(RunState.STOPPING, RunState.STOPPED);
+            } else {
+                throw new RuntimeException(String.format("Unable to stop processing as current state is %s", runState));
+            }
+        }
+    }
+
+    private void changeRunState(RunState expectedCurrentState, RunState newState) {
+
+        if (!runState.compareAndSet(expectedCurrentState, newState)) {
+            throw new RuntimeException(String.format("Failed to change state to %s, current state is %s, expecting %s",
+                    newState, runState.get(), expectedCurrentState));
+        }
+
     }
 }

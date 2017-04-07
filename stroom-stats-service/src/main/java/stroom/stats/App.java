@@ -43,13 +43,17 @@ import stroom.stats.config.Config;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticConfigurationEntityDAOImpl;
 import stroom.stats.configuration.common.Folder;
+import stroom.stats.streams.StatisticsIngestService;
+import stroom.stats.tasks.StartProcessingTask;
+import stroom.stats.tasks.StopProcessingTask;
 
 import java.io.UnsupportedEncodingException;
 import java.util.List;
 
 public class App extends Application<Config> {
 
-    Logger LOGGER = LoggerFactory.getLogger(App.class);
+    public static final String APP_NAME = "stroom-stats";
+    private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
     private Injector injector = null;
 
     private final HibernateBundle<Config> hibernateBundle = new HibernateBundle<Config>(
@@ -73,6 +77,7 @@ public class App extends Application<Config> {
 
     @Override
     public void run(Config config, Environment environment) throws UnsupportedEncodingException {
+
         configureAuthentication(config, environment);
 
         // Bootstrap Guice
@@ -85,58 +90,22 @@ public class App extends Application<Config> {
                 .onFailure(e -> LOGGER.error("Unable to retrieve statistics: {}", e))
                 .onSuccess(stats -> LOGGER.info("Retrieved {} statistics, but not doing anything", stats.size()));
 
-        // Register APIs
-        environment.jersey().register(new ApiResource(injector.getInstance(HBaseClient.class)));
+        registerAPIs(environment);
+
+        registerTasks(environment);
 
         registerHealthChecks(environment);
     }
 
-    /**
-     * This is an example method, showing how to load statistics.
-     *
-     * We're loading stats outside a Jersey call so we can't use @UnitOfWork to set up the session.
-     * We need to get a session manually, as demonstrated here.
-     */
-    private Try<List<StatisticConfigurationEntity>> loadStats(){
-        try (Session session = hibernateBundle.getSessionFactory().openSession()){
-            ManagedSessionContext.bind(session);
-            session.beginTransaction();
-            StatisticConfigurationEntityDAOImpl dao = injector.getInstance(StatisticConfigurationEntityDAOImpl.class);
-            List<StatisticConfigurationEntity> allStats = dao.loadAll();
-            return Try.success(allStats);
-        } catch (Exception e) {
-            return Try.failure(e);
-        }
+    private void registerAPIs(final Environment environment) {
+
+        environment.jersey().register(new ApiResource(injector.getInstance(HBaseClient.class)));
     }
 
-    @Override
-    public String getName() {
-        return "stroom-stats";
-    }
+    private void registerTasks(final Environment environment) {
 
-    public Injector getInjector() {
-        return injector;
-    }
-
-    private static void configureAuthentication(Config config, Environment environment) throws UnsupportedEncodingException {
-        final JwtConsumer consumer = new JwtConsumerBuilder()
-                .setAllowedClockSkewInSeconds(30) // allow some leeway in validating time based claims to account for clock skew
-                .setRequireExpirationTime() // the JWT must have an expiration time
-                .setRequireSubject() // the JWT must have a subject claim
-                .setVerificationKey(new HmacKey(config.getJwtTokenSecret())) // verify the signature with the public key
-                .setRelaxVerificationKeyValidation() // relaxes key length requirement
-                .build();
-
-        environment.jersey().register(new AuthDynamicFeature(
-                new JwtAuthFilter.Builder<User>()
-                        .setJwtConsumer(consumer)
-                        .setRealm("realm")
-                        .setPrefix("Bearer")
-                        .setAuthenticator(new UserAuthenticator())
-                        .buildAuthFilter()));
-
-        environment.jersey().register(new AuthValueFactoryProvider.Binder<>(User.class));
-        environment.jersey().register(RolesAllowedDynamicFeature.class);
+        environment.admin().addTask(injector.getInstance(StartProcessingTask.class));
+        environment.admin().addTask(injector.getInstance(StopProcessingTask.class));
     }
 
     private void registerHealthChecks(Environment environment){
@@ -161,5 +130,58 @@ public class App extends Application<Config> {
                 return injector.getInstance(ServiceDiscoveryManagerHealthCheck.class).getStroomDBHealth();
             }
         });
+    }
+
+    private void registerManagedObjects(Environment environment){
+        environment.lifecycle().manage(injector.getInstance(StatisticsIngestService.class));
+    }
+
+    /**
+     * This is an example method, showing how to load statistics.
+     *
+     * We're loading stats outside a Jersey call so we can't use @UnitOfWork to set up the session.
+     * We need to get a session manually, as demonstrated here.
+     */
+    private Try<List<StatisticConfigurationEntity>> loadStats(){
+        try (Session session = hibernateBundle.getSessionFactory().openSession()){
+            ManagedSessionContext.bind(session);
+            session.beginTransaction();
+            StatisticConfigurationEntityDAOImpl dao = injector.getInstance(StatisticConfigurationEntityDAOImpl.class);
+            List<StatisticConfigurationEntity> allStats = dao.loadAll();
+            return Try.success(allStats);
+        } catch (Exception e) {
+            return Try.failure(e);
+        }
+    }
+
+    @Override
+    public String getName() {
+        return APP_NAME;
+    }
+
+    public Injector getInjector() {
+        return injector;
+    }
+
+    private static void configureAuthentication(Config config, Environment environment) throws UnsupportedEncodingException {
+
+        final JwtConsumer consumer = new JwtConsumerBuilder()
+                .setAllowedClockSkewInSeconds(30) // allow some leeway in validating time based claims to account for clock skew
+                .setRequireExpirationTime() // the JWT must have an expiration time
+                .setRequireSubject() // the JWT must have a subject claim
+                .setVerificationKey(new HmacKey(config.getJwtTokenSecret())) // verify the signature with the public key
+                .setRelaxVerificationKeyValidation() // relaxes key length requirement
+                .build();
+
+        environment.jersey().register(new AuthDynamicFeature(
+                new JwtAuthFilter.Builder<User>()
+                        .setJwtConsumer(consumer)
+                        .setRealm("realm")
+                        .setPrefix("Bearer")
+                        .setAuthenticator(new UserAuthenticator())
+                        .buildAuthFilter()));
+
+        environment.jersey().register(new AuthValueFactoryProvider.Binder<>(User.class));
+        environment.jersey().register(RolesAllowedDynamicFeature.class);
     }
 }
