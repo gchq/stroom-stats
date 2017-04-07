@@ -33,6 +33,15 @@ public class ProcessingStartStopIT extends AbstractAppIT {
     @Test
     public void testRunAppStopStartProcessing() {
 
+
+        //TODO do a POST to the stopProcessing task (eg. curl -X POST http://localhost:8086/admin/tasks/stopProcessing)
+        //then check it is down,
+        //then do a POST to startProcessing and check it is running
+
+//        while (true) {
+//
+//        }
+
     }
 
 }

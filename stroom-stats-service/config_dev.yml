@@ -18,12 +18,16 @@ database:
 jwtTokenSecret: bd678197-a88e-499c-b03b-62c3dd7dfd2d
 
 server:
-    type: simple
-    applicationContextPath: /
+    adminMinThreads: 1
+    adminMaxThreads: 10
     adminContextPath: /admin
-    connector:
-        type: http
-        port: 8085
+    applicationContextPath: /
+    applicationConnectors:
+        - type: http
+          port: 8085
+    adminConnectors:
+        - type: http
+          port: 8086
 
 logging:
     level: WARN

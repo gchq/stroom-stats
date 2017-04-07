@@ -46,9 +46,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 
@@ -90,7 +93,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
 
     public static final String GROUP_ID_PREFIX = "AggregationProcessor-";
 
-    public static final int EXECUTOR_SHUTDOWN_TIMEOUT_SECS = 120;
+    public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECS = 120;
 
     private final StatisticsService statisticsService;
     private final StroomPropertyService stroomPropertyService;
@@ -113,7 +116,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
     private final Optional<EventStoreTimeIntervalEnum> optNextInterval;
     private final Optional<String> optNextIntervalTopic;
     private StatAggregator statAggregator;
-
+    private Future<?> consumerFuture;
 
     private Serde<StatKey> statKeySerde;
     private Serde<StatAggregate> statAggregateSerde;
@@ -129,6 +132,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
                                           final StatisticType statisticType,
                                           final EventStoreTimeIntervalEnum aggregationInterval,
                                           final KafkaProducer<StatKey, StatAggregate> kafkaProducer,
+                                          final ExecutorService executorService,
                                           final int instanceId) {
 
         this.statisticsService = statisticsService;
@@ -137,6 +141,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
         this.aggregationInterval = aggregationInterval;
         this.instanceId = instanceId;
         this.kafkaProducer = kafkaProducer;
+        this.executorService = executorService;
 
         LOGGER.info("Building aggregation processor for type {}, aggregationInterval {}, and instance id {}",
                 statisticType, aggregationInterval, instanceId);
@@ -156,8 +161,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
 
         int maxEventIds = getMaxEventIds();
         long minBatchSize = getMinBatchSize();
-
-        executorService = Executors.newSingleThreadExecutor();
 
         kafkaConsumer = buildConsumer();
 
@@ -235,7 +238,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
     private void startProcessor() {
         runState = RunState.RUNNING;
 
-        executorService.execute(() -> {
+        consumerFuture = executorService.submit(() -> {
 
             //TODO need to share this between all aggregationInterval/statTypes as it is thread-safe and config should be consistent
 
@@ -245,7 +248,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
             consumerThreadName.set(Thread.currentThread().getName());
 
             try {
-                while (runState.equals(RunState.RUNNING)) {
+                //loop forever unless the thread is processing is stopped from outside
+                while (runState.equals(RunState.RUNNING) && !Thread.currentThread().isInterrupted()) {
                     try {
                         ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(getPollTimeoutMs());
 
@@ -278,6 +282,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
                     }
                 }
             } finally {
+                //clean up as we are shutting down this processor
+
                 //force a flush of anything in the aggregator
                 if (statAggregator != null) {
                     LOGGER.info("Forcing a flush of aggregator {}", statAggregator);
@@ -331,26 +337,35 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
                     LOGGER.info("Aggregation processor {} is already stopping", toString());
                     break;
                 case RUNNING:
-                    LOGGER.info("Stopping Aggregation processor {}", toString());
-                    runState = RunState.STOPPING;
-                    LOGGER.info("Shutting down executor service, timeout {}", EXECUTOR_SHUTDOWN_TIMEOUT_SECS);
-                    Instant start = Instant.now();
-                    executorService.shutdown();
-                    try {
-                        executorService.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SECS, TimeUnit.SECONDS);
-                        if (executorService.isTerminated()) {
-                            LOGGER.info("Executor service terminated in {}s", Duration.between(start, Instant.now()).getSeconds());
-                        } else {
-                            LOGGER.error("Executor service could not be terminated in {}s", Duration.between(start, Instant.now()).getSeconds());
-                        }
-                    } catch (InterruptedException e) {
-                        LOGGER.error("Thread {} interrupted trying to shut down executor service", Thread.currentThread().getName());
-                        Thread.currentThread().interrupt();
-                    }
+                    doStop();
                     break;
                 default:
                     throw new IllegalArgumentException("Unexpected runState " + runState);
             }
+        }
+    }
+
+    private void doStop() {
+        LOGGER.info("Stopping Aggregation processor {}", toString());
+        runState = RunState.STOPPING;
+        LOGGER.info("Shutting down executor service, timeout {}", EXECUTOR_SHUTDOWN_TIMEOUT_SECS);
+        Instant start = Instant.now();
+        consumerFuture.cancel(true);
+        try {
+            //wait for it to cleanly stop having interrupted its thread, no result to check
+            consumerFuture.get(EXECUTOR_SHUTDOWN_TIMEOUT_SECS, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            LOGGER.error("Thread {} interrupted trying to shut down executor service",
+                    Thread.currentThread().getName());
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            LOGGER.error("Error in consumer thread for processor {}: {}", this.toString(), e.getMessage(), e);
+        } catch (TimeoutException e) {
+            LOGGER.error("Executor service could not be terminated in {}s",
+                    Duration.between(start, Instant.now()).getSeconds());
+        } catch (CancellationException e) {
+            LOGGER.info("{} terminated in {}s",
+                    this.toString(), Duration.between(start, Instant.now()).getSeconds());
         }
     }
 

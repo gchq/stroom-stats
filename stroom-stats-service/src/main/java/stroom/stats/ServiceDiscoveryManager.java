@@ -19,8 +19,10 @@
 
 package stroom.stats;
 
+import com.google.common.base.Preconditions;
+import io.dropwizard.jetty.ConnectorFactory;
 import io.dropwizard.jetty.HttpConnectorFactory;
-import io.dropwizard.server.SimpleServerFactory;
+import io.dropwizard.server.DefaultServerFactory;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -36,6 +38,7 @@ import stroom.stats.config.Config;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.net.InetAddress;
+import java.util.List;
 
 @Singleton
 public class ServiceDiscoveryManager {
@@ -125,8 +128,15 @@ public class ServiceDiscoveryManager {
 
     private static int getPort(Config config){
         int port = 0;
-        SimpleServerFactory serverFactory = (SimpleServerFactory) config.getServerFactory();
-        HttpConnectorFactory connector = (HttpConnectorFactory) serverFactory.getConnector();
+        DefaultServerFactory serverFactory = (DefaultServerFactory) config.getServerFactory();
+        List<ConnectorFactory> conectorFactories = serverFactory.getApplicationConnectors();
+        if (Preconditions.checkNotNull(conectorFactories).size() != 1) {
+            throw new RuntimeException(
+                    String.format("Unexpected number of connectorFactories {}, check 'applicationConnectors' in the YAML config",
+                            conectorFactories.size()));
+        }
+
+        HttpConnectorFactory connector = (HttpConnectorFactory) conectorFactories.get(0);
         if (connector.getClass().isAssignableFrom(HttpConnectorFactory.class)) {
             port = connector.getPort();
         }

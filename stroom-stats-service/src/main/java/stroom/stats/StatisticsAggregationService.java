@@ -43,6 +43,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Singleton
 public class StatisticsAggregationService implements Startable, Stoppable {
@@ -54,6 +56,7 @@ public class StatisticsAggregationService implements Startable, Stoppable {
     private final List<StatisticsAggregationProcessor> processors = new ArrayList<>();
 
     private final KafkaProducer<StatKey, StatAggregate> kafkaProducer;
+    private final ExecutorService executorService;
 
     @Inject
     public StatisticsAggregationService(final StroomPropertyService stroomPropertyService,
@@ -66,7 +69,8 @@ public class StatisticsAggregationService implements Startable, Stoppable {
         //this assumes all processor instances have the same producer config
         kafkaProducer = buildProducer();
 
-        buildProcessors();
+        //hold an instance of the executorService in case we want to query it for a health check
+        executorService = buildProcessors();
     }
 
     @Override
@@ -85,16 +89,19 @@ public class StatisticsAggregationService implements Startable, Stoppable {
         processors.forEach(StatisticsAggregationProcessor::stop);
     }
 
-    private void buildProcessors() {
+    private ExecutorService buildProcessors() {
 
         //TODO currently each processor will spawn a thread to consume from the appropriate topic,
         //so 8 threads.  Long term we will want finer control, e.g. more threads for Count stats
         //and more for the finer granularities
 
-
-        //TODO congfigure the instance count on a per type and interval basis as some intervals/types will need
+        //TODO configure the instance count on a per type and interval basis as some intervals/types will need
         //more processing than others
         int instanceCount = 1;
+        int processorCount = StatisticType.values().length * EventStoreTimeIntervalEnum.values().length * instanceCount;
+
+        ExecutorService executorService = Executors.newFixedThreadPool(processorCount);
+
         for (StatisticType statisticType : StatisticType.values()) {
             for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
                 for (int instanceId = 0; instanceId < instanceCount; instanceId++) {
@@ -105,12 +112,14 @@ public class StatisticsAggregationService implements Startable, Stoppable {
                             statisticType,
                             interval,
                             kafkaProducer,
+                            executorService,
                             instanceId);
 
                     processors.add(processor);
                 }
             }
         }
+        return executorService;
     }
 
     private KafkaProducer<StatKey, StatAggregate> buildProducer() {
