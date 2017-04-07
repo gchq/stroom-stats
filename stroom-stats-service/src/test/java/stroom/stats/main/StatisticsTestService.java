@@ -22,9 +22,6 @@
 package stroom.stats.main;
 
 import com.google.common.collect.Iterables;
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import javaslang.control.Try;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
@@ -34,34 +31,19 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.ehcache.CacheManager;
-import org.ehcache.UserManagedCache;
-import org.ehcache.config.ResourceType;
-import org.ehcache.config.builders.ResourcePoolsBuilder;
-import org.ehcache.config.builders.UserManagedCacheBuilder;
-import org.ehcache.expiry.Duration;
-import org.ehcache.expiry.Expirations;
-import org.ehcache.spi.loaderwriter.BulkCacheLoadingException;
-import org.ehcache.spi.loaderwriter.CacheLoaderWriter;
 import stroom.query.api.DocRef;
-import stroom.query.api.ExpressionItem;
-import stroom.query.api.ExpressionOperator;
-import stroom.query.api.ExpressionOperator.Op;
-import stroom.query.api.ExpressionTerm;
-import stroom.query.api.ExpressionTerm.Condition;
 import stroom.query.api.Query;
 import stroom.query.api.SearchRequest;
-import stroom.stats.HBaseClient;
-import stroom.stats.api.StatisticEvent;
-import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
-import stroom.stats.cache.AbstractReadOnlyCacheLoaderWriter;
-import stroom.stats.common.*;
+import stroom.stats.common.FilterTermsTree;
+import stroom.stats.common.Period;
+import stroom.stats.common.SearchStatisticsCriteria;
+import stroom.stats.common.StatisticDataPoint;
+import stroom.stats.common.StatisticDataSet;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.hbase.EventStores;
-import stroom.stats.hbase.HBaseStatisticsService;
 import stroom.stats.hbase.RowKeyBuilder;
 import stroom.stats.hbase.SimpleRowKeyBuilder;
 import stroom.stats.hbase.connection.HBaseConnection;
@@ -75,7 +57,6 @@ import stroom.stats.hbase.table.HBaseUniqueIdForwardMapTable;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.hbase.util.bytes.ByteArrayUtils;
-import stroom.stats.hbase.util.bytes.UnsignedBytes;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.util.DateUtil;
@@ -89,18 +70,8 @@ import java.nio.file.Files;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Queue;
 import java.util.Random;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -111,165 +82,34 @@ public final class StatisticsTestService {
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatisticsTestService.class);
     private static final Random RANDOM = new Random();
 
-    private CacheManager statCacheManager;
     private EventStoreTableFactory eventStoreTableFactory;
     private UniqueIdCache uniqueIdCache;
     private StatisticConfigurationService statisticConfigurationService;
     private EventStores eventStores;
     // MockStroomPropertyService propertyService = new MockStroomPropertyService();
-    private HBaseClient hBaseClient;
     private StatisticsService statisticsService;
     private StroomPropertyService propertyService;
     private HBaseConnection hBaseConnection;
     private long id = 0;
 
     @Inject
-    public StatisticsTestService(final CacheManager statCacheManager,
-                                 final EventStoreTableFactory eventStoreTableFactory,
+    public StatisticsTestService(final EventStoreTableFactory eventStoreTableFactory,
                                  final UniqueIdCache uniqueIdCache,
                                  final StatisticConfigurationService statisticConfigurationService,
                                  final EventStores eventStores,
-                                 final HBaseClient hBaseClient,
                                  final StatisticsService statisticsService,
                                  final StroomPropertyService propertyService,
                                  final HBaseConnection hBaseConnection) {
-        this.statCacheManager = statCacheManager;
         this.eventStoreTableFactory = eventStoreTableFactory;
         this.uniqueIdCache = uniqueIdCache;
         this.statisticConfigurationService = statisticConfigurationService;
         this.eventStores = eventStores;
-        this.hBaseClient = hBaseClient;
         this.statisticsService = statisticsService;
         this.propertyService = propertyService;
         this.hBaseConnection = hBaseConnection;
 
     }
 
-    public void run() throws IOException {
-        setProperties();
-
-        String eventName = "DesktopLogon";
-        final Scan scan;
-        final ResultScanner scanner;
-        Writer writer;
-
-        final long from = DateUtil.parseNormalDateTimeString("2015-01-01T00:00:00.000Z");
-        final long to = DateUtil.parseNormalDateTimeString("2015-01-10T00:00:00.000Z");
-        long rangeFrom;
-        long rangeTo;
-
-        final HBaseConnection tableConfiguration = getTableConfiguration();
-
-        final EventStoreTimeIntervalEnum workingTimeInterval = EventStoreTimeIntervalEnum.HOUR;
-
-        final HBaseEventStoreTable hBaseTable = (HBaseEventStoreTable) eventStoreTableFactory.getEventStoreTable(workingTimeInterval);
-
-        // HTableInterface table =
-        // tableConfiguration.getTable(TableName.valueOf("hes"));
-        // HTableInterface uidTable =
-        // tableConfiguration.getTable(TableName.valueOf("uid"));
-
-        // clearDownTable(hBaseTable.getTable());
-        // clearDownTable(uidTable);
-        clearDownAllTables(tableConfiguration);
-
-        final RowKeyBuilder simpleRowKeyBuilder = new SimpleRowKeyBuilder(uniqueIdCache, workingTimeInterval);
-
-        LOGGER.info("Putting data");
-        // load random data into the event store tables
-        for (int i = 0; i < 100_000; i++) {
-            // Add a random number of seconds.
-            // final long time = from + RANDOM.nextInt(86_400_000);
-            final long time = from + (RANDOM.nextInt((int) ((to - from) / 1000)) * 1000);
-
-            final StatisticTag userStatisticTag = new StatisticTag("user", createUser(5));
-            final StatisticTag feedStatisticTag = new StatisticTag("feed", createFeed(5));
-            final List<StatisticTag> statisticTags = new ArrayList<StatisticTag>();
-            statisticTags.add(userStatisticTag);
-            statisticTags.add(feedStatisticTag);
-
-            final StatisticEvent event = new StatisticEvent(time, eventName, statisticTags, 1L);
-
-            LOGGER.trace("Putting event: " + event.toString());
-
-//            statisticEventStore.putEvents(Collections.singletonList(event));
-        }
-
-        // get all the results back from the hourly event store to see what we
-        // hold
-        scanAllData(hBaseTable, simpleRowKeyBuilder, EventStoreColumnFamily.COUNTS);
-
-        LOGGER.info("Scan event store for an event name and a time range");
-
-        // now do a scan of a particular time range and filtering on particular
-        // tags/values
-
-        rangeFrom = DateUtil.parseNormalDateTimeString("2010-01-01T03:00:00.000Z");
-        rangeTo = DateUtil.parseNormalDateTimeString("2010-01-01T09:00:00.000Z");
-
-        writer = Files.newBufferedWriter(new File("chartData.csv").toPath(), UTF_8);
-
-        StatisticDataSet statisticDataSet = performSearch(eventName, rangeFrom, rangeTo, null);
-
-        // dumpStatisticsData(statisticDataSet);
-
-        writer.close();
-
-        LOGGER.info("Scan event store for an event name, a time range, and particular tags");
-
-        // now do a scan of a particular time range and filtering on particular
-        // tags/values
-
-        rangeFrom = DateUtil.parseNormalDateTimeString("2010-01-01T03:00:00.000Z");
-        rangeTo = DateUtil.parseNormalDateTimeString("2010-01-01T09:00:00.000Z");
-
-        final FilterTermsTree.OperatorNode opNodeOr = new FilterTermsTree.OperatorNode(
-                FilterTermsTree.Operator.OR,
-                new FilterTermsTree.TermNode("user",  "user31"),
-                new FilterTermsTree.TermNode("feed",  "TEST-EVENTS_3"));
-
-        // if it hangs here then it is probably because you have not deployed
-        // the TagValueFilter jar onto the HBase
-        // nodes. See the blurb at the top of the TagValueFilter class.
-        statisticDataSet = performSearch(eventName, rangeFrom, rangeTo, opNodeOr);
-
-        // ########################################################################################################
-
-        LOGGER.info("Load some value data and then scan all rows");
-
-        eventName = "CPU usage";
-
-        // load random data into the event store tables
-        for (int i = 0; i < 10; i++) {
-            // Add a random number of seconds.
-            final long time = from + RANDOM.nextInt(10_000);
-
-            final StatisticTag hostStatisticTag = new StatisticTag("host", createHost(2));
-            final StatisticTag feedStatisticTag = new StatisticTag("feed", createFeed(1));
-            final List<StatisticTag> statisticTags = new ArrayList<StatisticTag>();
-            statisticTags.add(hostStatisticTag);
-            statisticTags.add(feedStatisticTag);
-
-            final double cpuPercent = RANDOM.nextDouble() * 100;
-
-            final StatisticEvent event = new StatisticEvent(time, eventName, statisticTags, cpuPercent);
-
-            LOGGER.trace("Putting event: " + event.toString());
-
-//            statisticEventStore.putEvents(Collections.singletonList(event));
-        }
-
-        scanAllData(hBaseTable, simpleRowKeyBuilder, EventStoreColumnFamily.VALUES);
-
-        rangeFrom = DateUtil.parseNormalDateTimeString("2010-01-01T00:00:00.000Z");
-        rangeTo = DateUtil.parseNormalDateTimeString("2010-01-01T01:00:00.000Z");
-
-        statisticDataSet = performSearch(eventName, rangeFrom, rangeTo, null);
-
-        ((HBaseStatisticsService) statisticsService).getEventStoresForTesting().flushAllEvents();
-
-        LOGGER.info("All done!");
-    }
 
     private StatisticDataSet performSearch(final String eventName, final long rangeFrom, final long rangeTo,
                                            final FilterTermsTree.Node additionalFilterBranch) {
@@ -310,8 +150,6 @@ public final class StatisticsTestService {
     public void runRef() {
         LOGGER.info("Started");
 
-        setProperties();
-
         final String statisticName = "ReadWriteVolumeBytes";
         long rangeFrom;
         long rangeTo;
@@ -342,388 +180,9 @@ public final class StatisticsTestService {
         LOGGER.info("All done!");
     }
 
-    public void perfTest() throws IOException, InterruptedException {
-        LOGGER.info("Started");
 
-        setProperties();
 
-        final HBaseConnection tableConfiguration = getTableConfiguration();
-        clearDownAllTables(tableConfiguration);
 
-        final List<StatisticEvent> eventList = new ArrayList<StatisticEvent>();
-
-        final long from = DateUtil.parseNormalDateTimeString("2009-01-01T00:00:00.000Z");
-
-        final BlockingQueue<StatisticEvent> eventQueue = new LinkedBlockingQueue<StatisticEvent>(100_000_000);
-
-        final ExecutorService executor = Executors.newFixedThreadPool(10);
-
-        final ScheduledExecutorService debugSnapshotScheduler = Executors.newScheduledThreadPool(1);
-
-        final UniqueIdCache uniqueIdCache = ((HBaseStatisticsService) statisticsService).getEventStoresForTesting()
-                .getUniqueIdCache();
-
-        final int itemsPutOnQueue = 10_000;
-
-        final Runnable eventCreator = new Runnable() {
-            @Override
-            public void run() {
-                int j = 0;
-                for (int i = 0; i < itemsPutOnQueue; i++) {
-                    // Add a random number of seconds.
-                    // final long time = from +
-                    // RANDOM.nextInt(Integer.MAX_VALUE);
-                    final long time = from + RANDOM.nextInt(1000 * 60 * 60 * 4);
-
-                    final StatisticTag userStatisticTag = new StatisticTag("user", createUser(3));
-                    final StatisticTag feedStatisticTag = new StatisticTag("feed", createFeed(2));
-                    final StatisticTag ipStatisticTag = new StatisticTag("ipAddress", createIP(2));
-                    final List<StatisticTag> statisticTags = new ArrayList<StatisticTag>();
-                    statisticTags.add(userStatisticTag);
-                    statisticTags.add(feedStatisticTag);
-                    statisticTags.add(ipStatisticTag);
-
-                    final StatisticEvent event = new StatisticEvent(time, "TestStatName" + RANDOM.nextInt(3),
-                            statisticTags, 1L);
-
-                    // eventList.add(event);
-                    eventQueue.add(event);
-
-                    // pre load the UI cache with all the tag values
-                    for (final StatisticTag statisticTag : statisticTags) {
-                        uniqueIdCache.getOrCreateId(statisticTag.getValue());
-                        uniqueIdCache.getOrCreateId(statisticTag.getTag());
-                    }
-                    if (++j % 100_000 == 0) {
-                        LOGGER.info("Created {} event records, queue size: {} ", j, eventQueue.size());
-                    }
-                }
-            }
-        };
-
-        // kick off the event creation
-        executor.execute(eventCreator);
-
-        // for (Event event : eventList) {
-        // // LOGGER.trace("Event: {}", event);
-        // }
-
-        // pre load the event stores and table configuration
-        try {
-            // statisticEventStore.searchStatisticsData(null);
-        } catch (final Exception e) {
-            // do nothing
-        }
-
-        LOGGER.info("Starting puts");
-        LOGGER.info(
-                "-----------------------------------------------------------------------------------------------------");
-
-        Thread.sleep(4000);
-        LOGGER.info("done sleep");
-
-        final long startTime = System.currentTimeMillis();
-
-        // doTest(eventList, executor);
-
-        final Runnable snaphotTaker = new Runnable() {
-            @Override
-            public void run() {
-                if (eventQueue != null && eventQueue.size() > 0) {
-                    LOGGER.debug(() -> String.format("Taking snapshot of event queue (size: %s):", eventQueue.size()));
-                }
-            }
-        };
-
-        final ScheduledFuture<?> snaphotTakerFuture = debugSnapshotScheduler.scheduleAtFixedRate(snaphotTaker, 10, 30,
-                TimeUnit.SECONDS);
-
-        int j = 0;
-        while (true) {
-            takeEvent(eventQueue, executor);
-            if (++j % 100_000 == 0) {
-                LOGGER.info("Given {} tasks to the executorService, queue size: {}", j, eventQueue.size());
-            }
-            if (j == itemsPutOnQueue) {
-                break;
-            }
-        }
-
-        // executor.shutdown();
-
-        // executor.awaitTermination(10, TimeUnit.MINUTES);
-
-        LOGGER.info("threads all done");
-
-        // ((StatisticsServiceImpl)
-        // statisticsService).getEventStoresForTesting().flushAllEvents();
-
-        final long runTimeSecs = (System.currentTimeMillis() - startTime);
-
-        LOGGER.info("All done! Runtime: " + runTimeSecs + "ms");
-        countAllTables(tableConfiguration);
-        // Thread.sleep(500000);
-
-    }
-
-    private void doTest(final List<StatisticEvent> eventList, final ExecutorService executor)
-            throws InterruptedException {
-        for (final StatisticEvent statisticEvent : eventList) {
-            final Runnable runnable = new Runnable() {
-                @Override
-                public void run() {
-                    // LOGGER.info("Starting thread: " +
-                    // Thread.currentThread().getName());
-//                    statisticEventStore.putEvents(Collections.singletonList(statisticEvent));
-                }
-            };
-
-            executor.execute(runnable);
-        }
-
-        executor.shutdown();
-
-        executor.awaitTermination(10, TimeUnit.MINUTES);
-    }
-
-    private void putEvent(final StatisticEvent event, final ExecutorService executor) throws InterruptedException {
-        final Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                // LOGGER.info("Starting thread: " +
-                // Thread.currentThread().getName());
-//                statisticEventStore.putEvents(Collections.singletonList(event));
-            }
-        };
-
-        executor.execute(runnable);
-
-    }
-
-    private void takeEvent(final BlockingQueue<StatisticEvent> queue, final ExecutorService executor)
-            throws InterruptedException {
-        final Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                // LOGGER.info("Starting thread: " +
-                // Thread.currentThread().getName());
-//                try {
-////                    statisticEventStore.putEvents(Collections.singletonList(queue.take()));
-//                } catch (final InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-            }
-        };
-
-        executor.execute(runnable);
-
-    }
-
-    public void cacheTest() throws IOException, InterruptedException {
-        LOGGER.info("Started");
-
-        final HBaseConnection tableConfiguration = getTableConfiguration();
-        clearDownAllTables(tableConfiguration);
-
-        final List<StatisticEvent> eventList = new ArrayList<StatisticEvent>();
-
-        final long from = DateUtil.parseNormalDateTimeString("2009-01-01T00:00:00.000Z");
-
-        final Queue<StatisticEvent> eventQueue = new LinkedBlockingQueue<StatisticEvent>();
-
-        final List<StatisticTag> allStatisticTags = new ArrayList<StatisticTag>();
-
-        LOGGER.info("Starting event building");
-
-        for (int i = 0; i < 30_000; i++) {
-            // Add a random number of seconds.
-            // final long time = from + RANDOM.nextInt(Integer.MAX_VALUE);
-            final long time = from + RANDOM.nextInt(1000 * 60 * 60 * 24 * 2);
-
-            final StatisticTag userStatisticTag = new StatisticTag("user", createUser(300));
-            final StatisticTag feedStatisticTag = new StatisticTag("feed", createFeed(100));
-            final StatisticTag ipStatisticTag = new StatisticTag("ipAddress", createIP(100));
-            final List<StatisticTag> tagValues = new ArrayList<StatisticTag>();
-            tagValues.add(userStatisticTag);
-            tagValues.add(feedStatisticTag);
-            tagValues.add(ipStatisticTag);
-
-            final StatisticEvent event = new StatisticEvent(time, "TestStatName", tagValues, 1L);
-
-            eventList.add(event);
-            // eventQueue.add(event);
-
-            allStatisticTags.addAll(tagValues);
-
-        }
-
-        LOGGER.info("allTagValues size:" + allStatisticTags.size());
-
-        // Thread.sleep(15000);
-
-        long startTime = System.currentTimeMillis();
-
-        LOGGER.info("Starting preloading");
-        // pre load the UI cache with all the tag values
-        for (final StatisticTag statisticTag : allStatisticTags) {
-            ((HBaseStatisticsService) statisticsService).getEventStoresForTesting().getUniqueIdCache()
-                    .getOrCreateId(statisticTag.getValue());
-            ((HBaseStatisticsService) statisticsService).getEventStoresForTesting().getUniqueIdCache()
-                    .getOrCreateId(statisticTag.getTag());
-        }
-
-        LOGGER.info("Preloading finished in " + (System.currentTimeMillis() - startTime) + "ms");
-
-        LOGGER.info("EHCache size:" + ((HBaseStatisticsService) statisticsService).getEventStoresForTesting()
-                .getUniqueIdCache().getCacheSize());
-
-        // Thread.sleep(40_000);
-
-        LOGGER.info("Starting cache test");
-
-        final UniqueIdCache uniqueIdCache = ((HBaseStatisticsService) statisticsService).getEventStoresForTesting()
-                .getUniqueIdCache();
-
-        startTime = System.currentTimeMillis();
-
-        for (final StatisticTag statisticTag : allStatisticTags) {
-            uniqueIdCache.getOrCreateId(statisticTag.getValue());
-            uniqueIdCache.getOrCreateId(statisticTag.getTag());
-        }
-
-        LOGGER.info("Cache test finished in " + (System.currentTimeMillis() - startTime) + "ms");
-
-        // Thread.sleep(2_000_000);
-
-        LOGGER.info("EHCache size:" + ((HBaseStatisticsService) statisticsService).getEventStoresForTesting()
-                .getUniqueIdCache().getCacheSize());
-
-        LOGGER.info("Load into hashmap");
-
-        startTime = System.currentTimeMillis();
-
-        final Map<String, byte[]> hashMapCache = new HashMap<>();
-
-        final int width = 3;
-
-        for (final StatisticTag statisticTag : allStatisticTags) {
-            byte[] bNewId = new byte[width];
-            UnsignedBytes.put(bNewId, 0, width, nextId());
-
-            hashMapCache.put(statisticTag.getTag(), bNewId);
-
-            bNewId = new byte[width];
-            UnsignedBytes.put(bNewId, 0, width, nextId());
-
-            hashMapCache.put(statisticTag.getValue(), bNewId);
-        }
-
-        LOGGER.info("Hashmap load finished in " + (System.currentTimeMillis() - startTime) + "ms");
-
-        LOGGER.info("hashMapCache size:" + hashMapCache.size());
-
-        LOGGER.info("Get from hashmap");
-
-        startTime = System.currentTimeMillis();
-
-        for (final StatisticTag statisticTag : allStatisticTags) {
-            hashMapCache.get(statisticTag.getTag());
-            hashMapCache.get(statisticTag.getValue());
-        }
-
-        LOGGER.info("Hashmap get finished in " + (System.currentTimeMillis() - startTime) + "ms");
-
-        LOGGER.info("Put to new EHCache");
-
-        startTime = System.currentTimeMillis();
-
-        UserManagedCache<String, byte[]> cache = UserManagedCacheBuilder.newUserManagedCacheBuilder(String.class, byte[].class)
-                .withResourcePools(ResourcePoolsBuilder.heap(1000000))
-                .withExpiry(Expirations.timeToLiveExpiration(Duration.of(600, TimeUnit.SECONDS)))
-                .withExpiry(Expirations.timeToIdleExpiration(Duration.of(3600, TimeUnit.SECONDS)))
-                .build(true);
-
-
-        for (final StatisticTag statisticTag : allStatisticTags) {
-            byte[] bNewId = new byte[width];
-            UnsignedBytes.put(bNewId, 0, width, nextId());
-
-            cache.put(statisticTag.getTag(), bNewId);
-
-            bNewId = new byte[width];
-            UnsignedBytes.put(bNewId, 0, width, nextId());
-
-            cache.put(statisticTag.getValue(), bNewId);
-        }
-
-        LOGGER.info("New EHCache Put finished in " + (System.currentTimeMillis() - startTime) + "ms");
-
-        LOGGER.info("hashMapCache size:" + cache.getRuntimeConfiguration().getResourcePools().getPoolForResource(ResourceType.Core.HEAP).getSize());
-
-        LOGGER.info("Get from new EHCache");
-
-        startTime = System.currentTimeMillis();
-
-        for (final StatisticTag statisticTag : allStatisticTags) {
-            cache.get(statisticTag.getTag());
-
-            cache.get(statisticTag.getValue());
-        }
-
-        LOGGER.info("New EHCache get finished in " + (System.currentTimeMillis() - startTime) + "ms");
-
-        LOGGER.info("Put to new selfPopEHCache");
-
-        startTime = System.currentTimeMillis();
-
-        CacheLoaderWriter<String, byte[]> loaderWriter = new AbstractReadOnlyCacheLoaderWriter<String, byte[]>() {
-            @Override
-            public byte[] load(final String key) throws Exception {
-                final byte[] bNewId = new byte[width];
-                UnsignedBytes.put(bNewId, 0, width, nextId());
-                return bNewId;
-            }
-
-            @Override
-            public Map<String, byte[]> loadAll(final Iterable<? extends String> keys) throws BulkCacheLoadingException, Exception {
-                throw new UnsupportedOperationException(String.format("Unsupported"));
-            }
-        };
-
-        UserManagedCache<String, byte[]> selfPopCache = UserManagedCacheBuilder.newUserManagedCacheBuilder(String.class, byte[].class)
-                .withResourcePools(ResourcePoolsBuilder.heap(1000000))
-                .withExpiry(Expirations.timeToLiveExpiration(Duration.of(600, TimeUnit.SECONDS)))
-                .withExpiry(Expirations.timeToIdleExpiration(Duration.of(3600, TimeUnit.SECONDS)))
-                .withLoaderWriter(loaderWriter)
-                .build(true);
-
-
-        for (final StatisticTag statisticTag : allStatisticTags) {
-            selfPopCache.get(statisticTag.getTag());
-
-            selfPopCache.get(statisticTag.getValue());
-        }
-
-        LOGGER.info("New selfPopEHCache Put finished in " + (System.currentTimeMillis() - startTime) + "ms");
-
-        LOGGER.info("selfPopEHCache size:" + selfPopCache.getRuntimeConfiguration().getResourcePools().getPoolForResource(ResourceType.Core.HEAP).getSize());
-
-        LOGGER.info("Get from new selfPopEHCache");
-
-        startTime = System.currentTimeMillis();
-
-        for (final StatisticTag statisticTag : allStatisticTags) {
-            final byte[] t = selfPopCache.get(statisticTag.getTag());
-            final byte[] v = selfPopCache.get(statisticTag.getValue());
-        }
-
-        LOGGER.info("New selfPopEHCache get finished in " + (System.currentTimeMillis() - startTime) + "ms");
-
-        LOGGER.info("Done");
-
-        // Thread.sleep(300000);
-
-    }
 
     private long nextId() {
         return this.id++;
@@ -1032,46 +491,6 @@ public final class StatisticsTestService {
         return new HBaseConnection(propertyService);
     }
 
-    private void setProperties() {
-        //
-        // propertyService.setGlobalProperty(CommonStatisticConstants.STROOM_STATISTIC_ENGINES_PROPERTY_NAME,
-        // "hbase");
-        //
-        // propertyService.setGlobalProperty(HBaseStatisticConstants.THREAD_SPECIFIC_MEM_STORE_MAX_SIZE_PROPERTY_NAME,
-        // Integer.toString(500));
-        //
-        // propertyService
-        // .setGlobalProperty(HBaseStatisticConstants.THREAD_SPECIFIC_MEM_STORE_TIMEOUT_MS_PROPERTY_NAME,
-        // Long.toString(1000 * 60 * 2));
-        //
-        // propertyService.setGlobalProperty(HBaseStatisticConstants.THREAD_SPECIFIC_MEM_STORE_ID_POOL_SIZE_PROPERTY_NAME,
-        // Integer.toString(4));
-        //
-        // propertyService.setGlobalProperty(HBaseStatisticConstants.NODE_SPECIFIC_MEM_STORE_MAX_SIZE_PROPERTY_NAME,
-        // Integer.toString(2_000));
-        // propertyService.setGlobalProperty(HBaseStatisticConstants.NODE_SPECIFIC_MEM_STORE_TIMEOUT_MS_PROPERTY_NAME,
-        // Long.toString(1000 * 60 *
-        // 2));
-        //
-        // propertyService.setGlobalProperty(HBaseStatisticConstants.DATA_STORE_PUT_BUFFER_MAX_SIZE_PROPERTY_NAME,
-        // Integer.toString(1_000_000));
-        // propertyService.setGlobalProperty(HBaseStatisticConstants.DATA_STORE_PUT_BUFFER_TAKE_COUNT_PROPERTY_NAME,
-        // Integer.toString(100));
-    }
-
-    public static void main(final String[] args) throws Exception {
-
-        final Injector injector = Guice.createInjector(new AbstractModule() {
-            @Override
-            protected void configure() {
-                bind(StatisticsTestService.class);
-            }
-        });
-
-        final StatisticsTestService statisticsTestServiceBean = injector.getInstance(StatisticsTestService.class);
-
-        statisticsTestServiceBean.run();
-    }
 
     private SearchRequest wrapQuery(Query query) {
         return new SearchRequest(null, query, Collections.emptyList(), ZoneOffset.UTC.getId(), false);

@@ -26,9 +26,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticTag;
-import stroom.stats.api.TimeAgnosticStatisticEvent;
 import stroom.stats.common.RollUpBitMaskUtil;
-import stroom.stats.common.RolledUpStatisticEvent;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.hbase.structure.CellQualifier;
 import stroom.stats.hbase.structure.ColumnQualifier;
@@ -41,9 +39,7 @@ import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.StatKey;
 import stroom.stats.util.DateUtil;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -68,62 +64,6 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
         LOGGER.trace("Initialising SimpleRowKeyBuilder");
         this.uniqueIdCache = uniqueIdCache;
         this.timeInterval = timeInterval;
-    }
-
-    // @Override
-    // private CellQualifier buildCellQualifier(final StatisticEvent
-    // statisticEvent) {
-    //
-    // /** Get uid for the event name */
-    // final byte[] nameUid =
-    // uniqueIdCache.getOrCreateId(statisticEvent.getName());
-    //
-    // final byte[] partialTimestamp =
-    // buildPartialTimestamp(statisticEvent.getTimeMs());
-    //
-    // // final List<Obj> objects = new ArrayList<Obj>(event.getObjects());
-    // // /** Sort the objects by type name to ensure predictability. */
-    // // Collections.sort(objects, new Comparator<Obj>() {
-    // // @Override
-    // // public int compare(final Obj o1, final Obj o2) {
-    // // return o1.getType().compareTo(o2.getType());
-    // // }
-    // // });
-    //
-    // final List<RowKeyTagValue> tagValuePairs =
-    // TagValueConverter.convert(statisticEvent.getTagList(),
-    // uniqueIdCache);
-    //
-    // final byte[] columnQualifier =
-    // buildColumnQualifier(statisticEvent.getTimeMs());
-    //
-    // final byte[] rollUpBitMask =
-    // buildRollUpBitMask(statisticEvent.getTagList());
-    //
-    // // construct the row key
-    // final RowKey rowKey = new RowKey(nameUid, rollUpBitMask,
-    // partialTimestamp, tagValuePairs);
-    //
-    // final CellQualifier cellQualifier = new CellQualifier(rowKey,
-    // columnQualifier,
-    // this.timeInterval.roundTimeToColumnInterval(statisticEvent.getTimeMs()));
-    //
-    // return cellQualifier;
-    // }
-
-    @Override
-    public List<CellQualifier> buildCellQualifiers(final RolledUpStatisticEvent rolledUpStatisticEvent) {
-        final List<CellQualifier> cellQualifiers = new ArrayList<>();
-
-        for (final TimeAgnosticStatisticEvent timeAgnosticStatisticEvent : rolledUpStatisticEvent) {
-            final TimeAgnosticRowKey timeAgnosticRowKey = buildTimeAgnosticRowKey(timeAgnosticStatisticEvent);
-
-            final CellQualifier cellQualifier = buildCellQualifier(rolledUpStatisticEvent.getTimeMs(),
-                    timeAgnosticStatisticEvent, timeAgnosticRowKey);
-
-            cellQualifiers.add(cellQualifier);
-        }
-        return cellQualifiers;
     }
 
     @Override
@@ -159,41 +99,6 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
         return new RowKey(timeAgnosticRowKey, partialTimestamp);
     }
 
-    protected CellQualifier buildCellQualifier(final long timeMs,
-                                               final TimeAgnosticStatisticEvent timeAgnosticStatisticEvent, final TimeAgnosticRowKey timeAgnosticRowKey) {
-        // final byte[] rollUpBitMask =
-        // buildRollUpBitMask(timeAgnosticStatisticEvent.getTagList());
-
-        final byte[] partialTimestamp = buildPartialTimestamp(timeMs);
-
-        final ColumnQualifier columnQualifier = buildColumnQualifier(timeMs);
-
-        // construct the row key
-        final RowKey rowKey = new RowKey(timeAgnosticRowKey, partialTimestamp);
-
-        // build the cell qualifier rounding the event time to granularity of
-        // the column interval
-        final CellQualifier cellQualifier = new CellQualifier(rowKey, columnQualifier,
-                this.timeInterval.truncateTimeToColumnInterval(timeMs));
-
-        return cellQualifier;
-    }
-
-    // @Override
-    // public CellQualifier buildCellQualifier(final String eventName, final
-    // RollUpBitMask rollUpBitMask,
-    // final long rangeStartTime) {
-    // /** Get uid for the event name */
-    // final byte[] nameUid = uniqueIdCache.getUniqueId(eventName);
-    //
-    // final byte[] partialTimestamp = buildPartialTimestamp(rangeStartTime);
-    // final byte[] columnQualifier = buildColumnQualifier(rangeStartTime);
-    //
-    // return new CellQualifier(new RowKey(nameUid, rollUpBitMask.asBytes(),
-    // partialTimestamp,
-    // Collections.<RowKeyTagValue> emptyList()), columnQualifier,
-    // rangeStartTime);
-    // }
 
     @Override
     public CellQualifier buildCellQualifier(final RowKey rowKey, final ColumnQualifier columnQualifier) {
@@ -308,51 +213,6 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
             sb.append("]");
         }
         return sb.toString();
-    }
-
-    @Override
-    public TimeAgnosticRowKey buildTimeAgnosticRowKey(final TimeAgnosticStatisticEvent event) {
-        // Get uid for the event name.
-        final UID nameUid = uniqueIdCache.getOrCreateId(event.getName());
-
-        final List<RowKeyTagValue> tagValuePairs = new ArrayList<>();
-
-        // loop through all the objects in the event and convert them into
-        // tagValue pairs
-        for (final StatisticTag statisticTag : event.getTagList()) {
-            final String value;
-
-            // if we have a null value replace it with string representation of
-            // a null so it can be search for in the UI
-            // cache.
-            if (statisticTag.getValue() == null || statisticTag.getValue().equals(""))
-                value = StatisticTag.NULL_VALUE_STRING;
-            else
-                value = statisticTag.getValue();
-
-            // Get uid for obj type.
-            final UID tagUid = uniqueIdCache.getOrCreateId(statisticTag.getTag());
-            // Get uid for obj name.
-            final UID valueUid = uniqueIdCache.getOrCreateId(value);
-            tagValuePairs.add(new RowKeyTagValue(tagUid, valueUid));
-        }
-
-        // we need to sort the tagValue pairs in their byte form so that they
-        // are always in the same order in the row key
-        // this means we can make optimisations when searching the data
-        Collections.sort(tagValuePairs, new Comparator<RowKeyTagValue>() {
-            @Override
-            public int compare(final RowKeyTagValue pair1, final RowKeyTagValue pair2) {
-                return Bytes.compareTo(pair1.asByteArray(), pair2.asByteArray());
-            }
-        });
-
-        final byte[] rollUpBitMask = buildRollUpBitMask(event.getTagList());
-
-        // construct the row key
-        final TimeAgnosticRowKey timeAgnosticRowKey = new TimeAgnosticRowKey(nameUid, rollUpBitMask, tagValuePairs);
-
-        return timeAgnosticRowKey;
     }
 
     private byte[] buildPartialTimestamp(final long time) {

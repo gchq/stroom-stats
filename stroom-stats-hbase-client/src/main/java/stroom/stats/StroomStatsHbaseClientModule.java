@@ -31,8 +31,6 @@ import stroom.stats.cluster.ClusterLockServiceImpl;
 import stroom.stats.common.StatisticConfigurationValidator;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.hbase.HBaseStatisticsService;
-import stroom.stats.hbase.RowKeyCache;
-import stroom.stats.hbase.RowKeyCacheImpl;
 import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.table.HBaseEventStoreTableFactory;
 import stroom.stats.hbase.table.HBaseUniqueIdForwardMapTable;
@@ -61,7 +59,6 @@ public class StroomStatsHbaseClientModule extends AbstractModule {
         bind(CacheConfigurationService.class).to(CacheConfigurationServiceImpl.class);
         bind(CacheFactory.class).to(CacheFactoryImpl.class);
         bind(ClusterLockService.class).to(ClusterLockServiceImpl.class);
-        bind(RowKeyCache.class).to(RowKeyCacheImpl.class);
         bind(StatisticConfigurationValidator.class).to(StatisticConfigurationValidatorImpl.class);
         bind(StatisticsService.class).to(HBaseStatisticsService.class);
         bind(TaskManager.class).to(TaskManagerImpl.class);
