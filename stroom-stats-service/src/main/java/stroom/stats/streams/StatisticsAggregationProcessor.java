@@ -40,6 +40,7 @@ import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatKeySerde;
 import stroom.stats.util.logging.LambdaLogger;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,6 +48,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 
@@ -88,6 +90,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
 
     public static final String GROUP_ID_PREFIX = "AggregationProcessor-";
 
+    public static final int EXECUTOR_SHUTDOWN_TIMEOUT_SECS = 120;
+
     private final StatisticsService statisticsService;
     private final StroomPropertyService stroomPropertyService;
     private final StatisticType statisticType;
@@ -101,6 +105,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
     //used for thread synchronization
     private final Object startStopMonitor = new Object();
 
+    private final ExecutorService executorService;
     private final KafkaConsumer<StatKey, StatAggregate> kafkaConsumer;
     private final KafkaProducer<StatKey, StatAggregate> kafkaProducer;
     private final String inputTopic;
@@ -152,6 +157,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
         int maxEventIds = getMaxEventIds();
         long minBatchSize = getMinBatchSize();
 
+        executorService = Executors.newSingleThreadExecutor();
 
         kafkaConsumer = buildConsumer();
 
@@ -229,7 +235,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
     private void startProcessor() {
         runState = RunState.RUNNING;
 
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
 
             //TODO need to share this between all aggregationInterval/statTypes as it is thread-safe and config should be consistent
@@ -238,8 +243,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
                     statisticType, aggregationInterval, inputTopic, optNextIntervalTopic.orElse("None"));
 
             consumerThreadName.set(Thread.currentThread().getName());
-
-            final Instant lastCommitTime = Instant.now();
 
             try {
                 while (runState.equals(RunState.RUNNING)) {
@@ -276,7 +279,10 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
                 }
             } finally {
                 //force a flush of anything in the aggregator
-                flushAggregator(statAggregator);
+                if (statAggregator != null) {
+                    LOGGER.info("Forcing a flush of aggregator {}", statAggregator);
+                    flushAggregator(statAggregator);
+                }
                 kafkaConsumer.commitSync();
                 kafkaConsumer.close();
                 runState = RunState.STOPPED;
@@ -302,11 +308,14 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
     private void flushAggregator(StatAggregator statAggregator) {
         //flush all the aggregated stats down to the StatStore and onto the next biggest aggregationInterval topic
         //(if there is one) for coarser aggregation
-        flushToStatStore(statisticType, statAggregator);
+        if (statAggregator != null) {
+            LOGGER.trace("Flushing aggregator {}", statAggregator);
 
-        optNextInterval.ifPresent(nextInterval ->
-                flushToTopic(statAggregator, optNextIntervalTopic.get(), nextInterval, kafkaProducer));
+            flushToStatStore(statisticType, statAggregator);
 
+            optNextInterval.ifPresent(nextInterval ->
+                    flushToTopic(statAggregator, optNextIntervalTopic.get(), nextInterval, kafkaProducer));
+        }
     }
 
 
@@ -324,6 +333,20 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
                 case RUNNING:
                     LOGGER.info("Stopping Aggregation processor {}", toString());
                     runState = RunState.STOPPING;
+                    LOGGER.info("Shutting down executor service, timeout {}", EXECUTOR_SHUTDOWN_TIMEOUT_SECS);
+                    Instant start = Instant.now();
+                    executorService.shutdown();
+                    try {
+                        executorService.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SECS, TimeUnit.SECONDS);
+                        if (executorService.isTerminated()) {
+                            LOGGER.info("Executor service terminated in {}s", Duration.between(start, Instant.now()).getSeconds());
+                        } else {
+                            LOGGER.error("Executor service could not be terminated in {}s", Duration.between(start, Instant.now()).getSeconds());
+                        }
+                    } catch (InterruptedException e) {
+                        LOGGER.error("Thread {} interrupted trying to shut down executor service", Thread.currentThread().getName());
+                        Thread.currentThread().interrupt();
+                    }
                     break;
                 default:
                     throw new IllegalArgumentException("Unexpected runState " + runState);

@@ -97,4 +97,15 @@ class StatAggregator {
 
         return buffer;
     }
+
+    @Override
+    public String toString() {
+        return "StatAggregator{" +
+                "minSize=" + minSize +
+                ", maxEventIds=" + maxEventIds +
+                ", expiredTime=" + expiredTime +
+                ", aggregationInterval=" + aggregationInterval +
+                ", current size=" + buffer.size() +
+                '}';
+    }
 }

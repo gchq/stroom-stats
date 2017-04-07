@@ -72,7 +72,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Star
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, appId);
 
         //TODO need to specify number of threads in the yml as it could be box specific
-        int streamThreads = stroomPropertyService.getIntProperty(StatisticsIngestService.PROP_KEY_KAFKA_STREAM_THREADS, 1);
+        int streamThreads = getStreamThreads();
         props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, streamThreads);
 
         StreamsConfig streamsConfig = buildStreamsConfig(appId, props);
@@ -92,11 +92,8 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Star
     private StreamsConfig buildStreamsConfig(String appId, final Map<String, Object> additionalProps) {
         Map<String, Object> props = new HashMap<>();
 
-        String kafkaBootstrapServers = stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS);
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootstrapServers);
-
-        long commitIntervalMs = stroomPropertyService.getLongProperty(StatisticsIngestService.PROP_KEY_KAFKA_COMMIT_INTERVAL_MS, 30_000);
-        props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, commitIntervalMs);
+        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, getKafkaBootstrapServers());
+        props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, getStreamsCommitIntervalMs());
 
         //TODO not clear if this is needed for not. Normal Kafka doesn't need it but streams may do
         //leaving it in seems to cause zookeeper connection warnings in the tests.  Tests seem to work ok
@@ -132,6 +129,18 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Star
         return TopicNameFactory.getStatisticTypedName(prefix, statisticType);
     }
 
+    private int getStreamThreads() {
+        return stroomPropertyService.getIntProperty(StatisticsIngestService.PROP_KEY_KAFKA_STREAM_THREADS, 1);
+    }
+
+    private long getStreamsCommitIntervalMs() {
+        return stroomPropertyService.getLongProperty(StatisticsIngestService.PROP_KEY_KAFKA_COMMIT_INTERVAL_MS, 30_000);
+    }
+
+    private String getKafkaBootstrapServers() {
+        return stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS);
+    }
+
     @Override
     public void stop() {
 
@@ -144,7 +153,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Star
     public void start() {
 
         kafkaStreams.start();
-        LOGGER.info("Started processor {} for input topic {}", appId, inputTopic);
+        LOGGER.info("Started processor {} for input topic {} with {} stream threads", appId, inputTopic, getStreamThreads());
 
     }
 }

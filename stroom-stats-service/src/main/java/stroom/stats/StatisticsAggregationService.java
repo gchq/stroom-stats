@@ -97,7 +97,7 @@ public class StatisticsAggregationService implements Startable, Stoppable {
         int instanceCount = 1;
         for (StatisticType statisticType : StatisticType.values()) {
             for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
-                for (int instanceId = 0; instanceId <= instanceCount; instanceId++) {
+                for (int instanceId = 0; instanceId < instanceCount; instanceId++) {
 
                     StatisticsAggregationProcessor processor = new StatisticsAggregationProcessor(
                             statisticsService,
