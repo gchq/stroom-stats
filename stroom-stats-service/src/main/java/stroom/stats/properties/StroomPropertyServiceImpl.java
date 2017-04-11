@@ -123,6 +123,8 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
             if (stat == null) {
                 LOGGER.info("Creating property {} with value {}", name, defaultValue);
                 curatorFramework.create().forPath(fullPath, Bytes.toBytes(defaultValue));
+            } else {
+                LOGGER.debug(() -> String.format("Property %s already exists so leaving it as is", name));
             }
         } catch (Exception e) {
             throw new RuntimeException(String.format("Unable to set property %s with value %s", name, defaultValue),e);

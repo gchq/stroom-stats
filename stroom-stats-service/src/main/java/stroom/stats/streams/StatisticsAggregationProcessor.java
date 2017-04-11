@@ -193,7 +193,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private Map<StatKey, StatAggregate> flushToStatStore(final StatisticType statisticType, final StatAggregator statAggregator) {
 
         Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.getAggregates();
-        LOGGER.trace(() -> String.format("Flushing %s events of type %s, aggregationInterval %s to the StatisticsService",
+        LOGGER.debug(() -> String.format("Flushing %s events of type %s, aggregationInterval %s to the StatisticsService",
                 aggregatedEvents.size(), statisticType, statAggregator.getAggregationInterval()));
 
         statisticsService.putAggregatedEvents(statisticType, statAggregator.getAggregationInterval(), aggregatedEvents);
@@ -208,8 +208,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         Preconditions.checkNotNull(statAggregator);
         Preconditions.checkNotNull(producer);
 
-        LOGGER.trace(() -> String.format("Flushing %s records with new aggregationInterval %s to topic %s",
-                statAggregator.size(), newInterval, topic));
+        LOGGER.debug(() -> String.format("Flushing %s records from interval %s with new interval %s to topic %s",
+                statAggregator.size(), statAggregator.getAggregationInterval(), newInterval, topic));
 
         //Uplift the statkey to the new aggregationInterval and put it on the topic
         //We will not be trying to uplift the statKey if we are already at the highest aggregationInterval
@@ -245,10 +245,10 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                 try {
                     ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(getPollTimeoutMs());
 
-                    LOGGER.ifTraceIsEnabled(() -> {
+                    LOGGER.ifDebugIsEnabled(() -> {
                         int recCount = records.count();
                         if (recCount > 0) {
-                            LOGGER.trace("Received {} records from topic {}", records.count(), inputTopic);
+                            LOGGER.debug("Received {} records from topic {}", recCount, inputTopic);
                         }
                     });
 
@@ -302,6 +302,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                 return false;
             } else {
                 flushAggregator(statAggregator);
+                //null the reference ready for new aggregates
+                statAggregator = null;
                 return true;
             }
         }
@@ -406,10 +408,22 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     public HealthCheck.Result check() {
         switch (runState) {
             case RUNNING:
-                return HealthCheck.Result.healthy(runState.toString());
+                return HealthCheck.Result.healthy(produceHealthCheckSummary());
             default:
                 return HealthCheck.Result.unhealthy(runState.toString());
         }
+    }
+
+    private String produceHealthCheckSummary() {
+
+        //TODO accessing the variables in statAggregator is not safe as we are outside the thread that is mutating
+        //the aggregator, may be sufficient for a health check peek.
+        return String.format("%s - buffer input count: %s, size: %s, %% reduction: %.2f, expiredTime: %s",
+                runState,
+                (statAggregator == null ? "null" : statAggregator.getInputCount()),
+                (statAggregator == null ? "null" : statAggregator.size()),
+                (statAggregator == null ? 0 : statAggregator.getReductionPercentage()),
+                (statAggregator == null ? "null" :statAggregator.getExpiredTime().toString()));
     }
 
     public int getInstanceId() {

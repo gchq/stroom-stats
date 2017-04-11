@@ -39,6 +39,7 @@ class StatAggregator {
     private final int maxEventIds;
     private final Instant expiredTime;
     private final EventStoreTimeIntervalEnum aggregationInterval;
+    private int inputCount = 0;
 
 
     public StatAggregator(final int minSize,
@@ -46,7 +47,7 @@ class StatAggregator {
                           final EventStoreTimeIntervalEnum aggregationInterval,
                           final long timeToLiveMs) {
         //initial size to avoid it rehashing. x1.2 to allow for it going a bit over the min value
-        this.buffer = new HashMap<>((int)Math.ceil((minSize * 1.2) / 0.75));
+        this.buffer = new HashMap<>((int) Math.ceil((minSize * 1.2) / 0.75));
         this.minSize = minSize;
         this.maxEventIds = maxEventIds;
         this.expiredTime = Instant.now().plusMillis(timeToLiveMs);
@@ -57,7 +58,7 @@ class StatAggregator {
      * Add a single key/aggregate pair into the aggregator. The aggregate will be aggregated
      * with any existing aggregates for that {@link StatKey}
      */
-    public void add(final StatKey statKey, final StatAggregate statAggregate){
+    public void add(final StatKey statKey, final StatAggregate statAggregate) {
 
         Preconditions.checkNotNull(statKey);
         Preconditions.checkNotNull(statAggregate);
@@ -69,6 +70,8 @@ class StatAggregator {
         //The passed StatKey will already have its time truncated to the interval of this aggregator
         //so we don't need to do anything to it.
 
+        inputCount++;
+
         //aggregate the passed aggregate and key into the existing aggregates
         buffer.merge(
                 statKey,
@@ -78,6 +81,22 @@ class StatAggregator {
 
     public int size() {
         return buffer.size();
+    }
+
+    public int getInputCount() {
+        return inputCount;
+    }
+
+    public Instant getExpiredTime() {
+        return expiredTime;
+    }
+
+    public double getReductionPercentage() {
+        if (buffer.isEmpty()) {
+            return 0;
+        } else {
+            return (double) buffer.size() / inputCount * 100;
+        }
     }
 
     public boolean isEmpty() {
@@ -106,6 +125,7 @@ class StatAggregator {
                 ", expiredTime=" + expiredTime +
                 ", aggregationInterval=" + aggregationInterval +
                 ", current size=" + buffer.size() +
+                ", inputCount=" + inputCount +
                 '}';
     }
 }

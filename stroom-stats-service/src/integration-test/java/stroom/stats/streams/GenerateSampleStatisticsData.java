@@ -20,6 +20,8 @@
 package stroom.stats.streams;
 
 import javaslang.Tuple2;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticRollUpType;
@@ -43,6 +45,8 @@ import java.util.stream.Collectors;
 
 public class GenerateSampleStatisticsData {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(GenerateSampleStatisticsData.class);
+
     public static final String TAG_USER = "user";
     public static final String TAG_COLOUR = "colour";
     public static final String TAG_STATE = "state";
@@ -53,6 +57,7 @@ public class GenerateSampleStatisticsData {
 
     // 52,000 is just over 3 days at 5000ms intervals
     private static final int ITERATION_COUNT = 52_000;
+//    private static final int ITERATION_COUNT = 5;
     private static final int EVENT_TIME_DELTA_MS = 5000;
 
     private static final String COLOUR_RED = "Red";
@@ -158,6 +163,7 @@ public class GenerateSampleStatisticsData {
             eventTime = eventTime.plus(EVENT_TIME_DELTA_MS, ChronoUnit.MILLIS);
         }
 
+        LOGGER.info("Returning {} statistic events", statisticList.size());
         return statisticList;
     }
 }

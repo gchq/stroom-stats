@@ -32,7 +32,8 @@ server:
 logging:
     level: WARN
     loggers:
-        stroom.stats: INFO
+        stroom.stats: DEBUG
+#        stroom.stats.streams.StatisticsAggregationProcessor: TRACE
 #        stroom.stats.streams.FullEndToEndIT: TRACE
 #        stroom.stats.hbase.table.HBaseEventStoreTable: TRACE
         org.ehcache: INFO

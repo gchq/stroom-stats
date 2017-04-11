@@ -44,6 +44,7 @@ import stroom.stats.schema.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.StatisticConfigurationEntityHelper;
 import stroom.stats.xml.StatisticsMarshaller;
+import stroom.util.thread.ThreadUtil;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -90,6 +91,10 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
         //create stat configs and put the test data on the topics
         loadData();
 
+        while (true) {
+            ThreadUtil.sleep(100);
+        }
+
     }
 
     private void loadData() {
@@ -113,7 +118,10 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
             persistStatConfig(testData._1());
 
             String inputTopic = INPUT_TOPICS_MAP.get(statisticType);
-            testData._2().forEach(statisticsObj -> {
+            List<Statistics> testEvents = testData._2();
+
+            LOGGER.info("Sending {} events of type {} to topic {}", testEvents.size(), statisticType, inputTopic);
+            testEvents.forEach(statisticsObj -> {
                 ProducerRecord<String, String> producerRecord = buildProducerRecord(
                         inputTopic,
                         statisticsObj,
