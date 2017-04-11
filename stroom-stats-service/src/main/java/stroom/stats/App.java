@@ -45,6 +45,8 @@ import stroom.stats.config.Config;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticConfigurationEntityDAOImpl;
 import stroom.stats.configuration.common.Folder;
+import stroom.stats.mixins.HasHealthCheck;
+import stroom.stats.streams.StatisticsFlatMappingService;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.tasks.StartProcessingTask;
 import stroom.stats.tasks.StopProcessingTask;
@@ -129,6 +131,21 @@ public class App extends Application<Config> {
         registerHealthCheck(environment, "ServiceDiscoveryManager_StroomDB",
                 () -> injector.getInstance(ServiceDiscoveryManagerHealthCheck.class).getKafkaHealth());
 
+        registerHealthCheck(environment, "StatisticsFlatMappingService",
+                () -> injector.getInstance(StatisticsFlatMappingService.class).check());
+
+        StatisticsFlatMappingService statisticsFlatMappingService = injector.getInstance(StatisticsFlatMappingService.class);
+        registerHealthCheck(environment, statisticsFlatMappingService);
+
+        statisticsFlatMappingService.getHealthCheckProviders()
+                .forEach(hasHealthCheck -> registerHealthCheck(environment, hasHealthCheck));
+
+        StatisticsAggregationService statisticsAggregationService = injector.getInstance(StatisticsAggregationService.class);
+        registerHealthCheck(environment, statisticsAggregationService);
+
+        statisticsAggregationService.getHealthCheckProviders()
+                .forEach(hasHealthCheck -> registerHealthCheck(environment, hasHealthCheck));
+
     }
 
     private void registerHealthCheck(final Environment environment,
@@ -141,6 +158,19 @@ public class App extends Application<Config> {
             @Override
             protected Result check() throws Exception {
                 return healthCheckResultSupplier.get();
+            }
+        });
+    }
+
+    private void registerHealthCheck(final Environment environment,
+                                     final HasHealthCheck hasHealthCheck) {
+
+        LOGGER.info("Registering health check with name {}", hasHealthCheck.getName());
+
+        environment.healthChecks().register(hasHealthCheck.getName(), new HealthCheck() {
+            @Override
+            protected Result check() throws Exception {
+                return hasHealthCheck.check();
             }
         });
     }

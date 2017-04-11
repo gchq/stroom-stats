@@ -19,21 +19,21 @@
 
 package stroom.stats.streams;
 
+import com.codahale.metrics.health.HealthCheck;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.StatisticsProcessor;
 import stroom.stats.api.StatisticType;
-import stroom.stats.mixins.Startable;
-import stroom.stats.mixins.Stoppable;
+import stroom.stats.mixins.HasRunState;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Startable, Stoppable {
+public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsFlatMappingProcessor.class);
 
@@ -46,6 +46,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Star
     private final String badEventTopic;
     private final String permsTopicsPrefix;
     private final AbstractStatisticFlatMapper mapper;
+    private HasRunState.RunState runState = HasRunState.RunState.STOPPED;
 
     public StatisticsFlatMappingProcessor(final StroomPropertyService stroomPropertyService,
                                           final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory,
@@ -145,9 +146,11 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Star
     @Override
     public void stop() {
 
+        runState = HasRunState.RunState.STOPPING;
         if (kafkaStreams != null) {
             kafkaStreams.close();
         }
+        runState = HasRunState.RunState.STOPPED;
         LOGGER.info("Stopped processor {} for input topic {}", appId, inputTopic);
 
     }
@@ -155,9 +158,36 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Star
     @Override
     public void start() {
 
+        runState = HasRunState.RunState.STARTING;
         kafkaStreams = configureStream(statisticType, mapper);
         kafkaStreams.start();
+        runState = HasRunState.RunState.RUNNING;
         LOGGER.info("Started processor {} for input topic {} with {} stream threads", appId, inputTopic, getStreamThreads());
 
+    }
+
+    @Override
+    public RunState getRunState() {
+        return runState;
+    }
+
+    @Override
+    public String getGroupId() {
+        return appId;
+    }
+
+    @Override
+    public String getName() {
+        return "AggregationProcessor-" + appId;
+    }
+
+    @Override
+    public HealthCheck.Result check() {
+        switch (runState) {
+            case RUNNING:
+                return HealthCheck.Result.healthy(runState.toString());
+            default:
+                return HealthCheck.Result.unhealthy(runState.toString());
+        }
     }
 }

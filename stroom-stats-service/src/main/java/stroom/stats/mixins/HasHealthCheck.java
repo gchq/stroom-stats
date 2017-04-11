@@ -17,17 +17,12 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats;
+package stroom.stats.mixins;
 
-import stroom.stats.mixins.HasGroupId;
-import stroom.stats.mixins.HasHealthCheck;
-import stroom.stats.mixins.HasRunState;
-import stroom.stats.mixins.Startable;
-import stroom.stats.mixins.Stoppable;
+import com.codahale.metrics.health.HealthCheck;
 
-public interface StatisticsProcessor extends Stoppable, Startable, HasRunState, HasGroupId, HasHealthCheck {
+public interface HasHealthCheck extends hasName {
+
+    HealthCheck.Result check();
 
 }
-
-
-

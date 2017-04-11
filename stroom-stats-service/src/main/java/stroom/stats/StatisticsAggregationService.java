@@ -19,6 +19,7 @@
 
 package stroom.stats;
 
+import com.codahale.metrics.health.HealthCheck;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Serde;
@@ -26,6 +27,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
+import stroom.stats.mixins.HasHealthCheck;
+import stroom.stats.mixins.HasRunState;
 import stroom.stats.mixins.Startable;
 import stroom.stats.mixins.Stoppable;
 import stroom.stats.properties.StroomPropertyService;
@@ -48,7 +51,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Singleton
-public class StatisticsAggregationService implements Startable, Stoppable {
+public class StatisticsAggregationService implements Startable, Stoppable, HasHealthCheck {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsAggregationService.class);
 
@@ -60,6 +63,8 @@ public class StatisticsAggregationService implements Startable, Stoppable {
     //this assumes all processor instances have the same producer config
     private KafkaProducer<StatKey, StatAggregate> kafkaProducer;
     private final ExecutorService executorService;
+
+    private HasRunState.RunState runState = HasRunState.RunState.STOPPED;
 
     @Inject
     public StatisticsAggregationService(final StroomPropertyService stroomPropertyService,
@@ -77,16 +82,19 @@ public class StatisticsAggregationService implements Startable, Stoppable {
     @Override
     public void start() {
 
+        runState = HasRunState.RunState.STARTING;
         LOGGER.info("Starting the Statistics Aggregation Service");
 
         kafkaProducer = buildProducer();
 
         processors.forEach(StatisticsAggregationProcessor::start);
+        runState = HasRunState.RunState.RUNNING;
     }
 
     @Override
     public void stop() {
 
+        runState = HasRunState.RunState.STOPPING;
         LOGGER.info("Stopping the Statistics Aggregation Service");
 
         if (kafkaProducer != null) {
@@ -95,6 +103,7 @@ public class StatisticsAggregationService implements Startable, Stoppable {
         }
 
         processors.forEach(StatisticsAggregationProcessor::stop);
+        runState = HasRunState.RunState.STOPPED;
     }
 
     private ExecutorService buildProcessors() {
@@ -157,5 +166,35 @@ public class StatisticsAggregationService implements Startable, Stoppable {
                         StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000));
         producerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 50_000_000);
         return producerProps;
+    }
+
+    @Override
+    public HealthCheck.Result check() {
+        switch (runState) {
+            case RUNNING:
+                return HealthCheck.Result.healthy(produceHealthCheckSummary());
+            default:
+                return HealthCheck.Result.unhealthy(produceHealthCheckSummary());
+        }
+    }
+
+    public List<HasHealthCheck> getHealthCheckProviders() {
+        List<HasHealthCheck> healthCheckProviders = new ArrayList<>();
+        processors.forEach(processor -> healthCheckProviders.add((HasHealthCheck) processor));
+        return healthCheckProviders;
+    }
+
+    private String produceHealthCheckSummary() {
+        return new StringBuilder()
+                .append(runState)
+                .append(" - ")
+                .append("Processors: ")
+                .append(processors.size())
+                .toString();
+    }
+
+    @Override
+    public String getName() {
+        return this.getClass().getSimpleName();
     }
 }

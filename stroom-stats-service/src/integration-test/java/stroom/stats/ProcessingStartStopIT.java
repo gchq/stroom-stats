@@ -36,16 +36,16 @@ public class ProcessingStartStopIT extends AbstractAppIT {
 
         req().stopProcessing();
 
-        req().startProcessing();
+        while (true) {
+
+        }
+//        req().startProcessing();
 
 
 //        //TODO do a POST to the stopProcessing task (eg. curl -X POST http://localhost:8086/admin/tasks/stopProcessing)
 //        //then check it is down,
 //        //then do a POST to startProcessing and check it is running
 //
-//        while (true) {
-//
-//        }
 
     }
 

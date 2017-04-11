@@ -19,9 +19,12 @@
 
 package stroom.stats.streams;
 
+import com.codahale.metrics.health.HealthCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
+import stroom.stats.mixins.HasHealthCheck;
+import stroom.stats.mixins.HasRunState;
 import stroom.stats.mixins.Startable;
 import stroom.stats.mixins.Stoppable;
 import stroom.stats.properties.StroomPropertyService;
@@ -34,7 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Singleton
-public class StatisticsFlatMappingService implements Startable, Stoppable {
+public class StatisticsFlatMappingService implements Startable, Stoppable, HasRunState, HasHealthCheck {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsFlatMappingService.class);
 
@@ -44,6 +47,8 @@ public class StatisticsFlatMappingService implements Startable, Stoppable {
     private final ValueStatToAggregateFlatMapper valueStatToAggregateMapper;
 
     private final List<StatisticsFlatMappingProcessor> processors = new ArrayList<>();
+
+    private RunState runState = RunState.STOPPED;
 
     @Inject
     public StatisticsFlatMappingService(final StroomPropertyService stroomPropertyService,
@@ -75,34 +80,55 @@ public class StatisticsFlatMappingService implements Startable, Stoppable {
     @Override
     public void start() {
 
+        runState = RunState.STARTING;
         LOGGER.info("Starting the Statistics Flat Mapping Service");
 
-        processors.forEach(processor ->
-                processor.start());
+        processors.forEach(StatisticsFlatMappingProcessor::start);
+        runState = RunState.RUNNING;
     }
 
     @Override
     public void stop() {
+        runState = RunState.STOPPING;
         LOGGER.info("Stopping the Statistics Flat Mapping Service");
 
-        processors.forEach(processor ->
-                processor.stop());
+        processors.forEach(StatisticsFlatMappingProcessor::stop);
+        runState = RunState.STOPPED;
     }
 
-//    private void startFlatMapProcessing() {
-//        LOGGER.info("Starting count flat map processor");
-//        KafkaStreams countFlatMapProcessor = startFlatMapProcessor(
-//                StatisticType.COUNT,
-//                countStatToAggregateMapper);
-//
-//        LOGGER.info("Starting value flat map processor");
-//        KafkaStreams valueFlatMapProcessor = startFlatMapProcessor(
-//                StatisticType.VALUE,
-//                valueStatToAggregateMapper);
-//    }
+    @Override
+    public RunState getRunState() {
+        return runState;
+    }
 
+    @Override
+    public HealthCheck.Result check() {
+        switch (runState) {
+            case RUNNING:
+                return HealthCheck.Result.healthy(produceHealthCheckSummary());
+            default:
+                return HealthCheck.Result.unhealthy(produceHealthCheckSummary());
+        }
+    }
 
+    @Override
+    public String getName() {
+        return this.getClass().getSimpleName();
+    }
 
+    private String produceHealthCheckSummary() {
+        return new StringBuilder()
+                .append(runState)
+                .append(" - ")
+                .append("Processors: ")
+                .append(processors.size())
+                .toString();
+    }
 
+    public List<HasHealthCheck> getHealthCheckProviders() {
+        List<HasHealthCheck> healthCheckProviders = new ArrayList<>();
+        processors.forEach(processor -> healthCheckProviders.add((HasHealthCheck) processor));
+        return healthCheckProviders;
+    }
 
 }

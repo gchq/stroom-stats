@@ -17,17 +17,9 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats;
+package stroom.stats.mixins;
 
-import stroom.stats.mixins.HasGroupId;
-import stroom.stats.mixins.HasHealthCheck;
-import stroom.stats.mixins.HasRunState;
-import stroom.stats.mixins.Startable;
-import stroom.stats.mixins.Stoppable;
+public interface HasGroupId {
 
-public interface StatisticsProcessor extends Stoppable, Startable, HasRunState, HasGroupId, HasHealthCheck {
-
+    String getGroupId();
 }
-
-
-

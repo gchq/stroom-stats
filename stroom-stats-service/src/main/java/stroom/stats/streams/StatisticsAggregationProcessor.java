@@ -19,6 +19,7 @@
 
 package stroom.stats.streams;
 
+import com.codahale.metrics.health.HealthCheck;
 import com.google.common.base.Preconditions;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -31,8 +32,7 @@ import stroom.stats.StatisticsProcessor;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
 import stroom.stats.hbase.EventStoreTimeIntervalHelper;
-import stroom.stats.mixins.Startable;
-import stroom.stats.mixins.Stoppable;
+import stroom.stats.mixins.HasRunState;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.StatAggregate;
@@ -83,7 +83,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * the next topic and/or to the stat service. The size of the StatAggregator is a trade off between in memory aggregation
  * benefits and the risk of more duplicate data in the stat store
  */
-public class StatisticsAggregationProcessor implements StatisticsProcessor, Startable, Stoppable {
+public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatisticsAggregationProcessor.class);
 
@@ -120,12 +120,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
 
     private Serde<StatKey> statKeySerde;
     private Serde<StatAggregate> statAggregateSerde;
-
-    private enum RunState {
-        STOPPED,
-        STOPPING,
-        RUNNING
-    }
 
     public StatisticsAggregationProcessor(final StatisticsService statisticsService,
                                           final StroomPropertyService stroomPropertyService,
@@ -385,6 +379,35 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
         }
     }
 
+    @Override
+    public HasRunState.RunState getRunState() {
+        return runState;
+    }
+
+    @Override
+    public String getGroupId() {
+        return groupId;
+    }
+
+    @Override
+    public String getName() {
+        return "AggregationProcessor-" + groupId + "-" + instanceId;
+    }
+
+    @Override
+    public HealthCheck.Result check() {
+        switch (runState) {
+            case RUNNING:
+                return HealthCheck.Result.healthy(runState.toString());
+            default:
+                return HealthCheck.Result.unhealthy(runState.toString());
+        }
+    }
+
+    public int getInstanceId() {
+        return instanceId;
+    }
+
     private int getPollTimeoutMs() {
         return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS, 100);
     }
@@ -410,4 +433,5 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
                 ", runState=" + runState +
                 '}';
     }
+
 }
