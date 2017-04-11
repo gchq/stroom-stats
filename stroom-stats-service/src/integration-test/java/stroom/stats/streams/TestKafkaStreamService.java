@@ -102,6 +102,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static stroom.stats.streams.StatisticsFlatMappingProcessor.PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX;
 
 public class TestKafkaStreamService {
     private static final Logger LOGGER = LoggerFactory.getLogger(TestKafkaStreamService.class);
@@ -145,10 +146,10 @@ public class TestKafkaStreamService {
     }
 
     private void setAppIdPrefixes(final String extraPrefix) {
-        String existingPrefix = mockStroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX);
+        String existingPrefix = mockStroomPropertyService.getPropertyOrThrow(PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX);
 
         String newPrefix = extraPrefix + existingPrefix;
-        mockStroomPropertyService.setProperty(StatisticsIngestService.PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX, newPrefix);
+        mockStroomPropertyService.setProperty(PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX, newPrefix);
 
         //TODO will also need to change the prefix for the aggregator processor
     }

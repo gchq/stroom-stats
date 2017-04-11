@@ -37,6 +37,9 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsFlatMappingProcessor.class);
 
+    public static final String PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX = StatisticsIngestService.PROP_KEY_PREFIX_STATS_STREAMS +
+            "flatMapProcessorAppIdPrefix";
+
     private final StroomPropertyService stroomPropertyService;
     private final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory;
     private final StatisticType statisticType;
@@ -58,7 +61,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
         this.statisticType = statisticType;
         this.mapper = mapper;
 
-        appId = getName(StatisticsIngestService.PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX, statisticType);
+        appId = getName(PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX, statisticType);
         LOGGER.info("Building flat mapping processor {}", appId);
 
         inputTopic = getName(StatisticsIngestService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX, statisticType);

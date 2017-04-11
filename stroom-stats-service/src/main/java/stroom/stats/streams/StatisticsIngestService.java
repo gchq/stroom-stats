@@ -32,7 +32,6 @@ public class StatisticsIngestService implements Startable, Stoppable, Managed {
     public static final String PROP_KEY_KAFKA_COMMIT_INTERVAL_MS = PROP_KEY_PREFIX_KAFKA + "commit.interval.ms";
     public static final String PROP_KEY_KAFKA_STREAM_THREADS = PROP_KEY_PREFIX_KAFKA + "num.stream.threads";
 
-    public static final String PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX = PROP_KEY_PREFIX_STATS_STREAMS + "flatMapProcessorAppIdPrefix";
 
     public static final String PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX = "stroom.stats.topics.statisticEventsPrefix";
     public static final String PROP_KEY_BAD_STATISTIC_EVENTS_TOPIC_PREFIX = "stroom.stats.topics.badStatisticEventsPrefix";

@@ -41,11 +41,6 @@ public class StatisticsFlatMappingService implements Startable, Stoppable, HasRu
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsFlatMappingService.class);
 
-    private final StroomPropertyService stroomPropertyService;
-    private final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory;
-    private final CountStatToAggregateFlatMapper countStatToAggregateMapper;
-    private final ValueStatToAggregateFlatMapper valueStatToAggregateMapper;
-
     private final List<StatisticsFlatMappingProcessor> processors = new ArrayList<>();
 
     private RunState runState = RunState.STOPPED;
@@ -55,11 +50,6 @@ public class StatisticsFlatMappingService implements Startable, Stoppable, HasRu
                                         final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory,
                                         final CountStatToAggregateFlatMapper countStatToAggregateMapper,
                                         final ValueStatToAggregateFlatMapper valueStatToAggregateMapper) {
-
-        this.stroomPropertyService = stroomPropertyService;
-        this.statisticsFlatMappingStreamFactory = statisticsFlatMappingStreamFactory;
-        this.countStatToAggregateMapper = countStatToAggregateMapper;
-        this.valueStatToAggregateMapper = valueStatToAggregateMapper;
 
         StatisticsFlatMappingProcessor countStatisticsProcessor = new StatisticsFlatMappingProcessor(
                 stroomPropertyService,

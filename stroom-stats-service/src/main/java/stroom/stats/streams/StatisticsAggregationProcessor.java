@@ -87,11 +87,12 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatisticsAggregationProcessor.class);
 
+    public static final String PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX = StatisticsIngestService.PROP_KEY_PREFIX_STATS_STREAMS +
+            "aggregationProcessorAppIdPrefix";
+
     public static final String PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE = "stroom.stats.aggregation.minBatchSize";
     public static final String PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS = "stroom.stats.aggregation.maxFlushIntervalMs";
     public static final String PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS = "stroom.stats.aggregation.pollTimeoutMs";
-
-    public static final String GROUP_ID_PREFIX = "AggregationProcessor-";
 
     public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECS = 120;
 
@@ -148,7 +149,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                 StatisticsIngestService.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX);
 
         inputTopic = TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, aggregationInterval);
-        groupId = GROUP_ID_PREFIX + inputTopic;
+        groupId = stroomPropertyService.getPropertyOrThrow(PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX) +
+                "-" + inputTopic;
         optNextInterval = EventStoreTimeIntervalHelper.getNextBiggest(aggregationInterval);
         optNextIntervalTopic = optNextInterval.map(newInterval ->
                 TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, newInterval));
@@ -391,7 +393,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
     @Override
     public String getName() {
-        return "AggregationProcessor-" + groupId + "-" + instanceId;
+        return groupId + "-" + instanceId;
     }
 
     @Override
