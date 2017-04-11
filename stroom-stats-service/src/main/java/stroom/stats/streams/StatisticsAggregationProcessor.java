@@ -168,7 +168,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
         //This will improve aggregation as it will only handle data for the same stat types and aggregationInterval sizes
     }
 
-
     private KafkaConsumer<StatKey, StatAggregate> buildConsumer() {
 
         KafkaConsumer<StatKey, StatAggregate> kafkaConsumer = new KafkaConsumer<>(
@@ -234,66 +233,63 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
         producer.flush();
     }
 
-
     private void startProcessor() {
         runState = RunState.RUNNING;
 
-        consumerFuture = executorService.submit(() -> {
+        consumerFuture = executorService.submit(this::consumerRunnable);
+    }
 
-            //TODO need to share this between all aggregationInterval/statTypes as it is thread-safe and config should be consistent
+    private void consumerRunnable() {
+        LOGGER.info("Starting consumer/producer for {}, {}, {} -> {}",
+                statisticType, aggregationInterval, inputTopic, optNextIntervalTopic.orElse("None"));
 
-            LOGGER.info("Starting consumer/producer for {}, {}, {} -> {}",
-                    statisticType, aggregationInterval, inputTopic, optNextIntervalTopic.orElse("None"));
+        consumerThreadName.set(Thread.currentThread().getName());
 
-            consumerThreadName.set(Thread.currentThread().getName());
+        try {
+            //loop forever unless the thread is processing is stopped from outside
+            while (runState.equals(RunState.RUNNING) && !Thread.currentThread().isInterrupted()) {
+                try {
+                    ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(getPollTimeoutMs());
 
-            try {
-                //loop forever unless the thread is processing is stopped from outside
-                while (runState.equals(RunState.RUNNING) && !Thread.currentThread().isInterrupted()) {
-                    try {
-                        ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(getPollTimeoutMs());
-
-                        LOGGER.ifTraceIsEnabled(() -> {
-                            int recCount = records.count();
-                            if (recCount > 0) {
-                                LOGGER.trace("Received {} records from topic {}", records.count(), inputTopic);
-                            }
-                        });
-
-                        if (!records.isEmpty()) {
-                            if (statAggregator == null) {
-                                statAggregator = new StatAggregator(
-                                        getMinBatchSize(),
-                                        getMaxEventIds(),
-                                        aggregationInterval,
-                                        getFlushIntervalMs());
-                            }
-                            for (ConsumerRecord<StatKey, StatAggregate> record : records) {
-                                statAggregator.add(record.key(), record.value());
-                            }
+                    LOGGER.ifTraceIsEnabled(() -> {
+                        int recCount = records.count();
+                        if (recCount > 0) {
+                            LOGGER.trace("Received {} records from topic {}", records.count(), inputTopic);
                         }
+                    });
 
-                        boolean flushHappened = flushAggregatorIfReady();
-                        if (flushHappened) {
-                            kafkaConsumer.commitSync();
+                    if (!records.isEmpty()) {
+                        if (statAggregator == null) {
+                            statAggregator = new StatAggregator(
+                                    getMinBatchSize(),
+                                    getMaxEventIds(),
+                                    aggregationInterval,
+                                    getFlushIntervalMs());
                         }
-                    } catch (Exception e) {
-                        LOGGER.error("Error while polling with stat type {}", statisticType, e);
+                        for (ConsumerRecord<StatKey, StatAggregate> record : records) {
+                            statAggregator.add(record.key(), record.value());
+                        }
                     }
-                }
-            } finally {
-                //clean up as we are shutting down this processor
 
-                //force a flush of anything in the aggregator
-                if (statAggregator != null) {
-                    LOGGER.info("Forcing a flush of aggregator {}", statAggregator);
-                    flushAggregator(statAggregator);
+                    boolean flushHappened = flushAggregatorIfReady();
+                    if (flushHappened) {
+                        kafkaConsumer.commitSync();
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("Error while polling with stat type {}", statisticType, e);
                 }
-                kafkaConsumer.commitSync();
-                kafkaConsumer.close();
-                runState = RunState.STOPPED;
             }
-        });
+        } finally {
+            //clean up as we are shutting down this processor
+
+            //force a flush of anything in the aggregator
+            if (statAggregator != null) {
+                LOGGER.info("Forcing a flush of aggregator {}", statAggregator);
+                flushAggregator(statAggregator);
+            }
+            kafkaConsumer.commitSync();
+            runState = RunState.STOPPED;
+        }
     }
 
     private boolean flushAggregatorIfReady() {
@@ -367,6 +363,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Star
             LOGGER.info("{} terminated in {}s",
                     this.toString(), Duration.between(start, Instant.now()).getSeconds());
         }
+        runState = RunState.STOPPED;
     }
 
     @Override

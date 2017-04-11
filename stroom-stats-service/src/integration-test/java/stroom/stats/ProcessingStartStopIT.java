@@ -38,9 +38,9 @@ public class ProcessingStartStopIT extends AbstractAppIT {
         //then check it is down,
         //then do a POST to startProcessing and check it is running
 
-//        while (true) {
-//
-//        }
+        while (true) {
+
+        }
 
     }
 

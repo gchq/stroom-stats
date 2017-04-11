@@ -40,11 +40,12 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Star
     private final StroomPropertyService stroomPropertyService;
     private final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory;
     private final StatisticType statisticType;
-    private final KafkaStreams kafkaStreams;
+    private KafkaStreams kafkaStreams;
     private final String appId;
     private final String inputTopic;
     private final String badEventTopic;
     private final String permsTopicsPrefix;
+    private final AbstractStatisticFlatMapper mapper;
 
     public StatisticsFlatMappingProcessor(final StroomPropertyService stroomPropertyService,
                                           final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory,
@@ -54,6 +55,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Star
         this.stroomPropertyService = stroomPropertyService;
         this.statisticsFlatMappingStreamFactory = statisticsFlatMappingStreamFactory;
         this.statisticType = statisticType;
+        this.mapper = mapper;
 
         appId = getName(StatisticsIngestService.PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX, statisticType);
         LOGGER.info("Building flat mapping processor {}", appId);
@@ -62,7 +64,6 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Star
         badEventTopic = getName(StatisticsIngestService.PROP_KEY_BAD_STATISTIC_EVENTS_TOPIC_PREFIX, statisticType);
         permsTopicsPrefix = getName(StatisticsIngestService.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType);
 
-        kafkaStreams = configureStream(statisticType, mapper);
     }
 
     private KafkaStreams configureStream(final StatisticType statisticType,
@@ -144,7 +145,9 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Star
     @Override
     public void stop() {
 
-        kafkaStreams.close();
+        if (kafkaStreams != null) {
+            kafkaStreams.close();
+        }
         LOGGER.info("Stopped processor {} for input topic {}", appId, inputTopic);
 
     }
@@ -152,6 +155,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Star
     @Override
     public void start() {
 
+        kafkaStreams = configureStream(statisticType, mapper);
         kafkaStreams.start();
         LOGGER.info("Started processor {} for input topic {} with {} stream threads", appId, inputTopic, getStreamThreads());
 

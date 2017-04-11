@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @Singleton
 public class StatisticsAggregationService implements Startable, Stoppable {
@@ -55,7 +56,9 @@ public class StatisticsAggregationService implements Startable, Stoppable {
     private final StatisticsService statisticsService;
     private final List<StatisticsAggregationProcessor> processors = new ArrayList<>();
 
-    private final KafkaProducer<StatKey, StatAggregate> kafkaProducer;
+    //producer is thread safe so hold a single instance and share it with all processors
+    //this assumes all processor instances have the same producer config
+    private KafkaProducer<StatKey, StatAggregate> kafkaProducer;
     private final ExecutorService executorService;
 
     @Inject
@@ -65,8 +68,6 @@ public class StatisticsAggregationService implements Startable, Stoppable {
         this.stroomPropertyService = stroomPropertyService;
         this.statisticsService = statisticsService;
 
-        //producer is thread safe so hold a single instance and share it with all processors
-        //this assumes all processor instances have the same producer config
         kafkaProducer = buildProducer();
 
         //hold an instance of the executorService in case we want to query it for a health check
@@ -78,6 +79,8 @@ public class StatisticsAggregationService implements Startable, Stoppable {
 
         LOGGER.info("Starting the Statistics Aggregation Service");
 
+        kafkaProducer = buildProducer();
+
         processors.forEach(StatisticsAggregationProcessor::start);
     }
 
@@ -85,6 +88,11 @@ public class StatisticsAggregationService implements Startable, Stoppable {
     public void stop() {
 
         LOGGER.info("Stopping the Statistics Aggregation Service");
+
+        if (kafkaProducer != null) {
+            kafkaProducer.close(3, TimeUnit.MINUTES);
+            kafkaProducer = null;
+        }
 
         processors.forEach(StatisticsAggregationProcessor::stop);
     }
