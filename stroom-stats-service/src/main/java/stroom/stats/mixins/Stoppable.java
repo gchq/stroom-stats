@@ -21,6 +21,9 @@ package stroom.stats.mixins;
 
 public interface Stoppable {
 
+   /**
+    * Will stop the process from running, blocking until it has stopped.
+    */
    void stop();
 
 }

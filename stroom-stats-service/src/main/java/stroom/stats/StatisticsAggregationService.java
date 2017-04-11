@@ -46,14 +46,20 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 
 @Singleton
-public class StatisticsAggregationService implements Startable, Stoppable, HasHealthCheck {
+public class StatisticsAggregationService implements Startable, Stoppable, HasRunState, HasHealthCheck {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsAggregationService.class);
+
+    public static final long TIMEOUT_SECS = 120;
 
     private final StroomPropertyService stroomPropertyService;
     private final StatisticsService statisticsService;
@@ -65,6 +71,9 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasHe
     private final ExecutorService executorService;
 
     private HasRunState.RunState runState = HasRunState.RunState.STOPPED;
+
+    //used for thread synchronization
+    private final Object startStopMonitor = new Object();
 
     @Inject
     public StatisticsAggregationService(final StroomPropertyService stroomPropertyService,
@@ -82,28 +91,56 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasHe
     @Override
     public void start() {
 
-        runState = HasRunState.RunState.STARTING;
-        LOGGER.info("Starting the Statistics Aggregation Service");
+        synchronized (startStopMonitor) {
+            runState = RunState.STARTING;
+            LOGGER.info("Starting the Statistics Aggregation Service");
 
-        kafkaProducer = buildProducer();
+            kafkaProducer = buildProducer();
 
-        processors.forEach(StatisticsAggregationProcessor::start);
-        runState = HasRunState.RunState.RUNNING;
+            runOnAllProcessorsAsyncThenWait("start", StatisticsAggregationProcessor::start);
+
+            runState = RunState.RUNNING;
+        }
     }
 
     @Override
     public void stop() {
 
-        runState = HasRunState.RunState.STOPPING;
-        LOGGER.info("Stopping the Statistics Aggregation Service");
+        synchronized (startStopMonitor) {
+            runState = RunState.STOPPING;
+            LOGGER.info("Stopping the Statistics Aggregation Service");
 
-        if (kafkaProducer != null) {
-            kafkaProducer.close(3, TimeUnit.MINUTES);
-            kafkaProducer = null;
+            runOnAllProcessorsAsyncThenWait("stop", StatisticsAggregationProcessor::stop);
+
+            //have to shut this down second as the processor shutdown will probably flush more items to the producer
+            if (kafkaProducer != null) {
+                kafkaProducer.close(TIMEOUT_SECS, TimeUnit.SECONDS);
+                kafkaProducer = null;
+            }
+
+            runState = RunState.STOPPED;
         }
+    }
 
-        processors.forEach(StatisticsAggregationProcessor::stop);
-        runState = HasRunState.RunState.STOPPED;
+    private void runOnAllProcessorsAsyncThenWait(final String actionDescription,
+                                                 final Consumer<StatisticsAggregationProcessor> processorConsumer) {
+
+        //stop each processor as an async task, collecting all the futures
+        CompletableFuture<Void>[] completableFutures = processors.stream()
+                .map(processor -> CompletableFuture.runAsync(() -> processorConsumer.accept(processor)))
+                .toArray(size -> new CompletableFuture[size]);
+
+        try {
+            //wait for all tasks to complete before proceeding
+            CompletableFuture.allOf(completableFutures).get(TIMEOUT_SECS, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            LOGGER.warn("Thread interrupted performing {} on all processors", actionDescription, e);
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            throw new RuntimeException(String.format("Error while performing %s on all processors", actionDescription), e);
+        } catch (TimeoutException e) {
+            LOGGER.error("Unable to perform {} on all processors after {}s", actionDescription, TIMEOUT_SECS, e);
+        }
     }
 
     private ExecutorService buildProcessors() {
@@ -196,5 +233,10 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasHe
     @Override
     public String getName() {
         return this.getClass().getSimpleName();
+    }
+
+    @Override
+    public RunState getRunState() {
+        return runState;
     }
 }

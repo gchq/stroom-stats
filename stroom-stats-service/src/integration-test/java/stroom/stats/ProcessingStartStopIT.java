@@ -20,34 +20,73 @@
 package stroom.stats;
 
 import com.google.inject.Injector;
+import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.mixins.HasHealthCheck;
+import stroom.stats.mixins.HasRunState;
+import stroom.stats.streams.StatisticsFlatMappingService;
 import stroom.util.thread.ThreadUtil;
+
+import java.time.Instant;
 
 public class ProcessingStartStopIT extends AbstractAppIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProcessingStartStopIT.class);
 
     private Injector injector = getApp().getInjector();
+    StatisticsFlatMappingService statisticsFlatMappingService = injector.getInstance(StatisticsFlatMappingService.class);
+    StatisticsAggregationService statisticsAggregationService = injector.getInstance(StatisticsAggregationService.class);
 
     @Test
     public void testRunAppStopStartProcessing() {
 
 
+        assertStates(HasRunState.RunState.RUNNING, true);
+
         req().stopProcessing();
 
-        while (true) {
-            ThreadUtil.sleep(250);
+        assertStates(HasRunState.RunState.STOPPED, false);
+
+        req().startProcessing();
+
+        assertStates(HasRunState.RunState.RUNNING, true);
+
+//        while (true) {
+//            ThreadUtil.sleep(100);
+//        }
+    }
+
+    private void assertStates(HasRunState.RunState expectedRunState, boolean expectedIsHealthy) {
+
+        assertState(statisticsFlatMappingService, expectedRunState, 10_000);
+        statisticsFlatMappingService.getHealthCheckProviders().forEach(hasHealthCheck ->
+                assertState(hasHealthCheck, expectedIsHealthy, 10_000));
+
+        assertState(statisticsAggregationService, expectedRunState, 10_000);
+        statisticsAggregationService.getHealthCheckProviders().forEach(hasHealthCheck ->
+                assertState(hasHealthCheck, expectedIsHealthy, 10_000));
+
+    }
+
+
+    private void assertState(HasRunState hasRunState, HasRunState.RunState expectedRunState, int timeoutMs) {
+        Instant timeoutTime = Instant.now().plusMillis(timeoutMs);
+        while (!hasRunState.getRunState().equals(expectedRunState) && Instant.now().isBefore(timeoutTime)) {
+            ThreadUtil.sleep(200);
         }
-//        req().startProcessing();
 
+        Assertions.assertThat(hasRunState.getRunState()).isEqualTo(expectedRunState);
+    }
 
-//        //TODO do a POST to the stopProcessing task (eg. curl -X POST http://localhost:8086/admin/tasks/stopProcessing)
-//        //then check it is down,
-//        //then do a POST to startProcessing and check it is running
-//
+    private void assertState(HasHealthCheck hasHealthCheck, boolean expectedIsHealthy, int timeoutMs) {
+        Instant timeoutTime = Instant.now().plusMillis(timeoutMs);
+        while (hasHealthCheck.check().isHealthy() != expectedIsHealthy && Instant.now().isBefore(timeoutTime)) {
+            ThreadUtil.sleep(200);
+        }
 
+        Assertions.assertThat(hasHealthCheck.check().isHealthy()).isEqualTo(expectedIsHealthy);
     }
 
 }

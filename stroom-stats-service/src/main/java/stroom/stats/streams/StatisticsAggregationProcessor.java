@@ -104,18 +104,18 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private final int maxEventIds;
     private final AtomicReference<String> consumerThreadName = new AtomicReference<>();
 
-    private RunState runState = RunState.STOPPED;
+    private volatile RunState runState = RunState.STOPPED;
 
     //used for thread synchronization
     private final Object startStopMonitor = new Object();
 
     private final ExecutorService executorService;
-    private final KafkaConsumer<StatKey, StatAggregate> kafkaConsumer;
     private final KafkaProducer<StatKey, StatAggregate> kafkaProducer;
     private final String inputTopic;
     private final String groupId;
     private final Optional<EventStoreTimeIntervalEnum> optNextInterval;
     private final Optional<String> optNextIntervalTopic;
+
     private StatAggregator statAggregator;
     private Future<?> consumerFuture;
 
@@ -157,8 +157,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
         int maxEventIds = getMaxEventIds();
         long minBatchSize = getMinBatchSize();
-
-        kafkaConsumer = buildConsumer();
 
         //start a processor for a stat type and aggregationInterval pair
         //This will improve aggregation as it will only handle data for the same stat types and aggregationInterval sizes
@@ -239,6 +237,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         LOGGER.info("Starting consumer/producer for {}, {}, {} -> {}",
                 statisticType, aggregationInterval, inputTopic, optNextIntervalTopic.orElse("None"));
 
+        KafkaConsumer<StatKey, StatAggregate> kafkaConsumer = buildConsumer();
+
         consumerThreadName.set(Thread.currentThread().getName());
 
         try {
@@ -277,14 +277,21 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
             }
         } finally {
             //clean up as we are shutting down this processor
+            cleanUp(kafkaConsumer);
+        }
+    }
 
-            //force a flush of anything in the aggregator
-            if (statAggregator != null) {
-                LOGGER.info("Forcing a flush of aggregator {}", statAggregator);
-                flushAggregator(statAggregator);
-            }
+    private void cleanUp(KafkaConsumer<StatKey, StatAggregate> kafkaConsumer) {
+        LOGGER.debug("Cleaning up runnable");
+
+        //force a flush of anything in the aggregator
+        if (statAggregator != null) {
+            LOGGER.info("Forcing a flush of aggregator {}", statAggregator);
+            flushAggregator(statAggregator);
+        }
+        if (kafkaConsumer != null) {
             kafkaConsumer.commitSync();
-            runState = RunState.STOPPED;
+            kafkaConsumer.close();
         }
     }
 
@@ -338,14 +345,18 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     }
 
     private void doStop() {
-        LOGGER.info("Stopping Aggregation processor {}", toString());
+        LOGGER.info("Stopping Aggregation processor {} with timeout {}s", toString(), EXECUTOR_SHUTDOWN_TIMEOUT_SECS);
+        //change the run state so the consumer thread will cleanly finish when it next
+        //checks the variable
         runState = RunState.STOPPING;
-        LOGGER.info("Shutting down executor service, timeout {}", EXECUTOR_SHUTDOWN_TIMEOUT_SECS);
         Instant start = Instant.now();
-        consumerFuture.cancel(true);
+
         try {
             //wait for it to cleanly stop having interrupted its thread, no result to check
             consumerFuture.get(EXECUTOR_SHUTDOWN_TIMEOUT_SECS, TimeUnit.SECONDS);
+            LOGGER.info("{} terminated in {}s",
+                    this.toString(), Duration.between(start, Instant.now()).getSeconds());
+            runState = RunState.STOPPED;
         } catch (InterruptedException e) {
             LOGGER.error("Thread {} interrupted trying to shut down executor service",
                     Thread.currentThread().getName());
@@ -356,10 +367,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
             LOGGER.error("Executor service could not be terminated in {}s",
                     Duration.between(start, Instant.now()).getSeconds());
         } catch (CancellationException e) {
-            LOGGER.info("{} terminated in {}s",
-                    this.toString(), Duration.between(start, Instant.now()).getSeconds());
         }
-        runState = RunState.STOPPED;
     }
 
     @Override

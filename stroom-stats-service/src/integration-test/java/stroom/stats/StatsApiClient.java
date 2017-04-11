@@ -95,6 +95,7 @@ public class StatsApiClient {
     }
 
     private void postToTaskUrl(String url) {
+
         this.url = url;
         client.target(url)
                 .request()

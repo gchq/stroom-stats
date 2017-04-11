@@ -20,7 +20,9 @@
 package stroom.stats;
 
 import io.dropwizard.client.JerseyClientBuilder;
+import io.dropwizard.client.JerseyClientConfiguration;
 import io.dropwizard.testing.junit.DropwizardAppRule;
+import io.dropwizard.util.Duration;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.slf4j.Logger;
@@ -51,7 +53,11 @@ public abstract class AbstractAppIT {
         // We need to enable typing otherwise abstract types, e.g. ExpressionItem, won't be deserialisable.
         RULE.getEnvironment().getObjectMapper().enableDefaultTyping();
         app = RULE.getApplication();
-        client = new JerseyClientBuilder(RULE.getEnvironment()).build("test client");
+        JerseyClientConfiguration clientConfiguration = new JerseyClientConfiguration();
+        clientConfiguration.setConnectionRequestTimeout(io.dropwizard.util.Duration.seconds(10));
+        clientConfiguration.setConnectionTimeout(io.dropwizard.util.Duration.seconds(10));
+        clientConfiguration.setTimeout(Duration.seconds(10));
+        client = new JerseyClientBuilder(RULE.getEnvironment()).using(clientConfiguration).build("test client");
         APPLICATION_PORT = RULE.getLocalPort();
         ADMIN_PORT = RULE.getAdminPort();
 
@@ -79,7 +85,7 @@ public abstract class AbstractAppIT {
         return app;
     }
 
-    protected StatsApiClient req(){
+    protected StatsApiClient req() {
         return new StatsApiClient().client(getClient());
     }
 

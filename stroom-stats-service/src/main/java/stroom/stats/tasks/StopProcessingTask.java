@@ -21,13 +21,18 @@ package stroom.stats.tasks;
 
 import com.google.common.collect.ImmutableMultimap;
 import io.dropwizard.servlets.tasks.Task;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import stroom.stats.streams.StatisticsIngestService;
 
 import javax.inject.Inject;
 import java.io.PrintWriter;
+import java.util.concurrent.CompletableFuture;
 
 @SuppressWarnings("unused") //exposed as admin endpoint by dropwizard
 public class StopProcessingTask extends Task {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(StopProcessingTask.class);
 
     public static final String TASK_NAME = "stopProcessing";
 
@@ -42,6 +47,7 @@ public class StopProcessingTask extends Task {
     @Override
     public void execute(final ImmutableMultimap<String, String> parameters, final PrintWriter output) throws Exception {
 
-        statisticsIngestService.stop();
+        LOGGER.info("{} endpoint called", TASK_NAME);
+        CompletableFuture.runAsync(statisticsIngestService::stop);
     }
 }

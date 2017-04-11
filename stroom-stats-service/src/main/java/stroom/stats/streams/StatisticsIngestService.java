@@ -4,6 +4,7 @@ import io.dropwizard.lifecycle.Managed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.StatisticsAggregationService;
+import stroom.stats.mixins.HasRunState;
 import stroom.stats.mixins.Startable;
 import stroom.stats.mixins.Stoppable;
 
@@ -21,7 +22,7 @@ import java.util.concurrent.atomic.AtomicReference;
  partition by stat name, so single lookup of StatConfig per partition
  */
 @Singleton
-public class StatisticsIngestService implements Startable, Stoppable, Managed {
+public class StatisticsIngestService implements Startable, Stoppable, HasRunState, Managed {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsIngestService.class);
 
@@ -40,11 +41,9 @@ public class StatisticsIngestService implements Startable, Stoppable, Managed {
     private final StatisticsFlatMappingService statisticsFlatMappingService;
     private final StatisticsAggregationService statisticsAggregationService;
 
-    private enum RunState {
-        STOPPED,
-        STOPPING,
-        STARTING,
-        RUNNING
+    @Override
+    public HasRunState.RunState getRunState() {
+        return null;
     }
 
     AtomicReference<RunState> runState = new AtomicReference<>(RunState.STOPPED);
@@ -80,7 +79,7 @@ public class StatisticsIngestService implements Startable, Stoppable, Managed {
                 changeRunState(RunState.STARTING, RunState.RUNNING);
 
             } else {
-                throw new RuntimeException(String.format("Unable to start processing as current state is %s", runState));
+                LOGGER.warn("Unable to start processing as current state is {}", runState);
             }
         }
     }
@@ -100,7 +99,7 @@ public class StatisticsIngestService implements Startable, Stoppable, Managed {
 
                 changeRunState(RunState.STOPPING, RunState.STOPPED);
             } else {
-                throw new RuntimeException(String.format("Unable to stop processing as current state is %s", runState));
+                LOGGER.warn("Unable to stop processing as current state is {}", runState);
             }
         }
     }
