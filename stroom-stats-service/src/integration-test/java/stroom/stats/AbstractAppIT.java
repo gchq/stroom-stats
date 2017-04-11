@@ -39,6 +39,12 @@ public abstract class AbstractAppIT {
     protected static String STATISTICS_URL;
     protected static String QUERY_URL;
 
+    protected static String BASE_TASKS_URL;
+    protected static String START_PROCESSING_URL;
+    protected static String STOP_PROCESSING_URL;
+    protected static int APPLICATION_PORT;
+    protected static int ADMIN_PORT;
+
     //TODO this may prevent parallel execution of test classes
     @BeforeClass
     public static void setupClass() {
@@ -46,8 +52,15 @@ public abstract class AbstractAppIT {
         RULE.getEnvironment().getObjectMapper().enableDefaultTyping();
         app = RULE.getApplication();
         client = new JerseyClientBuilder(RULE.getEnvironment()).build("test client");
-        STATISTICS_URL = String.format("http://localhost:%d/statistics", RULE.getLocalPort());
-        QUERY_URL = String.format("http://localhost:%d/search", RULE.getLocalPort());
+        APPLICATION_PORT = RULE.getLocalPort();
+        ADMIN_PORT = RULE.getAdminPort();
+
+        STATISTICS_URL = String.format("http://localhost:%d/statistics", APPLICATION_PORT);
+        QUERY_URL = String.format("http://localhost:%d/search", APPLICATION_PORT);
+
+        BASE_TASKS_URL = String.format("http://localhost:%d/admin/tasks/", ADMIN_PORT);
+        START_PROCESSING_URL = BASE_TASKS_URL + "startProcessing";
+        STOP_PROCESSING_URL = BASE_TASKS_URL + "stopProcessing";
     }
 
     @ClassRule
