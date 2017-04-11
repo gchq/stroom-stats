@@ -59,6 +59,8 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsAggregationService.class);
 
+    public static final String PROP_KEY_THREADS_PER_INTERVAL_AND_TYPE = "stroom.stats.aggregation.threadsPerIntervalAndType";
+
     public static final long TIMEOUT_SECS = 120;
 
     private final StroomPropertyService stroomPropertyService;
@@ -151,11 +153,13 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
 
         //TODO configure the instance count on a per type and interval basis as some intervals/types will need
         //more processing than others
-        int instanceCount = 1;
+        int instanceCount = stroomPropertyService.getIntProperty(PROP_KEY_THREADS_PER_INTERVAL_AND_TYPE, 1);
+
         int processorCount = StatisticType.values().length * EventStoreTimeIntervalEnum.values().length * instanceCount;
 
         ExecutorService executorService = Executors.newFixedThreadPool(processorCount);
 
+        //create all the processor instances and hold their references
         for (StatisticType statisticType : StatisticType.values()) {
             for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
                 for (int instanceId = 0; instanceId < instanceCount; instanceId++) {

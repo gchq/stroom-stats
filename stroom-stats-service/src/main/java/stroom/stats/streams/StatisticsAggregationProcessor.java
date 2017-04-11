@@ -87,9 +87,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatisticsAggregationProcessor.class);
 
-    public static final String PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX = StatisticsIngestService.PROP_KEY_PREFIX_STATS_STREAMS +
-            "aggregationProcessorAppIdPrefix";
-
+    public static final String PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX = "stroom.stats.aggregation.processorAppIdPrefix";
     public static final String PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE = "stroom.stats.aggregation.minBatchSize";
     public static final String PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS = "stroom.stats.aggregation.maxFlushIntervalMs";
     public static final String PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS = "stroom.stats.aggregation.pollTimeoutMs";
