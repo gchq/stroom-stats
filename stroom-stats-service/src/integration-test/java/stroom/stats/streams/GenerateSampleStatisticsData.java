@@ -56,7 +56,7 @@ public class GenerateSampleStatisticsData {
     private static final String USER1 = "user1";
     private static final String USER2 = "user2";
 
-    private static final int EVENT_TIME_DELTA_MS = 5_000;
+    public static final int EVENT_TIME_DELTA_MS = 5_000;
 
     private static final String COLOUR_RED = "Red";
     private static final String COLOUR_GREEN = "Green";

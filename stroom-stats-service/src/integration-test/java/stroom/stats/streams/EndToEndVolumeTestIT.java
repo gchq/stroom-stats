@@ -65,6 +65,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class EndToEndVolumeTestIT extends AbstractAppIT {
 
@@ -114,9 +116,9 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
 
         LOGGER.info("Expecting {} events per stat type", expectedTotalEvents);
 
-        long expectedTotalCountValue = GenerateSampleStatisticsData.COUNT_STAT_VALUE * expectedTotalEvents;
+        int expectedTotalCountCount = (int) (GenerateSampleStatisticsData.COUNT_STAT_VALUE * expectedTotalEvents);
 
-        double expectedTotalValueValue = GenerateSampleStatisticsData.VALUE_STAT_VALUE_MAP.values().stream()
+        double expectedTotalValueCount = GenerateSampleStatisticsData.VALUE_STAT_VALUE_MAP.values().stream()
                 .mapToDouble(Double::doubleValue)
                 .sum() * expectedTotalEvents;
 
@@ -125,29 +127,80 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
 
         StatisticConfiguration statisticConfiguration = statConfigs.get(statisticType);
 
+        for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
+            SearchRequest searchRequest = QueryApiHelper.buildSearchRequestAllDataAllFields(
+                    statisticConfiguration,
+                    interval);
+
+            repeatedQueryAndAssert(searchRequest,
+                    getRowCountsByInterval().get(interval),
+                    rowData -> {
+                        Assertions.assertThat(rowData.stream()
+                                .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
+                                .mapToLong(Long::valueOf)
+                                .sum()
+                        ).isEqualTo(expectedTotalCountCount);
+                    });
+        }
+    }
+
+    private void repeatedQueryAndAssert(SearchRequest searchRequest,
+                                        int expectedRowCount,
+                                        Consumer<List<Map<String, String>>> rowDataConsumer) {
+
         List<Map<String, String>> rowData = Collections.emptyList();
-
-        SearchRequest searchRequest = QueryApiHelper.buildSearchRequestAllDataAllFields(statisticConfiguration, EventStoreTimeIntervalEnum.SECOND);
-
         Instant timeoutTime = Instant.now().plus(5, ChronoUnit.MINUTES);
 
-        //TODO query the store repeatedly until we get the answer we want
-        while (rowData.size() != expectedTotalEvents && Instant.now().isBefore(timeoutTime)) {
+        //query the store repeatedly until we get the answer we want or give up
+        while (rowData.size() != expectedRowCount && Instant.now().isBefore(timeoutTime)) {
             ThreadUtil.sleep(3_000);
 
             rowData = runSearch(searchRequest);
 
-            LOGGER.info("row count returned: {}", rowData.size());
+            LOGGER.info("row count returned: {}, waiting for {}", rowData.size(), expectedRowCount);
+
         }
 
-        Assertions.assertThat(rowData.size()).isEqualTo(expectedTotalEvents);
+        Assertions.assertThat(rowData).hasSize(expectedRowCount);
 
-        Assertions.assertThat(rowData.stream()
+        LOGGER.debug("Distinct values: {}", rowData.stream()
                 .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
-                .mapToLong(Long::valueOf)
-                .sum()
-        ).isEqualTo(expectedTotalCountValue);
+                .distinct()
+                .collect(Collectors.joining(",")));
 
+        dumpRowData(rowData);
+
+        if (rowDataConsumer != null) {
+            rowDataConsumer.accept(rowData);
+        }
+    }
+
+    private void dumpRowData(List<Map<String,String>> rowData) {
+        LOGGER.info("Dumping row data:\n" + QueryApiHelper.convertToFixedWidth(rowData, null).stream()
+                .collect(Collectors.joining("\n")));
+    }
+
+    private Map<EventStoreTimeIntervalEnum, Integer> getRowCountsByInterval() {
+        Map<EventStoreTimeIntervalEnum, Integer> countsMap = new HashMap<>();
+
+        int eventsPerIteration =
+                GenerateSampleStatisticsData.COLOURS.size() *
+                GenerateSampleStatisticsData.USERS.length *
+                GenerateSampleStatisticsData.STATES.size();
+
+        int timeSpanMs = ITERATION_COUNT * GenerateSampleStatisticsData.EVENT_TIME_DELTA_MS;
+        for (final EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
+            int intervalCount;
+            if (interval.columnInterval() < GenerateSampleStatisticsData.EVENT_TIME_DELTA_MS) {
+                double fractionalIntervalCount = (double) timeSpanMs / GenerateSampleStatisticsData.EVENT_TIME_DELTA_MS;
+                intervalCount = (int) Math.ceil(fractionalIntervalCount);
+            } else {
+                double fractionalIntervalCount = (double) timeSpanMs / interval.columnInterval();
+                intervalCount = (int) Math.ceil(fractionalIntervalCount);
+            }
+            countsMap.put(interval, intervalCount * eventsPerIteration);
+        }
+        return countsMap;
     }
 
     private List<Map<String, String>> runSearch(final SearchRequest searchRequest) {
@@ -292,6 +345,7 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
                 injector.getInstance(StatisticConfigurationEntityMarshaller.class),
                 statisticConfigurationEntity);
     }
+
 
 
 }

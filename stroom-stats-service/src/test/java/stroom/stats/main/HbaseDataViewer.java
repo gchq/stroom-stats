@@ -43,11 +43,11 @@ public class HbaseDataViewer extends AbstractAppRunner {
 
         final StatisticsTestService statisticsTestService = injector.getInstance(StatisticsTestService.class);
 
-//        EventStoreTimeIntervalEnum[] intervals = {EventStoreTimeIntervalEnum.DAY};
-        EventStoreTimeIntervalEnum[] intervals = EventStoreTimeIntervalEnum.values();
+        EventStoreTimeIntervalEnum[] intervals = {EventStoreTimeIntervalEnum.MINUTE};
+//        EventStoreTimeIntervalEnum[] intervals = EventStoreTimeIntervalEnum.values();
 
-//        EventStoreColumnFamily[] families = {EventStoreColumnFamily.VALUES};
-        EventStoreColumnFamily[] families = EventStoreColumnFamily.values();
+        EventStoreColumnFamily[] families = {EventStoreColumnFamily.COUNTS};
+//        EventStoreColumnFamily[] families = EventStoreColumnFamily.values();
 //
         // scan all rows in the hourly event store table and output the results.
         Arrays.stream(intervals).forEach(interval ->
