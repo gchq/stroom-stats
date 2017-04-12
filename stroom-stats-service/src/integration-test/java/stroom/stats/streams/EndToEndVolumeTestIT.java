@@ -109,10 +109,12 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
 
         final StatisticType statisticType = StatisticType.COUNT;
 
-        int expectedTotalEvents = ITERATION_COUNT *
-                GenerateSampleStatisticsData.COLOURS.size() *
+
+        final int eventsPerIteration = GenerateSampleStatisticsData.COLOURS.size() *
                 GenerateSampleStatisticsData.USERS.length *
                 GenerateSampleStatisticsData.STATES.size();
+
+        int expectedTotalEvents = ITERATION_COUNT * eventsPerIteration;
 
         LOGGER.info("Expecting {} events per stat type", expectedTotalEvents);
 
@@ -127,13 +129,36 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
 
         StatisticConfiguration statisticConfiguration = statConfigs.get(statisticType);
 
+        //run a query that will use the zero mask
         for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
             SearchRequest searchRequest = QueryApiHelper.buildSearchRequestAllDataAllFields(
                     statisticConfiguration,
                     interval);
 
             repeatedQueryAndAssert(searchRequest,
-                    getRowCountsByInterval().get(interval),
+                    getRowCountsByInterval(eventsPerIteration).get(interval),
+                    rowData -> {
+                        Assertions.assertThat(rowData.stream()
+                                .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
+                                .mapToLong(Long::valueOf)
+                                .sum()
+                        ).isEqualTo(expectedTotalCountCount);
+                    });
+        }
+
+        //now run queries that will roll all tags up
+        for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
+            SearchRequest searchRequest = QueryApiHelper.buildSearchRequestAllData(
+                    statisticConfiguration,
+                    interval,
+                    Arrays.asList(
+                            StatisticConfiguration.FIELD_NAME_DATE_TIME,
+                            StatisticConfiguration.FIELD_NAME_PRECISION,
+                            StatisticConfiguration.FIELD_NAME_COUNT
+                    ));
+
+            repeatedQueryAndAssert(searchRequest,
+                    getRowCountsByInterval(1).get(interval),
                     rowData -> {
                         Assertions.assertThat(rowData.stream()
                                 .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
@@ -175,18 +200,13 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
         }
     }
 
-    private void dumpRowData(List<Map<String,String>> rowData) {
+    private void dumpRowData(List<Map<String, String>> rowData) {
         LOGGER.info("Dumping row data:\n" + QueryApiHelper.convertToFixedWidth(rowData, null).stream()
                 .collect(Collectors.joining("\n")));
     }
 
-    private Map<EventStoreTimeIntervalEnum, Integer> getRowCountsByInterval() {
+    private Map<EventStoreTimeIntervalEnum, Integer> getRowCountsByInterval(int eventsPerIteration) {
         Map<EventStoreTimeIntervalEnum, Integer> countsMap = new HashMap<>();
-
-        int eventsPerIteration =
-                GenerateSampleStatisticsData.COLOURS.size() *
-                GenerateSampleStatisticsData.USERS.length *
-                GenerateSampleStatisticsData.STATES.size();
 
         int timeSpanMs = ITERATION_COUNT * GenerateSampleStatisticsData.EVENT_TIME_DELTA_MS;
         for (final EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
@@ -345,7 +365,6 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
                 injector.getInstance(StatisticConfigurationEntityMarshaller.class),
                 statisticConfigurationEntity);
     }
-
 
 
 }

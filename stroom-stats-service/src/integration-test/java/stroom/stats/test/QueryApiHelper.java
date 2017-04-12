@@ -67,13 +67,9 @@ public class QueryApiHelper {
                 ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.valueOf(str)), ZoneOffset.UTC));
     }
 
-
-    /**
-     * Create a search request with no predicates (unless an interval is supplied) and with all fields
-     * in the returned data set
-     */
-    public static SearchRequest buildSearchRequestAllDataAllFields(final StatisticConfiguration statisticConfiguration,
-                                                                   @Nullable final EventStoreTimeIntervalEnum interval) {
+    public static SearchRequest buildSearchRequestAllData(final StatisticConfiguration statisticConfiguration,
+                                                                   @Nullable final EventStoreTimeIntervalEnum interval,
+                                                                   List<String> requestedFieldNames) {
 
         //Add the interval to the predicates if we have one to let us specify the store rather than have it guess
         ExpressionItem[] childExpressionItems;
@@ -90,9 +86,19 @@ public class QueryApiHelper {
         SearchRequest searchRequest = buildSearchRequest(
                 statisticConfiguration,
                 expressionOperator,
-                statisticConfiguration.getAllFieldNames());
+                requestedFieldNames);
 
         return searchRequest;
+    }
+
+    /**
+     * Create a search request with no predicates (unless an interval is supplied) and with all fields
+     * in the returned data set
+     */
+    public static SearchRequest buildSearchRequestAllDataAllFields(final StatisticConfiguration statisticConfiguration,
+                                                                   @Nullable final EventStoreTimeIntervalEnum interval) {
+
+        return buildSearchRequestAllData(statisticConfiguration, interval, statisticConfiguration.getAllFieldNames());
     }
 
     public static SearchRequest buildSearchRequest(final StatisticConfiguration statisticConfiguration,
