@@ -81,6 +81,7 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
         treeCache.getListenable().addListener(this::treeCacheChangeHandler);
         try {
             //block until the treeCache is ready
+            LOGGER.info("Waiting for curator tree cache to be initialised with timeout {}ms", initTimeout);
             initialisedSemaphore.tryAcquire(initTimeout, TimeUnit.MILLISECONDS);
             LOGGER.info(() -> String.format("Initialised treeCache in %sms",ChronoUnit.MILLIS.between(startTime,Instant.now())));
         } catch (InterruptedException e) {
@@ -105,7 +106,6 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
         } catch (IOException e) {
             throw new RuntimeException(String.format("Error initialising property keys"), e);
         }
-
     }
 
 

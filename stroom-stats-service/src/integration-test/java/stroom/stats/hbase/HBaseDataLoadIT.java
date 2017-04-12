@@ -28,15 +28,11 @@ import stroom.query.api.ExpressionItem;
 import stroom.query.api.ExpressionOperator;
 import stroom.query.api.ExpressionTerm;
 import stroom.query.api.Field;
-import stroom.query.api.FieldBuilder;
 import stroom.query.api.Query;
-import stroom.query.api.ResultRequest;
 import stroom.query.api.Row;
 import stroom.query.api.SearchRequest;
 import stroom.query.api.SearchResponse;
 import stroom.query.api.TableResult;
-import stroom.query.api.TableSettings;
-import stroom.query.api.TableSettingsBuilder;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.HBaseClient;
 import stroom.stats.api.StatisticTag;
@@ -63,12 +59,12 @@ import stroom.stats.streams.TagValue;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
+import stroom.stats.test.QueryApiHelper;
 import stroom.stats.test.StatisticConfigurationEntityBuilder;
 import stroom.stats.test.StatisticConfigurationEntityHelper;
 import stroom.stats.util.DateUtil;
 
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -78,8 +74,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -412,8 +406,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 new ExpressionOperator(true, ExpressionOperator.Op.AND));
 
         //only put the static fields in the table settings so we will expect it to roll up all the tags
-        SearchRequest searchRequest = wrapQuery(query,
-                () -> StatisticConfiguration.STATIC_FIELDS_MAP.get(StatisticType.COUNT));
+        SearchRequest searchRequest = QueryApiHelper.wrapQuery(query, StatisticConfiguration.STATIC_FIELDS_MAP.get(StatisticType.COUNT));
 
         //all records should come back
         SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfigurationEntity, times.size());
@@ -668,33 +661,8 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         return searchResponse;
     }
 
-
-    private SearchRequest wrapQuery(Query query,
-                                    Supplier<List<String>> fieldSupplier) {
-
-        //build the fields for the search response table settings
-        List<Field> fields = fieldSupplier.get().stream()
-                .map(String::toLowerCase)
-                .map(field -> new FieldBuilder().name(field).expression("${" + field + "}").build())
-                .collect(Collectors.toList());
-
-        TableSettings tableSettings = new TableSettingsBuilder()
-                .fields(fields)
-                .build();
-
-        ResultRequest resultRequest = new ResultRequest("mainResult", tableSettings);
-
-        return new SearchRequest(null,
-                query,
-                Collections.singletonList(resultRequest),
-                ZoneOffset.UTC.getId(),
-                false);
-
-
-    }
-
     private SearchRequest wrapQuery(Query query, StatisticConfiguration statisticConfiguration) {
-        return wrapQuery(query, statisticConfiguration::getAllFieldNames);
+        return QueryApiHelper.wrapQuery(query, statisticConfiguration.getAllFieldNames());
     }
 
     private static long computeSumOfCountCounts(List<StatisticDataPoint> dataPoints) {
@@ -739,52 +707,16 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get all values for a named field, converted into the chosen type
-     */
-    private static <T> List<T> getTypedFieldValues(final SearchRequest searchRequest,
-                                                   final SearchResponse searchResponse,
-                                                   final String fieldName,
-                                                   final Class<T> valueType) {
-
-        //assume only one result request and one tablesSetting
-        int fieldIndex = searchRequest.getResultRequests().get(0).getMappings().get(0).getFields().stream()
-                .map(field -> field.getName().toLowerCase())
-                .collect(Collectors.toList())
-                .indexOf(fieldName.toLowerCase());
-
-        Map<Class<?>, Function<String, Object>> conversionMap = new HashMap<>();
-        conversionMap.put(String.class, str -> str);
-        conversionMap.put(Long.class, Long::valueOf);
-        conversionMap.put(Double.class, Double::valueOf);
-        conversionMap.put(Instant.class, str -> Instant.ofEpochMilli(Long.valueOf(str)));
-        conversionMap.put(ZonedDateTime.class, str ->
-                ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.valueOf(str)), ZoneOffset.UTC));
-
-        Function<String, T> conversionFunc = str -> {
-            Object val = conversionMap.get(valueType).apply(str);
-            try {
-                return (T) val;
-            } catch (ClassCastException e) {
-                throw new RuntimeException(String.format("Unable to cast field %s to type %s", fieldName, valueType.getName()), e);
-            }
-        };
-
-        return ((TableResult) searchResponse.getResults().get(0)).getRows().stream()
-                .map(row -> row.getValues().get(fieldIndex))
-                .map(conversionFunc)
-                .collect(Collectors.toList());
-    }
 
     private List<Instant> getInstants(final SearchRequest searchRequest, final SearchResponse searchResponse) {
-        return getTypedFieldValues(searchRequest,
+        return QueryApiHelper.getTypedFieldValues(searchRequest,
                 searchResponse,
                 StatisticConfiguration.FIELD_NAME_DATE_TIME,
                 Instant.class);
     }
 
     private List<Long> getTimes(final SearchRequest searchRequest, final SearchResponse searchResponse) {
-        return getTypedFieldValues(searchRequest,
+        return QueryApiHelper.getTypedFieldValues(searchRequest,
                 searchResponse,
                 StatisticConfiguration.FIELD_NAME_DATE_TIME,
                 Long.class);

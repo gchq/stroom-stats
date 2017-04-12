@@ -22,7 +22,6 @@ package stroom.stats.streams;
 import com.codahale.metrics.health.HealthCheck;
 import com.google.common.base.Preconditions;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -176,11 +175,17 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
         Map<String, Object> consumerProps = new HashMap<>();
 
+        //ensure the session timeout is bigger than the flush timeout so our session doesn't expire
+        //before we try to commit after a flush
+        //Also ensure it isn't less than the default of 10s
+        int sessionTimeoutMs = Math.max(10_000, (int) (getFlushIntervalMs() * 1.2));
+
         consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
                 stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
         consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "Consumer-" + inputTopic);
+        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         consumerProps.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, getPollRecords());
+        consumerProps.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, sessionTimeoutMs);
         return consumerProps;
     }
 
@@ -254,14 +259,17 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
         consumerThreadName.set(Thread.currentThread().getName());
 
+        int unCommittedRecCount = 0;
+
         try {
             //loop forever unless the thread is processing is stopped from outside
             while (runState.equals(RunState.RUNNING) && !Thread.currentThread().isInterrupted()) {
                 try {
                     ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(getPollTimeoutMs());
 
+                    int recCount = records.count();
+                    unCommittedRecCount += recCount;
                     LOGGER.ifDebugIsEnabled(() -> {
-                        int recCount = records.count();
                         if (recCount > 0) {
                             LOGGER.debug("Received {} records from topic {}", recCount, inputTopic);
                         }
@@ -275,26 +283,27 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                                     aggregationInterval,
                                     getFlushIntervalMs());
                         }
-                        for (ConsumerRecord<StatKey, StatAggregate> record : records) {
-                            statAggregator.add(record.key(), record.value());
-                        }
+                        records.forEach(rec ->
+                                statAggregator.add(rec.key(), rec.value()));
                     }
 
                     boolean flushHappened = flushAggregatorIfReady();
-                    if (flushHappened) {
+                    if (flushHappened && unCommittedRecCount > 0) {
                         kafkaConsumer.commitSync();
+                        unCommittedRecCount = 0;
                     }
                 } catch (Exception e) {
-                    LOGGER.error("Error while polling with stat type {}", statisticType, e);
+                    runState = RunState.STOPPED;
+                    throw new RuntimeException(String.format("Error while polling with stat type %s", statisticType), e);
                 }
             }
         } finally {
             //clean up as we are shutting down this processor
-            cleanUp(kafkaConsumer);
+            cleanUp(kafkaConsumer, unCommittedRecCount);
         }
     }
 
-    private void cleanUp(KafkaConsumer<StatKey, StatAggregate> kafkaConsumer) {
+    private void cleanUp(KafkaConsumer<StatKey, StatAggregate> kafkaConsumer, int unCommittedRecCount) {
         LOGGER.debug("Cleaning up runnable");
 
         //force a flush of anything in the aggregator
@@ -303,7 +312,9 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
             flushAggregator(statAggregator);
         }
         if (kafkaConsumer != null) {
-            kafkaConsumer.commitSync();
+            if (unCommittedRecCount > 0) {
+                kafkaConsumer.commitSync();
+            }
             kafkaConsumer.close();
         }
     }

@@ -37,6 +37,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -55,21 +56,28 @@ public class GenerateSampleStatisticsData {
     private static final String USER1 = "user1";
     private static final String USER2 = "user2";
 
-    // 52,000 is just over 3 days at 5000ms intervals
-//    private static final int ITERATION_COUNT = 52_000;
-    private static final int ITERATION_COUNT = 5_000;
-    //5_000 is about 17hrs at 5000ms intervals
-    private static final int EVENT_TIME_DELTA_MS = 5000;
+    private static final int EVENT_TIME_DELTA_MS = 5_000;
 
     private static final String COLOUR_RED = "Red";
     private static final String COLOUR_GREEN = "Green";
     private static final String COLOUR_BLUE = "Blue";
 
-    private static final List<String> COLOURS = Arrays.asList(COLOUR_RED, COLOUR_GREEN, COLOUR_BLUE);
+    public static final List<String> COLOURS = Arrays.asList(COLOUR_RED, COLOUR_GREEN, COLOUR_BLUE);
 
-    private static final List<String> STATES = Arrays.asList("IN", "OUT");
+    public static final List<String> STATES = Arrays.asList("IN", "OUT");
 
-    private static final String[] USERS = new String[]{USER1, USER2};
+    public static final String[] USERS = new String[]{USER1, USER2};
+
+    public static final long COUNT_STAT_VALUE = 1L;
+
+    public static final Map<String, Double> VALUE_STAT_VALUE_MAP = new HashMap<>();
+
+    static {
+        //values such that all three add up to a nice round number
+        VALUE_STAT_VALUE_MAP.put(COLOUR_RED, 10.1);
+        VALUE_STAT_VALUE_MAP.put(COLOUR_GREEN, 20.2);
+        VALUE_STAT_VALUE_MAP.put(COLOUR_BLUE, 69.7);
+    }
 
 
     private static ZonedDateTime getStartTime() {
@@ -81,7 +89,8 @@ public class GenerateSampleStatisticsData {
             StatisticType statisticType,
             EventStoreTimeIntervalEnum smallestInterval,
             StatisticRollUpType statisticRollUpType,
-            int batchSize) {
+            int batchSize,
+            int iterationCount) {
 
         //build the stat config for the stats we are about to generate
         StatisticConfigurationEntity statisticConfiguration = new StatisticConfigurationEntityBuilder(
@@ -94,7 +103,7 @@ public class GenerateSampleStatisticsData {
 
         final ZonedDateTime eventTime = getStartTime();
         //generate the stat events
-        List<Statistics.Statistic> statisticList = buildEvents(statName, eventTime, statisticType);
+        List<Statistics.Statistic> statisticList = buildEvents(statName, eventTime, statisticType, iterationCount);
 
         //randomise the stats
         Collections.shuffle(statisticList, new Random());
@@ -115,35 +124,30 @@ public class GenerateSampleStatisticsData {
 
     private static List<Statistics.Statistic> buildEvents(final String statName,
                                                           final ZonedDateTime initialEventTime,
-                                                          final StatisticType statisticType) {
+                                                          final StatisticType statisticType,
+                                                          final int iterationCount) {
         ZonedDateTime eventTime = initialEventTime;
 
-        List<Statistics.Statistic> statisticList = new ArrayList<>(ITERATION_COUNT);
+        List<Statistics.Statistic> statisticList = new ArrayList<>(iterationCount);
 
-        for (int i = 0; i <= ITERATION_COUNT; i++) {
+        for (int i = 0; i < iterationCount; i++) {
             for (final String user : USERS) {
                 for (final String colour : COLOURS) {
                     for (final String state : STATES) {
 
-                        Statistics.Statistic statistic = null;
+                        Statistics.Statistic statistic;
                         if (statisticType.equals(StatisticType.COUNT)) {
                             statistic = StatisticsHelper.buildCountStatistic(
                                     statName,
                                     eventTime,
-                                    1L,
+                                    COUNT_STAT_VALUE,
                                     StatisticsHelper.buildTagType(TAG_USER, user),
                                     StatisticsHelper.buildTagType(TAG_COLOUR, colour),
                                     StatisticsHelper.buildTagType(TAG_STATE, state));
 
                         } else if (statisticType.equals(StatisticType.VALUE)) {
-                            double val = 0;
-                            if (colour.equals(COLOUR_RED)) {
-                                val = 10.1;
-                            } else if (colour.equals(COLOUR_GREEN)) {
-                                val = 20.2;
-                            } else if (colour.equals(COLOUR_BLUE)) {
-                                val = 69.7;
-                            }
+                            //give each different colour a different value
+                            double val = VALUE_STAT_VALUE_MAP.get(colour);
 
                             statistic = StatisticsHelper.buildValueStatistic(
                                     statName,

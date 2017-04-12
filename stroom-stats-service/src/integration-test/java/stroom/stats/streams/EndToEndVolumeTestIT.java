@@ -29,26 +29,34 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
+import org.assertj.core.api.Assertions;
 import org.hibernate.SessionFactory;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.query.api.SearchRequest;
+import stroom.query.api.SearchResponse;
 import stroom.stats.AbstractAppIT;
+import stroom.stats.HBaseClient;
 import stroom.stats.api.StatisticType;
+import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.test.QueryApiHelper;
 import stroom.stats.test.StatisticConfigurationEntityHelper;
 import stroom.stats.xml.StatisticsMarshaller;
 import stroom.util.thread.ThreadUtil;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,10 +75,16 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
     private static final Map<StatisticType, String> INPUT_TOPICS_MAP = new HashMap<>();
     private static final Map<StatisticType, String> BAD_TOPICS_MAP = new HashMap<>();
 
+    // 52,000 is just over 3 days at 5000ms intervals
+//    private static final int ITERATION_COUNT = 52_000;
+    private static final int ITERATION_COUNT = 100;
+    //5_000 is about 17hrs at 5000ms intervals
+
     public static final EventStoreTimeIntervalEnum SMALLEST_INTERVAL = EventStoreTimeIntervalEnum.SECOND;
 
     private Injector injector = getApp().getInjector();
     private StroomPropertyService stroomPropertyService = injector.getInstance(StroomPropertyService.class);
+    private HBaseClient hBaseClient = injector.getInstance(HBaseClient.class);
 
     @Before
     public void setup() {
@@ -83,29 +97,75 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
                     String badTopic = TopicNameFactory.getStatisticTypedName(BAD_STATISTIC_EVENTS_TOPIC_PREFIX, type);
                     BAD_TOPICS_MAP.put(type, badTopic);
                 });
+
+        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 1000);
+        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 1_000);
     }
 
     @Test
-    public void volumeTest() {
+    public void volumeTest_count() {
+
+        final StatisticType statisticType = StatisticType.COUNT;
+
+        int expectedTotalEvents = ITERATION_COUNT *
+                GenerateSampleStatisticsData.COLOURS.size() *
+                GenerateSampleStatisticsData.USERS.length *
+                GenerateSampleStatisticsData.STATES.size();
+
+        LOGGER.info("Expecting {} events per stat type", expectedTotalEvents);
+
+        long expectedTotalCountValue = GenerateSampleStatisticsData.COUNT_STAT_VALUE * expectedTotalEvents;
+
+        double expectedTotalValueValue = GenerateSampleStatisticsData.VALUE_STAT_VALUE_MAP.values().stream()
+                .mapToDouble(Double::doubleValue)
+                .sum() * expectedTotalEvents;
 
         //create stat configs and put the test data on the topics
-        loadData();
+        Map<StatisticType, StatisticConfigurationEntity> statConfigs = loadData(statisticType);
+
+        StatisticConfiguration statisticConfiguration = statConfigs.get(statisticType);
+
+        List<Map<String, String>> rowData = Collections.emptyList();
+
+        SearchRequest searchRequest = QueryApiHelper.buildSearchRequestAllDataAllFields(statisticConfiguration, EventStoreTimeIntervalEnum.SECOND);
+
+        Instant timeoutTime = Instant.now().plus(5, ChronoUnit.MINUTES);
 
         //TODO query the store repeatedly until we get the answer we want
-        while (true) {
-            ThreadUtil.sleep(100);
+        while (rowData.size() != expectedTotalEvents && Instant.now().isBefore(timeoutTime)) {
+            ThreadUtil.sleep(3_000);
+
+            rowData = runSearch(searchRequest);
+
+            LOGGER.info("row count returned: {}", rowData.size());
         }
+
+        Assertions.assertThat(rowData.size()).isEqualTo(expectedTotalEvents);
+
+        Assertions.assertThat(rowData.stream()
+                .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
+                .mapToLong(Long::valueOf)
+                .sum()
+        ).isEqualTo(expectedTotalCountValue);
 
     }
 
-    private void loadData() {
+    private List<Map<String, String>> runSearch(final SearchRequest searchRequest) {
+
+        SearchResponse searchResponse = hBaseClient.query(searchRequest);
+
+        return QueryApiHelper.getRowData(searchRequest, searchResponse);
+    }
+
+    private Map<StatisticType, StatisticConfigurationEntity> loadData(StatisticType... statisticTypes) {
 
         final KafkaProducer<String, String> kafkaProducer = buildKafkaProducer(stroomPropertyService);
 
 //        StatisticType[] types = new StatisticType[] {StatisticType.COUNT};
-        StatisticType[] types = StatisticType.values();
 
-        for (StatisticType statisticType : types) {
+        Map<StatisticType, StatisticConfigurationEntity> statConfigs = new HashMap<>();
+
+        for (StatisticType statisticType : statisticTypes) {
 
             String statNameStr = "VolumeTest-" + Instant.now().toString() + "-" + statisticType + "-" + SMALLEST_INTERVAL;
 
@@ -114,9 +174,11 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
                     statisticType,
                     SMALLEST_INTERVAL,
                     StatisticRollUpType.ALL,
-                    500);
+                    500,
+                    ITERATION_COUNT);
 
             persistStatConfig(testData._1());
+            statConfigs.put(statisticType, testData._1());
 
             String inputTopic = INPUT_TOPICS_MAP.get(statisticType);
             List<Statistics> testEvents = testData._2();
@@ -141,6 +203,7 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
 
         Map<String, List<String>> badEvents = new HashMap<>();
         startBadEventsConsumer(badEvents);
+        return statConfigs;
     }
 
 
@@ -229,5 +292,6 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
                 injector.getInstance(StatisticConfigurationEntityMarshaller.class),
                 statisticConfigurationEntity);
     }
+
 
 }
