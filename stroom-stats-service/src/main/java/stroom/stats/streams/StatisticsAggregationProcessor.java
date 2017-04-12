@@ -192,14 +192,22 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
      * @param statAggregator
      * @return The list of aggregates events drained from the aggregator and sent to the event store
      */
-    private Map<StatKey, StatAggregate> flushToStatStore(final StatisticType statisticType, final StatAggregator statAggregator) {
+    private Map<StatKey, StatAggregate> flushToStatStore(final StatisticType statisticType,
+                                                         final StatAggregator statAggregator) {
 
         Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.getAggregates();
-        LOGGER.debug(() -> String.format("Flushing %s events (from %s input events %.2f %%) of type %s, aggregationInterval %s to the StatisticsService",
-                aggregatedEvents.size(), statAggregator.getInputCount(), statAggregator.getReductionPercentage(),
-                statisticType, statAggregator.getAggregationInterval()));
+
+        //as our logger uses a lambda we need to assign this and make it final which is not ideal if
+        //we are not in debug mode
+        final Instant startTime = Instant.now();
 
         statisticsService.putAggregatedEvents(statisticType, statAggregator.getAggregationInterval(), aggregatedEvents);
+
+        LOGGER.debug(() -> String.format("Flushed %s %s/%s events (from %s input events %.2f %%) to the StatisticsService in %sms",
+                aggregatedEvents.size(), statisticType, statAggregator.getAggregationInterval(),
+                statAggregator.getInputCount(), statAggregator.getReductionPercentage(),
+                Duration.between(startTime, Instant.now()).toMillis()));
+
         return aggregatedEvents;
     }
 
@@ -211,8 +219,9 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         Preconditions.checkNotNull(statAggregator);
         Preconditions.checkNotNull(producer);
 
-        LOGGER.debug(() -> String.format("Flushing %s records from interval %s with new interval %s to topic %s",
-                statAggregator.size(), statAggregator.getAggregationInterval(), newInterval, topic));
+        //as our logger uses a lambda we need to assign this and make it final which is not ideal if
+        //we are not in debug mode
+        final Instant startTime = Instant.now();
 
         //Uplift the statkey to the new aggregationInterval and put it on the topic
         //We will not be trying to uplift the statKey if we are already at the highest aggregationInterval
@@ -224,6 +233,9 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                         entry.getValue()))
                 .peek(producerRecord -> LOGGER.trace("Putting record {} on topic {}", producerRecord, topic))
                 .forEach(producer::send);
+
+        LOGGER.debug(() -> String.format("Flushed %s records from interval %s with new interval %s to topic %s in %sms",
+                statAggregator.size(), statAggregator.getAggregationInterval(), newInterval, topic, Duration.between(startTime, Instant.now()).toMillis()));
 
         producer.flush();
     }
