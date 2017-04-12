@@ -19,7 +19,9 @@
 
 package stroom.stats.test;
 
+import com.google.common.base.Strings;
 import javaslang.Tuple2;
+import org.junit.Test;
 import stroom.query.api.DocRef;
 import stroom.query.api.ExpressionItem;
 import stroom.query.api.ExpressionOperator;
@@ -42,6 +44,8 @@ import javax.annotation.Nullable;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -192,4 +196,85 @@ public class QueryApiHelper {
                 ExpressionTerm.Condition.EQUALS,
                 interval.name().toLowerCase());
     }
+
+    public static List<String> convertToFixedWidth(List<Map<String, String>> rowData, @Nullable Map<String, Class<?>> fieldTypes) {
+
+        Map<String, Integer> maxFieldWidths = new HashMap<>();
+        List<Map<String, String>> formattedRowData;
+
+        //if we have been given typed for any fields then do then convert those values
+        if (fieldTypes == null || fieldTypes.isEmpty()) {
+            formattedRowData = rowData;
+        } else {
+            formattedRowData = rowData.stream()
+                    .map(rowMap -> {
+                        Map<String, String> newRowMap = new HashMap<>();
+                        fieldTypes.entrySet().forEach(entry -> {
+                            String fieldName = entry.getKey().toLowerCase();
+                            String newValue = conversionMap.get(entry.getValue()).apply(rowMap.get(fieldName)).toString();
+                            newRowMap.put(fieldName, newValue);
+                        });
+                        return newRowMap;
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        //assume all rows have same fields so just use first one
+        if (formattedRowData == null || formattedRowData.isEmpty()) {
+            return Collections.emptyList();
+        } else {
+            //get the widths of the field headings
+            List<String> fieldNames = formattedRowData.get(0).keySet().stream()
+                    .map(String::toLowerCase)
+                    .collect(Collectors.toList());
+
+            fieldNames.forEach(key -> maxFieldWidths.put(key, key.length()));
+
+            //now find the max width for each value (and its field heading)
+            formattedRowData.stream()
+                    .flatMap(rowMap -> rowMap.entrySet().stream())
+                    .forEach(entry ->
+                            maxFieldWidths.merge(entry.getKey(), entry.getValue().length(), Math::max));
+
+            //now construct the row strings
+            List<String> valueStrings = formattedRowData.stream()
+                    .map(rowMap -> maxFieldWidths.entrySet().stream()
+                            .map(entry -> Strings.padStart(rowMap.get(entry.getKey()), entry.getValue() + 1, ' '))
+                            .map(str -> str + " ")
+                            .collect(Collectors.joining("|")))
+                    .collect(Collectors.toList());
+
+            String headerString = maxFieldWidths.entrySet().stream()
+                            .map(entry -> Strings.padStart(entry.getKey(), entry.getValue() + 1, ' '))
+                            .map(str -> str + " ")
+                            .collect(Collectors.joining("|"));
+
+            String lineString = headerString.replaceAll(".", "-");
+
+            List<String> headerAndValueStrings = new ArrayList<>();
+            headerAndValueStrings.add(headerString);
+            headerAndValueStrings.add(lineString);
+            headerAndValueStrings.addAll(valueStrings);
+            return headerAndValueStrings;
+        }
+
+    }
+
+    @Test
+    public void testConvertToFixedWidth() {
+
+        Map<String, String> row1 = new HashMap<>();
+        row1.put("heading1", "123");
+        row1.put("h2", "45678");
+
+        Map<String, String> row2 = new HashMap<>();
+        row2.put("heading1", "2345");
+        row2.put("h2", "9");
+
+        List<Map<String, String>> rowData = Arrays.asList(row1, row2);
+
+        convertToFixedWidth(rowData, null).forEach(System.out::println);
+    }
+
+
 }
