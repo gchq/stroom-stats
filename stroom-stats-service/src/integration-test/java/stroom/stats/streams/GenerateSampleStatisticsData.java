@@ -56,8 +56,9 @@ public class GenerateSampleStatisticsData {
     private static final String USER2 = "user2";
 
     // 52,000 is just over 3 days at 5000ms intervals
-    private static final int ITERATION_COUNT = 52_000;
-//    private static final int ITERATION_COUNT = 5;
+//    private static final int ITERATION_COUNT = 52_000;
+    private static final int ITERATION_COUNT = 5_000;
+    //5_000 is about 17hrs at 5000ms intervals
     private static final int EVENT_TIME_DELTA_MS = 5000;
 
     private static final String COLOUR_RED = "Red";
@@ -97,7 +98,6 @@ public class GenerateSampleStatisticsData {
 
         //randomise the stats
         Collections.shuffle(statisticList, new Random());
-
 
         //group the stats in to batches so we can wrap each batch into a Statistics object
         AtomicInteger counter = new AtomicInteger(0);

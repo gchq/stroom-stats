@@ -91,6 +91,7 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
         //create stat configs and put the test data on the topics
         loadData();
 
+        //TODO query the store repeatedly until we get the answer we want
         while (true) {
             ThreadUtil.sleep(100);
         }

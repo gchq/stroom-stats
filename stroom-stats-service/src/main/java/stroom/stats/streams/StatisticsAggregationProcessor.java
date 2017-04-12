@@ -91,6 +91,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     public static final String PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE = "stroom.stats.aggregation.minBatchSize";
     public static final String PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS = "stroom.stats.aggregation.maxFlushIntervalMs";
     public static final String PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS = "stroom.stats.aggregation.pollTimeoutMs";
+    public static final String PROP_KEY_AGGREGATOR_POLL_RECORDS = "stroom.stats.aggregation.pollRecords";
 
     public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECS = 120;
 
@@ -179,6 +180,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                 stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
         consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "Consumer-" + inputTopic);
+        consumerProps.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, getPollRecords());
         return consumerProps;
     }
 
@@ -193,8 +195,9 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private Map<StatKey, StatAggregate> flushToStatStore(final StatisticType statisticType, final StatAggregator statAggregator) {
 
         Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.getAggregates();
-        LOGGER.debug(() -> String.format("Flushing %s events of type %s, aggregationInterval %s to the StatisticsService",
-                aggregatedEvents.size(), statisticType, statAggregator.getAggregationInterval()));
+        LOGGER.debug(() -> String.format("Flushing %s events (from %s input events %.2f %%) of type %s, aggregationInterval %s to the StatisticsService",
+                aggregatedEvents.size(), statAggregator.getInputCount(), statAggregator.getReductionPercentage(),
+                statisticType, statAggregator.getAggregationInterval()));
 
         statisticsService.putAggregatedEvents(statisticType, statAggregator.getAggregationInterval(), aggregatedEvents);
         return aggregatedEvents;
@@ -432,6 +435,10 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
     private int getPollTimeoutMs() {
         return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS, 100);
+    }
+
+    private int getPollRecords() {
+        return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_POLL_RECORDS, 1000);
     }
 
     private int getMinBatchSize() {
