@@ -132,7 +132,7 @@ public class ServiceDiscoveryManager {
         List<ConnectorFactory> conectorFactories = serverFactory.getApplicationConnectors();
         if (Preconditions.checkNotNull(conectorFactories).size() != 1) {
             throw new RuntimeException(
-                    String.format("Unexpected number of connectorFactories {}, check 'applicationConnectors' in the YAML config",
+                    String.format("Unexpected number of connectorFactories %s, check 'applicationConnectors' in the YAML config",
                             conectorFactories.size()));
         }
 
