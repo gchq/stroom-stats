@@ -167,14 +167,14 @@ public class QueryApiHelper {
                 .collect(Collectors.toList());
     }
 
-    public static Map<String, Integer> getFieldIndicies(final SearchRequest searchRequest) {
+    public static Map<String, Integer> getFieldIndices(final SearchRequest searchRequest) {
         Map<String, Integer> fieldIndices = new HashMap<>();
-        List<String> fieldnames = searchRequest.getResultRequests().get(0).getMappings().get(0).getFields().stream()
+        List<String> fieldNames = searchRequest.getResultRequests().get(0).getMappings().get(0).getFields().stream()
                 .map(field -> field.getName().toLowerCase())
                 .collect(Collectors.toList());
 
         int index = 0;
-        for (String fieldName : fieldnames) {
+        for (String fieldName : fieldNames) {
             fieldIndices.put(fieldName, index++);
         }
         return fieldIndices;
@@ -190,7 +190,7 @@ public class QueryApiHelper {
     public static List<Map<String, String>> getRowData(final SearchRequest searchRequest,
                                                        final SearchResponse searchResponse) {
 
-        Map<String, Integer> fieldIndices = getFieldIndicies(searchRequest);
+        Map<String, Integer> fieldIndices = getFieldIndices(searchRequest);
 
         return ((TableResult) searchResponse.getResults().get(0)).getRows().stream()
                 .map(row -> convertRow(row, fieldIndices))
@@ -205,34 +205,46 @@ public class QueryApiHelper {
 
     public static List<String> convertToFixedWidth(List<Map<String, String>> rowData, @Nullable Map<String, Class<?>> fieldTypes) {
 
-        Map<String, Integer> maxFieldWidths = new HashMap<>();
-        List<Map<String, String>> formattedRowData;
+        //TODO would be good to make this work from a SerachRequest/SearchResponse pair, then it can take the list
+        //of fields from the table settings in the request, observing that field order.
+        //Also woudl be nice to be able to do things like
+        // .configureField(new FieldConfigBuilder("myField").leftJustify().convert(conversionFunc).build())
+        //Also may be nice to be able to configure ascii table vs csv vs tab delim and header/noHeder etc.
 
-        //if we have been given typed for any fields then do then convert those values
-        if (fieldTypes == null || fieldTypes.isEmpty()) {
-            formattedRowData = rowData;
-        } else {
-            formattedRowData = rowData.stream()
-                    .map(rowMap -> {
-                        Map<String, String> newRowMap = new HashMap<>();
-                        fieldTypes.entrySet().forEach(entry -> {
-                            String fieldName = entry.getKey().toLowerCase();
-                            String newValue = conversionMap.get(entry.getValue()).apply(rowMap.get(fieldName)).toString();
-                            newRowMap.put(fieldName, newValue);
-                        });
-                        return newRowMap;
-                    })
-                    .collect(Collectors.toList());
-        }
 
         //assume all rows have same fields so just use first one
-        if (formattedRowData == null || formattedRowData.isEmpty()) {
+        if (rowData == null || rowData.isEmpty()) {
             return Collections.emptyList();
         } else {
             //get the widths of the field headings
-            List<String> fieldNames = formattedRowData.get(0).keySet().stream()
+            List<String> fieldNames = rowData.get(0).keySet().stream()
                     .map(String::toLowerCase)
                     .collect(Collectors.toList());
+
+            Map<String, Integer> maxFieldWidths = new HashMap<>();
+            List<Map<String, String>> formattedRowData;
+
+            //if we have been given typed for any fields then do then convert those values
+            if (fieldTypes == null || fieldTypes.isEmpty()) {
+                formattedRowData = rowData;
+            } else {
+                formattedRowData = rowData.stream()
+                        .map(rowMap -> {
+                            Map<String, String> newRowMap = new HashMap<>();
+                            fieldNames.forEach(fieldName -> {
+                                Class<?> type = fieldTypes.get(fieldName);
+                                if (type != null) {
+                                    String newValue = conversionMap.get(type).apply(rowMap.get(fieldName)).toString();
+                                    newRowMap.put(fieldName, newValue);
+                                } else {
+                                    //no explicit type so take the value as is
+                                    newRowMap.put(fieldName, rowMap.get(fieldName));
+                                }
+                            });
+                            return newRowMap;
+                        })
+                        .collect(Collectors.toList());
+            }
 
             fieldNames.forEach(key -> maxFieldWidths.put(key, key.length()));
 
@@ -255,15 +267,17 @@ public class QueryApiHelper {
                             .map(str -> str + " ")
                             .collect(Collectors.joining("|"));
 
-            String lineString = headerString.replaceAll(".", "-");
-
             List<String> headerAndValueStrings = new ArrayList<>();
             headerAndValueStrings.add(headerString);
-            headerAndValueStrings.add(lineString);
+            headerAndValueStrings.add(createHorizontalLine(headerString.length(), '-'));
             headerAndValueStrings.addAll(valueStrings);
             return headerAndValueStrings;
         }
 
+    }
+
+    private static String createHorizontalLine(int length, char lineChar) {
+        return Strings.repeat(String.valueOf(lineChar), length);
     }
 
     @Test

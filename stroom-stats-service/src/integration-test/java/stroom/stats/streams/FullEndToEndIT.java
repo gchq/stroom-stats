@@ -53,6 +53,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class FullEndToEndIT extends AbstractAppIT {
@@ -221,7 +222,14 @@ public class FullEndToEndIT extends AbstractAppIT {
                             );
 
                             LOGGER.trace(() -> String.format("Sending %s stat events to topic %s", statistics.getStatistic().size(), entry.getKey()));
-                            kafkaProducer.send(producerRecord);
+                            try {
+                                kafkaProducer.send(producerRecord).get();
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                throw  new RuntimeException("Interrupted", e);
+                            } catch (ExecutionException e) {
+                                throw  new RuntimeException("Error sending record to Kafka", e);
+                            }
                         }));
 
         kafkaProducer.flush();

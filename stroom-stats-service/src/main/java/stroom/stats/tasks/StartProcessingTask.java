@@ -28,6 +28,7 @@ import stroom.stats.streams.StatisticsIngestService;
 import javax.inject.Inject;
 import java.io.PrintWriter;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 /**
  * Starts
@@ -51,6 +52,17 @@ public class StartProcessingTask extends Task {
     public void execute(final ImmutableMultimap<String, String> parameters, final PrintWriter output) throws Exception {
 
         LOGGER.info("{} endpoint called", TASK_NAME);
-        CompletableFuture.runAsync(statisticsIngestService::start);
+
+        @SuppressWarnings("FutureReturnValueIgnored")
+        Future<Void> future = CompletableFuture
+                .runAsync(statisticsIngestService::start)
+                .handle((aVoid, ex) -> {
+                    if (ex != null) {
+                        LOGGER.error("Task {} failed with error {}", TASK_NAME, ex.getMessage(), ex);
+                    } else {
+                        LOGGER.info("Task {} completed successfully", TASK_NAME);
+                    }
+                    return aVoid;
+                });
     }
 }

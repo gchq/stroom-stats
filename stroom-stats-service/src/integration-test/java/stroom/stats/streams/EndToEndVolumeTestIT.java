@@ -53,6 +53,7 @@ import stroom.stats.xml.StatisticsMarshaller;
 import stroom.util.thread.ThreadUtil;
 
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -201,8 +202,12 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
     }
 
     private void dumpRowData(List<Map<String, String>> rowData) {
-        LOGGER.info("Dumping row data:\n" + QueryApiHelper.convertToFixedWidth(rowData, null).stream()
-                .collect(Collectors.joining("\n")));
+        Map<String, Class<?>> typeMap = new HashMap<>();
+        typeMap.put(StatisticConfiguration.FIELD_NAME_DATE_TIME.toLowerCase(), Instant.class);
+
+        String tableStr = QueryApiHelper.convertToFixedWidth(rowData, typeMap).stream()
+                .collect(Collectors.joining("\n"));
+        LOGGER.info("Dumping row data:\n" + tableStr);
     }
 
     private Map<EventStoreTimeIntervalEnum, Integer> getRowCountsByInterval(int eventsPerIteration) {

@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 public class StatisticSender {
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(FullEndToEndIT.class);
@@ -45,7 +46,7 @@ public class StatisticSender {
             List<Statistics> statisticsList,
             StatisticsMarshaller statisticsMarshaller){
 
-        statisticsList.stream().forEach(
+        statisticsList.forEach(
             statistics -> {
                 ProducerRecord<String, String> producerRecord = buildProducerRecord(topic, statistics, statisticsMarshaller);
 
@@ -54,7 +55,14 @@ public class StatisticSender {
                 );
 
                 LOGGER.trace(() -> String.format("Sending %s stat events to topic %s", statistics.getStatistic().size(), topic));
-                kafkaProducer.send(producerRecord);
+                try {
+                    kafkaProducer.send(producerRecord).get();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw  new RuntimeException("Interrupted", e);
+                } catch (ExecutionException e) {
+                    throw  new RuntimeException("Error sending record to Kafka", e);
+                }
             });
 
         kafkaProducer.flush();

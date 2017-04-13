@@ -31,6 +31,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
@@ -90,13 +91,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -129,6 +124,8 @@ public class TestKafkaStreamService {
 
     @Rule
     public TestRule watcher = new TestWatcher() {
+
+        @Override
         protected void starting(Description description) {
             //prefix the streams app IDs with the test method name so there are no clashes between tests as the embeded kafka
             //doesn't seem to clean up properly after itself
@@ -783,13 +780,20 @@ public class TestKafkaStreamService {
                 .stream()
                 .forEach(rec -> {
                     try {
-                        producer.send(rec);
+                        @SuppressWarnings("FutureReturnValueIgnored")
+                        Future<RecordMetadata> future = producer.send(rec, (metadata, ex) -> {
+                            if (ex != null) {
+                                LOGGER.error("Error sending to kafka", ex);
+                                Assert.fail();
+                            }
+                        });
                     } catch (Exception e) {
                         throw new RuntimeException("exception sending mesg", e);
                     }
                 });
 
-        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
+        @SuppressWarnings("FutureReturnValueIgnored")
+        Future<?> future = Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
             try {
                 StringBuilder sb = new StringBuilder("Current state of the topicToMsgsMap:\n");
                 topicToMsgsMap.keySet().stream()
