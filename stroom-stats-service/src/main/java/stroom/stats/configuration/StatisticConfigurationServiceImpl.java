@@ -38,8 +38,8 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticConfigurationServiceImpl.class);
 
-    private static final String KEY_BY_NAME_CACHE_NAME = "nameToStatisticConfigurationCache";
-    private static final String KEY_BY_UUID_CACHE_NAME = "uuidToStatisticConfigurationCache";
+    static final String KEY_BY_NAME_CACHE_NAME = "nameToStatisticConfigurationCache";
+    static final String KEY_BY_UUID_CACHE_NAME = "uuidToStatisticConfigurationCache";
 
     private final StatisticConfigurationEntityDAO statisticConfigurationEntityDAO;
     private final Cache<String, StatisticConfiguration> keyByNameCache;
@@ -52,46 +52,51 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
                                              final StatisticConfigurationCacheByNameLoaderWriter byNameLoaderWriter,
                                              final StatisticConfigurationCacheByUuidLoaderWriter byUuidLoaderWriter,
                                              final SessionFactory sessionFactory) {
+
         this.statisticConfigurationEntityDAO = statisticConfigurationEntityDAO;
         this.sessionFactory = sessionFactory;
 
-        this.keyByNameCache = cacheFactory.getOrCreateCache(KEY_BY_NAME_CACHE_NAME, String.class, StatisticConfiguration.class, Optional.of(byNameLoaderWriter));
-        this.keyByUuidCache = cacheFactory.getOrCreateCache(KEY_BY_UUID_CACHE_NAME, String.class, StatisticConfiguration.class, Optional.of(byUuidLoaderWriter));
+        this.keyByNameCache = cacheFactory.getOrCreateCache(
+                KEY_BY_NAME_CACHE_NAME,
+                String.class,
+                StatisticConfiguration.class,
+                Optional.of(byNameLoaderWriter));
+
+        this.keyByUuidCache = cacheFactory.getOrCreateCache(
+                KEY_BY_UUID_CACHE_NAME,
+                String.class,
+                StatisticConfiguration.class,
+                Optional.of(byUuidLoaderWriter));
     }
 
     @Override
     public List<StatisticConfiguration> fetchAll() {
-//        return new ArrayList<>(statisticConfigurationEntityDAO.loadAll());
-
         return executeInSession(() ->
-            new ArrayList<>(statisticConfigurationEntityDAO.loadAll())
+                new ArrayList<>(statisticConfigurationEntityDAO.loadAll())
         );
     }
 
     @Override
     public Optional<StatisticConfiguration> fetchStatisticConfigurationByName(final String name) {
         return executeInSession(() ->
-            Try.of(() -> keyByNameCache.get(name))
-                    .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache", name, throwable))
-                    .toJavaOptional()
+                Try.of(() -> keyByNameCache.get(name))
+                        .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache", name, throwable))
+                        .toJavaOptional()
         );
-//        return Try.of(() -> keyByNameCache.get(name))
-//                .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache",name, throwable))
-//                .toJavaOptional();
     }
 
     @Override
     public Optional<StatisticConfiguration> fetchStatisticConfigurationByUuid(final String uuid) {
         return executeInSession(() ->
-            Try.of(() -> keyByUuidCache.get(uuid))
-                    .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache", uuid, throwable))
-                    .toJavaOptional()
+                Try.of(() -> keyByUuidCache.get(uuid))
+                        .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache", uuid, throwable))
+                        .toJavaOptional()
         );
     }
 
     private <T> T executeInSession(Supplier<T> task) {
 
-        try (Session session = sessionFactory.openSession()){
+        try (Session session = sessionFactory.openSession()) {
             ManagedSessionContext.bind(session);
             session.beginTransaction();
 

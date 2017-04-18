@@ -22,6 +22,8 @@ package stroom.stats.configuration;
 import org.ehcache.spi.loaderwriter.BulkCacheLoadingException;
 import org.ehcache.spi.loaderwriter.BulkCacheWritingException;
 import org.ehcache.spi.loaderwriter.CacheLoaderWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.Map;
@@ -29,6 +31,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class StatisticConfigurationCacheByUuidLoaderWriter implements CacheLoaderWriter<String,StatisticConfiguration>{
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(StatisticConfigurationCacheByUuidLoaderWriter.class);
 
 
     private final StatisticConfigurationEntityDAO statisticConfigurationEntityDAO;
@@ -40,12 +44,14 @@ public class StatisticConfigurationCacheByUuidLoaderWriter implements CacheLoade
 
     @Override
     public StatisticConfiguration load(final String key) throws Exception {
+        LOGGER.debug("load called for key {}", key);
         return statisticConfigurationEntityDAO.loadByUuid(key)
                 .orElseThrow(() -> new Exception(String.format("Statistic configuration with uuid %s cannot be found in the database", key)));
     }
 
     @Override
     public Map<String, StatisticConfiguration> loadAll(final Iterable<? extends String> keys) throws BulkCacheLoadingException, Exception {
+        LOGGER.debug("loadAll called for keys {}", keys);
         //unique key constraint shoudl ensure we only have one stat config per uuid, hence (o1,o2) -> o1
         return statisticConfigurationEntityDAO.loadAll().stream()
                 .map(statConfigEntity -> (StatisticConfiguration) statConfigEntity)

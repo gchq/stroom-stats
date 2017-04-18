@@ -15,7 +15,10 @@ public class WriteOnlyStatisticConfigurationEntityDAO extends AbstractDAO<Statis
      *
      * @param sessionFactory a session provider
      */
-    public WriteOnlyStatisticConfigurationEntityDAO(final SessionFactory sessionFactory, final StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller) {
+    public WriteOnlyStatisticConfigurationEntityDAO(
+            final SessionFactory sessionFactory,
+            final StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller) {
+
         super(sessionFactory);
         this.statisticConfigurationEntityMarshaller = statisticConfigurationEntityMarshaller;
     }
