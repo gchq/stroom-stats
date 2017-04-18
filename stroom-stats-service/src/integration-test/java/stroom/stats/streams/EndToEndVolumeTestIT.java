@@ -53,7 +53,6 @@ import stroom.stats.xml.StatisticsMarshaller;
 import stroom.util.thread.ThreadUtil;
 
 import java.time.Instant;
-import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -160,13 +159,12 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
 
             repeatedQueryAndAssert(searchRequest,
                     getRowCountsByInterval(1).get(interval),
-                    rowData -> {
-                        Assertions.assertThat(rowData.stream()
-                                .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
-                                .mapToLong(Long::valueOf)
-                                .sum()
-                        ).isEqualTo(expectedTotalCountCount);
-                    });
+                    rowData ->
+                            Assertions.assertThat(rowData.stream()
+                                    .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
+                                    .mapToLong(Long::valueOf)
+                                    .sum()
+                            ).isEqualTo(expectedTotalCountCount));
         }
     }
 
