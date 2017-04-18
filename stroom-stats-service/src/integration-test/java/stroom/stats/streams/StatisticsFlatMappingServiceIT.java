@@ -23,7 +23,6 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
-import javaslang.Tuple3;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -38,6 +37,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.hibernate.SessionFactory;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -77,21 +77,26 @@ import javax.xml.datatype.DatatypeConfigurationException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -99,8 +104,8 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static stroom.stats.streams.StatisticsFlatMappingProcessor.PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX;
 
-public class TestKafkaStreamService {
-    private static final Logger LOGGER = LoggerFactory.getLogger(TestKafkaStreamService.class);
+public class StatisticsFlatMappingServiceIT {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsFlatMappingServiceIT.class);
 
     public static final String STATISTIC_EVENTS_TOPIC_PREFIX = "statisticEvents";
     public static final String BAD_STATISTIC_EVENTS_TOPIC_PREFIX = "badStatisticEvents";
@@ -120,7 +125,7 @@ public class TestKafkaStreamService {
 
     private UniqueIdCache uniqueIdCache;
 
-    private List<Tuple3<StatisticType, EventStoreTimeIntervalEnum, Map<StatKey, StatAggregate>>> statServiceArguments = new ArrayList<>();
+//    private List<Tuple3<StatisticType, EventStoreTimeIntervalEnum, Map<StatKey, StatAggregate>>> statServiceArguments = new ArrayList<>();
 
     @Rule
     public TestRule watcher = new TestWatcher() {
@@ -135,10 +140,10 @@ public class TestKafkaStreamService {
 
     @Before
     public void setup() {
-        statServiceArguments.clear();
+//        statServiceArguments.clear();
     }
 
-    public TestKafkaStreamService() throws JAXBException {
+    public StatisticsFlatMappingServiceIT() throws JAXBException {
         statisticsMarshaller = new StatisticsMarshaller();
     }
 
@@ -176,9 +181,7 @@ public class TestKafkaStreamService {
                 Arrays.asList(tag1, tag2),
                 interval.columnInterval());
 
-        ZonedDateTime time = ZonedDateTime.of(
-                LocalDateTime.of(2017, 2, 27, 10, 50, 30),
-                ZoneOffset.UTC);
+        ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
                 StatisticsHelper.buildCountStatistic(statName, time, 1L,
@@ -194,8 +197,6 @@ public class TestKafkaStreamService {
         //Set a long purge retention to stop events being bumped up into the next interval
         setPurgeRetention(interval, Integer.MAX_VALUE);
 
-        LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), topic);
-        producer.send(buildProducerRecord(topic, statistics)).get();
 
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         consumerProps.put("auto.offset.reset", "earliest");
@@ -205,47 +206,54 @@ public class TestKafkaStreamService {
         ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
-        //2 input msgs, each one is rolled up to 4 perms and each one iterates up through 4 interval buckets so expect 32 in all
-        int expectedGoodPerIntervalTopic = 2 * 4;
-        int expectedGoodMsgCount = expectedGoodPerIntervalTopic * 4;
+        //2 input msgs, each one is rolled up to 4 perms so expect 8
+        int expectedGoodMsgCount = 2 * 4;
         int expectedBadMsgCount = 0;
         CountDownLatch intervalTopicsLatch = startIntervalTopicsConsumer(StatisticType.COUNT, consumerProps, expectedGoodMsgCount, topicToMsgsMap, true, 1000);
         CountDownLatch badTopicsLatch = startBadEventsConsumer(consumerProps, expectedBadMsgCount, badEvents);
+
+        LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), topic);
+        producer.send(buildProducerRecord(topic, statistics)).get();
 
         //Wait for the expected numbers of messages to arrive or timeout if not
         assertThat(intervalTopicsLatch.await(30, TimeUnit.SECONDS)).isTrue();
         assertThat(badTopicsLatch.await(30, TimeUnit.SECONDS)).isTrue();
 
         //both events go to same interval topic
-        assertThat(topicToMsgsMap).hasSize(4);
-        topicToMsgsMap.entrySet().forEach(entry -> {
-            List<ConsumerRecord<StatKey, StatAggregate>> messages = entry.getValue();
-            assertThat(messages).hasSize(expectedGoodPerIntervalTopic);
-            String topicName = entry.getKey();
-            assertThat(messages.stream()
-                    .map(rec -> TopicNameFactory.getIntervalTopicName(STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, StatisticType.COUNT, rec.key().getInterval()))
-                    .distinct()
-                    .collect(Collectors.toList())
-            )
-                    .containsExactly(topicName);
-        });
+        assertThat(topicToMsgsMap).hasSize(1);
+//        topicToMsgsMap.entrySet().forEach(entry -> {
+//            List<ConsumerRecord<StatKey, StatAggregate>> messages = entry.getValue();
+//            assertThat(messages).hasSize(expectedGoodMsgCount);
+//            String topicName = entry.getKey();
+//            assertThat(messages.stream()
+//                    .map(rec -> TopicNameFactory.getIntervalTopicName(STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, StatisticType.COUNT, rec.key().getInterval()))
+//                    .distinct()
+//                    .collect(Collectors.toList())
+//            )
+//                    .containsExactly(topicName);
+//        });
+
+        String topicName = topicToMsgsMap.keySet().stream().findFirst().get();
+        assertThat(topicName).isEqualTo(TopicNameFactory.getIntervalTopicName(STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval));
+        List<ConsumerRecord<StatKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
+        assertThat(messages.size()).isEqualTo(expectedGoodMsgCount);
 
         //no bad events
         assertThat(badEvents).hasSize(expectedBadMsgCount);
 
         //now verify the right data vas passed to the stat service
 
-        List<Map.Entry<StatKey, StatAggregate>> passedStats = statServiceArguments.stream()
-                .flatMap(invocation -> invocation._3().entrySet().stream())
-                .sorted(Comparator.comparing(entry -> entry.getKey()))
-                .collect(Collectors.toList());
-
-        if (passedStats.size() != expectedGoodMsgCount) {
-            Assert.fail();
-        }
-
-        //Make sure all events get passed to the StatService
-        assertThat(passedStats.size()).isEqualTo(expectedGoodMsgCount);
+//        List<Map.Entry<StatKey, StatAggregate>> passedStats = statServiceArguments.stream()
+//                .flatMap(invocation -> invocation._3().entrySet().stream())
+//                .sorted(Comparator.comparing(entry -> entry.getKey()))
+//                .collect(Collectors.toList());
+//
+//        if (passedStats.size() != expectedGoodMsgCount) {
+//            Assert.fail();
+//        }
+//
+//        //Make sure all events get passed to the StatService
+//        assertThat(passedStats.size()).isEqualTo(expectedGoodMsgCount);
     }
 
     @Test
@@ -270,9 +278,7 @@ public class TestKafkaStreamService {
                 Arrays.asList(tag1, tag2),
                 interval.columnInterval());
 
-        ZonedDateTime time = ZonedDateTime.of(
-                LocalDateTime.of(2017, 2, 27, 10, 50, 30),
-                ZoneOffset.UTC);
+        ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
                 StatisticsHelper.buildValueStatistic(statName, time, 1.5,
@@ -333,9 +339,7 @@ public class TestKafkaStreamService {
             setPurgeRetention(interval, 10_000);
         }
 
-        ZonedDateTime time = ZonedDateTime.of(
-                LocalDateTime.of(2017, 2, 27, 10, 50, 30),
-                ZoneOffset.UTC);
+        ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
         for (StatisticType statisticType : StatisticType.values()) {
             String inputTopic = INPUT_TOPICS_MAP.get(statisticType);
@@ -436,9 +440,7 @@ public class TestKafkaStreamService {
                 Arrays.asList(tag1, tag2),
                 interval.columnInterval());
 
-        ZonedDateTime time = ZonedDateTime.of(
-                LocalDateTime.of(2017, 2, 27, 10, 50, 30),
-                ZoneOffset.UTC);
+        ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
                 //the good
@@ -453,8 +455,6 @@ public class TestKafkaStreamService {
                 )
         );
 
-        LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), topic);
-        producer.send(buildProducerRecord(topic, statistics)).get();
 
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         consumerProps.put("auto.offset.reset", "earliest");
@@ -467,13 +467,22 @@ public class TestKafkaStreamService {
         //1 good input msgs, each one is rolled up to 4 perms so expect 4
         int expectedGoodMsgCount = 4;
         int expectedBadMsgCount = 1;
-        CountDownLatch intervalTopicsLatch = startIntervalTopicsConsumer(StatisticType.COUNT,
-                consumerProps, expectedGoodMsgCount, topicToMsgsMap, true, 1000);
+        CountDownLatch intervalTopicsLatch = startIntervalTopicsConsumer(
+                StatisticType.COUNT,
+                consumerProps,
+                expectedGoodMsgCount,
+                topicToMsgsMap,
+                true,
+                100);
+
         CountDownLatch badTopicsLatch = startBadEventsConsumer(consumerProps, expectedBadMsgCount, badEvents);
 
+        LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), topic);
+        producer.send(buildProducerRecord(topic, statistics)).get();
+
         //Wait for the expected numbers of messages to arrive or timeout if not
-        assertThat(intervalTopicsLatch.await(3, TimeUnit.SECONDS)).isTrue();
-        assertThat(badTopicsLatch.await(3, TimeUnit.SECONDS)).isTrue();
+        assertThat(intervalTopicsLatch.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(badTopicsLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
         //only one interval topic
         assertThat(topicToMsgsMap).hasSize(1);
@@ -500,8 +509,7 @@ public class TestKafkaStreamService {
             setPurgeRetention(interval, 1);
         }
 
-        ZonedDateTime timeNow = ZonedDateTime
-                .now(ZoneOffset.UTC);
+        ZonedDateTime timeNow = ZonedDateTime.now(ZoneOffset.UTC);
 
         StatisticType statisticType = StatisticType.COUNT;
         String topic = INPUT_TOPICS_MAP.get(statisticType);
@@ -582,8 +590,7 @@ public class TestKafkaStreamService {
             setPurgeRetention(interval, 1);
         }
 
-        ZonedDateTime timeNow = ZonedDateTime
-                .now(ZoneOffset.UTC);
+        ZonedDateTime timeNow = ZonedDateTime.now(ZoneOffset.UTC);
 
         StatisticType statisticType = StatisticType.COUNT;
         String topic = INPUT_TOPICS_MAP.get(statisticType);
@@ -660,7 +667,7 @@ public class TestKafkaStreamService {
         assertThat(badEvents).hasSize(expectedBadMsgCount);
     }
 
-    //    @Ignore
+    @Ignore //covered by FullEndToEndVolumeIT
     @Test
     public void test_ManyEventsOnMultipleThreads() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
         setNumStreamThreads(4);
@@ -950,18 +957,6 @@ public class TestKafkaStreamService {
                                     if (LOGGER.isTraceEnabled()) {
                                         StatKeyUtils.logStatKey(uniqueIdCache, record.key());
                                     }
-
-//                                    writer.write(record.topic() + ", " +
-//                                            record.partition() + ", " +
-//                                            StatKeyUtils.getStatName(uniqueIdCache, record.key()) + ", " +
-//                                            record.key().getInterval() + ", " +
-//                                            record.key().getRollupMask().toString() + ", " +
-//                                            record.key().getTimeMs() + ", " +
-//                                            StatKeyUtils.getTagValues(uniqueIdCache, record.key(), ",", ",") + ", " +
-//                                            getAggregateValue(record.value()) + "," +
-//                                            String.format("%06d", record.offset())
-//                                    );
-//                                    writer.newLine();
                                 }
                                 latch.countDown();
                                 topicToMsgsMap.computeIfAbsent(record.topic(), k -> new ArrayList<>()).add(record);
@@ -1088,17 +1083,18 @@ public class TestKafkaStreamService {
         //Override the kafka bootstrap servers prop to point to the embedded kafka rather than the docker one
         mockStroomPropertyService.setProperty(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS, bootStrapServersConfig);
         mockStroomPropertyService.setProperty(StatisticsIngestService.PROP_KEY_KAFKA_COMMIT_INTERVAL_MS, 1_000);
+        mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 1_000);
 
         SessionFactory mockSessionFactory = Mockito.mock(SessionFactory.class);
         StatisticsService mockStatisticsService = Mockito.mock(StatisticsService.class);
 
-        Mockito
-                .doAnswer(invocation -> {
-                    statServiceArguments.add(new Tuple3<>(invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(2)));
-                    return null;
-                })
-                .when(mockStatisticsService)
-                .putAggregatedEvents(Mockito.any(), Mockito.any(), Mockito.anyMap());
+//        Mockito
+//                .doAnswer(invocation -> {
+//                    statServiceArguments.add(new Tuple3<>(invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(2)));
+//                    return null;
+//                })
+//                .when(mockStatisticsService)
+//                .putAggregatedEvents(Mockito.any(), Mockito.any(), Mockito.anyMap());
 
         StroomStatsEmbeddedOverrideModule embeddedOverrideModule = new StroomStatsEmbeddedOverrideModule(
                 mockStroomPropertyService,
@@ -1122,6 +1118,8 @@ public class TestKafkaStreamService {
         injector.getInstance(StatisticsIngestService.class);
 
         uniqueIdCache = injector.getInstance(UniqueIdCache.class);
+
+        injector.getInstance(StatisticsFlatMappingService.class).start();
 
         return embeddedOverrideModule;
     }

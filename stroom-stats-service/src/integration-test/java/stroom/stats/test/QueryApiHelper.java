@@ -30,6 +30,7 @@ import stroom.query.api.Field;
 import stroom.query.api.FieldBuilder;
 import stroom.query.api.Query;
 import stroom.query.api.QueryKey;
+import stroom.query.api.Result;
 import stroom.query.api.ResultRequest;
 import stroom.query.api.Row;
 import stroom.query.api.SearchRequest;
@@ -192,7 +193,14 @@ public class QueryApiHelper {
 
         Map<String, Integer> fieldIndices = getFieldIndices(searchRequest);
 
-        return ((TableResult) searchResponse.getResults().get(0)).getRows().stream()
+
+        List<Result> results = searchResponse.getResults();
+
+        if (results == null || results.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return ((TableResult) results.get(0)).getRows().stream()
                 .map(row -> convertRow(row, fieldIndices))
                 .collect(Collectors.toList());
     }

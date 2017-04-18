@@ -51,8 +51,8 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class TestEmbeddedKafka {
-    private static final Logger LOGGER = LoggerFactory.getLogger(TestEmbeddedKafka.class);
+public class EmbeddedKafkaIT {
+    private static final Logger LOGGER = LoggerFactory.getLogger(EmbeddedKafkaIT.class);
     private static final String STREAMS_APP_ID = "TestStreamsApp";
     private static final Path KAFKA_STREAMS_PATH = Paths.get("/tmp/kafka-streams/", STREAMS_APP_ID);
 
@@ -76,7 +76,7 @@ public class TestEmbeddedKafka {
         producer.send(new ProducerRecord<>("messages", 1, 2, "message2")).get();
         producer.send(new ProducerRecord<>("messages", 1, 3, "message3")).get();
 
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("noddyProducerConsumerTest-consumer", "false", kafkaEmbedded);
         consumerProps.put("auto.offset.reset", "earliest");
 
         final CountDownLatch latch = new CountDownLatch(4);
@@ -134,7 +134,7 @@ public class TestEmbeddedKafka {
         KafkaStreams streams = new KafkaStreams(builder, streamsConfig);
         streams.start();
 
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("noddyStreamsTest-consumer", "false", kafkaEmbedded);
         consumerProps.put("auto.offset.reset", "earliest");
 
         final CountDownLatch latch = new CountDownLatch(4);
@@ -175,7 +175,7 @@ public class TestEmbeddedKafka {
         producer.send(new ProducerRecord<>("messages", 1, 3, 10L)).get();
 
         Map<String, Object> streamProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
-        streamProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "noddyStreamsTest");
+        streamProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "transformerStreamsTest");
 //        streamProps.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.Integer().getClass().getName());
 //        streamProps.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.Long().getClass().getName());
 
@@ -195,7 +195,7 @@ public class TestEmbeddedKafka {
         KafkaStreams streams = new KafkaStreams(builder, streamsConfig);
         streams.start();
 
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("transformerStreamsTest-consumer", "false", kafkaEmbedded);
         consumerProps.put("auto.offset.reset", "earliest");
 
         final CountDownLatch latch = new CountDownLatch(4);
@@ -262,7 +262,7 @@ public class TestEmbeddedKafka {
         KafkaStreams streams = new KafkaStreams(builder, streamsConfig);
         streams.start();
 
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("branchingStreamsTest-consumer", "false", kafkaEmbedded);
         consumerProps.put("auto.offset.reset", "earliest");
 
         final CountDownLatch latch = new CountDownLatch(12);

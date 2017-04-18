@@ -68,9 +68,9 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public class EndToEndVolumeTestIT extends AbstractAppIT {
+public class EndToEndVolumeIT extends AbstractAppIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(EndToEndVolumeTestIT.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(EndToEndVolumeIT.class);
 
     public static final String STATISTIC_EVENTS_TOPIC_PREFIX = "statisticEvents";
     public static final String BAD_STATISTIC_EVENTS_TOPIC_PREFIX = "badStatisticEvents";
@@ -168,12 +168,74 @@ public class EndToEndVolumeTestIT extends AbstractAppIT {
         }
     }
 
+    @Test
+    public void volumeTest_value() {
+
+        final StatisticType statisticType = StatisticType.VALUE;
+
+
+        final int eventsPerIteration = GenerateSampleStatisticsData.COLOURS.size() *
+                GenerateSampleStatisticsData.USERS.length *
+                GenerateSampleStatisticsData.STATES.size();
+
+        int expectedTotalEvents = ITERATION_COUNT * eventsPerIteration;
+
+        LOGGER.info("Expecting {} events per stat type", expectedTotalEvents);
+
+        double expectedTotalValueCount = GenerateSampleStatisticsData.VALUE_STAT_VALUE_MAP.values().stream()
+                .mapToDouble(Double::doubleValue)
+                .sum() * expectedTotalEvents;
+
+        //create stat configs and put the test data on the topics
+        Map<StatisticType, StatisticConfigurationEntity> statConfigs = loadData(statisticType);
+
+        StatisticConfiguration statisticConfiguration = statConfigs.get(statisticType);
+
+        //run a query that will use the zero mask
+        for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
+            SearchRequest searchRequest = QueryApiHelper.buildSearchRequestAllDataAllFields(
+                    statisticConfiguration,
+                    interval);
+
+            repeatedQueryAndAssert(searchRequest,
+                    getRowCountsByInterval(eventsPerIteration).get(interval),
+                    rowData -> {
+                        Assertions.assertThat(rowData.stream()
+                                .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
+                                .mapToLong(Long::valueOf)
+                                .sum()
+                        ).isEqualTo(expectedTotalEvents);
+                    });
+        }
+
+        //now run queries that will roll all tags up
+        for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
+            SearchRequest searchRequest = QueryApiHelper.buildSearchRequestAllData(
+                    statisticConfiguration,
+                    interval,
+                    Arrays.asList(
+                            StatisticConfiguration.FIELD_NAME_DATE_TIME,
+                            StatisticConfiguration.FIELD_NAME_PRECISION,
+                            StatisticConfiguration.FIELD_NAME_COUNT
+                    ));
+
+            repeatedQueryAndAssert(searchRequest,
+                    getRowCountsByInterval(1).get(interval),
+                    rowData ->
+                            Assertions.assertThat(rowData.stream()
+                                    .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
+                                    .mapToLong(Long::valueOf)
+                                    .sum()
+                            ).isEqualTo(expectedTotalEvents));
+        }
+    }
+
     private void repeatedQueryAndAssert(SearchRequest searchRequest,
                                         int expectedRowCount,
                                         Consumer<List<Map<String, String>>> rowDataConsumer) {
 
         List<Map<String, String>> rowData = Collections.emptyList();
-        Instant timeoutTime = Instant.now().plus(5, ChronoUnit.MINUTES);
+        Instant timeoutTime = Instant.now().plus(1, ChronoUnit.MINUTES);
 
         //query the store repeatedly until we get the answer we want or give up
         while (rowData.size() != expectedRowCount && Instant.now().isBefore(timeoutTime)) {
