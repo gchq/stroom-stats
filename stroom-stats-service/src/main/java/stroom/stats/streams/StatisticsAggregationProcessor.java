@@ -31,6 +31,7 @@ import stroom.stats.StatisticsProcessor;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
 import stroom.stats.hbase.EventStoreTimeIntervalHelper;
+import stroom.stats.hbase.uid.UID;
 import stroom.stats.mixins.HasRunState;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -46,12 +47,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 
 /**
@@ -115,10 +121,13 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private final Optional<String> optNextIntervalTopic;
 
     private StatAggregator statAggregator;
-    private Future<?> consumerFuture;
+//    private Future<?> consumerFuture;
+    private CompletableFuture<Void> consumerFuture;
 
     private Serde<StatKey> statKeySerde;
     private Serde<StatAggregate> statAggregateSerde;
+
+//    private Map<StatKey, StatAggregate> putEventsMap = new HashMap<>();
 
     public StatisticsAggregationProcessor(final StatisticsService statisticsService,
                                           final StroomPropertyService stroomPropertyService,
@@ -162,13 +171,19 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
     private KafkaConsumer<StatKey, StatAggregate> buildConsumer() {
 
-        KafkaConsumer<StatKey, StatAggregate> kafkaConsumer = new KafkaConsumer<>(
-                getConsumerProps(),
-                statKeySerde.deserializer(),
-                statAggregateSerde.deserializer());
-        kafkaConsumer.subscribe(Collections.singletonList(inputTopic));
+        try {
+            KafkaConsumer<StatKey, StatAggregate> kafkaConsumer = new KafkaConsumer<>(
+                    getConsumerProps(),
+                    statKeySerde.deserializer(),
+                    statAggregateSerde.deserializer());
 
-        return kafkaConsumer;
+            kafkaConsumer.subscribe(Collections.singletonList(inputTopic));
+
+            return kafkaConsumer;
+        } catch (Exception e) {
+            LOGGER.error(String.format("Error building consumer for topic %s on processor %s", inputTopic, this), e);
+            throw e;
+        }
     }
 
     private Map<String, Object> getConsumerProps() {
@@ -186,6 +201,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         consumerProps.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, getPollRecords());
         consumerProps.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, sessionTimeoutMs);
+//        consumerProps.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, RoundRobinAssignor.class.getName());
+
         return consumerProps;
     }
 
@@ -248,7 +265,17 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private void startProcessor() {
         runState = RunState.RUNNING;
 
-        consumerFuture = executorService.submit(this::consumerRunnable);
+//        consumerFuture = executorService.submit(this::consumerRunnable);
+        consumerFuture = CompletableFuture.runAsync(this::consumerRunnable, executorService)
+                .whenComplete((aVoid, throwable) -> {
+                    if (throwable != null) {
+                        LOGGER.error("Error happened inside consumerRunnable on processor {}, {}", this, throwable.getMessage(), throwable);
+                        runState = RunState.STOPPED;
+                        throw new RuntimeException(throwable);
+                    } else {
+                        LOGGER.info("consumerRunnable finished cleanly for processor", this);
+                    }
+                });
     }
 
     private void consumerRunnable() {
@@ -270,8 +297,19 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                     int recCount = records.count();
                     unCommittedRecCount += recCount;
                     LOGGER.ifDebugIsEnabled(() -> {
+                        ConcurrentMap<UID, AtomicInteger> statNameMap = new ConcurrentHashMap<>();
+                        String distinctPartitions = StreamSupport.stream(records.spliterator(), false)
+                                .map(rec -> String.valueOf(rec.partition()))
+                                .distinct()
+                                .collect(Collectors.joining(","));
+
+                        records.forEach(rec -> statNameMap.computeIfAbsent(rec.key().getStatName(), k -> new AtomicInteger(0)).incrementAndGet());
                         if (recCount > 0) {
-                            LOGGER.debug("Received {} records from topic {}", recCount, inputTopic);
+                            String breakdown = statNameMap.entrySet().stream()
+                                    .map(entry -> entry.getKey().toString() + "-" + entry.getValue().get())
+                                    .collect(Collectors.joining(","));
+                            LOGGER.debug("Received {} records consisting of {}, on partitions {}, topic {}, processor {}",
+                                    recCount, breakdown, distinctPartitions, inputTopic, this);
                         }
                     });
 
@@ -283,8 +321,28 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                                     aggregationInterval,
                                     getFlushIntervalMs());
                         }
-                        records.forEach(rec ->
-                                statAggregator.add(rec.key(), rec.value()));
+
+                        records.forEach(rec -> {
+
+//                            LOGGER.ifDebugIsEnabled(() -> {
+//
+//                                putEventsMap.computeIfPresent(rec.key(), (k, v) -> {
+//                                    if (rec.key().getRollupMask().equals(RollUpBitMask.ZERO_MASK) &&
+//                                            aggregationInterval.equals(EventStoreTimeIntervalEnum.SECOND)) {
+//
+//                                        LOGGER.debug("Existing key {}", k.toString());
+//                                        LOGGER.debug("New      key {}", rec.key().toString());
+//                                        LOGGER.debug("Seen duplicate key");
+//                                    }
+//                                    return v.aggregate(rec.value(), 100);
+//                                });
+//                                putEventsMap.put(rec.key(), rec.value());
+//                            });
+
+                            statAggregator.add(rec.key(), rec.value());
+                        });
+
+//                        LOGGER.debug("putEventsMap key count: {}", putEventsMap.size());
                     }
 
                     boolean flushHappened = flushAggregatorIfReady();
@@ -294,27 +352,30 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                     }
                 } catch (Exception e) {
                     runState = RunState.STOPPED;
-                    throw new RuntimeException(String.format("Error while polling with stat type %s", statisticType), e);
+                    throw new RuntimeException(String.format("Error while polling with stat type %s on processor %s", statisticType, this), e);
                 }
             }
         } finally {
             //clean up as we are shutting down this processor
+            LOGGER.debug("Breaking out of consumer loop, runState {}, interrupted state {} on processor {}",
+                    runState, Thread.currentThread().isInterrupted(), this);
             cleanUp(kafkaConsumer, unCommittedRecCount);
         }
     }
 
     private void cleanUp(KafkaConsumer<StatKey, StatAggregate> kafkaConsumer, int unCommittedRecCount) {
-        LOGGER.debug("Cleaning up runnable");
 
         //force a flush of anything in the aggregator
         if (statAggregator != null) {
-            LOGGER.info("Forcing a flush of aggregator {}", statAggregator);
+            LOGGER.debug("Forcing a flush of aggregator {} on processor {}", statAggregator, this);
             flushAggregator(statAggregator);
         }
         if (kafkaConsumer != null) {
             if (unCommittedRecCount > 0) {
+                LOGGER.debug("Committing kafka offset on processor {}", this);
                 kafkaConsumer.commitSync();
             }
+            LOGGER.debug("Closing kafka consumer on processor {}", this);
             kafkaConsumer.close();
         }
     }
@@ -356,10 +417,10 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         synchronized (startStopMonitor) {
             switch (runState) {
                 case STOPPED:
-                    LOGGER.info("Aggregation processor {} is already stopped", toString());
+                    LOGGER.info("Aggregation processor {} is already stopped", this);
                     break;
                 case STOPPING:
-                    LOGGER.info("Aggregation processor {} is already stopping", toString());
+                    LOGGER.info("Aggregation processor {} is already stopping", this);
                     break;
                 case RUNNING:
                     doStop();
@@ -449,7 +510,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                 (statAggregator == null ? "null" : statAggregator.getInputCount()),
                 (statAggregator == null ? "null" : statAggregator.size()),
                 (statAggregator == null ? 0 : statAggregator.getReductionPercentage()),
-                (statAggregator == null ? "null" :statAggregator.getExpiredTime().toString()));
+                (statAggregator == null ? "null" : statAggregator.getExpiredTime().toString()));
     }
 
     public int getInstanceId() {
@@ -479,10 +540,11 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     @Override
     public String toString() {
         return "StatisticsAggregationProcessor{" +
-                "statisticType=" + statisticType +
-                ", aggregationInterval=" + aggregationInterval +
-                ", instanceId=" + instanceId +
-                ", runState=" + runState +
+                " " + statisticType +
+                ", " + aggregationInterval +
+                ", " + groupId +
+                ", " + instanceId +
+                ", " + runState +
                 '}';
     }
 

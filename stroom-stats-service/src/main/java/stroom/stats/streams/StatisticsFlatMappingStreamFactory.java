@@ -30,6 +30,7 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.hbase.EventStoreTimeIntervalHelper;
 import stroom.stats.hbase.HBaseStatisticConstants;
+import stroom.stats.partitions.StatKeyPartitioner;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.ObjectFactory;
 import stroom.stats.schema.Statistics;
@@ -141,15 +142,16 @@ public class StatisticsFlatMappingStreamFactory {
 //        final ConcurrentMap<EventStoreTimeIntervalEnum, AtomicLong> counters = new ConcurrentHashMap<>();
         //Route each from the stream interval specific branches to the appropriate topic
         for (int i = 0; i < intervalStreams.length; i++) {
+            String topic = intervalTopicPairs.get(i).getTopic();
             intervalStreams[i]
-//                    .filter((key, value) -> {
-                        //This is in effect a peek operation for debugging as it always returns true
+                    .filter((key, value) -> {
+//                        This is in effect a peek operation for debugging as it always returns true
 //                        counters.computeIfAbsent(key.getInterval(), interval -> new AtomicLong(0)).incrementAndGet();
 //                        LOGGER.info(String.format("interval %s class %s cumCount %s",
 //                                key.getInterval(), value.getClass().getName(), counters.get(key.getInterval()).get()));
-//                        return true;
-//                    })
-                    .to(statKeySerde, statAggregateSerde, intervalTopicPairs.get(i).getTopic());
+                        return true;
+                    })
+                    .to(statKeySerde, statAggregateSerde, StatKeyPartitioner.instance(), topic);
         }
 
         return new KafkaStreams(builder, streamsConfig);

@@ -31,6 +31,7 @@ import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.mixins.HasRunState;
 import stroom.stats.mixins.Startable;
 import stroom.stats.mixins.Stoppable;
+import stroom.stats.partitions.StatKeyPartitioner;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.StatKey;
@@ -80,6 +81,8 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
     @Inject
     public StatisticsAggregationService(final StroomPropertyService stroomPropertyService,
                                         final StatisticsService statisticsService) {
+
+        LOGGER.debug("Initialising {}", this.getClass().getName());
 
         this.stroomPropertyService = stroomPropertyService;
         this.statisticsService = statisticsService;
@@ -188,11 +191,7 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
         Serde<StatKey> statKeySerde = StatKeySerde.instance();
         Serde<StatAggregate> statAggregateSerde = StatAggregateSerde.instance();
 
-        return new KafkaProducer<>(
-                producerProps,
-                    statKeySerde.serializer(),
-                    statAggregateSerde.serializer());
-
+        return new KafkaProducer<>(producerProps, statKeySerde.serializer(), statAggregateSerde.serializer());
     }
 
     private Map<String, Object> getProducerProps() {
@@ -206,6 +205,8 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
                 stroomPropertyService.getIntProperty(
                         StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000));
         producerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 50_000_000);
+        //use a custom partitioner to benefit from the already cached hashcode in the statkey
+        producerProps.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, StatKeyPartitioner.class);
         return producerProps;
     }
 
