@@ -20,6 +20,7 @@
 package stroom.stats.streams;
 
 import javaslang.Tuple2;
+import javaslang.Tuple4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
@@ -130,6 +131,8 @@ public class GenerateSampleStatisticsData {
 
         List<Statistics.Statistic> statisticList = new ArrayList<>(iterationCount);
 
+        List<Tuple4<ZonedDateTime, String, String, String>> perms = new ArrayList<>();
+
         for (int i = 0; i < iterationCount; i++) {
             for (final String user : USERS) {
                 for (final String colour : COLOURS) {
@@ -161,13 +164,19 @@ public class GenerateSampleStatisticsData {
                         }
 
                         statisticList.add(statistic);
+
+                        perms.add(new Tuple4<>(eventTime, user, colour, state));
                     }
                 }
             }
             eventTime = eventTime.plus(EVENT_TIME_DELTA_MS, ChronoUnit.MILLIS);
         }
 
-        LOGGER.info("Returning {} statistic events", statisticList.size());
+        long distinctCount = perms.stream()
+                .distinct()
+                .count();
+
+        LOGGER.info("Returning {} statistic events, ({} distinct)", statisticList.size(), distinctCount);
         return statisticList;
     }
 }
