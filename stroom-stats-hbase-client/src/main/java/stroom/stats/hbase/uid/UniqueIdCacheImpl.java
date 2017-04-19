@@ -24,15 +24,14 @@ package stroom.stats.hbase.uid;
 import com.google.common.base.Preconditions;
 import javaslang.control.Try;
 import org.ehcache.Cache;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import stroom.stats.cache.CacheFactory;
+import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
 import java.util.Optional;
 
 public class UniqueIdCacheImpl implements UniqueIdCache {
-    private static final Logger LOGGER = LoggerFactory.getLogger(UniqueIdCacheImpl.class);
+    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(UniqueIdCacheImpl.class);
 
     static final String NAME_TO_UID_CACHE_NAME = "nameToUidCache";
     static final String UID_TO_NAME_CACHE_NAME = "uidToNameCache";
@@ -64,6 +63,8 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
                     //in the event that another thread does this as well then getOrCreateId will handle
                     //thread safety issues
                     UID newUid = UID.from(uniqueIdGenerator.getOrCreateId(name));
+                    LOGGER.trace(() -> String.format("Created new UID %s for name %s", newUid.toString(), name));
+
                     //add the new K/V to both caches as we have the values and chances are somebody else will need them
                     uidToNameCache.put(newUid, name);
                     nameToUidCache.put(name, newUid);
