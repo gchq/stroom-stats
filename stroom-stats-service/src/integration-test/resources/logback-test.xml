@@ -30,7 +30,7 @@
         </encoder>
     </appender>
 
-    <logger name="stroom.stats" level="trace" />
+    <logger name="stroom.stats" level="debug" />
 
     <root level="warn">
         <appender-ref ref="STDOUT" />
