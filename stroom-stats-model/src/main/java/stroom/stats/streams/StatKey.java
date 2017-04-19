@@ -102,7 +102,6 @@ public class StatKey implements Comparable<StatKey> {
         this.rollupMask = rollupMask;
         this.interval = interval;
         this.tagValues = tagValues;
-        this.hashCode = buildHashCode();
         switch (timeTruncation) {
             case TRUNCATE:
                 this.timeMs = interval.truncateTimeToColumnInterval(timeMs);
@@ -113,6 +112,8 @@ public class StatKey implements Comparable<StatKey> {
             default:
                 throw new IllegalArgumentException(String.format("Unexpected value for timeTruncation: %s", timeTruncation));
         }
+        //cache the hashcode to save repeated calculation
+        this.hashCode = buildHashCode();
     }
 
     public StatKey(final UID statName,
@@ -189,8 +190,7 @@ public class StatKey implements Comparable<StatKey> {
     }
 
     public static StatKey fromBytes(final byte[] bytes) {
-//        byte[] statName = Arrays.copyOfRange(bytes, STAT_NAME_PART_OFFSET, STAT_NAME_PART_LENGTH);
-        UID uid = UID.from(bytes, STAT_NAME_PART_OFFSET);
+        UID statName = UID.from(bytes, STAT_NAME_PART_OFFSET);
         RollUpBitMask rollUpBitMask = RollUpBitMask.fromBytes(bytes, ROLLUP_MASK_PART_OFFSET);
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.fromBytes(bytes, INTERVAL_PART_OFFSET);
         long timeMs = Bytes.toLong(bytes, TIME_PART_OFFSET);
@@ -198,7 +198,7 @@ public class StatKey implements Comparable<StatKey> {
 
         try {
             //de-serializing so leave time as in its byte form
-            StatKey statKey = new StatKey(uid, rollUpBitMask, interval, timeMs, tagValues, TimeTruncation.DONT_TRUNCATE);
+            StatKey statKey = new StatKey(statName, rollUpBitMask, interval, timeMs, tagValues, TimeTruncation.DONT_TRUNCATE);
             LOGGER.trace(() -> String.format("De-serializing bytes %s to StatKey %s", ByteArrayUtils.byteArrayToHex(bytes), statKey));
             return statKey;
         } catch (Exception e) {
@@ -267,7 +267,7 @@ public class StatKey implements Comparable<StatKey> {
         int result = statName.hashCode();
         result = 31 * result + rollupMask.hashCode();
         result = 31 * result + interval.hashCode();
-        result = 31 * result + (int) (timeMs ^ (timeMs >>> 32));
+        result = 31 * result + Long.hashCode(timeMs);
         result = 31 * result + tagValues.hashCode();
         return result;
     }
