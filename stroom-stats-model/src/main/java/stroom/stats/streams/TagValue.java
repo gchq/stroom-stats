@@ -56,12 +56,14 @@ public class TagValue implements Comparable<TagValue> {
         this.tag = UID.from(bytes, offset);
         offset += TAG_PART_LENGTH;
         this.value = UID.from(bytes, offset);
+
         this.hashCode = buildHashCode();
     }
 
     public TagValue(final UID tag, final UID value) {
         this.tag = tag;
         this.value = value;
+
         this.hashCode = buildHashCode();
     }
 
