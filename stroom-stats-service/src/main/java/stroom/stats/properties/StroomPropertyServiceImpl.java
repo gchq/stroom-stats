@@ -83,7 +83,7 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
             //block until the treeCache is ready
             LOGGER.info("Waiting for curator tree cache to be initialised with timeout {}ms", initTimeout);
             initialisedSemaphore.tryAcquire(initTimeout, TimeUnit.MILLISECONDS);
-            LOGGER.info(() -> String.format("Initialised treeCache in %sms",ChronoUnit.MILLIS.between(startTime,Instant.now())));
+            LOGGER.info(() -> String.format("Initialised treeCache in %sms", ChronoUnit.MILLIS.between(startTime, Instant.now())));
         } catch (InterruptedException e) {
             //reset the interrupt flag
             Thread.currentThread().interrupt();
@@ -95,14 +95,15 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
         LOGGER.info("Ensuring property keys exist");
 
         Properties defaultProps = new Properties();
-        try (InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(PROPERTY_DEFAULTS_FILE_NAME)){
+        try (InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(PROPERTY_DEFAULTS_FILE_NAME)) {
             if (inputStream == null) {
                 throw new RuntimeException(String.format("Could not find resource %s", PROPERTY_DEFAULTS_FILE_NAME));
             }
             defaultProps.load(inputStream);
             //Ensure we have all the required property keys, with default values if not already set
-            defaultProps.stringPropertyNames().forEach(name ->
-                    defaultIfNotExists(name, defaultProps.getProperty(name)));
+            defaultProps.stringPropertyNames().stream()
+                    .sorted()
+                    .forEach(name -> defaultIfNotExists(name, defaultProps.getProperty(name)));
         } catch (IOException e) {
             throw new RuntimeException(String.format("Error initialising property keys"), e);
         }
@@ -112,6 +113,7 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
     /**
      * If the property with the passed name does not exist it will be created with the passed
      * default value, else no change will be made
+     *
      * @param name
      * @param defaultValue
      */
@@ -127,7 +129,7 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
                 LOGGER.debug(() -> String.format("Property %s already exists so leaving it as is", name));
             }
         } catch (Exception e) {
-            throw new RuntimeException(String.format("Unable to set property %s with value %s", name, defaultValue),e);
+            throw new RuntimeException(String.format("Unable to set property %s with value %s", name, defaultValue), e);
         }
     }
 
@@ -201,7 +203,7 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
                 curatorFramework.setData().forPath(fullPath, Bytes.toBytes(value));
             }
         } catch (Exception e) {
-            throw new RuntimeException(String.format("Unable to set property %s with value %s", name, value),e);
+            throw new RuntimeException(String.format("Unable to set property %s with value %s", name, value), e);
         }
     }
 
