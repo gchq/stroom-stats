@@ -22,6 +22,7 @@ package stroom.stats.streams;
 import com.codahale.metrics.health.HealthCheck;
 import com.google.common.base.Preconditions;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -42,10 +43,7 @@ import stroom.stats.util.logging.LambdaLogger;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,7 +53,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -121,13 +121,17 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private final Optional<String> optNextIntervalTopic;
 
     private StatAggregator statAggregator;
-//    private Future<?> consumerFuture;
+    //    private Future<?> consumerFuture;
     private CompletableFuture<Void> consumerFuture;
 
     private Serde<StatKey> statKeySerde;
     private Serde<StatAggregate> statAggregateSerde;
 
-//    private Map<StatKey, StatAggregate> putEventsMap = new HashMap<>();
+    //    private Map<StatKey, StatAggregate> putEventsMap = new HashMap<>();
+    public static final LongAdder msgCounter = new LongAdder();
+    public static final AtomicLong minTimestamp = new AtomicLong(Long.MAX_VALUE);
+    public static final ConcurrentMap<Integer, List<ConsumerRecord<StatKey, StatAggregate>>> consumerRecords =
+            new ConcurrentHashMap<>();
 
     public StatisticsAggregationProcessor(final StatisticsService statisticsService,
                                           final StroomPropertyService stroomPropertyService,
@@ -295,21 +299,43 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                     ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(getPollTimeoutMs());
 
                     int recCount = records.count();
+                    msgCounter.add(recCount);
                     unCommittedRecCount += recCount;
                     LOGGER.ifDebugIsEnabled(() -> {
                         ConcurrentMap<UID, AtomicInteger> statNameMap = new ConcurrentHashMap<>();
-                        String distinctPartitions = StreamSupport.stream(records.spliterator(), false)
-                                .map(rec -> String.valueOf(rec.partition()))
-                                .distinct()
-                                .collect(Collectors.joining(","));
 
-                        records.forEach(rec -> statNameMap.computeIfAbsent(rec.key().getStatName(), k -> new AtomicInteger(0)).incrementAndGet());
+                        records.forEach(rec ->
+                                statNameMap.computeIfAbsent(
+                                        rec.key().getStatName(),
+                                        k -> new AtomicInteger(0)
+                                ).incrementAndGet());
+
                         if (recCount > 0) {
                             String breakdown = statNameMap.entrySet().stream()
                                     .map(entry -> entry.getKey().toString() + "-" + entry.getValue().get())
                                     .collect(Collectors.joining(","));
-                            LOGGER.debug("Received {} records consisting of {}, on partitions {}, topic {}, processor {}",
-                                    recCount, breakdown, distinctPartitions, inputTopic, this);
+
+                            String distinctPartitions = StreamSupport.stream(records.spliterator(), false)
+                                    .map(rec -> String.valueOf(rec.partition()))
+                                    .distinct()
+                                    .collect(Collectors.joining(","));
+
+                            long minTimestamp = StreamSupport.stream(records.spliterator(), false)
+                                    .mapToLong(ConsumerRecord::timestamp)
+                                    .min()
+                                    .getAsLong();
+
+                            String minTimestampStr = Instant.ofEpochMilli(minTimestamp).toString();
+
+                            StatisticsAggregationProcessor.minTimestamp.getAndUpdate(currVal ->
+                                    Math.min(currVal, minTimestamp));
+
+                            //Capture all records received
+                            records.forEach(rec ->
+                                consumerRecords.computeIfAbsent(rec.partition(), k -> new ArrayList<>()).add(rec));
+
+                            LOGGER.debug("Received {} records consisting of {}, on partitions {}, topic {}, min timestamp {}, processor {}",
+                                    recCount, breakdown, distinctPartitions, inputTopic, minTimestampStr, this);
                         }
                     });
 

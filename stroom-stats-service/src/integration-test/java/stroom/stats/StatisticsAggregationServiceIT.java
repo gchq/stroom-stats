@@ -19,9 +19,12 @@
 
 package stroom.stats;
 
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.streams.KeyValue;
 import org.assertj.core.api.Assertions;
@@ -57,8 +60,11 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.LongAdder;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class StatisticsAggregationServiceIT {
@@ -105,19 +111,48 @@ public class StatisticsAggregationServiceIT {
 
         int iterations = 50_000;
 
-        //send all the msgs to kafka
-        IntStream.rangeClosed(1, iterations).forEachOrdered(i -> {
-            kafkaProducer.send(buildProducerRecord(inputTopic, statNameUid, baseTime.plus(i, ChronoUnit.MINUTES)));
-        });
+        LongAdder msgPutCounter = new LongAdder();
+
+        List<Future<RecordMetadata>> futures = Collections.synchronizedList(new ArrayList<>());
+
+        //send all the msgs to kafka (async)
+        IntStream.rangeClosed(1, iterations)
+                .parallel()
+                .forEach(i -> {
+                    Future<RecordMetadata> future = kafkaProducer.send(buildProducerRecord(inputTopic, statNameUid, baseTime.plus(i, ChronoUnit.MINUTES)));
+                    futures.add(future);
+                    msgPutCounter.increment();
+                });
+
+        //wait for all send ops to complete
+        List<RecordMetadata> metas = futures.stream()
+                .map(future -> {
+                    try {
+                        return future.get();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException("Interupted");
+                    } catch (ExecutionException e) {
+                        throw new RuntimeException(String.format("Exception in send, {}", e.getMessage()), e);
+                    }
+                })
+                .collect(Collectors.toList());
+
+        //Capture offset summaries by partition
+        Map<Integer, LongSummaryStatistics> summary = metas.stream()
+                .collect(Collectors.groupingBy(
+                        RecordMetadata::partition,
+                        Collectors.summarizingLong(RecordMetadata::offset)));
 
         ThreadUtil.sleep(1_000);
 
         long aggSum = 0;
 
+        Instant timeoutTime = baseTime.plusSeconds(10).toInstant();
+
         //loop until we get the sum of aggregates that we expect
         //each msg is a milli apart so will be aggregated into the same DAY bucket and as each agg value is 1
         //we should get a sum of all agg values at the end equal to the number of iterations
-        while (aggSum < iterations) {
+        while (aggSum < iterations || Instant.now().isAfter(timeoutTime)) {
 
             aggSum = getAggSum(statNameUid);
 
@@ -127,6 +162,27 @@ public class StatisticsAggregationServiceIT {
         }
 
         statisticsAggregationService.stop();
+
+        LOGGER.info("groupId prefix {}", mockStroomPropertyService.getPropertyOrThrow(
+                StatisticsAggregationProcessor.PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX));
+
+        LOGGER.info("baseTime {}", baseTime.toString());
+        LOGGER.info("msgPutCount {}", msgPutCounter);
+        LOGGER.info("msgCount {}", StatisticsAggregationProcessor.msgCounter.sum());
+        LOGGER.info("minTimestamp {}", Instant.ofEpochMilli(
+                StatisticsAggregationProcessor.minTimestamp.get()).toString());
+
+        summary.keySet().stream()
+                .sorted()
+                .map(k -> k + " - " + summary.get(k).toString())
+                .forEach(LOGGER::info);
+
+        StatisticsAggregationProcessor.consumerRecords.entrySet().stream()
+                .sorted(Comparator.comparingInt(Map.Entry::getKey))
+                .map(entry ->
+                    entry.getKey() + " - " + entry.getValue().stream()
+                            .collect(Collectors.summarizingLong(ConsumerRecord::offset)))
+                .forEach(LOGGER::info);
 
         aggSum = getAggSum(statNameUid);
 
@@ -158,7 +214,7 @@ public class StatisticsAggregationServiceIT {
     }
 
     private void setProperties() {
-        mockStroomPropertyService.setProperty(StatisticsAggregationService.PROP_KEY_THREADS_PER_INTERVAL_AND_TYPE, 1);
+        mockStroomPropertyService.setProperty(StatisticsAggregationService.PROP_KEY_THREADS_PER_INTERVAL_AND_TYPE, 10);
         mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 500);
         mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000);
         //because the mockUniqueIdCache is not persistent we will always get ID 0001 for the statname regardless of what
