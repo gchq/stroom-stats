@@ -79,15 +79,6 @@ public class StatisticsAggregationServiceIT {
     @Mock
     StatisticsService mockStatisticsService;
 
-//    @Captor
-//    ArgumentCaptor<StatisticType> statTypeCaptor;
-//
-//    @Captor
-//    ArgumentCaptor<EventStoreTimeIntervalEnum> intervalCaptor;
-//
-//    @Captor
-//    ArgumentCaptor<Map<StatKey, StatAggregate>> aggregatesMapCaptor;
-
     @Test
     public void testAggregation() {
 
