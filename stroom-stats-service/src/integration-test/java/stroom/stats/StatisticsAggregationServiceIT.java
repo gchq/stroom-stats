@@ -103,7 +103,7 @@ public class StatisticsAggregationServiceIT {
 
         final KafkaProducer<StatKey, StatAggregate> kafkaProducer = buildKafkaProducer(mockStroomPropertyService);
 
-        int iterations = 5_000;
+        int iterations = 50_000;
 
         //send all the msgs to kafka
         IntStream.rangeClosed(1, iterations).forEachOrdered(i -> {
@@ -158,9 +158,14 @@ public class StatisticsAggregationServiceIT {
     }
 
     private void setProperties() {
-        mockStroomPropertyService.setProperty(StatisticsAggregationService.PROP_KEY_THREADS_PER_INTERVAL_AND_TYPE, 10);
+        mockStroomPropertyService.setProperty(StatisticsAggregationService.PROP_KEY_THREADS_PER_INTERVAL_AND_TYPE, 1);
         mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 500);
         mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000);
+        //because the mockUniqueIdCache is not persistent we will always get ID 0001 for the statname regardless of what
+        //it is.  Therefore we need to set a unique groupId for the consumer inside the processor so it doesn't get
+        //msgs from kafka from a previous run
+        mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX,
+                "StatAggSrvIT-" + Instant.now().toEpochMilli());
     }
 
     private static KafkaProducer<StatKey, StatAggregate> buildKafkaProducer(StroomPropertyService stroomPropertyService) {
