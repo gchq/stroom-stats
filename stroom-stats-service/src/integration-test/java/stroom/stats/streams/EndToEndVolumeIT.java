@@ -79,7 +79,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
     private static final Map<StatisticType, String> BAD_TOPICS_MAP = new HashMap<>();
 
 //    private static final int ITERATION_COUNT = 52_000;
-    private static final int ITERATION_COUNT = 100;
+    private static final int ITERATION_COUNT = 1_000;
     //5_000 is about 17hrs at 5000ms intervals
 
     public static final EventStoreTimeIntervalEnum SMALLEST_INTERVAL = EventStoreTimeIntervalEnum.SECOND;
@@ -101,7 +101,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                 });
 
         stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 5_000);
-        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 10_000);
+        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 500);
         //setting this to latest ensure we don't pick up messages from previous runs, requires us to spin up the processors
         //before putting msgs on the topics
         stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_AUTO_OFFSET_RESET, "latest");
@@ -252,7 +252,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         while ((rowData.size() != expectedRowCount || getCountFieldSum(rowData) != expectedTotalEvents) &&
                 Instant.now().isBefore(timeoutTime)) {
 
-            ThreadUtil.sleep(2_000);
+            ThreadUtil.sleep(1_000);
 
             rowData = runSearch(searchRequest);
 
@@ -283,11 +283,11 @@ public class EndToEndVolumeIT extends AbstractAppIT {
 
         String tableStr = QueryApiHelper.convertToFixedWidth(rows, typeMap).stream()
                 .collect(Collectors.joining("\n"));
+        if (maxRows != null) {
+            tableStr += "\n...TRUNCATED...";
+        }
         LOGGER.info("Dumping row data:\n" + tableStr);
 
-        if (maxRows != null) {
-            LOGGER.info("...");
-        }
     }
 
     private Map<EventStoreTimeIntervalEnum, Integer> getRowCountsByInterval(int eventsPerIteration) {

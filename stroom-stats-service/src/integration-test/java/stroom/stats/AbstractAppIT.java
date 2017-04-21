@@ -33,7 +33,7 @@ import javax.ws.rs.client.Client;
 
 public abstract class AbstractAppIT {
 
-    Logger LOGGER = LoggerFactory.getLogger(AbstractAppIT.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractAppIT.class);
 
     private static Client client;
     private static App app;
@@ -42,6 +42,7 @@ public abstract class AbstractAppIT {
     protected static String QUERY_URL;
 
     protected static String BASE_TASKS_URL;
+    protected static String HEALTH_CHECKS_URL;
     protected static String START_PROCESSING_URL;
     protected static String STOP_PROCESSING_URL;
     protected static int APPLICATION_PORT;
@@ -65,8 +66,14 @@ public abstract class AbstractAppIT {
         QUERY_URL = String.format("http://localhost:%d/search", APPLICATION_PORT);
 
         BASE_TASKS_URL = String.format("http://localhost:%d/admin/tasks/", ADMIN_PORT);
+        HEALTH_CHECKS_URL = String.format("http://localhost:%d/admin/healthcheck?pretty=true", ADMIN_PORT);
         START_PROCESSING_URL = BASE_TASKS_URL + "startProcessing";
         STOP_PROCESSING_URL = BASE_TASKS_URL + "stopProcessing";
+
+        LOGGER.info("Querl url:            {}", QUERY_URL);
+        LOGGER.info("Health checks url:    {}", HEALTH_CHECKS_URL);
+        LOGGER.info("Start processing url: {}, e.g. curl -X POST {}", START_PROCESSING_URL, START_PROCESSING_URL);
+        LOGGER.info("Stop processing url:  {}, e.g. curl -X POST {}", STOP_PROCESSING_URL, STOP_PROCESSING_URL);
     }
 
     @ClassRule
