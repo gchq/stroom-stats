@@ -46,17 +46,29 @@ public class StatisticConfigurationEntityDAOImpl extends AbstractDAO<StatisticCo
 
     @Override
     public Optional<StatisticConfigurationEntity> loadByName(final String name) {
-        List entities = super.criteria()
-                .add(Restrictions.eq("name", name))
-                .list();
+        List entities = null;
+        try {
+            entities = super.criteria()
+                    .add(Restrictions.eq("name", name))
+                    .list();
+
+        } catch (HibernateException e) {
+            throw new RuntimeException("Error loading statisticConfiguration with name " + name, e);
+        }
         return getSingleEntity(entities);
     }
 
     @Override
     public Optional<StatisticConfigurationEntity> loadByUuid(final String uuid) {
-        List entities = super.criteria()
-                .add(Restrictions.eq("uuid", uuid))
-                .list();
+        List entities = null;
+        try {
+            entities = super.criteria()
+                    .add(Restrictions.eq("uuid", uuid))
+                    .list();
+
+        } catch (HibernateException e) {
+            throw new RuntimeException("Error loading statisticConfiguration with UUID " + uuid, e);
+        }
         return getSingleEntity(entities);
     }
 
