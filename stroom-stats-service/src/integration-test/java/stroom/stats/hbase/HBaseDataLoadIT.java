@@ -624,7 +624,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                                     return new Tuple2<>(statKey, statAggregate);
                                 });
                     })
-                    .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2, (agg1, agg2) -> agg1.aggregate(agg2, MAX_EVENT_IDS)));
+                    .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2, StatAggregate::aggregatePair));
 
             assertThat(aggregatedEvents).hasSize(times.size() * rollUpBitMasks.size());
 

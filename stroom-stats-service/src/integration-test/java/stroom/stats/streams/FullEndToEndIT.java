@@ -91,8 +91,10 @@ public class FullEndToEndIT extends AbstractAppIT {
                 statistics,
                 injector.getInstance(StatisticsMarshaller.class));
 
-        ThreadUtil.sleep(60_000);
+        ThreadUtil.sleep(5_000);
 
+
+        //TODO assert the data using the query api
     }
 
     private static void configure(StroomPropertyService stroomPropertyService){

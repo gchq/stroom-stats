@@ -36,20 +36,22 @@ class StatAggregator {
 
     private Map<StatKey, StatAggregate> buffer;
     private final int minSize;
-    private final int maxEventIds;
     private final Instant expiredTime;
     private final EventStoreTimeIntervalEnum aggregationInterval;
     private int inputCount = 0;
 
 
+    /**
+     * @param minSize The minimum number of reduced aggregates in the aggregator before it is deemed ready to be flushed
+     * @param aggregationInterval
+     * @param timeToLiveMs
+     */
     public StatAggregator(final int minSize,
-                          final int maxEventIds,
                           final EventStoreTimeIntervalEnum aggregationInterval,
                           final long timeToLiveMs) {
         //initial size to avoid it rehashing. x1.2 to allow for it going a bit over the min value
         this.buffer = new HashMap<>((int) Math.ceil((minSize * 1.2) / 0.75));
         this.minSize = minSize;
-        this.maxEventIds = maxEventIds;
         this.expiredTime = Instant.now().plusMillis(timeToLiveMs);
         this.aggregationInterval = aggregationInterval;
     }
@@ -76,7 +78,8 @@ class StatAggregator {
         buffer.merge(
                 statKey,
                 statAggregate,
-                (existingAgg, newAgg) -> existingAgg.aggregate(newAgg, maxEventIds));
+                StatAggregate::aggregatePair);
+//                (existingAgg, newAgg) -> existingAgg.aggregate(newAgg));
     }
 
     public int size() {
@@ -91,7 +94,11 @@ class StatAggregator {
         return expiredTime;
     }
 
-    public double getReductionPercentage() {
+    /**
+     * @return The records currently in the aggregator as a percentage of all records added to the aggregator.
+     * A lower value indicates better reduction of the input data.
+     */
+    public double getAggregationPercentage() {
         if (buffer.isEmpty()) {
             return 0;
         } else {
@@ -103,6 +110,10 @@ class StatAggregator {
         return buffer.isEmpty();
     }
 
+    /**
+     * @return True if the number of reduced records in the aggregator has reached minSize or timeToLiveMs has
+     * been passed.
+     */
     public boolean isReadyForFlush() {
         return (Instant.now().isAfter(expiredTime) || buffer.size() > minSize);
     }
@@ -121,7 +132,6 @@ class StatAggregator {
     public String toString() {
         return "StatAggregator{" +
                 "minSize=" + minSize +
-                ", maxEventIds=" + maxEventIds +
                 ", expiredTime=" + expiredTime +
                 ", aggregationInterval=" + aggregationInterval +
                 ", current size=" + buffer.size() +

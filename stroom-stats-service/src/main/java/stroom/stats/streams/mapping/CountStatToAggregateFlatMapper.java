@@ -67,7 +67,7 @@ public class CountStatToAggregateFlatMapper extends AbstractStatisticFlatMapper 
         List<MultiPartIdentifier> eventIds = convertEventIds(statistic, maxEventIds);
 
         //convert stat value
-        StatAggregate statAggregate = new CountAggregate(eventIds, statistic.getCount());
+        StatAggregate statAggregate = new CountAggregate(eventIds, maxEventIds, statistic.getCount());
         List<KeyValue<StatKey, StatAggregate>> keyValues = buildKeyValues(statName, statisticWrapper, statAggregate);
 
         LOGGER.trace(() -> String.format("Flat mapping event into %s events", keyValues.size()));

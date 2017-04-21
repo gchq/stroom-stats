@@ -39,7 +39,7 @@ public class TestValueAggregateSerde {
         List<MultiPartIdentifier> identifiers = new ArrayList<>();
         identifiers.add(new MultiPartIdentifier("StringId1", 123L));
         identifiers.add(new MultiPartIdentifier("StringId2", 456L));
-        ValueAggregate valueAggregate = new ValueAggregate(identifiers, 7.89);
+        ValueAggregate valueAggregate = new ValueAggregate(identifiers, 10, 7.89);
 
         Serde<StatAggregate> valueAggregateSerde = StatAggregateSerde.instance();
 

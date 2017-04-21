@@ -36,7 +36,7 @@ public class TestCountAggregateSerde {
         List<MultiPartIdentifier> identifiers = new ArrayList<>();
         identifiers.add(new MultiPartIdentifier("StringId1", 123L));
         identifiers.add(new MultiPartIdentifier("StringId2", 456L));
-        CountAggregate valueAggregate = new CountAggregate(identifiers, 42);
+        CountAggregate valueAggregate = new CountAggregate(identifiers, 10, 42);
 
         Serde<StatAggregate> valueAggregateSerde = StatAggregateSerde.instance();
 

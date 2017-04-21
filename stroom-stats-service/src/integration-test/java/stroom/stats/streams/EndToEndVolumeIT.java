@@ -100,8 +100,11 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                     BAD_TOPICS_MAP.put(type, badTopic);
                 });
 
-        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 1000);
-        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 1_000);
+        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000);
+        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 500);
+        //setting this to latest ensure we don't pick up messages from previous runs, requires us to spin up the processors
+        //before putting msgs on the topics
+        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_AUTO_OFFSET_RESET, "latest");
     }
 
     @Test
@@ -123,6 +126,9 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         double expectedTotalValueCount = GenerateSampleStatisticsData.VALUE_STAT_VALUE_MAP.values().stream()
                 .mapToDouble(Double::doubleValue)
                 .sum() * expectedTotalEvents;
+
+        //wait for a bit to give the consumers a chance to spin up
+        ThreadUtil.sleep(1_000);
 
         //create stat configs and put the test data on the topics
         Map<StatisticType, StatisticConfigurationEntity> statConfigs = loadData(statisticType);
@@ -185,6 +191,9 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         double expectedTotalValueCount = GenerateSampleStatisticsData.VALUE_STAT_VALUE_MAP.values().stream()
                 .mapToDouble(Double::doubleValue)
                 .sum() * expectedTotalEvents;
+
+        //wait for a bit to give the consumers a chance to spin up
+        ThreadUtil.sleep(1_000);
 
         //create stat configs and put the test data on the topics
         Map<StatisticType, StatisticConfigurationEntity> statConfigs = loadData(statisticType);

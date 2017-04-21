@@ -19,7 +19,6 @@
 
 package stroom.stats;
 
-import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -60,7 +59,13 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.LongSummaryStatistics;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.LongAdder;
@@ -97,6 +102,10 @@ public class StatisticsAggregationServiceIT {
                 mockStatisticsService);
 
         statisticsAggregationService.start();
+
+        //give the consumers a bit of a chance to spin up before firing data at them, else they will miss
+        //records do to autoOffsetRest being set to latest
+        ThreadUtil.sleep(1_000);
 
         String inputTopic = TopicNameFactory.getIntervalTopicName(
                 mockStroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX),
@@ -143,6 +152,7 @@ public class StatisticsAggregationServiceIT {
                         RecordMetadata::partition,
                         Collectors.summarizingLong(RecordMetadata::offset)));
 
+        //wait a bit before we start checking the processed data
         ThreadUtil.sleep(1_000);
 
         long aggSum = 0;
@@ -152,7 +162,7 @@ public class StatisticsAggregationServiceIT {
         //loop until we get the sum of aggregates that we expect
         //each msg is a milli apart so will be aggregated into the same DAY bucket and as each agg value is 1
         //we should get a sum of all agg values at the end equal to the number of iterations
-        while (aggSum < iterations || Instant.now().isAfter(timeoutTime)) {
+        while (aggSum < iterations && Instant.now().isBefore(timeoutTime)) {
 
             aggSum = getAggSum(statNameUid);
 
@@ -172,19 +182,19 @@ public class StatisticsAggregationServiceIT {
         LOGGER.info("minTimestamp {}", Instant.ofEpochMilli(
                 StatisticsAggregationProcessor.minTimestamp.get()).toString());
 
+        LOGGER.info("Producer offsets summary");
         summary.keySet().stream()
                 .sorted()
                 .map(k -> k + " - " + summary.get(k).toString())
                 .forEach(LOGGER::info);
 
+        LOGGER.info("Consumer offsets summary");
         StatisticsAggregationProcessor.consumerRecords.entrySet().stream()
                 .sorted(Comparator.comparingInt(Map.Entry::getKey))
                 .map(entry ->
                     entry.getKey() + " - " + entry.getValue().stream()
                             .collect(Collectors.summarizingLong(ConsumerRecord::offset)))
                 .forEach(LOGGER::info);
-
-        aggSum = getAggSum(statNameUid);
 
         Assertions.assertThat(aggSum).isEqualTo(iterations);
     }
@@ -214,14 +224,18 @@ public class StatisticsAggregationServiceIT {
     }
 
     private void setProperties() {
-        mockStroomPropertyService.setProperty(StatisticsAggregationService.PROP_KEY_THREADS_PER_INTERVAL_AND_TYPE, 10);
-        mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 500);
+        mockStroomPropertyService.setProperty(StatisticsAggregationService.PROP_KEY_THREADS_PER_INTERVAL_AND_TYPE, 4);
+        mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 1_000);
         mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000);
         //because the mockUniqueIdCache is not persistent we will always get ID 0001 for the statname regardless of what
         //it is.  Therefore we need to set a unique groupId for the consumer inside the processor so it doesn't get
         //msgs from kafka from a previous run
         mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX,
                 "StatAggSrvIT-" + Instant.now().toEpochMilli());
+
+        //for testing we only ever want to grab from the latest offset when we spin up a new test to avoid consuming records
+        //from a previous run, does mean we have to spin up the consumer(s) before putting records on a topic
+        mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_AUTO_OFFSET_RESET, "latest");
     }
 
     private static KafkaProducer<StatKey, StatAggregate> buildKafkaProducer(StroomPropertyService stroomPropertyService) {

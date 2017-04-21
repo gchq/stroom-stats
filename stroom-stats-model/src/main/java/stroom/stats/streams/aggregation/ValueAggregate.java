@@ -22,7 +22,6 @@ package stroom.stats.streams.aggregation;
 import stroom.stats.api.MultiPartIdentifier;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -44,13 +43,17 @@ public class ValueAggregate extends StatAggregate {
     }
 
     public ValueAggregate(final double aggregatedValue) {
-        this(Collections.emptyList(), aggregatedValue);
+        super();
+        this.aggregatedValue = aggregatedValue;
+        this.minValue = aggregatedValue;
+        this.maxValue = aggregatedValue;
+        this.count = 1;
     }
     /**
      * Basic constructor for a value that has NOT already been aggregated
      */
-    public ValueAggregate(final List<MultiPartIdentifier> eventIds, final double aggregatedValue) {
-        super(eventIds);
+    public ValueAggregate(final List<MultiPartIdentifier> eventIds, final int maxEventIds, final double aggregatedValue) {
+        super(eventIds, maxEventIds);
         this.aggregatedValue = aggregatedValue;
         this.minValue = aggregatedValue;
         this.maxValue = aggregatedValue;
@@ -58,8 +61,8 @@ public class ValueAggregate extends StatAggregate {
     }
 
     @Override
-    public StatAggregate aggregate(final StatAggregate other, final int maxEventIds) {
-        aggregateEventIds(other, maxEventIds);
+    public StatAggregate aggregate(final StatAggregate other) {
+        aggregateEventIds(other);
         try {
             ValueAggregate otherValueAggregate = (ValueAggregate) other;
             this.count += otherValueAggregate.count;

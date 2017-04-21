@@ -41,7 +41,7 @@ public class TestStatAggregator {
 
         LocalDateTime baseTime = LocalDateTime.of(2016, 2, 15, 10, 2, 0);
         EventStoreTimeIntervalEnum aggregationInterval = EventStoreTimeIntervalEnum.MINUTE;
-                StatAggregator statAggregator = new StatAggregator(10, 10, aggregationInterval, 10_000);
+                StatAggregator statAggregator = new StatAggregator(10, aggregationInterval, 10_000);
         long statValue = 10L;
         int loopSize = 10;
         IntStream.rangeClosed(1,loopSize).forEach(i -> {
@@ -70,7 +70,7 @@ public class TestStatAggregator {
         LocalDateTime baseTime1 = LocalDateTime.of(2016, 2, 15, 10, 2, 0);
         LocalDateTime baseTime2 = baseTime1.plusMinutes(1);
         EventStoreTimeIntervalEnum aggregationInterval = EventStoreTimeIntervalEnum.MINUTE;
-        StatAggregator statAggregator = new StatAggregator(10, 10, aggregationInterval, 10_000);
+        StatAggregator statAggregator = new StatAggregator(10, aggregationInterval, 10_000);
         long statValue1 = 10L;
         long statValue2 = 20L;
         int loopSize = 10;
