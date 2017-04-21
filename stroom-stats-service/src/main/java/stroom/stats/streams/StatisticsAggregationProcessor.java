@@ -282,7 +282,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                         runState = RunState.STOPPED;
                         throw new RuntimeException(throwable);
                     } else {
-                        LOGGER.info("consumerRunnable finished cleanly for processor", this);
+                        LOGGER.info("consumerRunnable finished cleanly for processor {}", this);
                     }
                 });
     }
