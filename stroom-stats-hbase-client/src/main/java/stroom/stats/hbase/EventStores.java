@@ -209,7 +209,7 @@ public class EventStores {
     public StatisticDataSet getStatisticsData(final SearchStatisticsCriteria criteria,
                                               final StatisticConfiguration statisticConfiguration) {
 
-        LOGGER.info("Searching statistics store with criteria: {}", criteria);
+        LOGGER.debug("Searching statistics store with criteria: {}", criteria);
         // Make sure a period has been requested.
         if (criteria.getPeriod() == null) {
             throw new StatisticsException("Results must be requested from a given period");
