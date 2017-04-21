@@ -52,6 +52,7 @@ import stroom.stats.test.StatisticConfigurationEntityHelper;
 import stroom.stats.xml.StatisticsMarshaller;
 import stroom.util.thread.ThreadUtil;
 
+import javax.annotation.Nullable;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -77,7 +78,6 @@ public class EndToEndVolumeIT extends AbstractAppIT {
     private static final Map<StatisticType, String> INPUT_TOPICS_MAP = new HashMap<>();
     private static final Map<StatisticType, String> BAD_TOPICS_MAP = new HashMap<>();
 
-    // 52,000 is just over 3 days at 5000ms intervals
 //    private static final int ITERATION_COUNT = 52_000;
     private static final int ITERATION_COUNT = 100;
     //5_000 is about 17hrs at 5000ms intervals
@@ -100,8 +100,8 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                     BAD_TOPICS_MAP.put(type, badTopic);
                 });
 
-        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000);
-        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 500);
+        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 5_000);
+        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 10_000);
         //setting this to latest ensure we don't pick up messages from previous runs, requires us to spin up the processors
         //before putting msgs on the topics
         stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_AUTO_OFFSET_RESET, "latest");
@@ -123,15 +123,13 @@ public class EndToEndVolumeIT extends AbstractAppIT {
 
         int expectedTotalCountCount = (int) (GenerateSampleStatisticsData.COUNT_STAT_VALUE * expectedTotalEvents);
 
-        double expectedTotalValueCount = GenerateSampleStatisticsData.VALUE_STAT_VALUE_MAP.values().stream()
-                .mapToDouble(Double::doubleValue)
-                .sum() * expectedTotalEvents;
-
         //wait for a bit to give the consumers a chance to spin up
         ThreadUtil.sleep(1_000);
 
+        LOGGER.info("Starting to load data (async)...");
         //create stat configs and put the test data on the topics
         Map<StatisticType, StatisticConfigurationEntity> statConfigs = loadData(statisticType);
+        LOGGER.info("Finished loading data (async)...");
 
         StatisticConfiguration statisticConfiguration = statConfigs.get(statisticType);
 
@@ -142,12 +140,11 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                     interval);
 
             repeatedQueryAndAssert(searchRequest,
+                    interval,
                     getRowCountsByInterval(eventsPerIteration).get(interval),
+                    expectedTotalEvents,
                     rowData -> {
-                        Assertions.assertThat(rowData.stream()
-                                .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
-                                .mapToLong(Long::valueOf)
-                                .sum()
+                        Assertions.assertThat(getCountFieldSum(rowData)
                         ).isEqualTo(expectedTotalCountCount);
                     });
         }
@@ -164,14 +161,21 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                     ));
 
             repeatedQueryAndAssert(searchRequest,
+                    interval,
                     getRowCountsByInterval(1).get(interval),
+                    expectedTotalEvents,
                     rowData ->
-                            Assertions.assertThat(rowData.stream()
-                                    .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
-                                    .mapToLong(Long::valueOf)
-                                    .sum()
+                            Assertions.assertThat(
+                                    getCountFieldSum(rowData)
                             ).isEqualTo(expectedTotalCountCount));
         }
+    }
+
+    private long getCountFieldSum(final List<Map<String, String>> rowData) {
+        return rowData.stream()
+                .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
+                .mapToLong(Long::valueOf)
+                .sum();
     }
 
     @Test
@@ -207,13 +211,11 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                     interval);
 
             repeatedQueryAndAssert(searchRequest,
+                    interval,
                     getRowCountsByInterval(eventsPerIteration).get(interval),
+                    expectedTotalEvents,
                     rowData -> {
-                        Assertions.assertThat(rowData.stream()
-                                .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
-                                .mapToLong(Long::valueOf)
-                                .sum()
-                        ).isEqualTo(expectedTotalEvents);
+                        Assertions.assertThat(getCountFieldSum(rowData)).isEqualTo(expectedTotalEvents);
                     });
         }
 
@@ -229,30 +231,33 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                     ));
 
             repeatedQueryAndAssert(searchRequest,
+                    interval,
                     getRowCountsByInterval(1).get(interval),
+                    expectedTotalEvents,
                     rowData ->
-                            Assertions.assertThat(rowData.stream()
-                                    .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
-                                    .mapToLong(Long::valueOf)
-                                    .sum()
-                            ).isEqualTo(expectedTotalEvents));
+                            Assertions.assertThat(getCountFieldSum(rowData)).isEqualTo(expectedTotalEvents));
         }
     }
 
     private void repeatedQueryAndAssert(SearchRequest searchRequest,
+                                        EventStoreTimeIntervalEnum interval,
                                         int expectedRowCount,
+                                        int expectedTotalEvents,
                                         Consumer<List<Map<String, String>>> rowDataConsumer) {
 
         List<Map<String, String>> rowData = Collections.emptyList();
-        Instant timeoutTime = Instant.now().plus(1, ChronoUnit.MINUTES);
+        Instant timeoutTime = Instant.now().plus(4, ChronoUnit.MINUTES);
 
         //query the store repeatedly until we get the answer we want or give up
-        while (rowData.size() != expectedRowCount && Instant.now().isBefore(timeoutTime)) {
-            ThreadUtil.sleep(3_000);
+        while ((rowData.size() != expectedRowCount || getCountFieldSum(rowData) != expectedTotalEvents) &&
+                Instant.now().isBefore(timeoutTime)) {
+
+            ThreadUtil.sleep(2_000);
 
             rowData = runSearch(searchRequest);
 
-            LOGGER.info("row count returned: {}, waiting for {}", rowData.size(), expectedRowCount);
+            LOGGER.info("{} store returned row count: {}, waiting for {} rows and a sum of the count field of {}",
+                    interval, rowData.size(), expectedRowCount, expectedTotalEvents);
 
         }
 
@@ -263,20 +268,26 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                 .distinct()
                 .collect(Collectors.joining(",")));
 
-        dumpRowData(rowData);
+        dumpRowData(rowData, 100);
 
         if (rowDataConsumer != null) {
             rowDataConsumer.accept(rowData);
         }
     }
 
-    private void dumpRowData(List<Map<String, String>> rowData) {
+    private void dumpRowData(List<Map<String, String>> rowData, @Nullable Integer maxRows) {
         Map<String, Class<?>> typeMap = new HashMap<>();
         typeMap.put(StatisticConfiguration.FIELD_NAME_DATE_TIME.toLowerCase(), Instant.class);
 
-        String tableStr = QueryApiHelper.convertToFixedWidth(rowData, typeMap).stream()
+        List<Map<String, String>> rows = maxRows == null ? rowData : rowData.subList(0, Math.min(maxRows, rowData.size()));
+
+        String tableStr = QueryApiHelper.convertToFixedWidth(rows, typeMap).stream()
                 .collect(Collectors.joining("\n"));
         LOGGER.info("Dumping row data:\n" + tableStr);
+
+        if (maxRows != null) {
+            LOGGER.info("...");
+        }
     }
 
     private Map<EventStoreTimeIntervalEnum, Integer> getRowCountsByInterval(int eventsPerIteration) {
@@ -312,16 +323,20 @@ public class EndToEndVolumeIT extends AbstractAppIT {
 
         Map<StatisticType, StatisticConfigurationEntity> statConfigs = new HashMap<>();
 
+        int numberOfStatWrappers = Math.max(1, ITERATION_COUNT / 250);
+
         for (StatisticType statisticType : statisticTypes) {
 
             String statNameStr = "VolumeTest-" + Instant.now().toString() + "-" + statisticType + "-" + SMALLEST_INTERVAL;
+
+
 
             Tuple2<StatisticConfigurationEntity, List<Statistics>> testData = GenerateSampleStatisticsData.generateData(
                     statNameStr,
                     statisticType,
                     SMALLEST_INTERVAL,
                     StatisticRollUpType.ALL,
-                    500,
+                    numberOfStatWrappers,
                     ITERATION_COUNT);
 
             persistStatConfig(testData._1());
@@ -330,8 +345,8 @@ public class EndToEndVolumeIT extends AbstractAppIT {
             String inputTopic = INPUT_TOPICS_MAP.get(statisticType);
             List<Statistics> testEvents = testData._2();
 
-            LOGGER.info("Sending {} events of type {} to topic {}", testEvents.size(), statisticType, inputTopic);
-            testEvents.forEach(statisticsObj -> {
+            LOGGER.info("Sending {} statistics wrappers of type {} to topic {}", testEvents.size(), statisticType, inputTopic);
+            testEvents.parallelStream().forEach(statisticsObj -> {
                 ProducerRecord<String, String> producerRecord = buildProducerRecord(
                         inputTopic,
                         statisticsObj,

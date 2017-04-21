@@ -37,13 +37,18 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class GenerateSampleStatisticsData {
 
@@ -57,7 +62,8 @@ public class GenerateSampleStatisticsData {
     private static final String USER1 = "user1";
     private static final String USER2 = "user2";
 
-    public static final int EVENT_TIME_DELTA_MS = 5_000;
+    //    public static final int EVENT_TIME_DELTA_MS = 5_000;
+    public static final int EVENT_TIME_DELTA_MS = 250;
 
     private static final String COLOUR_RED = "Red";
     private static final String COLOUR_GREEN = "Green";
@@ -81,7 +87,7 @@ public class GenerateSampleStatisticsData {
     }
 
 
-    private static ZonedDateTime getStartTime() {
+    private static ZonedDateTime getStartOfToday() {
         return ZonedDateTime.ofInstant(Instant.now().truncatedTo(ChronoUnit.DAYS), ZoneOffset.UTC);
     }
 
@@ -90,8 +96,16 @@ public class GenerateSampleStatisticsData {
             StatisticType statisticType,
             EventStoreTimeIntervalEnum smallestInterval,
             StatisticRollUpType statisticRollUpType,
-            int batchSize,
+            int numberOfStatWrappers,
             int iterationCount) {
+
+
+        final ZonedDateTime startTime = getStartOfToday();
+
+        LOGGER.info("Generating stats from {} to {} with delta {}ms",
+                startTime.toString(),
+                startTime.plus(iterationCount * EVENT_TIME_DELTA_MS, ChronoUnit.MILLIS),
+                EVENT_TIME_DELTA_MS);
 
         //build the stat config for the stats we are about to generate
         StatisticConfigurationEntity statisticConfiguration = new StatisticConfigurationEntityBuilder(
@@ -102,9 +116,9 @@ public class GenerateSampleStatisticsData {
                 .addFields(TAGS)
                 .build();
 
-        final ZonedDateTime eventTime = getStartTime();
         //generate the stat events
-        List<Statistics.Statistic> statisticList = buildEvents(statName, eventTime, statisticType, iterationCount);
+        List<Statistics.Statistic> statisticList = new ArrayList<>(
+                buildEvents(statName, startTime, statisticType, iterationCount));
 
         //randomise the stats
         Collections.shuffle(statisticList, new Random());
@@ -112,7 +126,7 @@ public class GenerateSampleStatisticsData {
         //group the stats in to batches so we can wrap each batch into a Statistics object
         AtomicInteger counter = new AtomicInteger(0);
         Map<Integer, List<Statistics.Statistic>> batches = statisticList.parallelStream()
-                .map(statistic -> new Tuple2<>(counter.getAndIncrement() % batchSize, statistic))
+                .map(statistic -> new Tuple2<>(counter.getAndIncrement() % numberOfStatWrappers, statistic))
                 .collect(Collectors.groupingBy(Tuple2::_1, Collectors.mapping(Tuple2::_2, Collectors.toList())));
 
         List<Statistics> batchList = batches.values().parallelStream()
@@ -123,17 +137,19 @@ public class GenerateSampleStatisticsData {
     }
 
 
-    private static List<Statistics.Statistic> buildEvents(final String statName,
-                                                          final ZonedDateTime initialEventTime,
-                                                          final StatisticType statisticType,
-                                                          final int iterationCount) {
-        ZonedDateTime eventTime = initialEventTime;
+    private static Collection<Statistics.Statistic> buildEvents(final String statName,
+                                                                final ZonedDateTime initialEventTime,
+                                                                final StatisticType statisticType,
+                                                                final int iterationCount) {
+        final ZonedDateTime eventTime = initialEventTime;
 
-        List<Statistics.Statistic> statisticList = new ArrayList<>(iterationCount);
+        Collection<Statistics.Statistic> statisticList = new ConcurrentLinkedQueue<>();
 
-        List<Tuple4<ZonedDateTime, String, String, String>> perms = new ArrayList<>();
+        Set<Tuple4<ZonedDateTime, String, String, String>> perms = new HashSet<>();
 
-        for (int i = 0; i < iterationCount; i++) {
+        IntStream.range(0, iterationCount).forEach(i -> {
+            ZonedDateTime time = eventTime.plus(i * EVENT_TIME_DELTA_MS, ChronoUnit.MILLIS);
+
             for (final String user : USERS) {
                 for (final String colour : COLOURS) {
                     for (final String state : STATES) {
@@ -142,7 +158,7 @@ public class GenerateSampleStatisticsData {
                         if (statisticType.equals(StatisticType.COUNT)) {
                             statistic = StatisticsHelper.buildCountStatistic(
                                     statName,
-                                    eventTime,
+                                    time,
                                     COUNT_STAT_VALUE,
                                     StatisticsHelper.buildTagType(TAG_USER, user),
                                     StatisticsHelper.buildTagType(TAG_COLOUR, colour),
@@ -154,7 +170,7 @@ public class GenerateSampleStatisticsData {
 
                             statistic = StatisticsHelper.buildValueStatistic(
                                     statName,
-                                    eventTime,
+                                    time,
                                     val,
                                     StatisticsHelper.buildTagType(TAG_USER, user),
                                     StatisticsHelper.buildTagType(TAG_COLOUR, colour),
@@ -165,16 +181,13 @@ public class GenerateSampleStatisticsData {
 
                         statisticList.add(statistic);
 
-                        perms.add(new Tuple4<>(eventTime, user, colour, state));
+                        perms.add(new Tuple4<>(time, user, colour, state));
                     }
                 }
             }
-            eventTime = eventTime.plus(EVENT_TIME_DELTA_MS, ChronoUnit.MILLIS);
-        }
+        });
 
-        long distinctCount = perms.stream()
-                .distinct()
-                .count();
+        long distinctCount = perms.size();
 
         LOGGER.info("Returning {} statistic events, ({} distinct)", statisticList.size(), distinctCount);
         return statisticList;
