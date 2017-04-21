@@ -27,7 +27,8 @@ import java.util.List;
 
 public interface StatisticDataPointAdapter {
 
-    StatisticDataPoint convertCell(final long timeMs,
+    StatisticDataPoint convertCell(final String statisticName,
+                                   final long timeMs,
                                    final EventStoreTimeIntervalEnum interval,
                                    final List<StatisticTag> tags,
                                    final byte[] bytes,

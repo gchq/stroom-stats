@@ -29,7 +29,8 @@ import java.util.List;
 public class ValueStatisticDataPointAdapter implements StatisticDataPointAdapter {
 
     @Override
-    public StatisticDataPoint convertCell(final long timeMs,
+    public StatisticDataPoint convertCell(final String statisticName,
+                                          final long timeMs,
                                           final EventStoreTimeIntervalEnum interval,
                                           final List<StatisticTag> tags,
                                           final byte[] bytes,
@@ -38,7 +39,8 @@ public class ValueStatisticDataPointAdapter implements StatisticDataPointAdapter
 
         final ValueCellValue cellValue = new ValueCellValue(bytes, cellValueOffset, cellValueLength);
 
-        return new ValueStatisticDataPoint(timeMs,
+        return new ValueStatisticDataPoint(statisticName,
+                timeMs,
                 interval.columnInterval(),
                 tags,
                 cellValue.getCount(),

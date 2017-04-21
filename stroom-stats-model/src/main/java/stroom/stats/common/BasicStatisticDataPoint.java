@@ -30,17 +30,20 @@ import java.util.Map;
 
 public class BasicStatisticDataPoint implements StatisticDataPoint {
 
+    private final String statisticName;
     private final long timeMs;
     private final long precisionMs;
     private final List<StatisticTag> tags;
     private final Map<String, String> tagToValueMap;
 
 
-    public BasicStatisticDataPoint(final long timeMs, final long precisionMs, final List<StatisticTag> tags) {
+    public BasicStatisticDataPoint(final String statisticName, final long timeMs, final long precisionMs, final List<StatisticTag> tags) {
+        Preconditions.checkNotNull(statisticName);
         Preconditions.checkArgument(timeMs >= 0);
         Preconditions.checkArgument(precisionMs >= 0);
         Preconditions.checkNotNull(tags);
 
+        this.statisticName = statisticName;
         this.timeMs = timeMs;
         this.precisionMs = precisionMs;
         this.tags = tags;
@@ -53,6 +56,10 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
                 this.tagToValueMap.put(tag.getTag(), tag.getValue());
             }
         }
+    }
+
+    public String getStatisticName() {
+        return statisticName;
     }
 
     public long getTimeMs() {
@@ -93,7 +100,8 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
     @Override
     public String toString() {
         return "BasicStatisticDataPoint{" +
-                "timeMs=" + timeMs +
+                "statisticName=" + statisticName +
+                ", timeMs=" + timeMs +
                 ", precisionMs=" + precisionMs +
                 ", tags=" + tags +
                 '}';
@@ -108,14 +116,18 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
 
         if (timeMs != that.timeMs) return false;
         if (precisionMs != that.precisionMs) return false;
-        return tags.equals(that.tags);
+        if (!statisticName.equals(that.statisticName)) return false;
+        if (!tags.equals(that.tags)) return false;
+        return tagToValueMap.equals(that.tagToValueMap);
     }
 
     @Override
     public int hashCode() {
-        int result = (int) (timeMs ^ (timeMs >>> 32));
+        int result = statisticName.hashCode();
+        result = 31 * result + (int) (timeMs ^ (timeMs >>> 32));
         result = 31 * result + (int) (precisionMs ^ (precisionMs >>> 32));
         result = 31 * result + tags.hashCode();
+        result = 31 * result + tagToValueMap.hashCode();
         return result;
     }
 }

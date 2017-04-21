@@ -445,7 +445,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         final ResultScanner scanner = getScanner(tableInterface, scan);
 
         // object to hold all the data returned
-        final StatisticDataSet statisticDataSet = new StatisticDataSet(criteria.getStatisticName(), statisticType);
+        final StatisticDataSet statisticDataSet = new StatisticDataSet(statName, statisticType);
 
         try {
             final long periodFrom = period.getFromOrElse(0L);
@@ -489,7 +489,9 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                     if (fullTimestamp >= periodFrom && fullTimestamp < periodTo) {
 
                         final StatisticDataPointAdapter adapter = statisticDataPointAdapterFactory.getAdapter(statisticType);
-                        final StatisticDataPoint dataPoint = adapter.convertCell(fullTimestamp,
+                        final StatisticDataPoint dataPoint = adapter.convertCell(
+                                statName,
+                                fullTimestamp,
                                 timeInterval,
                                 tags,
                                 cell.getValueArray(),

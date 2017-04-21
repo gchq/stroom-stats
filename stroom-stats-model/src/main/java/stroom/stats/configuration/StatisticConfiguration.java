@@ -41,6 +41,7 @@ public interface StatisticConfiguration {
     String ENTITY_TYPE_FOR_DISPLAY = "Statistic Store";
 
     //static field names
+    String FIELD_NAME_STATISTIC = "Statistic Name";
     String FIELD_NAME_DATE_TIME = "Date Time";
     String FIELD_NAME_VALUE = "Statistic Value";
     String FIELD_NAME_COUNT = "Statistic Count";
@@ -52,12 +53,14 @@ public interface StatisticConfiguration {
     //Define the static fields available to each type of statistic
     Map<StatisticType, List<String>> STATIC_FIELDS_MAP = Maps.immutableEnumMap(ImmutableMap.of(
             StatisticType.COUNT, Arrays.asList(
+                    FIELD_NAME_STATISTIC,
                     FIELD_NAME_DATE_TIME,
                     FIELD_NAME_COUNT,
                     FIELD_NAME_PRECISION,
                     FIELD_NAME_PRECISION_MS
             ),
             StatisticType.VALUE, Arrays.asList(
+                    FIELD_NAME_STATISTIC,
                     FIELD_NAME_DATE_TIME,
                     FIELD_NAME_VALUE,
                     FIELD_NAME_COUNT,

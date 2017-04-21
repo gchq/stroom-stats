@@ -67,15 +67,23 @@ public class ValueStatisticDataPoint implements StatisticDataPoint {
      *            The max value in this time period
      * @return A populated {@link ValueStatisticDataPoint} instance
      */
-    public ValueStatisticDataPoint(final long timeMs, final long precisionMs, final List<StatisticTag> tags,
-                                   final long count, final double value, final double minValue, final double maxValue) {
-        this.delegate = new BasicStatisticDataPoint(timeMs, precisionMs, tags);
+    public ValueStatisticDataPoint(final String statisticName,
+                                   final long timeMs,
+                                   final long precisionMs,
+                                   final List<StatisticTag> tags,
+                                   final long count,
+                                   final double value,
+                                   final double minValue,
+                                   final double maxValue) {
+
+        this.delegate = new BasicStatisticDataPoint(statisticName, timeMs, precisionMs, tags);
         this.count = count;
         this.value = value;
         this.minValue = minValue;
         this.maxValue = maxValue;
 
         fieldValueSupplierMap = ImmutableMap.<String, Supplier<String>>builder()
+                .put(StatisticConfiguration.FIELD_NAME_STATISTIC, delegate::getStatisticName)
                 .put(StatisticConfiguration.FIELD_NAME_DATE_TIME, () -> Long.toString(delegate.getTimeMs()))
                 .put(StatisticConfiguration.FIELD_NAME_PRECISION, this::getPrecision)
                 .put(StatisticConfiguration.FIELD_NAME_PRECISION_MS, () -> Long.toString(delegate.getPrecisionMs()))
@@ -84,6 +92,11 @@ public class ValueStatisticDataPoint implements StatisticDataPoint {
                 .put(StatisticConfiguration.FIELD_NAME_MIN_VALUE, () -> Double.toString(minValue))
                 .put(StatisticConfiguration.FIELD_NAME_MAX_VALUE, () -> Double.toString(maxValue))
                 .build();
+    }
+
+    @Override
+    public String getStatisticName() {
+        return delegate.getStatisticName();
     }
 
     @Override

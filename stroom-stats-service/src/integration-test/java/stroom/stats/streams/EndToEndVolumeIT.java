@@ -155,6 +155,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                     statisticConfiguration,
                     interval,
                     Arrays.asList(
+                            StatisticConfiguration.FIELD_NAME_STATISTIC,
                             StatisticConfiguration.FIELD_NAME_DATE_TIME,
                             StatisticConfiguration.FIELD_NAME_PRECISION,
                             StatisticConfiguration.FIELD_NAME_COUNT

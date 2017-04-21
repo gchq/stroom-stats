@@ -46,12 +46,13 @@ public class CountStatisticDataPoint implements StatisticDataPoint {
 
     private final Map<String, Supplier<String>> fieldValueSupplierMap;
 
-    public CountStatisticDataPoint(final long timeMs, final long precisionMs, final List<StatisticTag> tags,
+    public CountStatisticDataPoint(final String statisticName, final long timeMs, final long precisionMs, final List<StatisticTag> tags,
                                    final Long count) {
-        this.delegate = new BasicStatisticDataPoint(timeMs, precisionMs, tags);
+        this.delegate = new BasicStatisticDataPoint(statisticName, timeMs, precisionMs, tags);
         this.count = count;
 
         fieldValueSupplierMap = ImmutableMap.<String, Supplier<String>>builder()
+                .put(StatisticConfiguration.FIELD_NAME_STATISTIC, delegate::getStatisticName)
                 .put(StatisticConfiguration.FIELD_NAME_DATE_TIME, () -> Long.toString(delegate.getTimeMs()))
                 .put(StatisticConfiguration.FIELD_NAME_PRECISION, this::getPrecision)
                 .put(StatisticConfiguration.FIELD_NAME_PRECISION_MS, () -> Long.toString(delegate.getPrecisionMs()))
@@ -59,6 +60,10 @@ public class CountStatisticDataPoint implements StatisticDataPoint {
                 .build();
     }
 
+    @Override
+    public String getStatisticName() {
+        return delegate.getStatisticName();
+    }
 
     @Override
     public long getTimeMs() {
