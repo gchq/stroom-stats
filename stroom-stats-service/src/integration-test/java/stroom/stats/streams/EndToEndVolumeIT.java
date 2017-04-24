@@ -19,6 +19,7 @@
 
 package stroom.stats.streams;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.inject.Injector;
 import javaslang.Tuple2;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -35,8 +36,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.query.api.Row;
 import stroom.query.api.SearchRequest;
 import stroom.query.api.SearchResponse;
+import stroom.query.api.TableResult;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.HBaseClient;
 import stroom.stats.api.StatisticType;
@@ -247,6 +250,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                                         Consumer<List<Map<String, String>>> rowDataConsumer) {
 
         List<Map<String, String>> rowData = Collections.emptyList();
+        SearchResponse searchResponse = null;
         Instant timeoutTime = Instant.now().plus(4, ChronoUnit.MINUTES);
 
         //query the store repeatedly until we get the answer we want or give up
@@ -255,11 +259,12 @@ public class EndToEndVolumeIT extends AbstractAppIT {
 
             ThreadUtil.sleep(1_000);
 
-            rowData = runSearch(searchRequest);
+            searchResponse = hBaseClient.query(searchRequest);
+
+            rowData = QueryApiHelper.getRowData(searchRequest, searchResponse);
 
             LOGGER.info("{} store returned row count: {}, waiting for {} rows and a sum of the count field of {}",
                     interval, rowData.size(), expectedRowCount, expectedTotalEvents);
-
         }
 
         Assertions.assertThat(rowData).hasSize(expectedRowCount);
@@ -269,27 +274,28 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                 .distinct()
                 .collect(Collectors.joining(",")));
 
-        dumpRowData(rowData, 100);
+        dumpRowData(searchRequest, searchResponse, 50);
 
         if (rowDataConsumer != null) {
             rowDataConsumer.accept(rowData);
         }
     }
 
-    private void dumpRowData(List<Map<String, String>> rowData, @Nullable Integer maxRows) {
-        Map<String, Class<?>> typeMap = new HashMap<>();
-        typeMap.put(StatisticConfiguration.FIELD_NAME_DATE_TIME.toLowerCase(), Instant.class);
+    private void dumpRowData(final SearchRequest searchRequest,
+                             final SearchResponse searchResponse,
+                             @Nullable Integer maxRows) {
 
-        List<Map<String, String>> rows = maxRows == null ? rowData : rowData.subList(0, Math.min(maxRows, rowData.size()));
+        Map<String, Class<?>> typeMap = ImmutableMap.of(
+                StatisticConfiguration.FIELD_NAME_DATE_TIME.toLowerCase(),
+                Instant.class);
 
-        String tableStr = QueryApiHelper.convertToFixedWidth(rows, typeMap).stream()
+        String tableStr = QueryApiHelper.convertToFixedWidth(searchRequest, searchResponse, typeMap, maxRows)
+                .stream()
                 .collect(Collectors.joining("\n"));
-        if (maxRows != null) {
-            tableStr += "\n...TRUNCATED...";
-        }
-        LOGGER.info("Dumping row data:\n" + tableStr);
 
+        LOGGER.info("Dumping row data:\n" + tableStr);
     }
+
 
     private Map<EventStoreTimeIntervalEnum, Integer> getRowCountsByInterval(int eventsPerIteration) {
         Map<EventStoreTimeIntervalEnum, Integer> countsMap = new HashMap<>();
@@ -307,13 +313,6 @@ public class EndToEndVolumeIT extends AbstractAppIT {
             countsMap.put(interval, intervalCount * eventsPerIteration);
         }
         return countsMap;
-    }
-
-    private List<Map<String, String>> runSearch(final SearchRequest searchRequest) {
-
-        SearchResponse searchResponse = hBaseClient.query(searchRequest);
-
-        return QueryApiHelper.getRowData(searchRequest, searchResponse);
     }
 
     private Map<StatisticType, StatisticConfigurationEntity> loadData(StatisticType... statisticTypes) {
