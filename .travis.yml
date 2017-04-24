@@ -1,20 +1,10 @@
 # Basic configuration
-# Sets up Ubuntu Trusty, which is needed for MySQL 5.6
 language: java
 dist: trusty
 services:
-  - mysql
   - docker
 jdk: oraclejdk8
 sudo: required
-
-# These packages are required to run MySQL 5.6 on Trusty
-addons:
-  apt:
-    packages:
-    - mysql-server-5.6
-    - mysql-client-core-5.6
-    - mysql-client-5.6
 
 # Increase the size of the heap
 before_script:
