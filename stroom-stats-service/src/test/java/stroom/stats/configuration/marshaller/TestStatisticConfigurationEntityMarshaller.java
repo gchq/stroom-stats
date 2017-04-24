@@ -41,10 +41,10 @@ public class TestStatisticConfigurationEntityMarshaller {
         str += "<?xml version=\"1.1\" encoding=\"UTF-8\"?>";
         str += "<data>";
         str += " <field>";
-        str += "  <fieldName>feed</fieldName>";
+        str += "  <fieldName>user</fieldName>";
         str += " </field>";
         str += " <field>";
-        str += "  <fieldName>user</fieldName>";
+        str += "  <fieldName>feed</fieldName>";
         str += " </field>";
         str += " <customRollUpMask>";
         str += " </customRollUpMask>";

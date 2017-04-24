@@ -31,7 +31,7 @@
     <logger name="org.apache.kafka.clients.consumer.ConsumerConfig" level="warn" />
     <logger name="org.apache.kafka.clients.producer.ProducerConfig" level="warn" />
 
-    <logger name="stroom.stats" level="trace" />
+    <logger name="stroom.stats" level="debug" />
     <logger name="stroom.stats.main.KafkaStreamsSandbox" level="debug" />
 
     <root level="warn">

@@ -44,8 +44,11 @@ import org.apache.hadoop.hbase.filter.PrefixFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
-import stroom.stats.common.*;
+import stroom.stats.common.FilterTermsTree;
+import stroom.stats.common.Period;
 import stroom.stats.common.SearchStatisticsCriteria;
+import stroom.stats.common.StatisticDataPoint;
+import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.hbase.HBaseStatisticConstants;
@@ -99,6 +102,8 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(HBaseEventStoreTable.class);
 
+//    private Map<StatKey, StatAggregate> putEventsMap = new HashMap<>();
+
     /**
      * Private constructor
      */
@@ -149,6 +154,21 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     public void addAggregatedEvents(final StatisticType statisticType,
                                     final Map<StatKey, StatAggregate> aggregatedEvents) {
 
+//        LOGGER.ifDebugIsEnabled(() -> {
+//            LOGGER.debug("putEventsMap key count: {}", putEventsMap.size());
+//
+//            aggregatedEvents.forEach((statKey, statAggregate) -> {
+//                putEventsMap.computeIfPresent(statKey, (k, v) -> {
+//                    LOGGER.debug("Existing key {}", k.toString());
+//                    LOGGER.debug("New      key {}", statKey.toString());
+//                    LOGGER.debug("Seen duplicate key");
+////                    throw new RuntimeException(String.format("Key %s already exists with agg %s, new agg is %s", statKey, v, statAggregate));
+//                    return v.aggregate(statAggregate, 100);
+//                });
+//                putEventsMap.put(statKey, statAggregate);
+//            });
+//        });
+
         //TODO if we introduce another stat type of STATE then the STATE and VALUE value objects used
         //for checking and setting should share an interface that has an aggregate method
         //and knows how to (de)serialize itself, thus this class doesn't have to care about the type of aggregate.
@@ -165,6 +185,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
             default:
                 throw new IllegalArgumentException("Unexpected statisticType " + statisticType);
         }
+
 
         //keep a counter of the number of puts by stat type since this instance was last re-started
         //useful as an indication of how it is functioning.  Could put the count to a stat of its own
@@ -424,7 +445,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         final ResultScanner scanner = getScanner(tableInterface, scan);
 
         // object to hold all the data returned
-        final StatisticDataSet statisticDataSet = new StatisticDataSet(criteria.getStatisticName(), statisticType);
+        final StatisticDataSet statisticDataSet = new StatisticDataSet(statName, statisticType);
 
         try {
             final long periodFrom = period.getFromOrElse(0L);
@@ -468,7 +489,9 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                     if (fullTimestamp >= periodFrom && fullTimestamp < periodTo) {
 
                         final StatisticDataPointAdapter adapter = statisticDataPointAdapterFactory.getAdapter(statisticType);
-                        final StatisticDataPoint dataPoint = adapter.convertCell(fullTimestamp,
+                        final StatisticDataPoint dataPoint = adapter.convertCell(
+                                statName,
+                                fullTimestamp,
                                 timeInterval,
                                 tags,
                                 cell.getValueArray(),

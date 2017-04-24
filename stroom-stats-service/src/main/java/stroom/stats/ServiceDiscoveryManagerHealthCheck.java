@@ -29,7 +29,7 @@ public class ServiceDiscoveryManagerHealthCheck {
     private ServiceDiscoveryManager serviceDiscoveryManager;
 
     @Inject
-    public ServiceDiscoveryManagerHealthCheck(ServiceDiscoveryManager serviceDiscoveryManager){
+    public ServiceDiscoveryManagerHealthCheck(ServiceDiscoveryManager serviceDiscoveryManager) {
 
         this.serviceDiscoveryManager = serviceDiscoveryManager;
     }
@@ -48,15 +48,14 @@ public class ServiceDiscoveryManagerHealthCheck {
         return check(serviceDiscoveryManager.getStroomDB(), "stroom-db");
     }
 
-    private HealthCheck.Result check(
-            ServiceInstance<String> serviceInstance,
-            String serviceInstanceName){
-        if(serviceInstance == null){
+    private HealthCheck.Result check(final ServiceInstance<String> serviceInstance,
+                                     final String serviceInstanceName) {
+
+        if (serviceInstance == null) {
             return HealthCheck.Result.unhealthy(String.format(
                     "There are no registered instances of %s for me to use!",
                     serviceInstanceName));
-        }
-        else{
+        } else {
             return HealthCheck.Result.healthy(String.format(
                     "Found a %s instance for me to use at %s:%s.",
                     serviceInstanceName,

@@ -66,8 +66,9 @@ public class MockStroomPropertyService implements StroomPropertyService {
         }
 
         //Ensure we have all the required property keys, with default values if not already set
-        defaultProps.stringPropertyNames().forEach(name ->
-                setProperty(name, defaultProps.getProperty(name)));
+        defaultProps.stringPropertyNames().stream()
+                .sorted()
+                .forEach(name -> setProperty(name, defaultProps.getProperty(name)));
     }
 
     @Override
@@ -89,7 +90,7 @@ public class MockStroomPropertyService implements StroomPropertyService {
     /**
      * Remove all properties
      */
-    public void clearAll(){
+    public void clearAll() {
         properties.clear();
     }
 

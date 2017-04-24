@@ -33,14 +33,14 @@ public class CountAggregate extends StatAggregate {
         this.aggregatedCount = aggregatedCount;
     }
 
-    public CountAggregate(final List<MultiPartIdentifier> eventIds, final long aggregatedCount) {
-        super(eventIds);
+    public CountAggregate(final List<MultiPartIdentifier> eventIds, final int maxEventIds, final long aggregatedCount) {
+        super(eventIds, maxEventIds);
         this.aggregatedCount = aggregatedCount;
     }
 
     @Override
-    public StatAggregate aggregate(final StatAggregate other, final int maxEventIds) {
-        aggregateEventIds(other, maxEventIds);
+    public StatAggregate aggregate(final StatAggregate other) {
+        aggregateEventIds(other);
         try {
             this.aggregatedCount += ((CountAggregate)other).aggregatedCount;
         } catch (ClassCastException e) {

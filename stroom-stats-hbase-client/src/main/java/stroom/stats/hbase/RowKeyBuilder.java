@@ -23,13 +23,10 @@ package stroom.stats.hbase;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import stroom.stats.api.StatisticTag;
-import stroom.stats.api.TimeAgnosticStatisticEvent;
-import stroom.stats.common.RolledUpStatisticEvent;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.hbase.structure.CellQualifier;
 import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
-import stroom.stats.hbase.structure.TimeAgnosticRowKey;
 import stroom.stats.streams.StatKey;
 
 import java.util.Collections;
@@ -37,17 +34,6 @@ import java.util.List;
 import java.util.Map;
 
 public interface RowKeyBuilder {
-    /**
-     * Builds a {@link CellQualifier} object from an event
-     *
-     * @param rolledUpStatisticEvent
-     *            The event to convert into a {@link CellQualifier} object
-     * @return The event as a {@link CellQualifier}
-     */
-    // public abstract CellQualifier buildCellQualifier(StatisticEvent
-    // statisticEvent);
-
-    List<CellQualifier> buildCellQualifiers(RolledUpStatisticEvent rolledUpStatisticEvent);
 
     CellQualifier buildCellQualifier(final StatKey statKey);
 
@@ -180,6 +166,4 @@ public interface RowKeyBuilder {
      * @return Plain text string representation of the row key
      */
     String toPlainTextString(RowKey rowKey);
-
-    TimeAgnosticRowKey buildTimeAgnosticRowKey(TimeAgnosticStatisticEvent timeAgnosticStatisticEvent);
 }

@@ -19,29 +19,67 @@
 
 package stroom.stats.streams.aggregation;
 
+import com.google.common.base.Preconditions;
 import stroom.stats.api.MultiPartIdentifier;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.util.ArrayList;
 import java.util.List;
 
+@NotThreadSafe
 public abstract class StatAggregate {
+
+    //TODO probably should refactor this to be an interface with a new implementing class of EventIdAggregate
+    //which both CountAggregate and ValueAggregate can include via composition
 
     public static final String PROP_KEY_MAX_AGGREGATED_EVENT_IDS = "stroom.stats.aggregation.maxEventIds";
 
+    private final int maxEventIds;
     protected final List<MultiPartIdentifier> eventIds;
 
-    public abstract StatAggregate aggregate(final StatAggregate other, final int maxEventIds);
+    /**
+     * @param other
+     * @return Aggregates the content of aggregate2 into this, returning the mutated this
+     */
+    public abstract <T extends StatAggregate> T aggregate(final T other);
+
+    /**
+     * @return Aggregates the content of aggregate2 into aggregate1, returning the mutated aggregate1
+     */
+    public static <T extends StatAggregate> T aggregatePair(final T aggregate1, final T aggregate2) {
+
+        //Named aggregatePair rather than aggregate to allow it to be used as a method reference
+        return aggregate1.aggregate(aggregate2);
+    }
 
     public StatAggregate() {
         eventIds = new ArrayList<>();
+        maxEventIds = Integer.MAX_VALUE;
     }
 
-    public StatAggregate(final List<MultiPartIdentifier> eventIds) {
-        this.eventIds = eventIds;
+    /**
+     * @param eventIds A list of eventIds that contributed to the {@link StatAggregate}
+     * @param maxEventIds The maximum number of eventIds to hold in the {@link StatAggregate}, if eventIds is above
+     *                    this limit, then only the first N will be included in the aggregate
+     */
+    public StatAggregate(final List<MultiPartIdentifier> eventIds, final int maxEventIds) {
+        Preconditions.checkNotNull(eventIds);
+        Preconditions.checkArgument(maxEventIds >= 0);
+        this.maxEventIds = maxEventIds;
+        if (eventIds.size() > maxEventIds) {
+            this.eventIds = new ArrayList<>(eventIds.subList(0, maxEventIds));
+        } else {
+            this.eventIds = new ArrayList<>(eventIds);
+        }
     }
 
-    void aggregateEventIds(final StatAggregate other, final int maxEventIds) {
+    /**
+     * Aggregate the eventIds of other into this, mutating this
+     * @param other The other {@link StatAggregate} whose eventIds will be aggregated into this
+     */
+    void aggregateEventIds(final StatAggregate other) {
         //limit the number of event Ids we hold to prevent noisy events creating massive aggregates
+        //Use the maxEventIds of this rather than other
         try {
             if (other.eventIds.size() > 0) {
                 int addCount = maxEventIds - eventIds.size();

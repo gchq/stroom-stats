@@ -22,11 +22,10 @@
 package stroom.stats.hbase;
 
 import stroom.stats.api.StatisticType;
-import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.common.Period;
+import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.exception.StatisticsException;
-import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.UniqueIdCache;
@@ -58,13 +57,8 @@ public class EventStores {
     private final Map<EventStoreTimeIntervalEnum, EventStore> eventStoreMap = new EnumMap<>(
             EventStoreTimeIntervalEnum.class);
 
-    //Map to hold a row key builder instance per granularity
-    private final Map<EventStoreTimeIntervalEnum, RowKeyBuilder> cachedRowKeyBuilders = new EnumMap<>(
-            EventStoreTimeIntervalEnum.class);
-
     @Inject
-    public EventStores(final RowKeyCache rowKeyCache,
-                       final UniqueIdCache uniqueIdCache,
+    public EventStores(final UniqueIdCache uniqueIdCache,
                        final EventStoreTableFactory eventStoreTableFactory,
                        final StroomPropertyService propertyService) throws IOException {
 
@@ -79,10 +73,6 @@ public class EventStores {
         // interval that we use
         for (final EventStoreTimeIntervalEnum timeIntervalEnum : EventStoreTimeIntervalEnum.values()) {
             addStore(timeIntervalEnum);
-
-            //TODO need to get rid of this from here and keep it in our HBase... classes only
-            cachedRowKeyBuilders.put(timeIntervalEnum,
-                    CachedRowKeyBuilder.wrap(new SimpleRowKeyBuilder(uidCache, timeIntervalEnum), rowKeyCache));
         }
     }
 
@@ -219,7 +209,7 @@ public class EventStores {
     public StatisticDataSet getStatisticsData(final SearchStatisticsCriteria criteria,
                                               final StatisticConfiguration statisticConfiguration) {
 
-        LOGGER.info("Searching statistics store with criteria: {}", criteria);
+        LOGGER.debug("Searching statistics store with criteria: {}", criteria);
         // Make sure a period has been requested.
         if (criteria.getPeriod() == null) {
             throw new StatisticsException("Results must be requested from a given period");
@@ -237,11 +227,9 @@ public class EventStores {
 
         StatisticDataSet statisticDataSet;
 
-        final RollUpBitMask rollUpBitMask = HBaseStatisticsService.buildRollUpBitMaskFromCriteria(criteria,
-                statisticConfiguration);
 
         // Get results from the selected event store.
-        statisticDataSet = bestFit.getStatisticsData(uidCache, statisticConfiguration, rollUpBitMask, criteria);
+        statisticDataSet = bestFit.getStatisticsData(uidCache, statisticConfiguration,  criteria);
 
         return statisticDataSet;
     }

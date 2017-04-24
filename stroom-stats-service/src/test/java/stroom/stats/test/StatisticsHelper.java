@@ -30,6 +30,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.GregorianCalendar;
+import java.util.List;
 
 public class StatisticsHelper {
 
@@ -65,8 +66,12 @@ public class StatisticsHelper {
     }
 
     public static Statistics buildStatistics(Statistics.Statistic... statisticObjects) {
+        return buildStatistics(Arrays.asList(statisticObjects));
+    }
+
+    public static Statistics buildStatistics(List<Statistics.Statistic> statisticList) {
         Statistics statistics = new ObjectFactory().createStatistics();
-        statistics.getStatistic().addAll(Arrays.asList(statisticObjects));
+        statistics.getStatistic().addAll(statisticList);
         return statistics;
     }
 

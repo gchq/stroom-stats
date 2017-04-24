@@ -44,7 +44,7 @@ public class TestStatAggregateSerde {
         List<MultiPartIdentifier> identifiers = new ArrayList<>();
         identifiers.add(new MultiPartIdentifier("StringId1", 123L));
         identifiers.add(new MultiPartIdentifier("StringId2", 456L));
-        CountAggregate countAggregate = new CountAggregate(identifiers, 42);
+        CountAggregate countAggregate = new CountAggregate(identifiers, 10, 42);
 
         SerdeUtils.verify(statAggregateSerde, countAggregate);
 
@@ -56,7 +56,7 @@ public class TestStatAggregateSerde {
         List<MultiPartIdentifier> identifiers2 = new ArrayList<>();
         identifiers2.add(new MultiPartIdentifier("StringId1", 123L));
         identifiers2.add(new MultiPartIdentifier("StringId2", 456L));
-        ValueAggregate valueAggregate = new ValueAggregate(identifiers2, 42.5);
+        ValueAggregate valueAggregate = new ValueAggregate(identifiers2, 10, 42.5);
 
         SerdeUtils.verify(statAggregateSerde, valueAggregate);
 
@@ -69,7 +69,7 @@ public class TestStatAggregateSerde {
         Serde<StatAggregate> statAggregateSerde = StatAggregateSerde.instance();
 
         List<MultiPartIdentifier> identifiers = Collections.emptyList();
-        CountAggregate countAggregate = new CountAggregate(identifiers, 42);
+        CountAggregate countAggregate = new CountAggregate(2);
 
         SerdeUtils.verify(statAggregateSerde, countAggregate);
 
@@ -79,7 +79,7 @@ public class TestStatAggregateSerde {
 
 
         List<MultiPartIdentifier> identifiers2 = Collections.emptyList();
-        ValueAggregate valueAggregate = new ValueAggregate(identifiers2, 42.5);
+        ValueAggregate valueAggregate = new ValueAggregate(42.5);
 
         SerdeUtils.verify(statAggregateSerde, valueAggregate);
 

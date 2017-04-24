@@ -28,6 +28,8 @@ import io.dropwizard.auth.AuthDynamicFeature;
 import io.dropwizard.auth.AuthValueFactoryProvider;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.hibernate.HibernateBundle;
+import io.dropwizard.lifecycle.Managed;
+import io.dropwizard.servlets.tasks.Task;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import javaslang.control.Try;
@@ -43,13 +45,20 @@ import stroom.stats.config.Config;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticConfigurationEntityDAOImpl;
 import stroom.stats.configuration.common.Folder;
+import stroom.stats.mixins.HasHealthCheck;
+import stroom.stats.streams.StatisticsFlatMappingService;
+import stroom.stats.streams.StatisticsIngestService;
+import stroom.stats.tasks.StartProcessingTask;
+import stroom.stats.tasks.StopProcessingTask;
 
 import java.io.UnsupportedEncodingException;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class App extends Application<Config> {
 
-    Logger LOGGER = LoggerFactory.getLogger(App.class);
+    public static final String APP_NAME = "stroom-stats";
+    private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
     private Injector injector = null;
 
     private final HibernateBundle<Config> hibernateBundle = new HibernateBundle<Config>(
@@ -73,6 +82,7 @@ public class App extends Application<Config> {
 
     @Override
     public void run(Config config, Environment environment) throws UnsupportedEncodingException {
+
         configureAuthentication(config, environment);
 
         // Bootstrap Guice
@@ -85,20 +95,105 @@ public class App extends Application<Config> {
                 .onFailure(e -> LOGGER.error("Unable to retrieve statistics: {}", e))
                 .onSuccess(stats -> LOGGER.info("Retrieved {} statistics, but not doing anything", stats.size()));
 
-        // Register APIs
-        environment.jersey().register(new ApiResource(injector.getInstance(HBaseClient.class)));
-
+        registerAPIs(environment);
+        registerTasks(environment);
         registerHealthChecks(environment);
+        registerManagedObjects(environment);
+    }
+
+    private void registerAPIs(final Environment environment) {
+
+        LOGGER.info("Registering API");
+        environment.jersey().register(new ApiResource(injector.getInstance(HBaseClient.class)));
+    }
+
+    private void registerTasks(final Environment environment) {
+
+        registerTask(environment, StartProcessingTask.class);
+        registerTask(environment, StopProcessingTask.class);
+    }
+
+    private <T extends Task> void registerTask(final Environment environment, Class<T> type) {
+
+        LOGGER.info("Registering task with class {}", type.getName());
+        T task = injector.getInstance(type);
+        environment.admin().addTask(task);
+    }
+
+    private void registerHealthChecks(Environment environment) {
+
+        registerHealthCheck(environment, "ServiceDiscoveryManager_Kafka",
+                () -> injector.getInstance(ServiceDiscoveryManagerHealthCheck.class).getKafkaHealth());
+
+        registerHealthCheck(environment, "ServiceDiscoveryManager_HBase",
+                () -> injector.getInstance(ServiceDiscoveryManagerHealthCheck.class).getKafkaHealth());
+
+        registerHealthCheck(environment, "ServiceDiscoveryManager_StroomDB",
+                () -> injector.getInstance(ServiceDiscoveryManagerHealthCheck.class).getKafkaHealth());
+
+        registerHealthCheck(environment, "StatisticsFlatMappingService",
+                () -> injector.getInstance(StatisticsFlatMappingService.class).check());
+
+        StatisticsFlatMappingService statisticsFlatMappingService = injector.getInstance(StatisticsFlatMappingService.class);
+        registerHealthCheck(environment, statisticsFlatMappingService);
+
+        statisticsFlatMappingService.getHealthCheckProviders()
+                .forEach(hasHealthCheck -> registerHealthCheck(environment, hasHealthCheck));
+
+        StatisticsAggregationService statisticsAggregationService = injector.getInstance(StatisticsAggregationService.class);
+        registerHealthCheck(environment, statisticsAggregationService);
+
+        statisticsAggregationService.getHealthCheckProviders()
+                .forEach(hasHealthCheck -> registerHealthCheck(environment, hasHealthCheck));
+
+    }
+
+    private void registerHealthCheck(final Environment environment,
+                                     final String name,
+                                     final Supplier<HealthCheck.Result> healthCheckResultSupplier) {
+
+        LOGGER.info("Registering health check with name {}", name);
+
+        environment.healthChecks().register(name, new HealthCheck() {
+            @Override
+            protected Result check() throws Exception {
+                return healthCheckResultSupplier.get();
+            }
+        });
+    }
+
+    private void registerHealthCheck(final Environment environment,
+                                     final HasHealthCheck hasHealthCheck) {
+
+        LOGGER.info("Registering health check with name {}", hasHealthCheck.getName());
+
+        environment.healthChecks().register(hasHealthCheck.getName(), new HealthCheck() {
+            @Override
+            protected Result check() throws Exception {
+                return hasHealthCheck.check();
+            }
+        });
+    }
+
+    private void registerManagedObjects(Environment environment) {
+        registerManagedObject(environment, StatisticsIngestService.class);
+    }
+
+    private <T extends Managed> void registerManagedObject(final Environment environment, Class<T> type) {
+
+        LOGGER.info("Registering managed object with class {}", type.getName());
+        T managed = injector.getInstance(type);
+        environment.lifecycle().manage(managed);
     }
 
     /**
      * This is an example method, showing how to load statistics.
-     *
+     * <p>
      * We're loading stats outside a Jersey call so we can't use @UnitOfWork to set up the session.
      * We need to get a session manually, as demonstrated here.
      */
-    private Try<List<StatisticConfigurationEntity>> loadStats(){
-        try (Session session = hibernateBundle.getSessionFactory().openSession()){
+    private Try<List<StatisticConfigurationEntity>> loadStats() {
+        try (Session session = hibernateBundle.getSessionFactory().openSession()) {
             ManagedSessionContext.bind(session);
             session.beginTransaction();
             StatisticConfigurationEntityDAOImpl dao = injector.getInstance(StatisticConfigurationEntityDAOImpl.class);
@@ -111,7 +206,7 @@ public class App extends Application<Config> {
 
     @Override
     public String getName() {
-        return "stroom-stats";
+        return APP_NAME;
     }
 
     public Injector getInjector() {
@@ -119,6 +214,7 @@ public class App extends Application<Config> {
     }
 
     private static void configureAuthentication(Config config, Environment environment) throws UnsupportedEncodingException {
+
         final JwtConsumer consumer = new JwtConsumerBuilder()
                 .setAllowedClockSkewInSeconds(30) // allow some leeway in validating time based claims to account for clock skew
                 .setRequireExpirationTime() // the JWT must have an expiration time
@@ -137,29 +233,5 @@ public class App extends Application<Config> {
 
         environment.jersey().register(new AuthValueFactoryProvider.Binder<>(User.class));
         environment.jersey().register(RolesAllowedDynamicFeature.class);
-    }
-
-    private void registerHealthChecks(Environment environment){
-
-        environment.healthChecks().register("ServiceDiscoveryManager_Kafka", new HealthCheck() {
-            @Override
-            protected Result check() throws Exception {
-                return injector.getInstance(ServiceDiscoveryManagerHealthCheck.class).getKafkaHealth();
-            }
-        });
-
-        environment.healthChecks().register("ServiceDiscoveryManager_HBase", new HealthCheck() {
-            @Override
-            protected Result check() throws Exception {
-                return injector.getInstance(ServiceDiscoveryManagerHealthCheck.class).getHBaseHealth();
-            }
-        });
-
-        environment.healthChecks().register("ServiceDiscoveryManager_StroomDB", new HealthCheck() {
-            @Override
-            protected Result check() throws Exception {
-                return injector.getInstance(ServiceDiscoveryManagerHealthCheck.class).getStroomDBHealth();
-            }
-        });
     }
 }

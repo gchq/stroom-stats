@@ -14,25 +14,35 @@ database:
         hibernate.dialect: org.hibernate.dialect.MySQLInnoDBDialect
         #set to false for compatibility with stroom's legacy hibernate 4 configuration and schema
         hibernate.id.new_generator_mappings: false
+        hibernate.show_sql: false
 
 jwtTokenSecret: bd678197-a88e-499c-b03b-62c3dd7dfd2d
 
 server:
-    type: simple
-    applicationContextPath: /
+    adminMinThreads: 1
+    adminMaxThreads: 10
     adminContextPath: /admin
-    connector:
-        type: http
-        port: 8085
+    applicationContextPath: /
+    applicationConnectors:
+        - type: http
+          port: 8085
+    adminConnectors:
+        - type: http
+          port: 8086
 
 logging:
     level: WARN
     loggers:
-        stroom.stats: DEBUG
-        stroom.stats.streams.FullEndToEndIT: TRACE
-        stroom.stats.hbase.table.HBaseEventStoreTable: TRACE
+        org.hibernate.SQL: ALL
+        stroom.stats: INFO
+#        stroom.stats.streams.StatisticsAggregationProcessor: TRACE
+#        stroom.stats.streams.FullEndToEndIT: TRACE
+#        stroom.stats.hbase.table.HBaseEventStoreTable: TRACE
         org.ehcache: INFO
         org.eclipse.jetty: INFO
+    appenders:
+      - type: console
+        logFormat: "%-6level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %X{code} %msg %n"
 
 zookeeper:
     # The quorum of zookeeper hosts to connect to

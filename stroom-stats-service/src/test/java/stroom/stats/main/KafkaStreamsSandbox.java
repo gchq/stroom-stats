@@ -19,6 +19,7 @@
 
 package stroom.stats.main;
 
+import edu.umd.cs.findbugs.annotations.SuppressWarnings;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -56,13 +57,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -172,10 +167,10 @@ public class KafkaStreamsSandbox {
                             now.toEpochMilli(),
                             "1");
                     try {
-                        producer.send(rec);
+                        producer.send(rec).get();
                     } catch (Exception e) {
                         LOGGER.error("Error trying to send rec {} to topic {}", rec, SOURCE_TOPIC, e);
-                        throw e;
+                        throw new RuntimeException(e);
                     }
 //                    LOGGER.info("Sending rec key: {} val: {}", epochMsToString(rec.key()), rec.value());
                     try {
@@ -190,7 +185,8 @@ public class KafkaStreamsSandbox {
 
         Thread.sleep(40_000);
 
-        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
+        @SuppressWarnings("FutureReturnValueIgnored")
+        ScheduledFuture<?> future = Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
             inputData.keySet().stream()
                     .sorted()
                     .forEach(key -> {
@@ -283,6 +279,7 @@ public class KafkaStreamsSandbox {
                     return new Processor<Windowed<Long>, LongAggregator>() {
                         Windowed<Long> lastKey = null;
                         long lastVal = 0;
+
                         @Override
                         public void init(ProcessorContext context) {
 
@@ -387,6 +384,9 @@ public class KafkaStreamsSandbox {
         consumer.subscribe(Collections.singletonList(DEST_TOPIC));
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+
+        @SuppressWarnings("FutureReturnValueIgnored")
         Future future = executorService.submit(() -> {
             LOGGER.info("Consumer about to poll");
             Instant terminationTime = null;

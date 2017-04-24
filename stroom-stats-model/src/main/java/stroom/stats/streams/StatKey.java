@@ -30,6 +30,7 @@ import stroom.stats.util.logging.LambdaLogger;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -45,7 +46,7 @@ import java.util.List;
  * The time element in a {@link StatKey} will ALWAYS be truncated down to the nearest {@link EventStoreTimeIntervalEnum}.
  * This truncation will happen in the public constructors and in certain clone operations
  */
-public class StatKey {
+public class StatKey implements Comparable<StatKey> {
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatKey.class);
 
@@ -63,12 +64,22 @@ public class StatKey {
     static int TAG_VALUE_PAIR_LENGTH = UID_ARRAY_LENGTH * 2;
     static int TAG_VALUE_PAIRS_OFFSET = TIME_PART_OFFSET + TIME_PART_LENGTH;
 
+    public static final Comparator<StatKey> COMPARATOR = Comparator
+            .comparing(StatKey::getStatName)
+            .thenComparing(StatKey::getInterval)
+            .thenComparing(StatKey::getRollupMask)
+            .thenComparingLong(StatKey::getTimeMs)
+            .thenComparing(StatKey::getTagValues, TagValue.TAG_VALUES_COMPARATOR);
+
+
     private final UID statName;
     private final RollUpBitMask rollupMask;
     private EventStoreTimeIntervalEnum interval;
     private long timeMs;
     private final List<TagValue> tagValues;
+
     private int hashCode;
+
 
     private enum TimeTruncation {
         TRUNCATE,
@@ -91,7 +102,6 @@ public class StatKey {
         this.rollupMask = rollupMask;
         this.interval = interval;
         this.tagValues = tagValues;
-        this.hashCode = buildHashCode();
         switch (timeTruncation) {
             case TRUNCATE:
                 this.timeMs = interval.truncateTimeToColumnInterval(timeMs);
@@ -102,6 +112,8 @@ public class StatKey {
             default:
                 throw new IllegalArgumentException(String.format("Unexpected value for timeTruncation: %s", timeTruncation));
         }
+        //cache the hashcode to save repeated calculation
+        this.hashCode = buildHashCode();
     }
 
     public StatKey(final UID statName,
@@ -178,8 +190,7 @@ public class StatKey {
     }
 
     public static StatKey fromBytes(final byte[] bytes) {
-//        byte[] statName = Arrays.copyOfRange(bytes, STAT_NAME_PART_OFFSET, STAT_NAME_PART_LENGTH);
-        UID uid = UID.from(bytes, STAT_NAME_PART_OFFSET);
+        UID statName = UID.from(bytes, STAT_NAME_PART_OFFSET);
         RollUpBitMask rollUpBitMask = RollUpBitMask.fromBytes(bytes, ROLLUP_MASK_PART_OFFSET);
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.fromBytes(bytes, INTERVAL_PART_OFFSET);
         long timeMs = Bytes.toLong(bytes, TIME_PART_OFFSET);
@@ -187,7 +198,7 @@ public class StatKey {
 
         try {
             //de-serializing so leave time as in its byte form
-            StatKey statKey = new StatKey(uid, rollUpBitMask, interval, timeMs, tagValues, TimeTruncation.DONT_TRUNCATE);
+            StatKey statKey = new StatKey(statName, rollUpBitMask, interval, timeMs, tagValues, TimeTruncation.DONT_TRUNCATE);
             LOGGER.trace(() -> String.format("De-serializing bytes %s to StatKey %s", ByteArrayUtils.byteArrayToHex(bytes), statKey));
             return statKey;
         } catch (Exception e) {
@@ -256,7 +267,7 @@ public class StatKey {
         int result = statName.hashCode();
         result = 31 * result + rollupMask.hashCode();
         result = 31 * result + interval.hashCode();
-        result = 31 * result + (int) (timeMs ^ (timeMs >>> 32));
+        result = 31 * result + Long.hashCode(timeMs);
         result = 31 * result + tagValues.hashCode();
         return result;
     }
@@ -264,14 +275,17 @@ public class StatKey {
     @Override
     public String toString() {
         return "StatKey{" +
-//                "statName=" + ByteArrayUtils.byteBufferToHex(statName) +
                 "statName=" + statName +
-//                ", rollupMask=" + rollupMask +
+                ", rollupMask=" + rollupMask +
                 ", interval=" + interval +
                 ", timeMs=" + timeMs +
                 ", tagValues=" + tagValues +
                 '}';
     }
 
+    @Override
+    public int compareTo(final StatKey that) {
+        return COMPARATOR.compare(this, that);
+    }
 
 }

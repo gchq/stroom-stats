@@ -30,7 +30,8 @@ import java.util.List;
 public class CountStatisticDataPointAdapter implements StatisticDataPointAdapter {
 
     @Override
-    public StatisticDataPoint convertCell(final long timeMs,
+    public StatisticDataPoint convertCell(final String statisticName,
+                                          final long timeMs,
                                           final EventStoreTimeIntervalEnum interval,
                                           final List<StatisticTag> tags,
                                           final byte[] bytes,
@@ -39,6 +40,6 @@ public class CountStatisticDataPointAdapter implements StatisticDataPointAdapter
 
         final long count = (cellValueLength == 0) ? 0 : Bytes.toLong(bytes, cellValueOffset, cellValueLength);
 
-        return new CountStatisticDataPoint(timeMs, interval.columnInterval(), tags, count);
+        return new CountStatisticDataPoint(statisticName, timeMs, interval.columnInterval(), tags, count);
     }
 }

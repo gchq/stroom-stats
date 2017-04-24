@@ -55,6 +55,8 @@ public abstract class AbstractStatisticFlatMapper {
     private final StroomPropertyService stroomPropertyService;
     private final UID rolledUpValue;
 
+//    private Map<StatKey, StatAggregate> putEventsMap = new HashMap<>();
+
     public AbstractStatisticFlatMapper(final UniqueIdCache uniqueIdCache,
                                        final StroomPropertyService stroomPropertyService) {
         this.uniqueIdCache = uniqueIdCache;
@@ -253,6 +255,22 @@ public abstract class AbstractStatisticFlatMapper {
 
             keyValuePerms.add(baseKeyValue);
             LOGGER.trace(() -> String.format("Returning %s keyValues", keyValuePerms.size()));
+//            LOGGER.ifDebugIsEnabled(() -> {
+//
+//                keyValuePerms.forEach(kv -> {
+//                    putEventsMap.computeIfPresent(kv.key, (k, v) -> {
+//                        if (kv.key.getRollupMask().equals(RollUpBitMask.ZERO_MASK) &&
+//                                kv.key.getInterval().equals(EventStoreTimeIntervalEnum.SECOND)) {
+//
+//                            LOGGER.debug("Existing key {}", k.toString());
+//                            LOGGER.debug("New      key {}", kv.key.toString());
+//                            LOGGER.debug("Seen duplicate key");
+//                        }
+//                        return v.aggregate(kv.value, 100);
+//                    });
+//                    putEventsMap.put(kv.key, kv.value);
+//                });
+//            });
             return keyValuePerms;
         }
     }

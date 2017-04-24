@@ -22,8 +22,14 @@ package stroom.stats.configuration;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import stroom.stats.api.StatisticType;
+import stroom.stats.common.rollup.RollUpBitMask;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 
 /**
@@ -35,6 +41,7 @@ public interface StatisticConfiguration {
     String ENTITY_TYPE_FOR_DISPLAY = "Statistic Store";
 
     //static field names
+    String FIELD_NAME_STATISTIC = "Statistic Name";
     String FIELD_NAME_DATE_TIME = "Date Time";
     String FIELD_NAME_VALUE = "Statistic Value";
     String FIELD_NAME_COUNT = "Statistic Count";
@@ -46,12 +53,14 @@ public interface StatisticConfiguration {
     //Define the static fields available to each type of statistic
     Map<StatisticType, List<String>> STATIC_FIELDS_MAP = Maps.immutableEnumMap(ImmutableMap.of(
             StatisticType.COUNT, Arrays.asList(
+                    FIELD_NAME_STATISTIC,
                     FIELD_NAME_DATE_TIME,
                     FIELD_NAME_COUNT,
                     FIELD_NAME_PRECISION,
                     FIELD_NAME_PRECISION_MS
             ),
             StatisticType.VALUE, Arrays.asList(
+                    FIELD_NAME_STATISTIC,
                     FIELD_NAME_DATE_TIME,
                     FIELD_NAME_VALUE,
                     FIELD_NAME_COUNT,
@@ -97,6 +106,12 @@ public interface StatisticConfiguration {
     }
 
     Set<? extends CustomRollUpMask> getCustomRollUpMasks();
+
+    default Set<RollUpBitMask> getCustomRollUpMasksAsBitMasks() {
+        return getCustomRollUpMasks().stream()
+                .map(customMask -> RollUpBitMask.fromTagPositions(customMask.getRolledUpTagPositions()))
+                .collect(Collectors.toSet());
+    }
 
     /**
      * The position of the passed fieldName in the output of getFieldNames,

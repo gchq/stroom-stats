@@ -33,7 +33,9 @@ public final class CacheFactoryImpl implements CacheFactory {
     private final CacheConfigurationService cacheConfigurationService;
 
     @Inject
-    public CacheFactoryImpl(final CacheManager cacheManager, final CacheConfigurationService cacheConfigurationService) {
+    public CacheFactoryImpl(final CacheManager cacheManager,
+                            final CacheConfigurationService cacheConfigurationService) {
+
         this.cacheManager = cacheManager;
         this.cacheConfigurationService = cacheConfigurationService;
     }
@@ -44,7 +46,9 @@ public final class CacheFactoryImpl implements CacheFactory {
      * a cacheConfigurationBuilder to further customise.
      */
     @Override
-    public <K, V> Cache<K, V> getOrCreateCache(final String cacheName, final Class<K> keyType, final Class<V> valueType,
+    public <K, V> Cache<K, V> getOrCreateCache(final String cacheName,
+                                               final Class<K> keyType,
+                                               final Class<V> valueType,
                                                final Optional<CacheLoaderWriter<K, V>> optLoaderWriter) {
 
         Cache<K, V> cache = cacheManager.getCache(cacheName, keyType, valueType);

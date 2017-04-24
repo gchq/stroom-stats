@@ -22,42 +22,60 @@ package stroom.stats.streams;
 import stroom.stats.hbase.uid.UID;
 
 import java.nio.ByteBuffer;
+import java.util.Comparator;
+import java.util.List;
 
-public class TagValue implements Comparable<TagValue>{
+public class TagValue implements Comparable<TagValue> {
     static int TAG_PART_LENGTH = UID.UID_ARRAY_LENGTH;
     static int TAG_PART_OFFSET = 0;
     static int VALUE_PART_LENGTH = UID.UID_ARRAY_LENGTH;
     static int VALUE_PART_OFFSET = TAG_PART_OFFSET + TAG_PART_LENGTH;
     static int TAG_VALUE_PAIR_LENGTH = TAG_PART_LENGTH + VALUE_PART_LENGTH;
 
+    public static final Comparator<TagValue> TAG_THEN_VALUE_COMPARATOR = Comparator
+            .comparing(TagValue::getTag)
+            .thenComparing(TagValue::getValue);
+
+    public static final Comparator<List<TagValue>> TAG_VALUES_COMPARATOR = (o1, o2) -> {
+        for (int i = 0; i < Math.min(o1.size(), o2.size()); i++) {
+            int compareVal = o1.get(i).compareTo(o2.get(i));
+            if (compareVal != 0) {
+                return compareVal;
+            }
+        }
+        return Integer.compare(o1.size(), o2.size());
+    };
+
     private final UID tag;
     private final UID value;
     //cache the hashcode, though this relies on the underlying byte[]s not being mutated
     private final int hashCode;
 
+
     public TagValue(final byte[] bytes, int offset) {
         this.tag = UID.from(bytes, offset);
         offset += TAG_PART_LENGTH;
         this.value = UID.from(bytes, offset);
+
         this.hashCode = buildHashCode();
     }
 
     public TagValue(final UID tag, final UID value) {
         this.tag = tag;
         this.value = value;
+
         this.hashCode = buildHashCode();
     }
 
-
     /**
      * Shallow copy, replacing the value with a reference to the rolled up value
+     *
      * @param rolledUpValue
      * @return
      */
     public TagValue cloneAndRollUp(final UID rolledUpValue) {
         return new TagValue(this.tag, rolledUpValue);
     }
-
 
     public byte[] getBytes() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(TAG_VALUE_PAIR_LENGTH);
@@ -70,25 +88,9 @@ public class TagValue implements Comparable<TagValue>{
         return tag;
     }
 
-//    public byte[] getTagCopy() {
-//        ByteBuffer byteBuffer = getTag();
-////        byteBuffer.position(0);
-//        byte[] copy = new byte[TAG_PART_LENGTH];
-//        byteBuffer.get(copy);
-//        return copy;
-//    }
-
     public UID getValue() {
         return value;
     }
-
-//    public byte[] getValueCopy() {
-//        ByteBuffer byteBuffer = getValue();
-////        byteBuffer.position(0);
-//        byte[] copy = new byte[VALUE_PART_LENGTH];
-//        byteBuffer.get(copy);
-//        return copy;
-//    }
 
     @Override
     public boolean equals(final Object o) {
@@ -103,7 +105,7 @@ public class TagValue implements Comparable<TagValue>{
 
     @Override
     public int hashCode() {
-       return hashCode;
+        return hashCode;
     }
 
     private int buildHashCode() {
@@ -115,21 +117,13 @@ public class TagValue implements Comparable<TagValue>{
     @Override
     public String toString() {
         return "TagValue{" +
-                "tag=" + tag+
+                "tag=" + tag +
                 ", value=" + value +
                 '}';
     }
 
     @Override
     public int compareTo(final TagValue other) {
-        //compare by tag then value
-        //compare the backing arrays to avoid array copying
-        int tagComparison = tag.compareTo(other.tag);
-
-        if (tagComparison != 0) {
-            return tagComparison;
-        } else  {
-            return value.compareTo(other.value);
-        }
+        return TAG_THEN_VALUE_COMPARATOR.compare(this, other);
     }
 }

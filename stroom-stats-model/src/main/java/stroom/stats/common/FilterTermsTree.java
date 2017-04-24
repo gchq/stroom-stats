@@ -21,9 +21,12 @@
 
 package stroom.stats.common;
 
+import com.google.common.base.Preconditions;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Class to hold a tree of filter terms for use in stats retrieval. Due to the
@@ -54,8 +57,23 @@ public class FilterTermsTree {
         return root;
     }
 
-    public void setRootNode(final Node rootNode) {
-        this.root = rootNode;
+    public void walkTree(final Consumer<Node> nodeConsumer) {
+        walkTree(root, nodeConsumer);
+    }
+
+    private void walkTree(final Node node, final Consumer<Node> nodeConsumer) {
+
+        Preconditions.checkNotNull(nodeConsumer);
+        if (node instanceof TermNode) {
+
+            nodeConsumer.accept(node);
+
+        } else if (node instanceof OperatorNode) {
+            nodeConsumer.accept(node);
+            for (final Node childNode : ((OperatorNode) node).getChildren()) {
+                walkTree(childNode, nodeConsumer);
+            }
+        }
     }
 
     /**
@@ -224,6 +242,6 @@ public class FilterTermsTree {
 
     public enum Condition {
         EQUALS
-       //TODO add REGEX_MATCH (non-match could be handled by NOT(REGEX_MATCH ...)
+        //TODO add REGEX_MATCH (non-match could be handled by NOT(REGEX_MATCH ...)
     }
 }

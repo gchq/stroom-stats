@@ -34,7 +34,7 @@ import stroom.stats.configuration.StatisticConfigurationServiceImpl;
 import stroom.stats.properties.CuratorFrameworkProvider;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.properties.StroomPropertyServiceImpl;
-import stroom.stats.streams.KafkaStreamService;
+import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.xml.StatisticsMarshaller;
 
 public class StroomStatsServiceModule extends AbstractModule {
@@ -61,7 +61,7 @@ public class StroomStatsServiceModule extends AbstractModule {
         //Singleton as this holds the connection to Zookeeper
         bind(CuratorFramework.class).toProvider(CuratorFrameworkProvider.class).asEagerSingleton();
         bind(HBaseClient.class);
-        bind(KafkaStreamService.class).asEagerSingleton();
+        bind(StatisticsIngestService.class).asEagerSingleton();
         bind(ServiceDiscoveryManager.class);
         bind(ServiceDiscoveryManagerHealthCheck.class);
         bind(SessionFactory.class).toInstance(sessionFactory);

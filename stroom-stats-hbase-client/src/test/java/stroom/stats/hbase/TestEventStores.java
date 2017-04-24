@@ -30,7 +30,6 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.junit.MockitoJUnitRunner;
 import stroom.stats.api.StatisticType;
 import stroom.stats.common.CommonStatisticConstants;
-import stroom.stats.hbase.structure.AddEventOperation;
 import stroom.stats.hbase.table.EventStoreTable;
 import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
@@ -38,14 +37,11 @@ import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.io.IOException;
-import java.util.List;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TestEventStores {
     private EventStores eventStores;
 
-    @Captor
-    private ArgumentCaptor<List<AddEventOperation>> addEventOperationCaptor;
 
     @Captor
     private ArgumentCaptor<StatisticType> statisticTypeCaptor;
@@ -76,8 +72,7 @@ public class TestEventStores {
         // mockTableFactory, mockPropertyService, null,
         // mockEventStoreScheduler);
 
-        eventStores = new EventStores(new MockRowKeyCache(), new MockUniqueIdCache(),
-                mockTableFactory, mockPropertyService);
+        eventStores = new EventStores(new MockUniqueIdCache(), mockTableFactory, mockPropertyService);
     }
 
     @Test

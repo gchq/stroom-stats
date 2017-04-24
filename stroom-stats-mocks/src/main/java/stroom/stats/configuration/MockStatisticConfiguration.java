@@ -161,7 +161,7 @@ public class MockStatisticConfiguration implements StatisticConfiguration {
 
     @Override
     public Integer getPositionInFieldList(final String fieldName) {
-        throw new UnsupportedOperationException("Not yet supported in this implementation");
+        return getFieldNames().indexOf(fieldName);
     }
 
     @Override

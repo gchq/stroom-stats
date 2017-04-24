@@ -17,15 +17,9 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats;
+package stroom.stats.mixins;
 
-import org.junit.Test;
+public interface hasName {
 
-public class LoadStatsEndToEndIT extends AbstractAppIT {
-
-
-    @Test
-    public void loadStats() {
-
-    }
+    String getName();
 }

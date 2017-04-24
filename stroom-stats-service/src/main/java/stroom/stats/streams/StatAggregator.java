@@ -25,9 +25,9 @@ import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Supplier;
 
 @NotThreadSafe
 class StatAggregator {
@@ -35,16 +35,24 @@ class StatAggregator {
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatAggregator.class);
 
     private Map<StatKey, StatAggregate> buffer;
-    private final int maxEventIds;
+    private final int minSize;
+    private final Instant expiredTime;
     private final EventStoreTimeIntervalEnum aggregationInterval;
+    private int inputCount = 0;
 
-    private Supplier<Map<StatKey, StatAggregate>> bufferSupplier;
 
-    public StatAggregator(final int expectedSize, final int maxEventIds, final EventStoreTimeIntervalEnum aggregationInterval) {
-        //initial size to avoid it rehashing
-        this.bufferSupplier = () -> new HashMap<>((int)Math.ceil(expectedSize / 0.75));
-        this.buffer = bufferSupplier.get();
-        this.maxEventIds = maxEventIds;
+    /**
+     * @param minSize The minimum number of reduced aggregates in the aggregator before it is deemed ready to be flushed
+     * @param aggregationInterval
+     * @param timeToLiveMs
+     */
+    public StatAggregator(final int minSize,
+                          final EventStoreTimeIntervalEnum aggregationInterval,
+                          final long timeToLiveMs) {
+        //initial size to avoid it rehashing. x1.2 to allow for it going a bit over the min value
+        this.buffer = new HashMap<>((int) Math.ceil((minSize * 1.2) / 0.75));
+        this.minSize = minSize;
+        this.expiredTime = Instant.now().plusMillis(timeToLiveMs);
         this.aggregationInterval = aggregationInterval;
     }
 
@@ -52,7 +60,8 @@ class StatAggregator {
      * Add a single key/aggregate pair into the aggregator. The aggregate will be aggregated
      * with any existing aggregates for that {@link StatKey}
      */
-    public void add(final StatKey statKey, final StatAggregate statAggregate){
+    public void add(final StatKey statKey, final StatAggregate statAggregate) {
+
         Preconditions.checkNotNull(statKey);
         Preconditions.checkNotNull(statAggregate);
         Preconditions.checkArgument(statKey.getInterval().equals(aggregationInterval),
@@ -63,27 +72,70 @@ class StatAggregator {
         //The passed StatKey will already have its time truncated to the interval of this aggregator
         //so we don't need to do anything to it.
 
+        inputCount++;
+
         //aggregate the passed aggregate and key into the existing aggregates
         buffer.merge(
                 statKey,
                 statAggregate,
-                (existingAgg, newAgg) -> existingAgg.aggregate(newAgg, maxEventIds));
+                StatAggregate::aggregatePair);
+//                (existingAgg, newAgg) -> existingAgg.aggregate(newAgg));
     }
 
     public int size() {
         return buffer.size();
     }
 
+    public int getInputCount() {
+        return inputCount;
+    }
+
+    public Instant getExpiredTime() {
+        return expiredTime;
+    }
+
+    /**
+     * @return The records currently in the aggregator as a percentage of all records added to the aggregator.
+     * A lower value indicates better reduction of the input data.
+     */
+    public double getAggregationPercentage() {
+        if (buffer.isEmpty()) {
+            return 0;
+        } else {
+            return (double) buffer.size() / inputCount * 100;
+        }
+    }
+
+    public boolean isEmpty() {
+        return buffer.isEmpty();
+    }
+
+    /**
+     * @return True if the number of reduced records in the aggregator has reached minSize or timeToLiveMs has
+     * been passed.
+     */
+    public boolean isReadyForFlush() {
+        return (Instant.now().isAfter(expiredTime) || buffer.size() > minSize);
+    }
+
     public EventStoreTimeIntervalEnum getAggregationInterval() {
         return aggregationInterval;
     }
 
-    public Map<StatKey, StatAggregate> drain() {
-        LOGGER.trace(() -> String.format("drain called, return %s events", buffer.size()));
+    public Map<StatKey, StatAggregate> getAggregates() {
+        LOGGER.trace(() -> String.format("getAggregates called, return %s events", buffer.size()));
 
-        //Grab the reference to the map and point buffer at a new map ready for new data
-        Map<StatKey, StatAggregate> aggregatedEvents = buffer;
-        buffer = bufferSupplier.get();
-        return aggregatedEvents;
+        return buffer;
+    }
+
+    @Override
+    public String toString() {
+        return "StatAggregator{" +
+                "minSize=" + minSize +
+                ", expiredTime=" + expiredTime +
+                ", aggregationInterval=" + aggregationInterval +
+                ", current size=" + buffer.size() +
+                ", inputCount=" + inputCount +
+                '}';
     }
 }

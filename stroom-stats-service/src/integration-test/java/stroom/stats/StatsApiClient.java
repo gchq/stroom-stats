@@ -85,4 +85,21 @@ public class StatsApiClient {
                 .post(Entity.xml(body.get()));
         return response;
     }
+
+    public void startProcessing() {
+        postToTaskUrl(AbstractAppIT.START_PROCESSING_URL);
+    }
+
+    public void stopProcessing() {
+        postToTaskUrl(AbstractAppIT.STOP_PROCESSING_URL);
+    }
+
+    private void postToTaskUrl(String url) {
+
+        this.url = url;
+        client.target(url)
+                .request()
+                .header("Authorization", authHeader.get())
+                .post(null);
+    }
 }

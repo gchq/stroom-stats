@@ -28,6 +28,8 @@ import java.util.Map;
 
 public interface StatisticDataPoint {
 
+    String getStatisticName();
+
     long getTimeMs();
 
     long getPrecisionMs();

@@ -53,6 +53,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class FullEndToEndIT extends AbstractAppIT {
@@ -81,7 +82,7 @@ public class FullEndToEndIT extends AbstractAppIT {
 
         Map<String, List<Statistics>> statistics = createDummyStatistics(
                 statNameMap,
-                stroomPropertyService.getPropertyOrThrow(KafkaStreamService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX),
+                stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX),
                 startTime);
 
 
@@ -90,8 +91,10 @@ public class FullEndToEndIT extends AbstractAppIT {
                 statistics,
                 injector.getInstance(StatisticsMarshaller.class));
 
-        ThreadUtil.sleep(60_000);
+        ThreadUtil.sleep(5_000);
 
+
+        //TODO assert the data using the query api
     }
 
     private static void configure(StroomPropertyService stroomPropertyService){
@@ -221,7 +224,14 @@ public class FullEndToEndIT extends AbstractAppIT {
                             );
 
                             LOGGER.trace(() -> String.format("Sending %s stat events to topic %s", statistics.getStatistic().size(), entry.getKey()));
-                            kafkaProducer.send(producerRecord);
+                            try {
+                                kafkaProducer.send(producerRecord).get();
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                throw  new RuntimeException("Interrupted", e);
+                            } catch (ExecutionException e) {
+                                throw  new RuntimeException("Error sending record to Kafka", e);
+                            }
                         }));
 
         kafkaProducer.flush();
@@ -231,7 +241,7 @@ public class FullEndToEndIT extends AbstractAppIT {
     private static KafkaProducer<String, String> buildKafkaProducer(StroomPropertyService stroomPropertyService){
         Map<String, Object> producerProps = new HashMap<>();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                stroomPropertyService.getPropertyOrThrow(KafkaStreamService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
+                stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
         producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
         producerProps.put(ProducerConfig.RETRIES_CONFIG, 0);
         producerProps.put(ProducerConfig.LINGER_MS_CONFIG, 10);

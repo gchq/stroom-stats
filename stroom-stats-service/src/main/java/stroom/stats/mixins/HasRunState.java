@@ -17,14 +17,16 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.configuration;
+package stroom.stats.mixins;
 
-import java.util.Optional;
+public interface HasRunState {
 
-public interface StatisticConfigurationCache {
+    enum RunState {
+        STARTING,
+        RUNNING,
+        STOPPING,
+        STOPPED
+    }
 
-    Optional<StatisticConfiguration> getStatisticConfigurationByName(String statisticName);
-
-    Optional<StatisticConfiguration> getStatisticConfigurationByUuid(String uuid);
-
+    RunState getRunState();
 }

@@ -28,15 +28,11 @@ import stroom.query.api.ExpressionItem;
 import stroom.query.api.ExpressionOperator;
 import stroom.query.api.ExpressionTerm;
 import stroom.query.api.Field;
-import stroom.query.api.FieldBuilder;
 import stroom.query.api.Query;
-import stroom.query.api.ResultRequest;
 import stroom.query.api.Row;
 import stroom.query.api.SearchRequest;
 import stroom.query.api.SearchResponse;
 import stroom.query.api.TableResult;
-import stroom.query.api.TableSettings;
-import stroom.query.api.TableSettingsBuilder;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.HBaseClient;
 import stroom.stats.api.StatisticTag;
@@ -63,12 +59,12 @@ import stroom.stats.streams.TagValue;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
+import stroom.stats.test.QueryApiHelper;
 import stroom.stats.test.StatisticConfigurationEntityBuilder;
 import stroom.stats.test.StatisticConfigurationEntityHelper;
 import stroom.stats.util.DateUtil;
 
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -77,7 +73,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -97,7 +93,9 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
     private EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.DAY;
     private ChronoUnit workingChronoUnit = ChronoUnit.DAYS;
-    private RollUpBitMask rollUpBitMask = RollUpBitMask.ZERO_MASK;
+    private static final RollUpBitMask ROLL_UP_BIT_MASK = RollUpBitMask.ZERO_MASK;
+    private static int MAX_EVENT_IDS = 100;
+
     private final Instant time1 = ZonedDateTime.now().toInstant();
     private final Instant time2 = time1.plus(5, workingChronoUnit);
 
@@ -122,6 +120,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     private UID tag2 = uniqueIdCache.getOrCreateId(tag2Str);
     private UID tag2val1 = uniqueIdCache.getOrCreateId(tag2Val1Str);
     private UID tag2val2 = uniqueIdCache.getOrCreateId(tag2Val2Str);
+    private UID rolledUpValue = uniqueIdCache.getOrCreateId(RollUpBitMask.ROLL_UP_TAG_VALUE);
 
 //    private FilterTermsTree.TermNode dateTerm = new FilterTermsTree.TermNode(
 //            StatisticConfiguration.FIELD_NAME_DATE_TIME,
@@ -179,7 +178,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         assertThat(statName).isNotNull();
 
         StatKey statKey1 = new StatKey(statName,
-                rollUpBitMask,
+                ROLL_UP_BIT_MASK,
                 interval,
                 time1.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
@@ -192,7 +191,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         aggregatedEvents.put(statKey1, statAggregate1);
 
         StatKey statKey2 = new StatKey(statName,
-                rollUpBitMask,
+                ROLL_UP_BIT_MASK,
                 interval,
                 time2.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
@@ -302,7 +301,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         assertThat(statName).isNotNull();
 
         StatKey statKey1 = new StatKey(statName,
-                rollUpBitMask,
+                ROLL_UP_BIT_MASK,
                 interval,
                 time1.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
@@ -315,7 +314,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         aggregatedEvents.put(statKey1, statAggregate1);
 
         StatKey statKey2 = new StatKey(statName,
-                rollUpBitMask,
+                ROLL_UP_BIT_MASK,
                 interval,
                 time2.toEpochMilli(),
                 new TagValue(tag1, tag1val1),
@@ -393,6 +392,32 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         //all records should come back
         runQuery(statisticsService, wrapQuery(query, statisticConfigurationEntity), statisticConfigurationEntity, times.size());
+    }
+
+    @Test
+    public void testRollUpSelection_noFilterTerms_noTagsInTable() {
+
+        Set<RollUpBitMask> rollUpBitMasks = RollUpBitMask.getRollUpBitMasks(2);
+
+        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(StatisticType.COUNT, rollUpBitMasks);
+
+        Query query = new Query(
+                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new ExpressionOperator(true, ExpressionOperator.Op.AND));
+
+        //only put the static fields in the table settings so we will expect it to roll up all the tags
+        SearchRequest searchRequest = QueryApiHelper.wrapQuery(query, StatisticConfiguration.STATIC_FIELDS_MAP.get(StatisticType.COUNT));
+
+        //all records should come back
+        SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfigurationEntity, times.size());
+
+        List<String> fields = searchRequest.getResultRequests().get(0).getMappings().get(0).getFields().stream()
+                .map(Field::getName)
+                .collect(Collectors.toList());
+
+        assertThat(fields).doesNotContain(
+                statisticConfigurationEntity.getFieldNames().toArray(
+                        new String[statisticConfigurationEntity.getFieldNames().size()]));
     }
 
     @Test
@@ -564,6 +589,10 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     }
 
     private StatisticConfigurationEntity loadStatData(final StatisticType statisticType) {
+        return loadStatData(statisticType, Collections.singleton(ROLL_UP_BIT_MASK));
+    }
+
+    private StatisticConfigurationEntity loadStatData(final StatisticType statisticType, Set<RollUpBitMask> rollUpBitMasks) {
         //Put time in the statName to allow us to re-run the test without an empty HBase
         String statNameBase = this.getClass().getName() + "-test-" + Instant.now().toString();
         List<StatisticConfigurationEntity> entities = new ArrayList<>();
@@ -579,20 +608,25 @@ public class HBaseDataLoadIT extends AbstractAppIT {
             assertThat(statName).isNotNull();
 
             Map<StatKey, StatAggregate> aggregatedEvents = times.stream()
-                    .map(time -> {
-                        StatKey statKey = new StatKey(statName,
-                                rollUpBitMask,
+                    .flatMap(time -> {
+                        StatKey baseKey = new StatKey(statName,
+                                RollUpBitMask.ZERO_MASK,
                                 interval,
                                 time.toEpochMilli(),
                                 new TagValue(tag1, tag1val1),
                                 new TagValue(tag2, tag2val1));
 
-                        StatAggregate statAggregate = new CountAggregate(100L);
-                        return new Tuple2<>(statKey, statAggregate);
-                    })
-                    .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2));
+                        return rollUpBitMasks.stream()
+                                .map(newMask -> {
+                                    StatKey statKey = baseKey.cloneAndRollUpTags(newMask, rolledUpValue);
 
-            assertThat(aggregatedEvents).hasSize(times.size());
+                                    StatAggregate statAggregate = new CountAggregate(100L);
+                                    return new Tuple2<>(statKey, statAggregate);
+                                });
+                    })
+                    .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2, StatAggregate::aggregatePair));
+
+            assertThat(aggregatedEvents).hasSize(times.size() * rollUpBitMasks.size());
 
             statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
         });
@@ -618,6 +652,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
             SearchRequest searchRequest,
             StatisticConfigurationEntity statisticConfigurationEntity,
             int expectedRecCount) {
+
         SearchResponse searchResponse = hBaseClient.query(searchRequest);
 
         assertThat(searchResponse).isNotNull();
@@ -626,25 +661,8 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         return searchResponse;
     }
 
-
     private SearchRequest wrapQuery(Query query, StatisticConfiguration statisticConfiguration) {
-
-        List<Field> fields = statisticConfiguration.getAllFieldNames().stream()
-                .map(String::toLowerCase)
-                .map(field -> new FieldBuilder().name(field).expression("${" + field + "}").build())
-                .collect(Collectors.toList());
-
-        TableSettings tableSettings = new TableSettingsBuilder()
-                .fields(fields)
-                .build();
-
-        ResultRequest resultRequest = new ResultRequest("mainResult", tableSettings);
-
-        return new SearchRequest(null,
-                query,
-                Collections.singletonList(resultRequest),
-                ZoneOffset.UTC.getId(),
-                false);
+        return QueryApiHelper.wrapQuery(query, statisticConfiguration.getAllFieldNames());
     }
 
     private static long computeSumOfCountCounts(List<StatisticDataPoint> dataPoints) {
@@ -689,52 +707,16 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get all values for a named field, converted into the chosen type
-     */
-    private static <T> List<T> getTypedFieldValues(final SearchRequest searchRequest,
-                                                   final SearchResponse searchResponse,
-                                                   final String fieldName,
-                                                   final Class<T> valueType) {
-
-        //assume only one result request and one tablesSetting
-        int fieldIndex = searchRequest.getResultRequests().get(0).getMappings().get(0).getFields().stream()
-                .map(field -> field.getName().toLowerCase())
-                .collect(Collectors.toList())
-                .indexOf(fieldName.toLowerCase());
-
-        Map<Class<?>, Function<String, Object>> conversionMap = new HashMap<>();
-        conversionMap.put(String.class, str -> str);
-        conversionMap.put(Long.class, Long::valueOf);
-        conversionMap.put(Double.class, Double::valueOf);
-        conversionMap.put(Instant.class, str -> Instant.ofEpochMilli(Long.valueOf(str)));
-        conversionMap.put(ZonedDateTime.class, str ->
-                ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.valueOf(str)), ZoneOffset.UTC));
-
-        Function<String, T> conversionFunc = str -> {
-            Object val = conversionMap.get(valueType).apply(str);
-            try {
-                return (T) val;
-            } catch (ClassCastException e) {
-                throw new RuntimeException(String.format("Unable to cast field %s to type %s", fieldName, valueType.getName()), e);
-            }
-        };
-
-        return ((TableResult) searchResponse.getResults().get(0)).getRows().stream()
-                .map(row -> row.getValues().get(fieldIndex))
-                .map(conversionFunc)
-                .collect(Collectors.toList());
-    }
 
     private List<Instant> getInstants(final SearchRequest searchRequest, final SearchResponse searchResponse) {
-        return getTypedFieldValues(searchRequest,
+        return QueryApiHelper.getTypedFieldValues(searchRequest,
                 searchResponse,
                 StatisticConfiguration.FIELD_NAME_DATE_TIME,
                 Instant.class);
     }
 
     private List<Long> getTimes(final SearchRequest searchRequest, final SearchResponse searchResponse) {
-        return getTypedFieldValues(searchRequest,
+        return QueryApiHelper.getTypedFieldValues(searchRequest,
                 searchResponse,
                 StatisticConfiguration.FIELD_NAME_DATE_TIME,
                 Long.class);

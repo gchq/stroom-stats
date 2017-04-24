@@ -62,7 +62,7 @@ public class ValueStatToAggregateFlatMapper extends AbstractStatisticFlatMapper 
         List<MultiPartIdentifier> eventIds = convertEventIds(statistic, maxEventIds);
 
         //convert stat value
-        ValueAggregate statAggregate = new ValueAggregate(eventIds, statistic.getValue());
+        ValueAggregate statAggregate = new ValueAggregate(eventIds, maxEventIds, statistic.getValue());
 
         List<KeyValue<StatKey, StatAggregate>> keyValues = buildKeyValues(statName, statisticWrapper, statAggregate);
 

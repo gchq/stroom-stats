@@ -1,5 +1,3 @@
-
-
 /*
  * Copyright 2017 Crown Copyright
  *
@@ -19,15 +17,13 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.hbase;
+package stroom.stats.mixins;
 
-import stroom.stats.api.TimeAgnosticStatisticEvent;
-import stroom.stats.hbase.structure.TimeAgnosticRowKey;
-import stroom.stats.hbase.uid.MockUniqueIdCache;
+public interface Stoppable {
 
-public class MockRowKeyCache implements RowKeyCache {
-    @Override
-    public TimeAgnosticRowKey getTimeAgnosticRowKey(final TimeAgnosticStatisticEvent timeAgnosticStatisticEvent) {
-        return RowKeyCache.getTimeAgnosticRowKeyUncached(timeAgnosticStatisticEvent, new MockUniqueIdCache());
-    }
+   /**
+    * Will stop the process from running, blocking until it has stopped.
+    */
+   void stop();
+
 }
