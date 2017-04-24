@@ -20,8 +20,10 @@
 package stroom.stats.test;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import javaslang.Tuple2;
+import joptsimple.internal.Rows;
 import org.junit.Test;
 import stroom.query.api.DocRef;
 import stroom.query.api.ExpressionItem;
@@ -346,98 +348,36 @@ public class QueryApiHelper {
         return Strings.padStart(value, maxWidth + 1, ' ') + " ";
     }
 
-    public static List<String> convertToFixedWidth(List<Map<String, String>> rowData,
-                                                   @Nullable Map<String, Class<?>> fieldTypes) {
-
-        //TODO would be good to make this work from a SerachRequest/SearchResponse pair, then it can take the list
-        //of fields from the table settings in the request, observing that field order.
-        //Also woudl be nice to be able to do things like
-        // .configureField(new FieldConfigBuilder("myField").leftJustify().convert(conversionFunc).build())
-        //Also may be nice to be able to configure ascii table vs csv vs tab delim and header/noHeder etc.
-
-
-        //assume all rows have same fields so just use first one
-        if (rowData == null || rowData.isEmpty()) {
-            return Collections.emptyList();
-        } else {
-            //get the widths of the field headings
-            List<String> fieldNames = rowData.get(0).keySet().stream()
-                    .map(String::toLowerCase)
-                    .collect(Collectors.toList());
-
-            Map<String, Integer> maxFieldWidths = new HashMap<>();
-            List<Map<String, String>> formattedRowData;
-
-            //if we have been given typed for any fields then do then convert those values
-            if (fieldTypes == null || fieldTypes.isEmpty()) {
-                formattedRowData = rowData;
-            } else {
-                formattedRowData = rowData.stream()
-                        .map(rowMap -> {
-                            Map<String, String> newRowMap = new HashMap<>();
-                            fieldNames.forEach(fieldName -> {
-                                Class<?> type = fieldTypes.get(fieldName);
-                                if (type != null) {
-                                    String newValue = conversionMap.get(type).apply(rowMap.get(fieldName)).toString();
-                                    newRowMap.put(fieldName, newValue);
-                                } else {
-                                    //no explicit type so take the value as is
-                                    newRowMap.put(fieldName, rowMap.get(fieldName));
-                                }
-                            });
-                            return newRowMap;
-                        })
-                        .collect(Collectors.toList());
-            }
-
-            fieldNames.forEach(key -> maxFieldWidths.put(key, key.length()));
-
-            //now find the max width for each value (and its field heading)
-            formattedRowData.stream()
-                    .flatMap(rowMap -> rowMap.entrySet().stream())
-                    .forEach(entry ->
-                            maxFieldWidths.merge(entry.getKey(), entry.getValue().length(), Math::max));
-
-            //now construct the row strings
-            List<String> valueStrings = formattedRowData.stream()
-                    .map(rowMap -> maxFieldWidths.entrySet().stream()
-                            .map(entry -> Strings.padStart(rowMap.get(entry.getKey()), entry.getValue() + 1, ' '))
-                            .map(str -> str + " ")
-                            .collect(Collectors.joining(String.valueOf(TABLE_COLUMN_DELIMITER))))
-                    .collect(Collectors.toList());
-
-            String headerString = maxFieldWidths.entrySet().stream()
-                    .map(entry -> Strings.padStart(entry.getKey(), entry.getValue() + 1, ' '))
-                    .map(str -> str + " ")
-                    .collect(Collectors.joining(String.valueOf(TABLE_COLUMN_DELIMITER)));
-
-            List<String> headerAndValueStrings = new ArrayList<>();
-            headerAndValueStrings.add(headerString);
-            headerAndValueStrings.add(createHorizontalLine(headerString.length(), TABLE_HEADER_DELIMITER));
-            headerAndValueStrings.addAll(valueStrings);
-            return headerAndValueStrings;
-        }
-
-    }
 
     private static String createHorizontalLine(int length, char lineChar) {
         return Strings.repeat(String.valueOf(lineChar), length);
     }
 
+
     @Test
     public void testConvertToFixedWidth() {
 
-        Map<String, String> row1 = new HashMap<>();
-        row1.put("heading1", "123");
-        row1.put("h2", "45678");
+        Query query = new Query(
+                new DocRef(
+                        StatisticConfiguration.ENTITY_TYPE,
+                        UUID.randomUUID().toString(),
+                        "myStatName"),
+                null);
 
-        Map<String, String> row2 = new HashMap<>();
-        row2.put("heading1", "2345");
-        row2.put("h2", "9");
+        SearchRequest searchRequest = wrapQuery(query, Arrays.asList("heading1", "h2"));
 
-        List<Map<String, String>> rowData = Arrays.asList(row1, row2);
+        List<Row> rows = ImmutableList.of(
+                new Row("GroupKey", ImmutableList.of("123", "45678"), 0),
+        new Row("GroupKey", ImmutableList.of("2345", "9"), 0)
+        );
 
-        convertToFixedWidth(rowData, null).forEach(System.out::println);
+        List<Result> results = Collections.singletonList(
+                new TableResult("componentId", rows, null, null, null));
+
+        SearchResponse searchResponse = new SearchResponse(null, results, null, null);
+
+        convertToFixedWidth(searchRequest, searchResponse, null, null)
+                .forEach(System.out::println);
     }
 
 
