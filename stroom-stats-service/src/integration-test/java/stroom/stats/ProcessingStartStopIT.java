@@ -20,6 +20,7 @@
 package stroom.stats;
 
 import com.google.inject.Injector;
+import org.apache.hadoop.util.ThreadUtil;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -27,7 +28,6 @@ import org.slf4j.LoggerFactory;
 import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.mixins.HasRunState;
 import stroom.stats.streams.StatisticsFlatMappingService;
-import stroom.util.thread.ThreadUtil;
 
 import java.time.Instant;
 
@@ -40,7 +40,7 @@ public class ProcessingStartStopIT extends AbstractAppIT {
     StatisticsAggregationService statisticsAggregationService = injector.getInstance(StatisticsAggregationService.class);
 
     @Test
-    public void testRunAppStopStartProcessing() {
+    public void testRunAppStopStartProcessing() throws InterruptedException {
 
 
         assertStates(HasRunState.RunState.RUNNING, true);
@@ -58,7 +58,7 @@ public class ProcessingStartStopIT extends AbstractAppIT {
 //        }
     }
 
-    private void assertStates(HasRunState.RunState expectedRunState, boolean expectedIsHealthy) {
+    private void assertStates(HasRunState.RunState expectedRunState, boolean expectedIsHealthy) throws InterruptedException {
 
         assertState(statisticsFlatMappingService, expectedRunState, 10_000);
         statisticsFlatMappingService.getHealthCheckProviders().forEach(hasHealthCheck ->
@@ -74,7 +74,11 @@ public class ProcessingStartStopIT extends AbstractAppIT {
     private void assertState(HasRunState hasRunState, HasRunState.RunState expectedRunState, int timeoutMs) {
         Instant timeoutTime = Instant.now().plusMillis(timeoutMs);
         while (!hasRunState.getRunState().equals(expectedRunState) && Instant.now().isBefore(timeoutTime)) {
-            ThreadUtil.sleep(200);
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
 
         Assertions.assertThat(hasRunState.getRunState()).isEqualTo(expectedRunState);
@@ -83,7 +87,11 @@ public class ProcessingStartStopIT extends AbstractAppIT {
     private void assertState(HasHealthCheck hasHealthCheck, boolean expectedIsHealthy, int timeoutMs) {
         Instant timeoutTime = Instant.now().plusMillis(timeoutMs);
         while (hasHealthCheck.check().isHealthy() != expectedIsHealthy && Instant.now().isBefore(timeoutTime)) {
-            ThreadUtil.sleep(200);
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
 
         Assertions.assertThat(hasHealthCheck.check().isHealthy()).isEqualTo(expectedIsHealthy);

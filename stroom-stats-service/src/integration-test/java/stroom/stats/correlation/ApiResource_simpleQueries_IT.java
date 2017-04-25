@@ -41,7 +41,7 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
     private static final String DOOR_TAG = "door";
 
     @Test
-    public void compare_yesterday_to_today(){
+    public void compare_yesterday_to_today() throws InterruptedException {
         // Given 1 - create a StatisticConfiguration, create and send Statistics
         ZonedDateTime now = ZonedDateTime.now();
         StatisticType statisticType = StatisticType.COUNT;

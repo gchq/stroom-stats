@@ -34,13 +34,9 @@ dependencies {
 
     //Non-project stroom dependencies
     //compile 'stroom:stroom-query-api:5.0-beta.9-SNAPSHOT'
-    compile libs.stroomQueryApi
-    compile libs.stroomQueryCommon
-    compile libs.stroomUtil
-    //compile 'stroom:stroom-expression:5.0-beta.9-SNAPSHOT'
-    compile (libs.stroomExpressions) {
-        exclude group:'org.slf4j', module:'slf4j-log4j12'
-    }
+    compile urlDependencies.get(versions.stroomQueryApi)
+    compile urlDependencies.get(versions.stroomQueryCommon)
+    compile urlDependencies.get(versions.stroomExpression)
 
     //Third party dependencies
     compile (libs.curator_recipies) {
@@ -62,7 +58,7 @@ dependencies {
     compile libs.kryo
     compile libs.mysql_connector
     compile libs.slf4j_api
-    compile 'stroom:stroom-query-api:6.0-beta.1-SNAPSHOT'
+    compile urlDependencies.get('stroom-query-api-6.0-beta.1-SNAPSHOT')
     compile libs.curator_service_discovery
 
     testCompile libs.byte_buddy

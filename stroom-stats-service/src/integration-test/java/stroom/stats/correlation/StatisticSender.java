@@ -14,7 +14,6 @@ import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.streams.TopicNameFactory;
 import stroom.stats.util.logging.LambdaLogger;
 import stroom.stats.xml.StatisticsMarshaller;
-import stroom.util.thread.ThreadUtil;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -25,7 +24,7 @@ import java.util.concurrent.ExecutionException;
 public class StatisticSender {
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(FullEndToEndIT.class);
 
-    public static void sendStatistics(Injector injector, Statistics statistics, StatisticType statisticType){
+    public static void sendStatistics(Injector injector, Statistics statistics, StatisticType statisticType) throws InterruptedException {
         StroomPropertyService stroomPropertyService = injector.getInstance(StroomPropertyService.class);
         StatisticsMarshaller statisticsMarshaller = injector.getInstance(StatisticsMarshaller.class);
         String topicPrefix = stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX);
@@ -36,7 +35,7 @@ public class StatisticSender {
                 Arrays.asList(statistics),
                 statisticsMarshaller);
         // Waiting for a bit so that we know the Statistics have been processed
-        ThreadUtil.sleep(60_000);
+        Thread.sleep(60_000);
         //TODO it'd be useful to check HBase and see if the stats have been created
     }
 

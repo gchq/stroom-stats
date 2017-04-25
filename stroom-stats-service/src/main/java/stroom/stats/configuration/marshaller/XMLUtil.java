@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.InputSource;
 import org.xml.sax.XMLReader;
-import stroom.util.xml.SAXParserFactoryFactory;
 
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -56,7 +55,7 @@ public final class XMLUtil {
     private static final String VERSION = "1.1";
 
     static {
-        PARSER_FACTORY = SAXParserFactoryFactory.newInstance();
+        PARSER_FACTORY = SAXParserFactory.newInstance();
         PARSER_FACTORY.setNamespaceAware(true);
     }
 

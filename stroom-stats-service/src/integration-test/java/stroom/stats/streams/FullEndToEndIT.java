@@ -43,7 +43,6 @@ import stroom.stats.test.StatisticConfigurationEntityHelper;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.util.logging.LambdaLogger;
 import stroom.stats.xml.StatisticsMarshaller;
-import stroom.util.thread.ThreadUtil;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -66,7 +65,7 @@ public class FullEndToEndIT extends AbstractAppIT {
     private final static String TAG_SYSTEM = "system";
 
     @Test
-    public void testAllTypesAndIntervals() {
+    public void testAllTypesAndIntervals() throws InterruptedException {
         //start at the beginning of today
         ZonedDateTime startTime = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS);
         LOGGER.info("Start time is {}", startTime);
@@ -91,7 +90,7 @@ public class FullEndToEndIT extends AbstractAppIT {
                 statistics,
                 injector.getInstance(StatisticsMarshaller.class));
 
-        ThreadUtil.sleep(5_000);
+        Thread.sleep(5_000);
 
 
         //TODO assert the data using the query api

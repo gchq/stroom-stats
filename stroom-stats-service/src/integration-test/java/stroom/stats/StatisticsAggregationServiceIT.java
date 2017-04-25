@@ -19,6 +19,7 @@
 
 package stroom.stats;
 
+import org.apache.hadoop.util.ThreadUtil;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -53,7 +54,6 @@ import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatKeySerde;
-import stroom.util.thread.ThreadUtil;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -91,7 +91,7 @@ public class StatisticsAggregationServiceIT {
     StatisticsService mockStatisticsService;
 
     @Test
-    public void testAggregation() {
+    public void testAggregation() throws InterruptedException {
 
         LOGGER.info("Starting test");
 
@@ -105,7 +105,7 @@ public class StatisticsAggregationServiceIT {
 
         //give the consumers a bit of a chance to spin up before firing data at them, else they will miss
         //records do to autoOffsetRest being set to latest
-        ThreadUtil.sleep(1_000);
+        Thread.sleep(1_000);
 
         String inputTopic = TopicNameFactory.getIntervalTopicName(
                 mockStroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX),
@@ -141,7 +141,7 @@ public class StatisticsAggregationServiceIT {
                     } catch (InterruptedException e) {
                         throw new RuntimeException("Interupted");
                     } catch (ExecutionException e) {
-                        throw new RuntimeException(String.format("Exception in send, {}", e.getMessage()), e);
+                        throw new RuntimeException(String.format("Exception in send, %s", e.getMessage()), e);
                     }
                 })
                 .collect(Collectors.toList());
@@ -153,7 +153,7 @@ public class StatisticsAggregationServiceIT {
                         Collectors.summarizingLong(RecordMetadata::offset)));
 
         //wait a bit before we start checking the processed data
-        ThreadUtil.sleep(1_000);
+        Thread.sleep(1_000);
 
         long aggSum = 0;
 
@@ -168,7 +168,7 @@ public class StatisticsAggregationServiceIT {
 
             LOGGER.debug("aggSum {}", aggSum);
 
-            ThreadUtil.sleep(400);
+            Thread.sleep(400);
         }
 
         statisticsAggregationService.stop();

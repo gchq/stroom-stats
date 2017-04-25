@@ -1,28 +1,40 @@
+buildscript {
+    repositories {
+        mavenLocal()
+    }
+    dependencies {
+        classpath group: 'gchq', name: 'urlDependencyPlugin', version: 'v0.1'
+    }
+}
+apply plugin: 'gchq.urldependencies'
+
+
 task wrapper(type: Wrapper) {
     gradleVersion = '3.3'
 }
 
-//Dependency versions used by multiple dependencies
-def stroomVersion = "6.0-beta.1-SNAPSHOT"
-def stroomMessagingVersion = "1.0-SNAPSHOT"
-def dropwizardVersion = "1.0.5"
-def slf4jVersion = "1.7.21"
-def logbackVersion = "1.1.8"
-def hbaseVersion = "1.2.0"
-def curatorVersion = "2.11.1"
-//0.10.2.0 is available but seems to have issues with spring_kafka_test
-def kafkaVersion = "0.10.1.1"
+ext.versions = [
+        stroom: '6.0-beta.1-SNAPSHOT',
+        stroomMessaging: '1.0-SNAPSHOT',
+        dropwizard: '1.0.5',
+        slf4j: '1.7.21',
+        logback: '1.1.8',
+        hbase: '1.2.0',
+        curator: '2.11.1',
+        //0.10.2.0 is available but seems to have issues with spring_kafka_test
+        kafka: '0.10.1.1',
+        stroomQueryApi: 'stroom-query-api-6.0-beta.1-SNAPSHOT',
+        stroomQueryCommon: 'stroom-query-common-6.0-beta.1-SNAPSHOT',
+        stroomExpression: 'stroom-expression-6.0-beta.1-SNAPSHOT'
+]
 
 //3rd Party libs
 ext.libs = [
-    stroomQueryApi: "stroom:stroom-query-api:$stroomVersion",
-    stroomQueryCommon: "stroom:stroom-query-common:$stroomVersion",
-    stroomExpressions: "stroom:stroom-expression:$stroomVersion",
-    stroomUtil: "stroom:stroom-util:$stroomVersion",
+    stroomExpressions: "stroom:stroom-expression:$versions.stroom",
 
-    slf4j_api: "org.slf4j:slf4j-api:$slf4jVersion", 
-    log4j_over_slf4j: "org.slf4j:log4j-over-slf4j:$slf4jVersion", 
-    jcl_over_slf4j: "org.slf4j:jcl-over-slf4j:$slf4jVersion",
+    slf4j_api: "org.slf4j:slf4j-api:$versions.slf4j",
+    log4j_over_slf4j: "org.slf4j:log4j-over-slf4j:$versions.slf4j",
+    jcl_over_slf4j: "org.slf4j:jcl-over-slf4j:$versions.slf4j",
 
     assertj: "org.assertj:assertj-core:3.6.2",
     curator_framework: 'org.apache.curator:curator-framework:2.11.1',
@@ -30,26 +42,26 @@ ext.libs = [
     curator_service_discovery: 'org.apache.curator:curator-x-discovery:2.11.1',
     byte_buddy: "net.bytebuddy:byte-buddy:1.5.8",
     commons_lang: "commons-lang:commons-lang:2.6",
-    curator_recipies: "org.apache.curator:curator-recipes:$curatorVersion",
-    curator_test: "org.apache.curator:curator-test:$curatorVersion",
-    dropwizard_core: "io.dropwizard:dropwizard-core:$dropwizardVersion",
-    dropwizard_hibernate: "io.dropwizard:dropwizard-hibernate:$dropwizardVersion",
-    dropwizard_testing: "io.dropwizard:dropwizard-testing:$dropwizardVersion",
-    dropwizard_client: "io.dropwizard:dropwizard-client:$dropwizardVersion",
+    curator_recipies: "org.apache.curator:curator-recipes:$versions.curator",
+    curator_test: "org.apache.curator:curator-test:$versions.curator",
+    dropwizard_core: "io.dropwizard:dropwizard-core:$versions.dropwizard",
+    dropwizard_hibernate: "io.dropwizard:dropwizard-hibernate:$versions.dropwizard",
+    dropwizard_testing: "io.dropwizard:dropwizard-testing:$versions.dropwizard",
+    dropwizard_client: "io.dropwizard:dropwizard-client:$versions.dropwizard",
     dropwizard_auth_jwt: "com.github.toastshaman:dropwizard-auth-jwt:1.0.2-0",
     dropwizard_jobs_core: "de.spinscale.dropwizard:dropwizard-jobs-core:2.0.1",
     ehcache: "org.ehcache:ehcache:3.2.0",
     guava: "com.google.guava:guava:14.0",
     guice: "com.google.inject:guice:4.0",
-    hbase_shaded_client: "org.apache.hbase:hbase-shaded-client:$hbaseVersion",
+    hbase_shaded_client: "org.apache.hbase:hbase-shaded-client:$versions.hbase",
     javaslang: 'io.javaslang:javaslang:2.0.5',
     joda_time: 'joda-time:joda-time:2.9.4',
     junit: "junit:junit:4.12", 
-    kafka_clients: "org.apache.kafka:kafka-clients:$kafkaVersion",
-    kafka_streams: "org.apache.kafka:kafka-streams:$kafkaVersion",
+    kafka_clients: "org.apache.kafka:kafka-clients:$versions.kafka",
+    kafka_streams: "org.apache.kafka:kafka-streams:$versions.kafka",
     kryo: "com.esotericsoftware:kryo-shaded:4.0.0",
-    logback_classic: "ch.qos.logback:logback-classic:$logbackVersion",
-    logback_core: "ch.qos.logback:logback-core:$logbackVersion",
+    logback_classic: "ch.qos.logback:logback-classic:$versions.logback",
+    logback_core: "ch.qos.logback:logback-core:$versions.logback",
     mockito_core: "org.mockito:mockito-core:2.+",
     mysql_connector: "mysql:mysql-connector-java:5.1.40",
     saxon: "net.sf.saxon:Saxon-HE:9.6.0-6",
@@ -101,6 +113,16 @@ configure (subprojects - project(':stroom-stats-hbase-filter')) {
         testCompile libs.junit
         testCompile libs.assertj
     }
+}
+
+urlDependencies {
+    libs "libs"
+    compile(versions.stroomQueryApi,
+            'https://github.com/gchq/stroom-query/releases/download/6.0-beta.1-SNAPSHOT/stroom-query-api-6.0-beta.1-SNAPSHOT.jar')
+    compile(versions.stroomQueryCommon,
+            'https://github.com/gchq/stroom-query/releases/download/6.0-beta.1-SNAPSHOT/stroom-query-common-6.0-beta.1-SNAPSHOT.jar')
+    compile(versions.stroomExpression,
+            'https://github.com/gchq/stroom-expression/releases/download/6.0-beta.1-SNAPSHOT/stroom-expression-6.0-beta.1-SNAPSHOT.jar')
 }
 
 project(':stroom-stats-service') {

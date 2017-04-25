@@ -50,7 +50,6 @@ import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.QueryApiHelper;
 import stroom.stats.test.StatisticConfigurationEntityHelper;
 import stroom.stats.xml.StatisticsMarshaller;
-import stroom.util.thread.ThreadUtil;
 
 import javax.annotation.Nullable;
 import java.time.Instant;
@@ -108,7 +107,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
     }
 
     @Test
-    public void volumeTest_count() {
+    public void volumeTest_count() throws InterruptedException {
 
         final StatisticType statisticType = StatisticType.COUNT;
 
@@ -124,7 +123,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         int expectedTotalCountCount = (int) (GenerateSampleStatisticsData.COUNT_STAT_VALUE * expectedTotalEvents);
 
         //wait for a bit to give the consumers a chance to spin up
-        ThreadUtil.sleep(1_000);
+        Thread.sleep(1_000);
 
         LOGGER.info("Starting to load data (async)...");
         //create stat configs and put the test data on the topics
@@ -180,7 +179,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
     }
 
     @Test
-    public void volumeTest_value() {
+    public void volumeTest_value() throws InterruptedException {
 
         final StatisticType statisticType = StatisticType.VALUE;
 
@@ -198,7 +197,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                 .sum() * expectedTotalEvents;
 
         //wait for a bit to give the consumers a chance to spin up
-        ThreadUtil.sleep(1_000);
+        Thread.sleep(1_000);
 
         //create stat configs and put the test data on the topics
         Map<StatisticType, StatisticConfigurationEntity> statConfigs = loadData(statisticType);
@@ -244,7 +243,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                                         EventStoreTimeIntervalEnum interval,
                                         int expectedRowCount,
                                         int expectedTotalEvents,
-                                        Consumer<List<Map<String, String>>> rowDataConsumer) {
+                                        Consumer<List<Map<String, String>>> rowDataConsumer) throws InterruptedException {
 
         List<Map<String, String>> rowData = Collections.emptyList();
         Instant timeoutTime = Instant.now().plus(4, ChronoUnit.MINUTES);
@@ -253,7 +252,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         while ((rowData.size() != expectedRowCount || getCountFieldSum(rowData) != expectedTotalEvents) &&
                 Instant.now().isBefore(timeoutTime)) {
 
-            ThreadUtil.sleep(1_000);
+            Thread.sleep(1_000);
 
             rowData = runSearch(searchRequest);
 
