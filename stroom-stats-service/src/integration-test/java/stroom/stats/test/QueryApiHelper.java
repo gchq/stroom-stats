@@ -20,7 +20,10 @@
 package stroom.stats.test;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import javaslang.Tuple2;
+import joptsimple.internal.Rows;
 import org.junit.Test;
 import stroom.query.api.DocRef;
 import stroom.query.api.ExpressionItem;
@@ -45,13 +48,7 @@ import javax.annotation.Nullable;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -68,9 +65,12 @@ public class QueryApiHelper {
                 ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.valueOf(str)), ZoneOffset.UTC));
     }
 
+    private static final char TABLE_COLUMN_DELIMITER = '|';
+    private static final char TABLE_HEADER_DELIMITER = '-';
+
     public static SearchRequest buildSearchRequestAllData(final StatisticConfiguration statisticConfiguration,
-                                                                   @Nullable final EventStoreTimeIntervalEnum interval,
-                                                                   List<String> requestedFieldNames) {
+                                                          @Nullable final EventStoreTimeIntervalEnum interval,
+                                                          List<String> requestedFieldNames) {
 
         //Add the interval to the predicates if we have one to let us specify the store rather than have it guess
         ExpressionItem[] childExpressionItems;
@@ -98,8 +98,30 @@ public class QueryApiHelper {
      */
     public static SearchRequest buildSearchRequestAllDataAllFields(final StatisticConfiguration statisticConfiguration,
                                                                    @Nullable final EventStoreTimeIntervalEnum interval) {
+        List<String> fields = new ArrayList<>();
+        fields.add(StatisticConfiguration.FIELD_NAME_STATISTIC);
+        fields.add(StatisticConfiguration.FIELD_NAME_DATE_TIME);
 
-        return buildSearchRequestAllData(statisticConfiguration, interval, statisticConfiguration.getAllFieldNames());
+        //add the dynamic fields
+        fields.addAll(statisticConfiguration.getFieldNames());
+
+        switch (statisticConfiguration.getStatisticType()) {
+            case COUNT:
+                fields.add(StatisticConfiguration.FIELD_NAME_COUNT);
+                break;
+            case VALUE:
+                fields.add(StatisticConfiguration.FIELD_NAME_VALUE);
+                fields.add(StatisticConfiguration.FIELD_NAME_MIN_VALUE);
+                fields.add(StatisticConfiguration.FIELD_NAME_MAX_VALUE);
+                fields.add(StatisticConfiguration.FIELD_NAME_COUNT);
+                break;
+            default:
+                throw new RuntimeException("Unexpected stat type " + statisticConfiguration.getStatisticType());
+        }
+
+        fields.add(StatisticConfiguration.FIELD_NAME_PRECISION);
+
+        return buildSearchRequestAllData(statisticConfiguration, interval, fields);
     }
 
     public static SearchRequest buildSearchRequest(final StatisticConfiguration statisticConfiguration,
@@ -188,11 +210,21 @@ public class QueryApiHelper {
                 .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2));
     }
 
+    public static int getRowCount(final SearchResponse searchResponse) {
+
+        List<Result> results = searchResponse.getResults();
+
+        if (results == null || results.isEmpty()) {
+            return 0;
+        }
+
+        return ((TableResult) results.get(0)).getRows().size();
+    }
+
     public static List<Map<String, String>> getRowData(final SearchRequest searchRequest,
                                                        final SearchResponse searchResponse) {
 
         Map<String, Integer> fieldIndices = getFieldIndices(searchRequest);
-
 
         List<Result> results = searchResponse.getResults();
 
@@ -211,7 +243,18 @@ public class QueryApiHelper {
                 interval.name().toLowerCase());
     }
 
-    public static List<String> convertToFixedWidth(List<Map<String, String>> rowData, @Nullable Map<String, Class<?>> fieldTypes) {
+    /**
+     * Build an ascii table from a searchRequest/Response
+     * @param searchRequest
+     * @param searchResponse
+     * @param fieldTypes An optional map of field names to their types, else string will be assumed
+     * @return A list of strings representing the ascii table, one per row, including a header row and
+     * separator between header and data
+     */
+    public static List<String> convertToFixedWidth(final SearchRequest searchRequest,
+                                                   final SearchResponse searchResponse,
+                                                   @Nullable Map<String, Class<?>> fieldTypes,
+                                                   @Nullable Integer maxRows) {
 
         //TODO would be good to make this work from a SerachRequest/SearchResponse pair, then it can take the list
         //of fields from the table settings in the request, observing that field order.
@@ -219,17 +262,32 @@ public class QueryApiHelper {
         // .configureField(new FieldConfigBuilder("myField").leftJustify().convert(conversionFunc).build())
         //Also may be nice to be able to configure ascii table vs csv vs tab delim and header/noHeder etc.
 
+        List<Result> results = searchResponse.getResults() != null
+                ? searchResponse.getResults()
+                : Collections.emptyList();
+
+        Map<String, Integer> fieldIndices = getFieldIndices(searchRequest);
+
+        long rowLimit = maxRows != null ? maxRows : Long.MAX_VALUE;
+
+        List<Map<String, String>> rowData = ((TableResult) results.get(0)).getRows().stream()
+                .limit(rowLimit)
+                .map(row -> convertRow(row, fieldIndices))
+                .collect(Collectors.toList());
 
         //assume all rows have same fields so just use first one
         if (rowData == null || rowData.isEmpty()) {
             return Collections.emptyList();
         } else {
-            //get the widths of the field headings
-            List<String> fieldNames = rowData.get(0).keySet().stream()
-                    .map(String::toLowerCase)
+            //Get the field names in index order
+            List<String> fieldNames = fieldIndices.entrySet().stream()
+                    .sorted(Comparator.comparingInt(Map.Entry::getValue))
+                    .map(Map.Entry::getKey)
                     .collect(Collectors.toList());
 
+            //get the widths of the field headings
             Map<String, Integer> maxFieldWidths = new HashMap<>();
+
             List<Map<String, String>> formattedRowData;
 
             //if we have been given typed for any fields then do then convert those values
@@ -264,44 +322,62 @@ public class QueryApiHelper {
 
             //now construct the row strings
             List<String> valueStrings = formattedRowData.stream()
-                    .map(rowMap -> maxFieldWidths.entrySet().stream()
-                            .map(entry -> Strings.padStart(rowMap.get(entry.getKey()), entry.getValue() + 1, ' '))
-                            .map(str -> str + " ")
-                            .collect(Collectors.joining("|")))
+                    .map(rowMap -> fieldNames.stream()
+                            .map(fieldName -> formatCell(rowMap.get(fieldName), maxFieldWidths.get(fieldName)))
+                            .collect(Collectors.joining(String.valueOf(TABLE_COLUMN_DELIMITER))))
                     .collect(Collectors.toList());
 
-            String headerString = maxFieldWidths.entrySet().stream()
-                            .map(entry -> Strings.padStart(entry.getKey(), entry.getValue() + 1, ' '))
-                            .map(str -> str + " ")
-                            .collect(Collectors.joining("|"));
+            String headerString = fieldNames.stream()
+                    .map(fieldName -> formatCell(fieldName, maxFieldWidths.get(fieldName)))
+                    .collect(Collectors.joining(String.valueOf(TABLE_COLUMN_DELIMITER)));
 
             List<String> headerAndValueStrings = new ArrayList<>();
             headerAndValueStrings.add(headerString);
-            headerAndValueStrings.add(createHorizontalLine(headerString.length(), '-'));
+            headerAndValueStrings.add(createHorizontalLine(headerString.length(), TABLE_HEADER_DELIMITER));
             headerAndValueStrings.addAll(valueStrings);
+
+            if (maxRows != null) {
+                headerAndValueStrings.add(String.format("\n...TRUNCATED TO %s ROWS...", maxRows));
+            }
+
             return headerAndValueStrings;
         }
-
     }
+
+    private static String formatCell(String value, int maxWidth) {
+        return Strings.padStart(value, maxWidth + 1, ' ') + " ";
+    }
+
 
     private static String createHorizontalLine(int length, char lineChar) {
         return Strings.repeat(String.valueOf(lineChar), length);
     }
 
+
     @Test
     public void testConvertToFixedWidth() {
 
-        Map<String, String> row1 = new HashMap<>();
-        row1.put("heading1", "123");
-        row1.put("h2", "45678");
+        Query query = new Query(
+                new DocRef(
+                        StatisticConfiguration.ENTITY_TYPE,
+                        UUID.randomUUID().toString(),
+                        "myStatName"),
+                null);
 
-        Map<String, String> row2 = new HashMap<>();
-        row2.put("heading1", "2345");
-        row2.put("h2", "9");
+        SearchRequest searchRequest = wrapQuery(query, Arrays.asList("heading1", "h2"));
 
-        List<Map<String, String>> rowData = Arrays.asList(row1, row2);
+        List<Row> rows = ImmutableList.of(
+                new Row("GroupKey", ImmutableList.of("123", "45678"), 0),
+        new Row("GroupKey", ImmutableList.of("2345", "9"), 0)
+        );
 
-        convertToFixedWidth(rowData, null).forEach(System.out::println);
+        List<Result> results = Collections.singletonList(
+                new TableResult("componentId", rows, null, null, null));
+
+        SearchResponse searchResponse = new SearchResponse(null, results, null, null);
+
+        convertToFixedWidth(searchRequest, searchResponse, null, null)
+                .forEach(System.out::println);
     }
 
 
