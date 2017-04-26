@@ -10,7 +10,7 @@ apply plugin: 'gchq.urldependencies'
 
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '3.3'
+    gradleVersion = '3.5'
 }
 
 ext.versions = [
