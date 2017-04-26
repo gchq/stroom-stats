@@ -1,6 +1,5 @@
 package stroom.stats;
 
-import stroom.mapreduce.Pair;
 import stroom.mapreduce.UnsafePairQueue;
 import stroom.query.Coprocessor;
 import stroom.query.CoprocessorSettingsMap;

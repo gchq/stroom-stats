@@ -21,19 +21,13 @@
 
 package stroom.stats.hbase;
 
-import com.google.common.base.Preconditions;
-import stroom.query.api.ExpressionItem;
-import stroom.query.api.ExpressionOperator;
-import stroom.query.api.ExpressionTerm;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
-import stroom.stats.common.FilterTermsTree;
 import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.StatKey;
 import stroom.stats.streams.aggregation.StatAggregate;
@@ -41,7 +35,6 @@ import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;

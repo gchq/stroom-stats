@@ -21,7 +21,6 @@
 
 package stroom.stats.api;
 
-import stroom.query.api.SearchRequest;
 import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.configuration.StatisticConfiguration;
