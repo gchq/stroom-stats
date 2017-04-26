@@ -2,6 +2,7 @@
 classes
 build/
 classes/
+libs/
 
 # Ignore Gradle GUI config
 gradle-app.setting
