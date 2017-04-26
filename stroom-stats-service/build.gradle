@@ -58,7 +58,6 @@ dependencies {
     compile libs.kryo
     compile libs.mysql_connector
     compile libs.slf4j_api
-    compile urlDependencies.get('stroom-query-api-6.0-beta.1-SNAPSHOT')
     compile libs.curator_service_discovery
 
     testCompile libs.byte_buddy
