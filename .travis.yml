@@ -14,6 +14,7 @@ before_script:
   - "git clone https://github.com/gchq/stroom-resources.git"
   - "cd stroom-resources"
   - "docker-compose -f stats.yml up -d"
+  - "cd .."
 
 # We run a script to build dependencies and do database setup
 install: "./.travis.install.sh"
