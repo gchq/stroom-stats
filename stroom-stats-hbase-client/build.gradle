@@ -15,8 +15,6 @@ dependencies {
     testCompile project(':stroom-stats-mocks')
 
     //External stroom dependencies
-    compile urlDependencies.get(versions.stroomQueryApi)
-    compile urlDependencies.get(versions.StroomQueryCommon)
 
     //3rd party libs
     compile libs.guice
