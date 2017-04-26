@@ -30,8 +30,6 @@ ext.versions = [
 
 //3rd Party libs
 ext.libs = [
-    stroomExpressions: "stroom:stroom-expression:$versions.stroom",
-
     slf4j_api: "org.slf4j:slf4j-api:$versions.slf4j",
     log4j_over_slf4j: "org.slf4j:log4j-over-slf4j:$versions.slf4j",
     jcl_over_slf4j: "org.slf4j:jcl-over-slf4j:$versions.slf4j",
