@@ -8,6 +8,7 @@ sudo: required
 
 # Increase the size of the heap
 before_script:
+  - "sudo service mysql stop"
   - "echo $JAVA_OPTS"
   - "export JAVA_OPTS=-Xmx1024m"
   - "git clone https://github.com/gchq/stroom-resources.git"
