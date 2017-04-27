@@ -32,7 +32,9 @@ public class UserAuthenticator implements Authenticator<JwtContext, User> {
     public Optional<User> authenticate(JwtContext context) throws AuthenticationException {
         //TODO: If we want to check anything else about the user we need to do it here.
         try {
-            return Optional.of(new User(context.getJwtClaims().getSubject()));
+            return Optional.of(new User(
+                    context.getJwtClaims().getSubject(),
+                    context.getJwt()));
         }
         catch (MalformedClaimException e) {
             return Optional.empty();
