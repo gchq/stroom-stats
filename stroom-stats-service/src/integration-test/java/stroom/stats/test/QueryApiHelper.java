@@ -25,22 +25,7 @@ import com.google.common.collect.ImmutableMap;
 import javaslang.Tuple2;
 import joptsimple.internal.Rows;
 import org.junit.Test;
-import stroom.query.api.DocRef;
-import stroom.query.api.ExpressionItem;
-import stroom.query.api.ExpressionOperator;
-import stroom.query.api.ExpressionTerm;
-import stroom.query.api.Field;
-import stroom.query.api.FieldBuilder;
-import stroom.query.api.Query;
-import stroom.query.api.QueryKey;
-import stroom.query.api.Result;
-import stroom.query.api.ResultRequest;
-import stroom.query.api.Row;
-import stroom.query.api.SearchRequest;
-import stroom.query.api.SearchResponse;
-import stroom.query.api.TableResult;
-import stroom.query.api.TableSettings;
-import stroom.query.api.TableSettingsBuilder;
+import stroom.query.api.*;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
@@ -203,10 +188,41 @@ public class QueryApiHelper {
         return fieldIndices;
     }
 
-    public static Map<String, String> convertRow(final Row row, final Map<String, Integer> fieldIndices) {
+    public static Map<String, Integer> getFieldIndices(final List<Field> fields) {
+        Map<String, Integer> fieldIndices = new HashMap<>();
+        List<String> fieldNames = fields.stream()
+                .map(Field::getName)
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
+
+        int index = 0;
+        for (String fieldName : fieldNames) {
+            fieldIndices.put(fieldName, index++);
+        }
+        return fieldIndices;
+    }
+
+    public static Map<String, String> convertRow(final Row row,
+                                                 final Map<String, Integer> fieldIndices) {
 
         return fieldIndices.entrySet().stream()
                 .map(entry -> new Tuple2<>(entry.getKey(), row.getValues().get(entry.getValue())))
+                .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2));
+    }
+
+    public static Map<String, String> convertValues(final List<Object> values,
+                                                    final Map<String, Integer> fieldIndices) {
+
+        final Function<Object, String> valueToStrMapper = (obj) -> {
+            if (obj instanceof String) {
+                return (String) obj;
+            } else {
+                return obj.toString();
+            }
+        };
+        return fieldIndices.entrySet().stream()
+                .map(entry -> new Tuple2<>(entry.getKey(), values.get(entry.getValue())))
+                .map(tuple2 -> tuple2.map2(valueToStrMapper))
                 .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2));
     }
 
@@ -344,6 +360,88 @@ public class QueryApiHelper {
         }
     }
 
+    public static List<String> convertToFixedWidth(final FlatResult flatResult,
+                                                   @Nullable Map<String, Class<?>> fieldTypes,
+                                                   @Nullable Integer maxRows) {
+
+
+        Map<String, Integer> fieldIndices = getFieldIndices(flatResult.getStructure());
+
+        long rowLimit = maxRows != null ? maxRows : Long.MAX_VALUE;
+
+        List<Map<String, String>> rowData = flatResult.getValues().stream()
+                .limit(rowLimit)
+                .map(values -> convertValues(values, fieldIndices))
+                .collect(Collectors.toList());
+
+        //assume all rows have same fields so just use first one
+        if (rowData == null || rowData.isEmpty()) {
+            return Collections.emptyList();
+        } else {
+            //Get the field names in index order
+            List<String> fieldNames = fieldIndices.entrySet().stream()
+                    .sorted(Comparator.comparingInt(Map.Entry::getValue))
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toList());
+
+            //get the widths of the field headings
+            Map<String, Integer> maxFieldWidths = new HashMap<>();
+
+            List<Map<String, String>> formattedRowData;
+
+            //if we have been given typed for any fields then do then convert those values
+            if (fieldTypes == null || fieldTypes.isEmpty()) {
+                formattedRowData = rowData;
+            } else {
+                formattedRowData = rowData.stream()
+                        .map(rowMap -> {
+                            Map<String, String> newRowMap = new HashMap<>();
+                            fieldNames.forEach(fieldName -> {
+                                Class<?> type = fieldTypes.get(fieldName);
+                                if (type != null) {
+                                    String newValue = conversionMap.get(type).apply(rowMap.get(fieldName)).toString();
+                                    newRowMap.put(fieldName, newValue);
+                                } else {
+                                    //no explicit type so take the value as is
+                                    newRowMap.put(fieldName, rowMap.get(fieldName));
+                                }
+                            });
+                            return newRowMap;
+                        })
+                        .collect(Collectors.toList());
+            }
+
+            fieldNames.forEach(key -> maxFieldWidths.put(key, key.length()));
+
+            //now find the max width for each value (and its field heading)
+            formattedRowData.stream()
+                    .flatMap(rowMap -> rowMap.entrySet().stream())
+                    .forEach(entry ->
+                            maxFieldWidths.merge(entry.getKey(), entry.getValue().length(), Math::max));
+
+            //now construct the row strings
+            List<String> valueStrings = formattedRowData.stream()
+                    .map(rowMap -> fieldNames.stream()
+                            .map(fieldName -> formatCell(rowMap.get(fieldName), maxFieldWidths.get(fieldName)))
+                            .collect(Collectors.joining(String.valueOf(TABLE_COLUMN_DELIMITER))))
+                    .collect(Collectors.toList());
+
+            String headerString = fieldNames.stream()
+                    .map(fieldName -> formatCell(fieldName, maxFieldWidths.get(fieldName)))
+                    .collect(Collectors.joining(String.valueOf(TABLE_COLUMN_DELIMITER)));
+
+            List<String> headerAndValueStrings = new ArrayList<>();
+            headerAndValueStrings.add(headerString);
+            headerAndValueStrings.add(createHorizontalLine(headerString.length(), TABLE_HEADER_DELIMITER));
+            headerAndValueStrings.addAll(valueStrings);
+
+            if (maxRows != null) {
+                headerAndValueStrings.add(String.format("\n...TRUNCATED TO %s ROWS...", maxRows));
+            }
+
+            return headerAndValueStrings;
+        }
+    }
     private static String formatCell(String value, int maxWidth) {
         return Strings.padStart(value, maxWidth + 1, ' ') + " ";
     }
