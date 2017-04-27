@@ -23,9 +23,16 @@ ext.versions = [
         curator: '2.11.1',
         //0.10.2.0 is available but seems to have issues with spring_kafka_test
         kafka: '0.10.1.1',
-        stroomQueryApi: 'stroom-query-api-6.0-beta.1-SNAPSHOT',
-        stroomQueryCommon: 'stroom-query-common-6.0-beta.1-SNAPSHOT',
-        stroomExpression: 'stroom-expression-6.0-beta.1-SNAPSHOT'
+        //same version for both stroom-query-api and stroom-query-common
+        stroomQuery: 'v1.0.0-SNAPSHOT.2',
+        stroomExpression: 'v1.0.0-SNAPSHOT.1'
+]
+
+//lib names for urlDependenciesPlugin
+ext.urlLibs = [
+        stroomQueryApi: "stroom-query-api-$versions.stroomQuery",
+        stroomQueryCommon: "stroom-query-common-$versions.stroomQuery",
+        stroomExpression: "stroom-expression-$versions.stroomExpression"
 ]
 
 //3rd Party libs
@@ -115,12 +122,12 @@ configure (subprojects - project(':stroom-stats-hbase-filter')) {
 
 urlDependencies {
     libs "libs"
-    compile(versions.stroomQueryApi,
-            'https://github.com/gchq/stroom-query/releases/download/6.0-beta.1-SNAPSHOT/stroom-query-api-6.0-beta.1-SNAPSHOT.jar')
-    compile(versions.stroomQueryCommon,
-            'https://github.com/gchq/stroom-query/releases/download/6.0-beta.1-SNAPSHOT/stroom-query-common-6.0-beta.1-SNAPSHOT.jar')
-    compile(versions.stroomExpression,
-            'https://github.com/gchq/stroom-expression/releases/download/6.0-beta.1-SNAPSHOT/stroom-expression-6.0-beta.1-SNAPSHOT.jar')
+    compile(urlLibs.stroomQueryApi,
+            "https://github.com/gchq/stroom-query/releases/download/$versions.stroomQuery/${urlLibs.stroomQueryApi}.jar")
+    compile(urlLibs.stroomQueryCommon,
+            "https://github.com/gchq/stroom-query/releases/download/$versions.stroomQuery/${urlLibs.stroomQueryCommon}.jar")
+    compile(urlLibs.stroomExpression,
+            "https://github.com/gchq/stroom-expression/releases/download/$versions.stroomExpression/${urlLibs.stroomExpression}.jar")
 }
 
 project(':stroom-stats-service') {

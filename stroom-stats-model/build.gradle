@@ -2,7 +2,7 @@
 dependencies {
     compile project(':stroom-stats-util')
 
-    compile urlDependencies.get(versions.stroomQueryApi)
+    compile urlDependencies.get(urlLibs.stroomQueryApi)
     compile libs.javaslang
 
     testCompile libs.commons_lang
