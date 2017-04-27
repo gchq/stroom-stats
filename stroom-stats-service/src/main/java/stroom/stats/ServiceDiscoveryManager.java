@@ -39,6 +39,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.net.InetAddress;
 import java.util.List;
+import java.util.Optional;
 
 @Singleton
 public class ServiceDiscoveryManager {
@@ -51,6 +52,7 @@ public class ServiceDiscoveryManager {
     private ServiceProvider<String> hbaseServiceProvider; // TODO: this instance isn't currently used - make it so or remove it
     private ServiceProvider<String> kafkaServiceProvider;
     private ServiceProvider<String> stroomDBServiceProvider; //TODO: this instance isn't currently used - make it so or remove ir
+    private ServiceProvider<String> stroomServiceProvider;
 
     private final ServiceDiscovery<String> serviceDiscovery;
 
@@ -88,6 +90,11 @@ public class ServiceDiscoveryManager {
                 .serviceName("stroom-db")
                 .build();
         stroomDBServiceProvider.start();
+
+        stroomServiceProvider = serviceDiscovery.serviceProviderBuilder()
+                .serviceName("stroom")
+                .build();
+        stroomServiceProvider.start();
     }
 
     public ServiceInstance<String> getHBase() {
@@ -112,6 +119,23 @@ public class ServiceDiscoveryManager {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public ServiceInstance<String> getStroom() {
+        try {
+            return stroomServiceProvider.getInstance();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Optional<String> getStroomAddress() {
+        ServiceInstance<String> stroom = getStroom();
+        return stroom == null ?
+                Optional.empty() :
+                stroom.getAddress() == null ?
+                        Optional.empty() :
+                        Optional.of(stroom.getAddress());
     }
 
     private static ServiceInstance<String> getThisServiceInstance(Config config) throws Exception {

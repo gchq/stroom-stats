@@ -21,6 +21,7 @@ package stroom.stats;
 
 import com.codahale.metrics.health.HealthCheck;
 import com.github.toastshaman.dropwizard.auth.jwt.JwtAuthFilter;
+import com.google.common.util.concurrent.Service;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.dropwizard.Application;
@@ -104,7 +105,9 @@ public class App extends Application<Config> {
     private void registerAPIs(final Environment environment) {
 
         LOGGER.info("Registering API");
-        environment.jersey().register(new ApiResource(injector.getInstance(HBaseClient.class)));
+        environment.jersey().register(new ApiResource(
+                injector.getInstance(HBaseClient.class),
+                injector.getInstance(ServiceDiscoveryManager.class)));
     }
 
     private void registerTasks(final Environment environment) {
@@ -121,6 +124,8 @@ public class App extends Application<Config> {
     }
 
     private void registerHealthChecks(Environment environment) {
+        registerHealthCheck(environment, "ApiResource",
+                () -> injector.getInstance(ApiResource.class).getHealth());
 
         registerHealthCheck(environment, "ServiceDiscoveryManager_Kafka",
                 () -> injector.getInstance(ServiceDiscoveryManagerHealthCheck.class).getKafkaHealth());
