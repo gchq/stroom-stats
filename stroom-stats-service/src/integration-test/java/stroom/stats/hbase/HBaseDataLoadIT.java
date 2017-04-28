@@ -29,10 +29,8 @@ import stroom.query.api.ExpressionOperator;
 import stroom.query.api.ExpressionTerm;
 import stroom.query.api.Field;
 import stroom.query.api.Query;
-import stroom.query.api.Row;
 import stroom.query.api.SearchRequest;
 import stroom.query.api.SearchResponse;
-import stroom.query.api.TableResult;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.HBaseClient;
 import stroom.stats.api.StatisticTag;
@@ -440,7 +438,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //only find the the one we equal
         SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfigurationEntity, 1);
 
-        List<Instant> times = getInstants(searchRequest, searchResponse);
+        List<Instant> times = getInstants(searchResponse);
 
         assertThat(times.get(0)).isEqualTo(timesTruncated.get(2));
     }
@@ -466,7 +464,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //should only get the two times below the middle one we have aimed for
         SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfigurationEntity, 2);
 
-        List<Instant> times = getInstants(searchRequest, searchResponse);
+        List<Instant> times = getInstants(searchResponse);
 
         assertThat(times).containsExactlyInAnyOrder(timesTruncated.get(0), timesTruncated.get(1));
     }
@@ -490,7 +488,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         //should only get the two times below the middle one we have aimed for
         SearchResponse searchResponse = runQuery(statisticsService, wrapQuery(query, statisticConfigurationEntity), statisticConfigurationEntity, 3);
-        List<Instant> times = getInstants(searchRequest, searchResponse);
+        List<Instant> times = getInstants(searchResponse);
 
         assertThat(times).containsExactlyInAnyOrder(timesTruncated.get(0), timesTruncated.get(1), timesTruncated.get(2));
     }
@@ -514,7 +512,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         //should only get the two times below the middle one we have aimed for
         SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfigurationEntity, 2);
-        List<Instant> times = getInstants(searchRequest, searchResponse);
+        List<Instant> times = getInstants(searchResponse);
         assertThat(times).containsExactlyInAnyOrder(timesTruncated.get(3), timesTruncated.get(4));
     }
 
@@ -538,7 +536,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //should only get the two times below the middle one we have aimed for
         SearchResponse searchResponse = runQuery(statisticsService, wrapQuery(query, statisticConfigurationEntity), statisticConfigurationEntity, 3);
 
-        List<Instant> times = getInstants(searchRequest, searchResponse);
+        List<Instant> times = getInstants(searchResponse);
 
         assertThat(times).containsExactlyInAnyOrder(timesTruncated.get(2), timesTruncated.get(3), timesTruncated.get(4));
     }
@@ -564,7 +562,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         //should only get the two times below the middle one we have aimed for
         SearchResponse searchResponse = runQuery(statisticsService, wrapQuery(query, statisticConfigurationEntity), statisticConfigurationEntity, 3);
-        List<Instant> times = getInstants(searchRequest, searchResponse);
+        List<Instant> times = getInstants(searchResponse);
         assertThat(times).containsExactlyInAnyOrder(timesTruncated.get(1), timesTruncated.get(2), timesTruncated.get(3));
     }
 
@@ -656,8 +654,10 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         SearchResponse searchResponse = hBaseClient.query(searchRequest);
 
         assertThat(searchResponse).isNotNull();
-        List<Row> rows = ((TableResult) searchResponse.getResults().get(0)).getRows();
-        assertThat(rows).hasSize(expectedRecCount);
+        int rowCount = QueryApiHelper.getFlatResult(searchResponse)
+                .map(flatResult -> flatResult.getValues().size())
+                .orElse(0);
+        assertThat(rowCount).isEqualTo(expectedRecCount);
         return searchResponse;
     }
 
@@ -692,33 +692,13 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 .sum();
     }
 
-    private static List<String> getFieldValues(final SearchRequest searchRequest,
-                                               final SearchResponse searchResponse,
-                                               String fieldName) {
-
-        //assume only one result request and one tablesSetting
-        int fieldIndex = searchRequest.getResultRequests().get(0).getMappings().get(0).getFields().stream()
-                .map(field -> field.getName().toLowerCase())
-                .collect(Collectors.toList())
-                .indexOf(fieldName);
-
-        return ((TableResult) searchResponse.getResults().get(0)).getRows().stream()
-                .map(row -> row.getValues().get(fieldIndex))
-                .collect(Collectors.toList());
-    }
-
-
-    private List<Instant> getInstants(final SearchRequest searchRequest, final SearchResponse searchResponse) {
-        return QueryApiHelper.getTypedFieldValues(searchRequest,
-                searchResponse,
-                StatisticConfiguration.FIELD_NAME_DATE_TIME,
-                Instant.class);
-    }
-
-    private List<Long> getTimes(final SearchRequest searchRequest, final SearchResponse searchResponse) {
-        return QueryApiHelper.getTypedFieldValues(searchRequest,
-                searchResponse,
-                StatisticConfiguration.FIELD_NAME_DATE_TIME,
-                Long.class);
+    private List<Instant> getInstants(final SearchResponse searchResponse) {
+        return QueryApiHelper.getFlatResult(searchResponse)
+                .map(flatResult ->
+                        QueryApiHelper.getTypedFieldValues(
+                                flatResult,
+                                StatisticConfiguration.FIELD_NAME_DATE_TIME,
+                                Instant.class))
+                .orElseGet(Collections::emptyList);
     }
 }

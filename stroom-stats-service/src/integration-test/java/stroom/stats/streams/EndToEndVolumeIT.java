@@ -36,10 +36,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.query.api.Row;
+import stroom.query.api.FlatResult;
 import stroom.query.api.SearchRequest;
 import stroom.query.api.SearchResponse;
-import stroom.query.api.TableResult;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.HBaseClient;
 import stroom.stats.api.StatisticType;
@@ -260,7 +259,9 @@ public class EndToEndVolumeIT extends AbstractAppIT {
 
             searchResponse = hBaseClient.query(searchRequest);
 
-            rowData = QueryApiHelper.getRowData(searchRequest, searchResponse);
+            rowData = QueryApiHelper.getFlatResult(searchResponse)
+                    .map(QueryApiHelper::getRowData)
+                    .orElseGet(Collections::emptyList);
 
             LOGGER.info("{} store returned row count: {}, waiting for {} rows and a sum of the count field of {}",
                     interval, rowData.size(), expectedRowCount, expectedTotalEvents);
@@ -273,28 +274,26 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                 .distinct()
                 .collect(Collectors.joining(",")));
 
-        dumpRowData(searchRequest, searchResponse, 50);
+        dumpRowData(QueryApiHelper.getFlatResult(searchResponse).get(), 50);
 
         if (rowDataConsumer != null) {
             rowDataConsumer.accept(rowData);
         }
     }
 
-    private void dumpRowData(final SearchRequest searchRequest,
-                             final SearchResponse searchResponse,
+    private void dumpRowData(final FlatResult flatResult,
                              @Nullable Integer maxRows) {
 
         Map<String, Class<?>> typeMap = ImmutableMap.of(
                 StatisticConfiguration.FIELD_NAME_DATE_TIME.toLowerCase(),
                 Instant.class);
 
-        String tableStr = QueryApiHelper.convertToFixedWidth(searchRequest, searchResponse, typeMap, maxRows)
+        String tableStr = QueryApiHelper.convertToFixedWidth(flatResult, typeMap, maxRows)
                 .stream()
                 .collect(Collectors.joining("\n"));
 
         LOGGER.info("Dumping row data:\n" + tableStr);
     }
-
 
     private Map<EventStoreTimeIntervalEnum, Integer> getRowCountsByInterval(int eventsPerIteration) {
         Map<EventStoreTimeIntervalEnum, Integer> countsMap = new HashMap<>();

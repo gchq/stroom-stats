@@ -21,6 +21,7 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.schema.ObjectFactory;
 import stroom.stats.schema.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.test.QueryApiHelper;
 import stroom.stats.test.StatisticsHelper;
 
 import javax.ws.rs.core.Response;
@@ -63,8 +64,8 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
         SearchResponse todaySearchResponse = todayResponse.readEntity(SearchResponse.class);
 
         // Then 1 - basic checks
-        assertThat(((TableResult)yesterdaySearchResponse.getResults().get(0)).getTotalResults()).isEqualTo(3);
-        assertThat(((TableResult)todaySearchResponse.getResults().get(0)).getTotalResults()).isEqualTo(2);
+        assertThat(QueryApiHelper.getRowCount(yesterdaySearchResponse)).isEqualTo(3);
+        assertThat(QueryApiHelper.getRowCount(todaySearchResponse)).isEqualTo(2);
 
         // Then 2 - correlations
         List<Row> yesterday = ((TableResult) yesterdaySearchResponse.getResults().get(0)).getRows();
