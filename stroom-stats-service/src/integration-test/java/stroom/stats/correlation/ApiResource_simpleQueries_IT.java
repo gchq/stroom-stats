@@ -70,7 +70,7 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
         // Then 2 - correlations
         List<Row> yesterday = ((TableResult) yesterdaySearchResponse.getResults().get(0)).getRows();
         List<Row> today = ((TableResult) todaySearchResponse.getResults().get(0)).getRows();
-        List<Row> yesterdayAndNotToday = new Correlator()
+        List<Row> yesterdayAndNotToday = new BasicCorrelator()
                 .addSet("A", new HashSet<>(yesterday))
                 .addSet("B", new HashSet<>(today))
                 .complement("B");

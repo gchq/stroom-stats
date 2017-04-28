@@ -67,7 +67,7 @@ public class TestCorrelator {
 
     @Test
     public void testComplement() {
-        List<List<Object>> complementOfB = new Correlator<List<Object>>()
+        List<List<Object>> complementOfB = new BasicCorrelator<List<Object>>()
                 .addSet(SET_A, A)
                 .addSet(SET_B, B)
                 .complement(SET_B);
@@ -79,7 +79,7 @@ public class TestCorrelator {
 
     @Test
     public void test_intersection_with_2_sets() {
-        Set<List<Object>> intersectionOfAandB = new Correlator<List<Object>>()
+        Set<List<Object>> intersectionOfAandB = new BasicCorrelator<List<Object>>()
                 .addSet(SET_A, A)
                 .addSet(SET_B, B)
                 .intersection(SET_A, SET_B);
@@ -93,7 +93,7 @@ public class TestCorrelator {
 
     @Test
     public void test_intersection_with_4_sets() {
-        Set<List<Object>> intersectionOfAandB = new Correlator<List<Object>>()
+        Set<List<Object>> intersectionOfAandB = new BasicCorrelator<List<Object>>()
                 .addSet(SET_A, A)
                 .addSet(SET_B, B)
                 .addSet(SET_C, C)
@@ -109,7 +109,7 @@ public class TestCorrelator {
 
     @Test
     public void test_intersection_with_5_sets_small_intersection() {
-        Set<List<Object>> intersectionOfAandB = new Correlator<List<Object>>()
+        Set<List<Object>> intersectionOfAandB = new BasicCorrelator<List<Object>>()
                 .addSet(SET_A, A)
                 .addSet(SET_B, B)
                 .addSet(SET_C, C)
@@ -123,7 +123,7 @@ public class TestCorrelator {
 
     @Test
     public void test_intersection_with_5_sets_intersect_fewer() {
-        Set<List<Object>> intersectionOfAandB = new Correlator<List<Object>>()
+        Set<List<Object>> intersectionOfAandB = new BasicCorrelator<List<Object>>()
                 .addSet(SET_A, A)
                 .addSet(SET_B, B)
                 .addSet(SET_C, C)
