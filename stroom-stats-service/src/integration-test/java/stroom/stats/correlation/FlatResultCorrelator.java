@@ -13,14 +13,14 @@ import java.util.stream.IntStream;
 public class FlatResultCorrelator implements Correlator<FlatResult, List<Object>>{
 
     private final BasicCorrelator<List<Object>> basicCorrelator;
-    private final List<Field> structure = Collections.emptyList();
+    private List<Field> structure = Collections.emptyList();
     private final Comparator<Field> fieldComparator = Comparator.comparing(Field::getName);
 
     public FlatResultCorrelator() {
         basicCorrelator = new BasicCorrelator<>();
     }
 
-    private FlatResult wrapRow(Collection<List<Object>> rows) {
+    private FlatResult wrapRows(Collection<List<Object>> rows) {
         List<List<Object>> rowList = new ArrayList<>(rows);
         return new FlatResult("Unknown", structure, rowList, (long) rows.size(), "");
     }
@@ -31,6 +31,7 @@ public class FlatResultCorrelator implements Correlator<FlatResult, List<Object>
         if (!isEmpty() && !validateStructure(flatResult)) {
             throw new RuntimeException(String.format("Structures don't match %s, %s", structure, flatResult.getStructure()));
         }
+        structure = new ArrayList<>(flatResult.getStructure());
 
         basicCorrelator.addSet(setName, flatResult.getValues());
         return this;
@@ -38,17 +39,17 @@ public class FlatResultCorrelator implements Correlator<FlatResult, List<Object>
 
     @Override
     public FlatResult complement(final String setName) {
-        return wrapRow(basicCorrelator.complement(setName));
+        return wrapRows(basicCorrelator.complement(setName));
     }
 
     @Override
     public FlatResult intersection(final String... setNames) {
-        return wrapRow(basicCorrelator.intersection(setNames));
+        return wrapRows(basicCorrelator.intersection(setNames));
     }
 
     @Override
     public boolean isEmpty() {
-        return false;
+        return basicCorrelator.isEmpty();
     }
 
     boolean validateStructure(final FlatResult flatResult) {

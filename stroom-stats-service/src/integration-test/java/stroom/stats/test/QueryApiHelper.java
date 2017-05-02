@@ -37,7 +37,6 @@ import stroom.query.api.ResultRequest;
 import stroom.query.api.Row;
 import stroom.query.api.SearchRequest;
 import stroom.query.api.SearchResponse;
-import stroom.query.api.TableResult;
 import stroom.query.api.TableSettings;
 import stroom.query.api.TableSettingsBuilder;
 import stroom.stats.configuration.StatisticConfiguration;
@@ -150,7 +149,6 @@ public class QueryApiHelper {
 
         //build the fields for the search response table settings
         List<Field> fields = fieldNames.stream()
-                .map(String::toLowerCase)
                 .map(field -> new FieldBuilder().name(field).expression("${" + field + "}").build())
                 .collect(Collectors.toList());
 
@@ -168,33 +166,9 @@ public class QueryApiHelper {
                 false);
     }
 
-    /**
-     * Get all values for a named field, converted into the chosen type
-     */
-    public static <T> List<T> getTypedFieldValues(final SearchRequest searchRequest,
-                                                  final SearchResponse searchResponse,
-                                                  final String fieldName,
-                                                  final Class<T> valueType) {
-
-        //assume only one result request and one tablesSetting
-        int fieldIndex = searchRequest.getResultRequests().get(0).getMappings().get(0).getFields().stream()
-                .map(field -> field.getName().toLowerCase())
-                .collect(Collectors.toList())
-                .indexOf(fieldName.toLowerCase());
-
-        Function<String, T> conversionFunc = str -> {
-            Object val = conversionMap.get(valueType).apply(str);
-            try {
-                return (T) val;
-            } catch (ClassCastException e) {
-                throw new RuntimeException(String.format("Unable to cast field %s to type %s", fieldName, valueType.getName()), e);
-            }
-        };
-
-        return ((TableResult) searchResponse.getResults().get(0)).getRows().stream()
-                .map(row -> row.getValues().get(fieldIndex))
-                .map(conversionFunc)
-                .collect(Collectors.toList());
+    public static List<String> getStringFieldValues(final FlatResult flatResult,
+                                                    final String fieldName) {
+        return getTypedFieldValues(flatResult, fieldName, String.class);
     }
 
     /**
@@ -208,7 +182,7 @@ public class QueryApiHelper {
             return Collections.emptyList();
         }
 
-        int fieldIndex = flatResult.getStructure().indexOf(fieldName);
+        int fieldIndex = getFieldIndex(flatResult.getStructure(), fieldName);
         if (fieldIndex == -1) {
             throw new RuntimeException(String.format("Field %s does not exist in the FlatResult, possible fields: %s",
                     fieldName, flatResult.getStructure().stream().map(Field::getName).collect(Collectors.joining(","))));
@@ -271,6 +245,17 @@ public class QueryApiHelper {
         return fieldIndices;
     }
 
+    public static int getFieldIndex(final List<Field> fields, final String fieldName) {
+        int index = 0;
+        for (Field field : fields) {
+            if (field.getName().equals(fieldName)) {
+                return index;
+            }
+            index++;
+        }
+        return -1;
+    }
+
     public static Map<String, String> convertRow(final Row row,
                                                  final Map<String, Integer> fieldIndices) {
 
@@ -296,22 +281,6 @@ public class QueryApiHelper {
                 .map(entry -> new Tuple2<>(entry.getKey(), values.get(entry.getValue())))
                 .map(tuple2 -> tuple2.map2(QueryApiHelper::convertValueToStr))
                 .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2));
-    }
-
-    public static List<Map<String, String>> getRowData(final SearchRequest searchRequest,
-                                                       final SearchResponse searchResponse) {
-
-        Map<String, Integer> fieldIndices = getFieldIndices(searchRequest);
-
-        List<Result> results = searchResponse.getResults();
-
-        if (results == null || results.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        return ((TableResult) results.get(0)).getRows().stream()
-                .map(row -> convertRow(row, fieldIndices))
-                .collect(Collectors.toList());
     }
 
     public static List<Map<String, String>> getRowData(final FlatResult flatResult) {
@@ -362,107 +331,6 @@ public class QueryApiHelper {
                 interval.name().toLowerCase());
     }
 
-    /**
-     * Build an ascii table from a searchRequest/Response
-     *
-     * @param searchRequest
-     * @param searchResponse
-     * @param fieldTypes     An optional map of field names to their types, else string will be assumed
-     * @return A list of strings representing the ascii table, one per row, including a header row and
-     * separator between header and data
-     */
-    public static List<String> convertToFixedWidth(final SearchRequest searchRequest,
-                                                   final SearchResponse searchResponse,
-                                                   @Nullable Map<String, Class<?>> fieldTypes,
-                                                   @Nullable Integer maxRows) {
-
-        //TODO would be good to make this work from a SerachRequest/SearchResponse pair, then it can take the list
-        //of fields from the table settings in the request, observing that field order.
-        //Also woudl be nice to be able to do things like
-        // .configureField(new FieldConfigBuilder("myField").leftJustify().convert(conversionFunc).build())
-        //Also may be nice to be able to configure ascii table vs csv vs tab delim and header/noHeder etc.
-
-        List<Result> results = searchResponse.getResults() != null
-                ? searchResponse.getResults()
-                : Collections.emptyList();
-
-        Map<String, Integer> fieldIndices = getFieldIndices(searchRequest);
-
-        long rowLimit = maxRows != null ? maxRows : Long.MAX_VALUE;
-
-        List<Map<String, String>> rowData = ((TableResult) results.get(0)).getRows().stream()
-                .limit(rowLimit)
-                .map(row -> convertRow(row, fieldIndices))
-                .collect(Collectors.toList());
-
-        //assume all rows have same fields so just use first one
-        if (rowData == null || rowData.isEmpty()) {
-            return Collections.emptyList();
-        } else {
-            //Get the field names in index order
-            List<String> fieldNames = fieldIndices.entrySet().stream()
-                    .sorted(Comparator.comparingInt(Map.Entry::getValue))
-                    .map(Map.Entry::getKey)
-                    .collect(Collectors.toList());
-
-            //get the widths of the field headings
-            Map<String, Integer> maxFieldWidths = new HashMap<>();
-
-            List<Map<String, String>> formattedRowData;
-
-            //if we have been given typed for any fields then do then convert those values
-            if (fieldTypes == null || fieldTypes.isEmpty()) {
-                formattedRowData = rowData;
-            } else {
-                formattedRowData = rowData.stream()
-                        .map(rowMap -> {
-                            Map<String, String> newRowMap = new HashMap<>();
-                            fieldNames.forEach(fieldName -> {
-                                Class<?> type = fieldTypes.get(fieldName);
-                                if (type != null) {
-                                    String newValue = conversionMap.get(type).apply(rowMap.get(fieldName)).toString();
-                                    newRowMap.put(fieldName, newValue);
-                                } else {
-                                    //no explicit type so take the value as is
-                                    newRowMap.put(fieldName, rowMap.get(fieldName));
-                                }
-                            });
-                            return newRowMap;
-                        })
-                        .collect(Collectors.toList());
-            }
-
-            fieldNames.forEach(key -> maxFieldWidths.put(key, key.length()));
-
-            //now find the max width for each value (and its field heading)
-            formattedRowData.stream()
-                    .flatMap(rowMap -> rowMap.entrySet().stream())
-                    .forEach(entry ->
-                            maxFieldWidths.merge(entry.getKey(), entry.getValue().length(), Math::max));
-
-            //now construct the row strings
-            List<String> valueStrings = formattedRowData.stream()
-                    .map(rowMap -> fieldNames.stream()
-                            .map(fieldName -> formatCell(rowMap.get(fieldName), maxFieldWidths.get(fieldName)))
-                            .collect(Collectors.joining(String.valueOf(TABLE_COLUMN_DELIMITER))))
-                    .collect(Collectors.toList());
-
-            String headerString = fieldNames.stream()
-                    .map(fieldName -> formatCell(fieldName, maxFieldWidths.get(fieldName)))
-                    .collect(Collectors.joining(String.valueOf(TABLE_COLUMN_DELIMITER)));
-
-            List<String> headerAndValueStrings = new ArrayList<>();
-            headerAndValueStrings.add(headerString);
-            headerAndValueStrings.add(createHorizontalLine(headerString.length(), TABLE_HEADER_DELIMITER));
-            headerAndValueStrings.addAll(valueStrings);
-
-            if (maxRows != null) {
-                headerAndValueStrings.add(String.format("\n...TRUNCATED TO %s ROWS...", maxRows));
-            }
-
-            return headerAndValueStrings;
-        }
-    }
 
     public static List<String> convertToFixedWidth(final FlatResult flatResult,
                                                    @Nullable Map<String, Class<?>> fieldTypes,

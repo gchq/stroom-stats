@@ -275,28 +275,6 @@ public class HBaseClient implements Managed {
         statisticsService.shutdown();
     }
 
-    //TODO Delete this when we have something more sensible to return.
-
-    private SearchResponse getDummySearchResponse() {
-        SearchResponse searchResponse = new SearchResponse(
-                Arrays.asList("highlight1", "highlight2"),
-                Arrays.asList(
-                        new TableResult(
-                                "componentId",
-                                new ArrayList<>(Arrays.asList(
-                                        new Row("groupKey", Arrays.asList("value1", "value2"), 5))),
-                                new OffsetRange(1, 2),
-                                1,
-                                "tableResultError"
-                        )),
-                Arrays.asList("error1", "error2"),
-                false
-        );
-
-        return searchResponse;
-    }
-
-
     //TODO This lives in stroom and should have a copy here
     public static Coprocessor createCoprocessor(final CoprocessorSettings settings,
                                                 final FieldIndexMap fieldIndexMap, final Map<String, String> paramMap, final HasTerminate taskMonitor) {

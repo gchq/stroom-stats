@@ -34,9 +34,6 @@ public class StatisticSender {
                 topic,
                 Arrays.asList(statistics),
                 statisticsMarshaller);
-        // Waiting for a bit so that we know the Statistics have been processed
-        Thread.sleep(60_000);
-        //TODO it'd be useful to check HBase and see if the stats have been created
     }
 
     private static void sendStatistics(

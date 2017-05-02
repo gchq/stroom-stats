@@ -33,7 +33,7 @@ server:
 logging:
     level: WARN
     loggers:
-        org.hibernate.SQL: ALL
+        org.hibernate.SQL: WARN
         stroom.stats: INFO
 #        stroom.stats.streams.StatisticsAggregationProcessor: TRACE
 #        stroom.stats.streams.FullEndToEndIT: TRACE
