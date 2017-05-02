@@ -175,7 +175,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
 
     private long getCountFieldSum(final List<Map<String, String>> rowData) {
         return rowData.stream()
-                .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
+                .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT))
                 .mapToLong(Long::valueOf)
                 .sum();
     }
@@ -270,7 +270,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         Assertions.assertThat(rowData).hasSize(expectedRowCount);
 
         LOGGER.debug("Distinct values: {}", rowData.stream()
-                .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT.toLowerCase()))
+                .map(rowMap -> rowMap.get(StatisticConfiguration.FIELD_NAME_COUNT))
                 .distinct()
                 .collect(Collectors.joining(",")));
 
@@ -285,7 +285,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                              @Nullable Integer maxRows) {
 
         Map<String, Class<?>> typeMap = ImmutableMap.of(
-                StatisticConfiguration.FIELD_NAME_DATE_TIME.toLowerCase(),
+                StatisticConfiguration.FIELD_NAME_DATE_TIME,
                 Instant.class);
 
         String tableStr = QueryApiHelper.convertToFixedWidth(flatResult, typeMap, maxRows)

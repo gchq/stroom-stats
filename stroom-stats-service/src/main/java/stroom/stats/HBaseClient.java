@@ -181,7 +181,7 @@ public class HBaseClient implements Managed {
                 //TODO should probably drive this off a new fieldIndexMap.getEntries() method or similar
                 //then we only loop round fields we car about
                 statisticConfiguration.getAllFieldNames().forEach(fieldName -> {
-                    int posInDataArray = fieldIndexMap.get(fieldName.toLowerCase());
+                    int posInDataArray = fieldIndexMap.get(fieldName);
                     //if the fieldIndexMap returns -1 the field has not been requested
                     if (posInDataArray != -1) {
                         dataArray[posInDataArray] = statisticDataPoint.getFieldValue(fieldName);

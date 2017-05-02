@@ -1,5 +1,6 @@
 package stroom.stats.correlation;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.inject.Injector;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -25,6 +26,7 @@ import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.QueryApiHelper;
 import stroom.stats.test.StatisticsHelper;
 
+import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 import java.time.Duration;
 import java.time.Instant;
@@ -32,7 +34,9 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -64,10 +68,14 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
 //        SearchResponse yesterdaySearchResponse = yesterdayResponse.readEntity(SearchResponse.class);
         SearchResponse yesterdaySearchResponse = performSearch(searchRequestForYesterday, 3, 60_000);
 
+        dumpRowData(QueryApiHelper.getFlatResult(yesterdaySearchResponse).get(), 50);
+
         // When 2 - send the query for today
 //        Response todayResponse = req().body(() -> searchRequestForToday).getStats();
 //        SearchResponse todaySearchResponse = todayResponse.readEntity(SearchResponse.class);
         SearchResponse todaySearchResponse = performSearch(searchRequestForToday, 2, 60_000);
+
+        dumpRowData(QueryApiHelper.getFlatResult(todaySearchResponse).get(), 50);
 
         // Then 1 - basic checks
         assertThat(QueryApiHelper.getRowCount(yesterdaySearchResponse)).isEqualTo(3);
@@ -80,6 +88,8 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
                 .addSet("A", yesterday)
                 .addSet("B", today)
                 .complement("B");
+
+        dumpRowData(yesterdayAndNotToday, 50);
 
         assertThat(yesterdayAndNotToday.getValues()).hasSize(1);
         assertThat(QueryApiHelper.getStringFieldValues(yesterdayAndNotToday, "user")).contains("user3");
@@ -200,6 +210,20 @@ public class ApiResource_simpleQueries_IT extends AbstractAppIT {
                 false);
 
         return searchRequest;
+    }
+
+    private void dumpRowData(final FlatResult flatResult,
+                             @Nullable Integer maxRows) {
+
+        Map<String, Class<?>> typeMap = ImmutableMap.of(
+                StatisticConfiguration.FIELD_NAME_DATE_TIME,
+                Instant.class);
+
+        String tableStr = QueryApiHelper.convertToFixedWidth(flatResult, typeMap, maxRows)
+                .stream()
+                .collect(Collectors.joining("\n"));
+
+        LOGGER.info("Dumping row data:\n" + tableStr);
     }
 
 }

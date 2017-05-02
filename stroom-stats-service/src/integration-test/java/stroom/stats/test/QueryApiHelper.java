@@ -213,7 +213,7 @@ public class QueryApiHelper {
     public static Map<String, Integer> getFieldIndices(final SearchRequest searchRequest) {
         Map<String, Integer> fieldIndices = new HashMap<>();
         List<String> fieldNames = searchRequest.getResultRequests().get(0).getMappings().get(0).getFields().stream()
-                .map(field -> field.getName().toLowerCase())
+                .map(field -> field.getName())
                 .collect(Collectors.toList());
 
         int index = 0;
@@ -231,7 +231,6 @@ public class QueryApiHelper {
         Map<String, Integer> fieldIndices = new HashMap<>();
         List<String> fieldNames = fields.stream()
                 .map(Field::getName)
-                .map(String::toLowerCase)
                 .collect(Collectors.toList());
 
         int index = 0;
@@ -336,10 +335,14 @@ public class QueryApiHelper {
                                                    @Nullable Map<String, Class<?>> fieldTypes,
                                                    @Nullable Integer maxRows) {
 
+        if (flatResult == null) {
+            return Collections.emptyList();
+        }
 
         Map<String, Integer> fieldIndices = getFieldIndices(flatResult.getStructure());
 
         long rowLimit = maxRows != null ? maxRows : Long.MAX_VALUE;
+        boolean wasTruncated = flatResult.getValues() != null && rowLimit < flatResult.getValues().size();
 
         List<Map<String, String>> rowData = flatResult.getValues().stream()
                 .limit(rowLimit)
@@ -407,8 +410,8 @@ public class QueryApiHelper {
             headerAndValueStrings.add(createHorizontalLine(headerString.length(), TABLE_HEADER_DELIMITER));
             headerAndValueStrings.addAll(valueStrings);
 
-            if (maxRows != null) {
-                headerAndValueStrings.add(String.format("\n...TRUNCATED TO %s ROWS...", maxRows));
+            if (wasTruncated) {
+                headerAndValueStrings.add(String.format("...TRUNCATED TO %s ROWS...", rowLimit));
             }
 
             return headerAndValueStrings;
