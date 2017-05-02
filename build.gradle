@@ -25,8 +25,8 @@ ext.versions = [
         //0.10.2.0 is available but seems to have issues with spring_kafka_test
         kafka: '0.10.1.1',
         //same version for both stroom-query-api and stroom-query-common
-        stroomQuery: 'v1.0.0-SNAPSHOT.2',
-        stroomExpression: 'v1.0.0-SNAPSHOT.1'
+        stroomQuery: 'v0.1.0',
+        stroomExpression: 'v0.1.0'
 ]
 
 //lib names for urlDependenciesPlugin
