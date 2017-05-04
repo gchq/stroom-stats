@@ -20,10 +20,14 @@ ext.versions = [
         dropwizard: '1.0.5',
         slf4j: '1.7.21',
         logback: '1.1.8',
-        hbase: '1.2.0',
-        curator: '2.11.1',
+        hbase: '1.2.0', //CDH5.11 uses hbase 1.2.0
+        //Curator 2.11.1 depends on zookeeper 3.4.8
+        //HBase 1.2.0 depends on zookeeper 3.4.6
+        //CDH5.11 uses zookeeper 3.4.5
+        //It is not clear how a 3.4.6/8 ZK client will work against a 3.4.5 ZK quorum
+        curator: '2.11.1', 
         //0.10.2.0 is available but seems to have issues with spring_kafka_test
-        kafka: '0.10.1.1',
+        kafka: '0.10.0.1', //CDH5.11 uses kafka 0.10.0+kafka2.1
         //same version for both stroom-query-api and stroom-query-common
         stroomQuery: 'v0.1.0',
         stroomExpression: 'v0.1.0'
@@ -43,19 +47,18 @@ ext.libs = [
     jcl_over_slf4j: "org.slf4j:jcl-over-slf4j:$versions.slf4j",
 
     assertj: "org.assertj:assertj-core:3.6.2",
-    curator_framework: 'org.apache.curator:curator-framework:2.11.1',
-    curator_recipies: 'org.apache.curator:curator-recipes:2.11.1',
-    curator_service_discovery: 'org.apache.curator:curator-x-discovery:2.11.1',
     byte_buddy: "net.bytebuddy:byte-buddy:1.5.8",
     commons_lang: "commons-lang:commons-lang:2.6",
+    curator_framework: "org.apache.curator:curator-framework:$versions.curator",
     curator_recipies: "org.apache.curator:curator-recipes:$versions.curator",
+    curator_service_discovery: "org.apache.curator:curator-x-discovery:$versions.curator",
     curator_test: "org.apache.curator:curator-test:$versions.curator",
+    dropwizard_auth_jwt: "com.github.toastshaman:dropwizard-auth-jwt:1.0.2-0",
+    dropwizard_client: "io.dropwizard:dropwizard-client:$versions.dropwizard",
     dropwizard_core: "io.dropwizard:dropwizard-core:$versions.dropwizard",
     dropwizard_hibernate: "io.dropwizard:dropwizard-hibernate:$versions.dropwizard",
-    dropwizard_testing: "io.dropwizard:dropwizard-testing:$versions.dropwizard",
-    dropwizard_client: "io.dropwizard:dropwizard-client:$versions.dropwizard",
-    dropwizard_auth_jwt: "com.github.toastshaman:dropwizard-auth-jwt:1.0.2-0",
     dropwizard_jobs_core: "de.spinscale.dropwizard:dropwizard-jobs-core:2.0.1",
+    dropwizard_testing: "io.dropwizard:dropwizard-testing:$versions.dropwizard",
     ehcache: "org.ehcache:ehcache:3.2.0",
     guava: "com.google.guava:guava:14.0",
     guice: "com.google.inject:guice:4.0",

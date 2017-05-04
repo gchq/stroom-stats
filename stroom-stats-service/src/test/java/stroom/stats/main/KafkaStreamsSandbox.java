@@ -153,7 +153,7 @@ public class KafkaStreamsSandbox {
         consume();
 
         //start the stream processor on this thread, runs forever
-        stream();
+//        stream();
         Random random = new Random();
 
         IntStream.rangeClosed(1, 30_000)
@@ -214,6 +214,7 @@ public class KafkaStreamsSandbox {
         }
     }
 
+    /*
     private KafkaStreams stream() {
         Properties props = new Properties();
         props.put(StreamsConfig.CLIENT_ID_CONFIG, "streamProcessorClientId");
@@ -349,6 +350,8 @@ public class KafkaStreamsSandbox {
 //        LOGGER.info("Stream processor closed");
         return kafkaStreams;
     }
+
+    */
 
     private void consume() {
         Properties consumerProps = new Properties();

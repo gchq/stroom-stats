@@ -23,7 +23,6 @@ import com.google.common.base.Preconditions;
 import org.apache.kafka.clients.producer.Partitioner;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.streams.processor.StreamPartitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +80,9 @@ public class StatKeyPartitioner implements Partitioner, StreamPartitioner<StatKe
 
         //As the hashcode has been cached on the StatKey we can just use that rather than recomputing one.
         //Need to ensure it is non-negative though
-        return Utils.toPositive(statKey.hashCode()) % numPartitions;
+        int positiveHashCode = statKey.hashCode() & 0x7fffffff;
+
+        return positiveHashCode % numPartitions;
     }
 
 //    private static int partition(StatKey statKey, final int numPartitions) {
