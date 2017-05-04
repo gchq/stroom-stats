@@ -21,9 +21,7 @@ package stroom.stats.test;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import javaslang.Tuple2;
-import joptsimple.internal.Rows;
 import org.junit.Test;
 import stroom.query.api.DocRef;
 import stroom.query.api.ExpressionItem;
@@ -31,6 +29,7 @@ import stroom.query.api.ExpressionOperator;
 import stroom.query.api.ExpressionTerm;
 import stroom.query.api.Field;
 import stroom.query.api.FieldBuilder;
+import stroom.query.api.FlatResult;
 import stroom.query.api.Query;
 import stroom.query.api.QueryKey;
 import stroom.query.api.Result;
@@ -38,7 +37,6 @@ import stroom.query.api.ResultRequest;
 import stroom.query.api.Row;
 import stroom.query.api.SearchRequest;
 import stroom.query.api.SearchResponse;
-import stroom.query.api.TableResult;
 import stroom.query.api.TableSettings;
 import stroom.query.api.TableSettingsBuilder;
 import stroom.stats.configuration.StatisticConfiguration;
@@ -48,7 +46,15 @@ import javax.annotation.Nullable;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -143,7 +149,6 @@ public class QueryApiHelper {
 
         //build the fields for the search response table settings
         List<Field> fields = fieldNames.stream()
-                .map(String::toLowerCase)
                 .map(field -> new FieldBuilder().name(field).expression("${" + field + "}").build())
                 .collect(Collectors.toList());
 
@@ -161,19 +166,27 @@ public class QueryApiHelper {
                 false);
     }
 
+    public static List<String> getStringFieldValues(final FlatResult flatResult,
+                                                    final String fieldName) {
+        return getTypedFieldValues(flatResult, fieldName, String.class);
+    }
+
     /**
      * Get all values for a named field, converted into the chosen type
      */
-    public static <T> List<T> getTypedFieldValues(final SearchRequest searchRequest,
-                                                  final SearchResponse searchResponse,
+    public static <T> List<T> getTypedFieldValues(final FlatResult flatResult,
                                                   final String fieldName,
                                                   final Class<T> valueType) {
 
-        //assume only one result request and one tablesSetting
-        int fieldIndex = searchRequest.getResultRequests().get(0).getMappings().get(0).getFields().stream()
-                .map(field -> field.getName().toLowerCase())
-                .collect(Collectors.toList())
-                .indexOf(fieldName.toLowerCase());
+        if (flatResult == null || flatResult.getValues() == null || flatResult.getValues().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        int fieldIndex = getFieldIndex(flatResult.getStructure(), fieldName);
+        if (fieldIndex == -1) {
+            throw new RuntimeException(String.format("Field %s does not exist in the FlatResult, possible fields: %s",
+                    fieldName, flatResult.getStructure().stream().map(Field::getName).collect(Collectors.joining(","))));
+        }
 
         Function<String, T> conversionFunc = str -> {
             Object val = conversionMap.get(valueType).apply(str);
@@ -184,16 +197,23 @@ public class QueryApiHelper {
             }
         };
 
-        return ((TableResult) searchResponse.getResults().get(0)).getRows().stream()
-                .map(row -> row.getValues().get(fieldIndex))
-                .map(conversionFunc)
+        //
+        return flatResult.getValues().stream()
+                .map(values -> values.get(fieldIndex))
+                .map(obj -> {
+                    if (obj.getClass().equals(valueType)) {
+                        return (T) obj;
+                    } else {
+                        return conversionFunc.apply(convertValueToStr(obj));
+                    }
+                })
                 .collect(Collectors.toList());
     }
 
     public static Map<String, Integer> getFieldIndices(final SearchRequest searchRequest) {
         Map<String, Integer> fieldIndices = new HashMap<>();
         List<String> fieldNames = searchRequest.getResultRequests().get(0).getMappings().get(0).getFields().stream()
-                .map(field -> field.getName().toLowerCase())
+                .map(field -> field.getName())
                 .collect(Collectors.toList());
 
         int index = 0;
@@ -203,38 +223,105 @@ public class QueryApiHelper {
         return fieldIndices;
     }
 
-    public static Map<String, String> convertRow(final Row row, final Map<String, Integer> fieldIndices) {
+    public static Map<String, Integer> getFieldIndices(final List<Field> fields) {
+        return getFieldIndices(fields, false);
+    }
+
+    public static Map<String, Integer> getFieldIndices(final List<Field> fields, boolean includeInternalFields) {
+        Map<String, Integer> fieldIndices = new HashMap<>();
+        List<String> fieldNames = fields.stream()
+                .map(Field::getName)
+                .collect(Collectors.toList());
+
+        int index = 0;
+        for (String fieldName : fieldNames) {
+
+            if (!fieldName.startsWith(":") || includeInternalFields) {
+                fieldIndices.put(fieldName, index);
+            }
+            index++;
+        }
+        return fieldIndices;
+    }
+
+    public static int getFieldIndex(final List<Field> fields, final String fieldName) {
+        int index = 0;
+        for (Field field : fields) {
+            if (field.getName().equals(fieldName)) {
+                return index;
+            }
+            index++;
+        }
+        return -1;
+    }
+
+    public static Map<String, String> convertRow(final Row row,
+                                                 final Map<String, Integer> fieldIndices) {
 
         return fieldIndices.entrySet().stream()
                 .map(entry -> new Tuple2<>(entry.getKey(), row.getValues().get(entry.getValue())))
                 .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2));
     }
 
-    public static int getRowCount(final SearchResponse searchResponse) {
-
-        List<Result> results = searchResponse.getResults();
-
-        if (results == null || results.isEmpty()) {
-            return 0;
+    public static String convertValueToStr(final Object obj) {
+        if (obj == null) {
+            return "";
+        } else if (obj instanceof String) {
+            return (String) obj;
+        } else {
+            return obj.toString();
         }
-
-        return ((TableResult) results.get(0)).getRows().size();
     }
 
-    public static List<Map<String, String>> getRowData(final SearchRequest searchRequest,
-                                                       final SearchResponse searchResponse) {
+    public static Map<String, String> convertValuesToStrings(final List<Object> values,
+                                                             final Map<String, Integer> fieldIndices) {
 
-        Map<String, Integer> fieldIndices = getFieldIndices(searchRequest);
+        return fieldIndices.entrySet().stream()
+                .map(entry -> new Tuple2<>(entry.getKey(), values.get(entry.getValue())))
+                .map(tuple2 -> tuple2.map2(QueryApiHelper::convertValueToStr))
+                .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2));
+    }
 
-        List<Result> results = searchResponse.getResults();
+    public static List<Map<String, String>> getRowData(final FlatResult flatResult) {
+
+        Map<String, Integer> fieldIndices = getFieldIndices(flatResult.getStructure());
+
+        List<List<Object>> results = flatResult.getValues();
 
         if (results == null || results.isEmpty()) {
             return Collections.emptyList();
         }
 
-        return ((TableResult) results.get(0)).getRows().stream()
-                .map(row -> convertRow(row, fieldIndices))
+        return results.stream()
+                .map(row -> convertValuesToStrings(row, fieldIndices))
                 .collect(Collectors.toList());
+    }
+
+    public static Optional<FlatResult> getFlatResult(final SearchResponse searchResponse) {
+        return getFlatResult(searchResponse, 0);
+    }
+
+    public static Optional<FlatResult> getFlatResult(final SearchResponse searchResponse, final int index) {
+        if (searchResponse == null || searchResponse.getResults() == null || searchResponse.getResults().isEmpty()) {
+            return Optional.empty();
+        }
+        List<Result> results = searchResponse.getResults();
+
+        if (index >= results.size()) {
+            throw new IndexOutOfBoundsException(String.format("Index %s is not valid for results of size %s", index, results.size()));
+        }
+
+        return Optional.of((FlatResult) results.get(index));
+    }
+
+    public static int getRowCount(final SearchResponse searchResponse) {
+        return getRowCount(searchResponse, 0);
+    }
+
+    public static int getRowCount(final SearchResponse searchResponse, final int index) {
+        return getFlatResult(searchResponse, index)
+                .map(flatResult -> flatResult.getValues().size())
+                .orElse(0);
     }
 
     public static ExpressionTerm buildIntervalTerm(final EventStoreTimeIntervalEnum interval) {
@@ -243,36 +330,23 @@ public class QueryApiHelper {
                 interval.name().toLowerCase());
     }
 
-    /**
-     * Build an ascii table from a searchRequest/Response
-     * @param searchRequest
-     * @param searchResponse
-     * @param fieldTypes An optional map of field names to their types, else string will be assumed
-     * @return A list of strings representing the ascii table, one per row, including a header row and
-     * separator between header and data
-     */
-    public static List<String> convertToFixedWidth(final SearchRequest searchRequest,
-                                                   final SearchResponse searchResponse,
+
+    public static List<String> convertToFixedWidth(final FlatResult flatResult,
                                                    @Nullable Map<String, Class<?>> fieldTypes,
                                                    @Nullable Integer maxRows) {
 
-        //TODO would be good to make this work from a SerachRequest/SearchResponse pair, then it can take the list
-        //of fields from the table settings in the request, observing that field order.
-        //Also woudl be nice to be able to do things like
-        // .configureField(new FieldConfigBuilder("myField").leftJustify().convert(conversionFunc).build())
-        //Also may be nice to be able to configure ascii table vs csv vs tab delim and header/noHeder etc.
+        if (flatResult == null) {
+            return Collections.emptyList();
+        }
 
-        List<Result> results = searchResponse.getResults() != null
-                ? searchResponse.getResults()
-                : Collections.emptyList();
-
-        Map<String, Integer> fieldIndices = getFieldIndices(searchRequest);
+        Map<String, Integer> fieldIndices = getFieldIndices(flatResult.getStructure());
 
         long rowLimit = maxRows != null ? maxRows : Long.MAX_VALUE;
+        boolean wasTruncated = flatResult.getValues() != null && rowLimit < flatResult.getValues().size();
 
-        List<Map<String, String>> rowData = ((TableResult) results.get(0)).getRows().stream()
+        List<Map<String, String>> rowData = flatResult.getValues().stream()
                 .limit(rowLimit)
-                .map(row -> convertRow(row, fieldIndices))
+                .map(values -> convertValuesToStrings(values, fieldIndices))
                 .collect(Collectors.toList());
 
         //assume all rows have same fields so just use first one
@@ -336,8 +410,8 @@ public class QueryApiHelper {
             headerAndValueStrings.add(createHorizontalLine(headerString.length(), TABLE_HEADER_DELIMITER));
             headerAndValueStrings.addAll(valueStrings);
 
-            if (maxRows != null) {
-                headerAndValueStrings.add(String.format("\n...TRUNCATED TO %s ROWS...", maxRows));
+            if (wasTruncated) {
+                headerAndValueStrings.add(String.format("...TRUNCATED TO %s ROWS...", rowLimit));
             }
 
             return headerAndValueStrings;
@@ -366,17 +440,18 @@ public class QueryApiHelper {
 
         SearchRequest searchRequest = wrapQuery(query, Arrays.asList("heading1", "h2"));
 
-        List<Row> rows = ImmutableList.of(
-                new Row("GroupKey", ImmutableList.of("123", "45678"), 0),
-        new Row("GroupKey", ImmutableList.of("2345", "9"), 0)
-        );
+        List<Field> fields = Arrays.asList(
+                new Field("heading1", "", null, null, null, null),
+                new Field("h2", "", null, null, null, null));
 
-        List<Result> results = Collections.singletonList(
-                new TableResult("componentId", rows, null, null, null));
+        List<List<Object>> values = ImmutableList.of(
+                ImmutableList.of("123", "45678"),
+                ImmutableList.of("2345", "9"));
 
-        SearchResponse searchResponse = new SearchResponse(null, results, null, null);
 
-        convertToFixedWidth(searchRequest, searchResponse, null, null)
+        FlatResult flatResult = new FlatResult("ComponentId", fields, values, 0L, null);
+
+        convertToFixedWidth(flatResult, null, null)
                 .forEach(System.out::println);
     }
 

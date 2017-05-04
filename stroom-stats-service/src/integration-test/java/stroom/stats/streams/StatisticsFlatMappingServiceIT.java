@@ -134,7 +134,7 @@ public class StatisticsFlatMappingServiceIT {
         protected void starting(Description description) {
             //prefix the streams app IDs with the test method name so there are no clashes between tests as the embeded kafka
             //doesn't seem to clean up properly after itself
-            setAppIdPrefixes(description.getMethodName());
+            setAppIdPrefixes(description.getMethodName() + Instant.now().toEpochMilli());
         }
     };
 

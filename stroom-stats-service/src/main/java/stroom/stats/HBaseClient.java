@@ -181,7 +181,7 @@ public class HBaseClient implements Managed {
                 //TODO should probably drive this off a new fieldIndexMap.getEntries() method or similar
                 //then we only loop round fields we car about
                 statisticConfiguration.getAllFieldNames().forEach(fieldName -> {
-                    int posInDataArray = fieldIndexMap.get(fieldName.toLowerCase());
+                    int posInDataArray = fieldIndexMap.get(fieldName);
                     //if the fieldIndexMap returns -1 the field has not been requested
                     if (posInDataArray != -1) {
                         dataArray[posInDataArray] = statisticDataPoint.getFieldValue(fieldName);
@@ -274,28 +274,6 @@ public class HBaseClient implements Managed {
     public void stop() throws Exception {
         statisticsService.shutdown();
     }
-
-    //TODO Delete this when we have something more sensible to return.
-
-    private SearchResponse getDummySearchResponse() {
-        SearchResponse searchResponse = new SearchResponse(
-                Arrays.asList("highlight1", "highlight2"),
-                Arrays.asList(
-                        new TableResult(
-                                "componentId",
-                                new ArrayList<>(Arrays.asList(
-                                        new Row("groupKey", Arrays.asList("value1", "value2"), 5))),
-                                new OffsetRange(1, 2),
-                                1,
-                                "tableResultError"
-                        )),
-                Arrays.asList("error1", "error2"),
-                false
-        );
-
-        return searchResponse;
-    }
-
 
     //TODO This lives in stroom and should have a copy here
     public static Coprocessor createCoprocessor(final CoprocessorSettings settings,
