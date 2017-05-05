@@ -18,7 +18,6 @@ dependencies {
 
     //3rd party libs
     compile libs.guice
-    compile libs.dropwizard_hibernate
 
     //TODO the cdh version of hbase-shaded-client contains javax.ws.rs which conflicts with dropwiz
     //the vanilla apache version doesn't so appears to work ok
@@ -38,12 +37,16 @@ dependencies {
         //exclude group:'log4j', module:'log4j'
     //}
 
-    compile libs.commons_lang
     compile libs.ehcache
     compile libs.guava
-    compile libs.kryo
+    compile libs.javaslang
+    compile libs.javax_inject
+    compile libs.hibernate_core
+    compile libs.slf4j_api
 
-    testCompile libs.commons_lang
+    testCompile libs.mockito_core
+    testCompile libs.junit
+    testCompile libs.assertj
 }
 
 //shadowJar {

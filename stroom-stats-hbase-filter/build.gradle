@@ -30,25 +30,18 @@ dependencies {
         //exclude group:'log4j', module:'log4j'
     //}
 
-    //The HBase server will provide guava
-    compileOnly (libs.guava) 
-
     compile (libs.kryo) {
         exclude group:'org.slf4j'
         exclude group:'log4j'
         exclude group:'ch.qos.logback'
     }
 
-    compile libs.javaslang
-        
-    compileOnly libs.slf4j_api
+    compile libs.objenesis //used for Kryo strategies
 
     testCompile project(':stroom-stats-util') 
     testCompile project(':stroom-stats-model') 
 
     testCompile libs.kryo 
-    testCompile libs.commons_lang
-    testCompile libs.mockito_core
     testCompile libs.junit
     testCompile libs.assertj
 }

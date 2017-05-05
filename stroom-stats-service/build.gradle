@@ -26,8 +26,8 @@ dependencies {
     compile project(':stroom-stats-api')
     compile project(':stroom-stats-hbase-client')
     compile project(':stroom-stats-util')
+    compile project(':stroom-stats-model')
 
-    testCompile project(':stroom-stats-mocks')
 
     // TODO: add HBase-client dependency here, be sure to include the 'all' classifier
     //compile 'stroom:stats:1.0-SNAPSHOT:all'
@@ -39,34 +39,57 @@ dependencies {
     compile urlDependencies.get(urlLibs.stroomExpression)
 
     //Third party dependencies
+    compile libs.curator_client
+    compile libs.curator_framework
     compile (libs.curator_recipies) {
         exclude group:'org.slf4j', module:'slf4j-log4j12'
         exclude group:'log4j', module:'log4j'
     }
+    compile libs.curator_service_discovery
+    compile libs.dropwizard_auth
     compile libs.dropwizard_auth_jwt
     compile libs.dropwizard_core
+    compile libs.dropwizard_jetty
+    compile libs.dropwizard_jersey
+    compile libs.dropwizard_db
     compile libs.dropwizard_hibernate
+    compile libs.dropwizard_jersey
     compile libs.dropwizard_jobs_core
+    compile libs.dropwizard_lifecycle
+    compile libs.dropwizard_metrics_annotation
+    compile libs.dropwizard_metrics_healthchecks
+    compile libs.dropwizard_servlets
     compile libs.ehcache
+    compile libs.find_bugs
+    compile libs.guava
     compile libs.guice
+    compile libs.hbase_shaded_client
+    compile libs.hibernate_core
+    compile libs.hibernate_jpa_api
+    compile libs.jackson_annotations
     compile libs.javaslang
+    compile libs.javassist
+    compile libs.javax_inject
+    compile libs.javax_validation_api
+    compile libs.javax_ws_rs_api
+    compile libs.jersey_server
+    compile libs.jose4j
     compile libs.kafka_clients
     compile (libs.kafka_streams) {
         exclude group:'org.slf4j', module:'slf4j-log4j12'
         exclude group:'log4j', module:'log4j'
     }
     compile libs.kryo
-    compile libs.mysql_connector
+    compile libs.objenesis
     compile libs.slf4j_api
-    compile libs.curator_service_discovery
+    compile libs.xml_apis
+    compile libs.zookeeper
 
-    testCompile libs.byte_buddy
-    testCompile libs.dropwizard_testing
-    testCompile libs.dropwizard_client
-    testCompile libs.curator_test
-    testCompile libs.spring_kafka_test
-    testCompile libs.saxon
-    testCompile libs.fastClasspathScanner
+    testCompile project(':stroom-stats-mocks')
+
+    testCompile libs.hamcrest_core
+    testCompile libs.assertj
+    testCompile libs.junit
 }
 
 run {

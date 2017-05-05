@@ -1,5 +1,9 @@
 
 dependencies {
-    compile project(':stroom-stats-util')
     compile project(':stroom-stats-model')
+    compile project(':stroom-stats-util')
+
+    compile libs.javaslang
+    compile libs.junit
+    compile libs.slf4j_api
 }

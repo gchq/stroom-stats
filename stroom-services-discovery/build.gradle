@@ -6,9 +6,11 @@ apply plugin: 'application'
 mainClassName = 'stroom.services.discovery.cli.StroomServiceRegisterer'
 
 dependencies {
-    compile libs.jCommander
+    compile libs.curator_client
     compile libs.curator_framework
     compile libs.curator_service_discovery
+    compile libs.jCommander
+    compile libs.slf4j_api
 }
 
 // This configures a manifest so we don't need to specify a class to run, we can just say `java -jar this.jar`.
