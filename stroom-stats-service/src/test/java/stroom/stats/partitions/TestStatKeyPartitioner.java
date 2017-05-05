@@ -60,12 +60,19 @@ public class TestStatKeyPartitioner {
             new PartitionInfo(topic, 2, node1, nodes, nodes),
             new PartitionInfo(topic, 0, node0, nodes, nodes));
 
+    //The following code works with kafka 0.10.1
+//    private Cluster cluster = new Cluster(
+//            "myCluster",
+//            Arrays.asList(node0, node1, node2),
+//            partitions,
+//            Collections.<String>emptySet(),
+//            Collections.<String>emptySet());
+
+    //This constructor works with kafka 0.10.0.1
     private Cluster cluster = new Cluster(
-            "myCluster",
             Arrays.asList(node0, node1, node2),
             partitions,
-            Collections.<String>emptySet(),
-            Collections.<String>emptySet());
+            Collections.emptySet());
 
     private final MockUniqueIdCache mockUniqueIdCache = new MockUniqueIdCache();
 
@@ -91,7 +98,7 @@ public class TestStatKeyPartitioner {
                 new TagValue(mockUniqueIdCache.getOrCreateId(tag1), mockUniqueIdCache.getOrCreateId(tag1value1)),
                 new TagValue(mockUniqueIdCache.getOrCreateId(tag2), mockUniqueIdCache.getOrCreateId(tag2value1)));
 
-        //different time but will be trunctaed to the same SECOND bucket
+        //different time but will be truncated to the same SECOND bucket
         StatKey statKey1b = new StatKey(
                 mockUniqueIdCache.getOrCreateId(statName1),
                 RollUpBitMask.ZERO_MASK,
