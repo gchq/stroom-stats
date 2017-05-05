@@ -41,10 +41,7 @@ dependencies {
     //Third party dependencies
     compile libs.curator_client
     compile libs.curator_framework
-    compile (libs.curator_recipies) {
-        exclude group:'org.slf4j', module:'slf4j-log4j12'
-        exclude group:'log4j', module:'log4j'
-    }
+    compile libs.curator_recipies
     compile libs.curator_service_discovery
     compile libs.dropwizard_auth
     compile libs.dropwizard_auth_jwt
@@ -75,21 +72,35 @@ dependencies {
     compile libs.jersey_server
     compile libs.jose4j
     compile libs.kafka_clients
-    compile (libs.kafka_streams) {
-        exclude group:'org.slf4j', module:'slf4j-log4j12'
-        exclude group:'log4j', module:'log4j'
-    }
+    compile libs.kafka_streams
     compile libs.kryo
-    compile libs.objenesis
+    compile libs.objenesis //used for Kryo strategies
     compile libs.slf4j_api
     compile libs.xml_apis
     compile libs.zookeeper
+
+    runtime libs.mysql_connector
+    runtime libs.saxon
 
     testCompile project(':stroom-stats-mocks')
 
     testCompile libs.hamcrest_core
     testCompile libs.assertj
     testCompile libs.junit
+
+    //deps for integrationTest
+    testCompile libs.dropwizard_client
+    testCompile libs.fastClasspathScanner
+    testCompile libs.dropwizard_testing
+    testCompile libs.spring_kafka_test
+    
+    //TODO gradle-dependency-analyze doesn't understand about integrationTest so says these libs are unused
+    permitTestUnusedDeclared libs.dropwizard_testing
+    permitTestUnusedDeclared libs.spring_kafka_test
+    permitTestUnusedDeclared libs.dropwizard_client
+    permitTestUnusedDeclared libs.fastClasspathScanner
+    permitTestUnusedDeclared libs.objenesis //TODO Not sure why gradle-dependency-analyze is moaning about this
+
 }
 
 run {
@@ -106,6 +117,12 @@ sourceSets {
         }
         resources.srcDir file('src/integration-test/resources')
     }
+}
+
+configurations {
+    //prevent multiple logger bindings as dropwizard uses logback
+    all*.exclude group:'org.slf4j', module:'slf4j-log4j12'
+    all*.exclude group:'log4j', module:'log4j'
 }
 
 configurations {

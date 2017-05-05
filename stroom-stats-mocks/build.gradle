@@ -7,3 +7,9 @@ dependencies {
     compile libs.junit
     compile libs.slf4j_api
 }
+
+configurations {
+    //prevent multiple logger bindings as dropwizard uses logback
+    all*.exclude group:'org.slf4j', module:'slf4j-log4j12'
+    all*.exclude group:'log4j', module:'log4j'
+}

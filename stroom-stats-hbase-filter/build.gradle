@@ -5,14 +5,12 @@ plugins {
 dependencies {
 
     compile (project(':stroom-stats-model')) {
-        //ignore any transitive dependencies to avoid adding unwant classes into the
-        //fat jar
+        //ignore any transitive dependencies to avoid adding unwant classes into the fat jar
         transitive = false
     }
 
     compile (project(':stroom-stats-util')) {
-        //ignore any transitive dependencies to avoid adding unwant classes into the
-        //fat jar
+        //ignore any transitive dependencies to avoid adding unwant classes into the fat jar
         transitive = false
     }
 
@@ -20,30 +18,28 @@ dependencies {
     //TODO the cdh version of hbase-shaded-client contains javax.ws.rs which conflicts with dropwiz
     //the vanilla apache version doesn't so appears to work ok
     //compileOnly ('org.apache.hbase:hbase-shaded-client:1.2.0-cdh5.9.1') {
-    compileOnly (libs.hbase_shaded_client) {
-        exclude group:'org.slf4j', module:'slf4j-log4j12'
-        exclude group:'log4j', module:'log4j'
-        //exclude group:'javax.ws.rs', module:'jsr311-api'
-    }
-    //compile ('org.apache.hbase:hbase-common:1.2.0-cdh5.9.1') {
-        //exclude group:'org.slf4j', module:'slf4j-log4j12'
-        //exclude group:'log4j', module:'log4j'
-    //}
+    compileOnly libs.hbase_shaded_client
 
     compile (libs.kryo) {
+        //exclude all logging as the hbase region server will provide that
         exclude group:'org.slf4j'
         exclude group:'log4j'
         exclude group:'ch.qos.logback'
     }
-
     compile libs.objenesis //used for Kryo strategies
 
     testCompile project(':stroom-stats-util') 
     testCompile project(':stroom-stats-model') 
 
-    testCompile libs.kryo 
+    testCompile libs.kryo
     testCompile libs.junit
     testCompile libs.assertj
+}
+
+configurations {
+    //prevent multiple logger bindings as dropwizard uses logback
+    all*.exclude group:'org.slf4j', module:'slf4j-log4j12'
+    all*.exclude group:'log4j', module:'log4j'
 }
 
 //shadowJar {

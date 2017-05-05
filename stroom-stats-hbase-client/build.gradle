@@ -1,8 +1,4 @@
 
-//plugins {
-    //id 'com.github.johnrengelman.shadow' version '1.2.3'
-//}
-
 dependencies {
 
     compile project(':stroom-stats-hbase-filter')
@@ -22,20 +18,7 @@ dependencies {
     //TODO the cdh version of hbase-shaded-client contains javax.ws.rs which conflicts with dropwiz
     //the vanilla apache version doesn't so appears to work ok
     //compile ('org.apache.hbase:hbase-shaded-client:1.2.0-cdh5.9.1') {
-    compile (libs.hbase_shaded_client) {
-        exclude group:'org.slf4j', module:'slf4j-log4j12'
-        exclude group:'log4j', module:'log4j'
-        //exclude group:'javax.ws.rs', module:'jsr311-api'
-    }
-    //compile ('org.apache.hbase:hbase-common:1.2.0-cdh5.9.1') {
-        //exclude group:'org.slf4j', module:'slf4j-log4j12'
-        //exclude group:'log4j', module:'log4j'
-    //}
-
-    //testCompile ('org.apache.hbase:hbase-testing-util:1.2.0-cdh5.9.1') {
-        //exclude group:'org.slf4j', module:'slf4j-log4j12'
-        //exclude group:'log4j', module:'log4j'
-    //}
+    compile libs.hbase_shaded_client 
 
     compile libs.ehcache
     compile libs.guava
@@ -49,9 +32,10 @@ dependencies {
     testCompile libs.assertj
 }
 
-//shadowJar {
-    //// If we don't relocate Jersey 1.0 packages they will conflict with anything that needs Jersey 2.0, e.g. Dropwizard.
-    //relocate 'com.sun.jersey', 'shadow.com.sun.jersey'
-    //relocate 'javax.ws.rs', 'shadow.javax.ws.rs'
-//}
+configurations {
+    //prevent multiple logger bindings as dropwizard uses logback
+    all*.exclude group:'org.slf4j', module:'slf4j-log4j12'
+    all*.exclude group:'log4j', module:'log4j'
+}
+
 
