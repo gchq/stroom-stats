@@ -21,7 +21,7 @@ ext.versions = [
         slf4j: '1.7.21',
         logback: '1.1.8',
         hbase: '1.2.0',
-        curator: '2.11.1',
+        curator: '2.12.0',
         //0.10.2.0 is available but seems to have issues with spring_kafka_test
         kafka: '0.10.1.1',
         //same version for both stroom-query-api and stroom-query-common
@@ -43,9 +43,9 @@ ext.libs = [
     jcl_over_slf4j: "org.slf4j:jcl-over-slf4j:$versions.slf4j",
 
     assertj: "org.assertj:assertj-core:3.6.2",
-    curator_framework: 'org.apache.curator:curator-framework:2.11.1',
-    curator_recipies: 'org.apache.curator:curator-recipes:2.11.1',
-    curator_service_discovery: 'org.apache.curator:curator-x-discovery:2.11.1',
+    curator_framework: "org.apache.curator:curator-framework:$versions.curator",
+    curator_recipies: "org.apache.curator:curator-recipes:$versions.curator",
+    curator_service_discovery: "org.apache.curator:curator-x-discovery:$versions.curator",
     byte_buddy: "net.bytebuddy:byte-buddy:1.5.8",
     commons_lang: "commons-lang:commons-lang:2.6",
     curator_recipies: "org.apache.curator:curator-recipes:$versions.curator",

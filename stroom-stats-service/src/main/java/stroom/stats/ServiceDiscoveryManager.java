@@ -153,14 +153,14 @@ public class ServiceDiscoveryManager {
     private static int getPort(Config config){
         int port = 0;
         DefaultServerFactory serverFactory = (DefaultServerFactory) config.getServerFactory();
-        List<ConnectorFactory> conectorFactories = serverFactory.getApplicationConnectors();
-        if (Preconditions.checkNotNull(conectorFactories).size() != 1) {
+        List<ConnectorFactory> connectorFactories = serverFactory.getApplicationConnectors();
+        if (Preconditions.checkNotNull(connectorFactories).size() != 1) {
             throw new RuntimeException(
                     String.format("Unexpected number of connectorFactories %s, check 'applicationConnectors' in the YAML config",
-                            conectorFactories.size()));
+                            connectorFactories.size()));
         }
 
-        HttpConnectorFactory connector = (HttpConnectorFactory) conectorFactories.get(0);
+        HttpConnectorFactory connector = (HttpConnectorFactory) connectorFactories.get(0);
         if (connector.getClass().isAssignableFrom(HttpConnectorFactory.class)) {
             port = connector.getPort();
         }

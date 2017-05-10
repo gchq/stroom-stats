@@ -87,7 +87,7 @@ public class ApiResource {
 
         if(serviceDiscoveryManager.getStroomAddress().isPresent()){
             String authorisationUrl = String.format(
-                    "%s/auth/authorise",
+                    "%s/api/auth/authorise",
                     serviceDiscoveryManager.getStroomAddress().get());
 
             boolean isAuthorised = checkPermissions(authorisationUrl, user, searchRequest.getQuery().getDataSource());
