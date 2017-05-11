@@ -9,7 +9,6 @@ checkContainerStatus() {
 }
 
 checkContainerStatus stroom-db
-checkContainerStatus stroom-stats-db
 checkContainerStatus zookeeper
 checkContainerStatus kafka
 checkContainerStatus hbase
