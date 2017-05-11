@@ -35,6 +35,7 @@ logging:
     loggers:
         org.hibernate.SQL: WARN
         stroom.stats: INFO
+        io.dropwizard: INFO
 #        stroom.stats.streams.StatisticsAggregationProcessor: TRACE
 #        stroom.stats.streams.FullEndToEndIT: TRACE
 #        stroom.stats.hbase.table.HBaseEventStoreTable: TRACE
