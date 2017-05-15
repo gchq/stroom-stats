@@ -226,6 +226,7 @@ public class App extends Application<Config> {
                 .setRequireSubject() // the JWT must have a subject claim
                 .setVerificationKey(new HmacKey(config.getJwtTokenSecret())) // verify the signature with the public key
                 .setRelaxVerificationKeyValidation() // relaxes key length requirement
+                .setExpectedIssuer("stroom")
                 .build();
 
         environment.jersey().register(new AuthDynamicFeature(

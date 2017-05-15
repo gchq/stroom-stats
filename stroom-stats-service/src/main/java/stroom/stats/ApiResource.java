@@ -40,9 +40,9 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.Optional;
 
 @Path("/")
 @Produces(MediaType.APPLICATION_JSON)
@@ -87,7 +87,7 @@ public class ApiResource {
 
         if(serviceDiscoveryManager.getStroomAddress().isPresent()){
             String authorisationUrl = String.format(
-                    "%s/api/auth/authorise",
+                    "%s/api/auth/isAuthorised",
                     serviceDiscoveryManager.getStroomAddress().get());
 
             boolean isAuthorised = checkPermissions(authorisationUrl, user, searchRequest.getQuery().getDataSource());
@@ -109,23 +109,18 @@ public class ApiResource {
         return Response.accepted(hBaseClient.query(searchRequest)).build();
     }
 
-    //TODO Use something more specific than searchRequest when I've figured out what that is
     private boolean checkPermissions(String authorisationUrl, User user, DocRef statisticRef){
         Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
 
         AuthorisationRequest authorisationRequest = new AuthorisationRequest(statisticRef, "READ");
-
-
-        // 1. Stroom needs to register with serviceDiscovery
-        // 2. Add auth header. Might have to add token to User?
-
         Response response = client
                 .target(authorisationUrl)
                 .request()
                 .header("Authorization", "Bearer " + user.getJwt())
-                .get();
+                .post(Entity.json(authorisationRequest));
 
-        return true;
+        boolean isAuthorised = response.getStatus() == 200;
+        return isAuthorised;
     }
 
 

@@ -1,5 +1,6 @@
 package stroom.stats.test;
 
+import javaslang.Tuple2;
 import javaslang.control.Try;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -8,15 +9,54 @@ import org.hibernate.Transaction;
 import org.hibernate.context.internal.ManagedSessionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfigurationEntity;
+import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.configuration.common.Folder;
 import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class StatisticConfigurationEntityHelper {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticConfigurationEntityHelper.class);
+
+    public static Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum> createDummyStatisticConfiguration(
+            String tag, StatisticType statisticType, EventStoreTimeIntervalEnum interval, String... fields){
+        String statNameStr = tag + Instant.now().toString() + "-" + statisticType + "-" + interval;
+        LOGGER.info("Creating stat name : {}", statNameStr);
+        StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
+                statNameStr,
+                statisticType,
+                interval.columnInterval(),
+                StatisticRollUpType.ALL)
+                .addFields(fields)
+                .build();
+
+        return new Tuple2(statisticConfigurationEntity, interval);
+    }
+
+    public static List<String> persistDummyStatisticConfigurations(
+            List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> statNameMap,
+            SessionFactory sessionFactory,
+            StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller) {
+
+        List<String> uuids = new ArrayList<>();
+        for (Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum> stat : statNameMap) {
+            Try<StatisticConfigurationEntity> entity = StatisticConfigurationEntityHelper.addStatConfig(
+                    sessionFactory,
+                    statisticConfigurationEntityMarshaller,
+                    stat._1());
+
+            uuids.add(entity.get().getUuid());
+        }
+
+        return uuids;
+    }
 
     public static Try<StatisticConfigurationEntity> addStatConfig(
             SessionFactory sessionFactory,

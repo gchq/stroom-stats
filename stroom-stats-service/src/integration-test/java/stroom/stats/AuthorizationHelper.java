@@ -20,6 +20,7 @@
 package stroom.stats;
 
 import jersey.repackaged.com.google.common.base.Throwables;
+import org.glassfish.jersey.internal.util.Base64;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
 import org.jose4j.keys.HmacKey;
@@ -45,8 +46,13 @@ public class AuthorizationHelper {
         return "";
     }
 
+    public static String getHeaderWithValidBasicAuthCredentials() {
+        String encoding = Base64.encodeAsString("admin:admin");
+        return "Basic " + encoding;
+    }
+
     private static String getToken(byte[] jwtSecretToken) {
-        return toToken(jwtSecretToken, getClaimsForUser("stroom-stats-service integration test"));
+        return toToken(jwtSecretToken, getClaimsForUser("admin"));
     }
 
     private static String toToken(byte[] key, JwtClaims claims) {

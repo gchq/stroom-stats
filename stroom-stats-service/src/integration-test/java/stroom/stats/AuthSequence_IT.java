@@ -19,6 +19,12 @@
 
 package stroom.stats;
 
+import com.google.inject.Injector;
+import javaslang.Tuple2;
+import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.client.ClientResponse;
+import org.hibernate.SessionFactory;
+import org.junit.Ignore;
 import org.junit.Test;
 import stroom.query.api.DateTimeFormat;
 import stroom.query.api.DocRef;
@@ -35,42 +41,84 @@ import stroom.query.api.SearchRequest;
 import stroom.query.api.Sort;
 import stroom.query.api.TableSettings;
 import stroom.query.api.TimeZone;
+import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.schema.Statistics;
+import stroom.stats.configuration.StatisticConfigurationEntity;
+import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.test.StatisticConfigurationEntityHelper;
 
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static stroom.query.api.ExpressionTerm.Condition;
 import static stroom.stats.HttpAsserts.assertAccepted;
-import static stroom.stats.HttpAsserts.assertUnauthorized;
 
+
+//TODO fix SearchRequest
+@Ignore("SearchRequest is invalid")
 public class AuthSequence_IT extends AbstractAppIT {
+
+    private Injector injector = getApp().getInjector();
+
+    private final static String TAG_ENV = "environment";
+    private final static String TAG_SYSTEM = "system";
+
+    private String statisticConfigurationUuid;
 
     /**
      * This test depends on SetupSampleData being run - the DocRef with the uuid needs to exist.
      */
     @Test
     public void testPostQueryData_validCredentials() throws UnsupportedEncodingException {
-        Response response = req().body(AuthSequence_IT::getSearchRequest).getStats();
+        List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> statNameMap =
+                createDummyStatisticConfigurations();
+
+        List<String> uuids = StatisticConfigurationEntityHelper.persistDummyStatisticConfigurations(
+                statNameMap,
+                injector.getInstance(SessionFactory.class),
+                injector.getInstance(StatisticConfigurationEntityMarshaller.class));
+        statisticConfigurationUuid = uuids.get(0);
+
+        String jwtToken = loginToStroomAsAdmin();
+
+        Response response = req()
+                .body(this::getSearchRequest)
+                .jwtToken(jwtToken)
+                .getStats();
         assertAccepted(response);
     }
 
-//    @Test
-//    public void postQueryData_missingCredentials(){
-//        Response response = req().body(AuthSequence_IT::getSearchRequest).authHeader(AuthHeader.MISSING).getStats();
-//        assertUnauthorized(response);
-//    }
-//
-//    @Test
-//    public void postQueryData_invalidCredentials() throws UnsupportedEncodingException {
-//        Response response = req().body(AuthSequence_IT::getSearchRequest).authHeader(AuthHeader.INVALID).getStats();
-//        assertUnauthorized(response);
-//    }
+    private static List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> createDummyStatisticConfigurations(){
+        List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> stats = new ArrayList<>();
+        stats.add(StatisticConfigurationEntityHelper.createDummyStatisticConfiguration(
+                "AuthSequence_IT-", StatisticType.COUNT, EventStoreTimeIntervalEnum.SECOND, TAG_ENV, TAG_SYSTEM));
+        stats.add(StatisticConfigurationEntityHelper.createDummyStatisticConfiguration(
+                "AuthSequence_IT-", StatisticType.VALUE, EventStoreTimeIntervalEnum.SECOND, TAG_ENV, TAG_SYSTEM));
+        return stats;
+    }
 
-    private static SearchRequest getSearchRequest() {
-        DocRef docRef = new DocRef("docRefType", "e40d59ac-e785-11e6-a678-0242ac120005", "docRefName");
+    private String loginToStroomAsAdmin(){
+        // Given
+        Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
+
+        // When
+        Response response = client
+                .target("http://localhost:8080/api/auth/getToken")
+                .request()
+                .header("Authorization", AuthorizationHelper.getHeaderWithValidBasicAuthCredentials())
+                .get();
+        String jwtToken = response.readEntity(String.class);
+        return jwtToken;
+    }
+
+    private SearchRequest getSearchRequest() {
+        DocRef docRef = new DocRef("docRefType", statisticConfigurationUuid, "docRefName");
 
         ExpressionOperator expressionOperator = new ExpressionOperator(
                 true,

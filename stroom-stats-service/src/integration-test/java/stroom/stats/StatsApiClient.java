@@ -1,5 +1,7 @@
 package stroom.stats;
 
+import org.assertj.core.util.Strings;
+
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
@@ -17,6 +19,7 @@ public class StatsApiClient {
     private Supplier<Serializable> body;
 
     private String url;
+    private String jwtToken;
 
 
     public StatsApiClient body(Supplier<Serializable> body){
@@ -29,6 +32,11 @@ public class StatsApiClient {
      */
     public StatsApiClient authHeader(AuthHeader authHeader){
         this.authHeader = authHeader;
+        return this;
+    }
+
+    public StatsApiClient jwtToken(String jwtToken){
+        this.jwtToken = jwtToken;
         return this;
     }
 
@@ -73,7 +81,7 @@ public class StatsApiClient {
     private Response postJson(){
         Response response = client.target(url)
                 .request()
-                .header("Authorization", authHeader.get())
+                .header("Authorization", getAuthHeader())
                 .post(Entity.json(body.get()));
         return response;
     }
@@ -81,9 +89,18 @@ public class StatsApiClient {
     private Response postXml(){
         Response response = client.target(url)
                 .request()
-                .header("Authorization", authHeader.get())
+                .header("Authorization", getAuthHeader())
                 .post(Entity.xml(body.get()));
         return response;
+    }
+
+    private String getAuthHeader(){
+        if(Strings.isNullOrEmpty(jwtToken)){
+            return authHeader.get();
+        }
+        else{
+            return "Bearer " + jwtToken;
+        }
     }
 
     public void startProcessing() {
