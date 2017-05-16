@@ -104,10 +104,7 @@ public class AuthSequence_IT extends AbstractAppIT {
     }
 
     private String loginToStroomAsAdmin(){
-        // Given
         Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
-
-        // When
         Response response = client
                 .target("http://localhost:8080/api/auth/getToken")
                 .request()

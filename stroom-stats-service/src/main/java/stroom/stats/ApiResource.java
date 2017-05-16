@@ -112,7 +112,7 @@ public class ApiResource {
     private boolean checkPermissions(String authorisationUrl, User user, DocRef statisticRef){
         Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
 
-        AuthorisationRequest authorisationRequest = new AuthorisationRequest(statisticRef, "READ");
+        AuthorisationRequest authorisationRequest = new AuthorisationRequest(statisticRef, "USE");
         Response response = client
                 .target(authorisationUrl)
                 .request()
