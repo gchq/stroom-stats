@@ -34,7 +34,7 @@ ext.versions = [
     curator: '2.11.1', 
 
     //0.10.2.0 is available but seems to have issues with spring_kafka_test
-    kafka: '0.10.0.1', //CDH5.11 uses kafka 0.10.0+kafka2.1
+    kafka: '0.10.1.1', //CDH5.11 uses kafka 0.10.0+kafka2.1
 
     //1.1.1.RELEASE is the latest version that runs against kafka 0.10.0.1
     spring_kafka_test: '1.1.1.RELEASE',
@@ -93,6 +93,7 @@ ext.libs = [
     javax_ws_rs_api: "javax.ws.rs:javax.ws.rs-api:2.0.1",
     jcl_over_slf4j: "org.slf4j:jcl-over-slf4j:$versions.slf4j",
     jersey_server: "org.glassfish.jersey.core:jersey-server:2.23.2",
+    jersey_client: "org.glassfish.jersey.core:jersey-client:2.23.2",
     joda_time: 'joda-time:joda-time:2.9.4',
     jose4j: "org.bitbucket.b_c:jose4j:0.5.2", //keep in sync with dropwizard_auth_jwt
     junit: "junit:junit:4.12", 

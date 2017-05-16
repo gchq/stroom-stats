@@ -20,13 +20,14 @@
 package stroom.stats;
 
 import jersey.repackaged.com.google.common.base.Throwables;
+import org.glassfish.jersey.internal.util.Base64;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
 import org.jose4j.keys.HmacKey;
 import org.jose4j.lang.JoseException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.jose4j.jws.AlgorithmIdentifiers.HMAC_SHA512;
+import static org.jose4j.jws.AlgorithmIdentifiers.HMAC_SHA256;
 
 public class AuthorizationHelper {
     // This token must match that in the applications config. I.e. config.yml:jwtTokenSecret
@@ -45,14 +46,19 @@ public class AuthorizationHelper {
         return "";
     }
 
+    public static String getHeaderWithValidBasicAuthCredentials() {
+        String encoding = Base64.encodeAsString("admin:admin");
+        return "Basic " + encoding;
+    }
+
     private static String getToken(byte[] jwtSecretToken) {
-        return toToken(jwtSecretToken, getClaimsForUser("stroom-stats-service integration test"));
+        return toToken(jwtSecretToken, getClaimsForUser("admin"));
     }
 
     private static String toToken(byte[] key, JwtClaims claims) {
         final JsonWebSignature jws = new JsonWebSignature();
         jws.setPayload(claims.toJson());
-        jws.setAlgorithmHeaderValue(HMAC_SHA512);
+        jws.setAlgorithmHeaderValue(HMAC_SHA256);
         jws.setKey(new HmacKey(key));
         jws.setDoKeyValidation(false);
 
@@ -66,6 +72,7 @@ public class AuthorizationHelper {
         final JwtClaims claims = new JwtClaims();
         claims.setExpirationTimeMinutesInTheFuture(5);
         claims.setSubject(user);
+        claims.setIssuer("stroom");
         return claims;
     }
 }

@@ -39,6 +39,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.net.InetAddress;
 import java.util.List;
+import java.util.Optional;
 
 @Singleton
 public class ServiceDiscoveryManager {
@@ -51,6 +52,7 @@ public class ServiceDiscoveryManager {
     private ServiceProvider<String> hbaseServiceProvider; // TODO: this instance isn't currently used - make it so or remove it
     private ServiceProvider<String> kafkaServiceProvider;
     private ServiceProvider<String> stroomDBServiceProvider; //TODO: this instance isn't currently used - make it so or remove ir
+    private ServiceProvider<String> stroomServiceProvider;
 
     private final ServiceDiscovery<String> serviceDiscovery;
 
@@ -88,6 +90,11 @@ public class ServiceDiscoveryManager {
                 .serviceName("stroom-db")
                 .build();
         stroomDBServiceProvider.start();
+
+        stroomServiceProvider = serviceDiscovery.serviceProviderBuilder()
+                .serviceName("stroom")
+                .build();
+        stroomServiceProvider.start();
     }
 
     public ServiceInstance<String> getHBase() {
@@ -114,6 +121,23 @@ public class ServiceDiscoveryManager {
         }
     }
 
+    public ServiceInstance<String> getStroom() {
+        try {
+            return stroomServiceProvider.getInstance();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Optional<String> getStroomAddress() {
+        ServiceInstance<String> stroom = getStroom();
+        return stroom == null ?
+                Optional.empty() :
+                stroom.getAddress() == null ?
+                        Optional.empty() :
+                        Optional.of(stroom.getAddress());
+    }
+
     private static ServiceInstance<String> getThisServiceInstance(Config config) throws Exception {
         String ipAddress = InetAddress.getLocalHost().getHostAddress();
         int port = getPort(config);
@@ -129,14 +153,14 @@ public class ServiceDiscoveryManager {
     private static int getPort(Config config){
         int port = 0;
         DefaultServerFactory serverFactory = (DefaultServerFactory) config.getServerFactory();
-        List<ConnectorFactory> conectorFactories = serverFactory.getApplicationConnectors();
-        if (Preconditions.checkNotNull(conectorFactories).size() != 1) {
+        List<ConnectorFactory> connectorFactories = serverFactory.getApplicationConnectors();
+        if (Preconditions.checkNotNull(connectorFactories).size() != 1) {
             throw new RuntimeException(
                     String.format("Unexpected number of connectorFactories %s, check 'applicationConnectors' in the YAML config",
-                            conectorFactories.size()));
+                            connectorFactories.size()));
         }
 
-        HttpConnectorFactory connector = (HttpConnectorFactory) conectorFactories.get(0);
+        HttpConnectorFactory connector = (HttpConnectorFactory) connectorFactories.get(0);
         if (connector.getClass().isAssignableFrom(HttpConnectorFactory.class)) {
             port = connector.getPort();
         }

@@ -31,20 +31,17 @@ import org.junit.Test;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfigurationEntity;
-import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
 import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.Statistics;
 import stroom.stats.schema.TagType;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.test.StatisticConfigurationEntityBuilder;
 import stroom.stats.test.StatisticConfigurationEntityHelper;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.util.logging.LambdaLogger;
 import stroom.stats.xml.StatisticsMarshaller;
 
-import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -73,7 +70,7 @@ public class FullEndToEndIT extends AbstractAppIT {
         configure(stroomPropertyService);
         List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> statNameMap = createDummyStatisticConfigurations();
 
-        persistDummyStatisticConfigurations(
+        StatisticConfigurationEntityHelper.persistDummyStatisticConfigurations(
                 statNameMap,
                 injector.getInstance(SessionFactory.class),
                 injector.getInstance(StatisticConfigurationEntityMarshaller.class));
@@ -110,36 +107,11 @@ public class FullEndToEndIT extends AbstractAppIT {
 
     private static List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> createDummyStatisticConfigurations(){
         List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> stats = new ArrayList<>();
-        stats.add(createDummyStatisticConfiguration(StatisticType.COUNT, EventStoreTimeIntervalEnum.SECOND, TAG_ENV, TAG_SYSTEM));
-        stats.add(createDummyStatisticConfiguration(StatisticType.VALUE, EventStoreTimeIntervalEnum.SECOND, TAG_ENV, TAG_SYSTEM));
+        stats.add(StatisticConfigurationEntityHelper.createDummyStatisticConfiguration(
+                "FullEndToEndIT-test-", StatisticType.COUNT, EventStoreTimeIntervalEnum.SECOND, TAG_ENV, TAG_SYSTEM));
+        stats.add(StatisticConfigurationEntityHelper.createDummyStatisticConfiguration(
+                "FullEndToEndIT-test-", StatisticType.VALUE, EventStoreTimeIntervalEnum.SECOND, TAG_ENV, TAG_SYSTEM));
         return stats;
-    }
-
-    private static Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum> createDummyStatisticConfiguration(
-            StatisticType statisticType, EventStoreTimeIntervalEnum interval, String... fields){
-        String statNameStr = "FullEndToEndIT-test-" + Instant.now().toString() + "-" + statisticType + "-" + interval;
-        LOGGER.info("Creating stat name : {}", statNameStr);
-        StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
-                statNameStr,
-                statisticType,
-                interval.columnInterval(),
-                StatisticRollUpType.ALL)
-                .addFields(fields)
-                .build();
-
-        return new Tuple2(statisticConfigurationEntity, interval);
-    }
-
-    private static void persistDummyStatisticConfigurations(
-            List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> statNameMap,
-           SessionFactory sessionFactory,
-           StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller) {
-
-        statNameMap.forEach(stat ->
-        StatisticConfigurationEntityHelper.addStatConfig(
-                sessionFactory,
-                statisticConfigurationEntityMarshaller,
-                stat._1()));
     }
 
     private static Map<String, List<Statistics>> createDummyStatistics(

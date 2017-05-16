@@ -70,6 +70,7 @@ dependencies {
     compile libs.javax_validation_api
     compile libs.javax_ws_rs_api
     compile libs.jersey_server
+    compile libs.jersey_client
     compile libs.jose4j
     compile libs.kafka_clients
     compile libs.kafka_streams

@@ -48,6 +48,10 @@ public class ServiceDiscoveryManagerHealthCheck {
         return check(serviceDiscoveryManager.getStroomDB(), "stroom-db");
     }
 
+    public HealthCheck.Result getStroomHealth() {
+        return check(serviceDiscoveryManager.getStroom(), "stroom");
+    }
+
     private HealthCheck.Result check(final ServiceInstance<String> serviceInstance,
                                      final String serviceInstanceName) {
 

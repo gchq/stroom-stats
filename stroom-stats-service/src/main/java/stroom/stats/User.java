@@ -24,6 +24,7 @@ import java.security.Principal;
 public class User implements Principal {
 
     private String name;
+    private String jwt;
 
     public User(){}
 
@@ -31,8 +32,17 @@ public class User implements Principal {
         this.name = name;
     }
 
+    public User(String name, String jwt){
+        this.jwt = jwt;
+        this.name = name;
+    }
+
     @Override
     public String getName() {
         return name;
+    }
+
+    public String getJwt() {
+        return jwt;
     }
 }
