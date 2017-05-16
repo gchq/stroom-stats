@@ -27,11 +27,11 @@ ext.versions = [
     slf4j: '1.7.21',
     logback: '1.1.8',
     hbase: '1.2.0', //CDH5.10 uses hbase 1.2.0
-    //Curator 2.11.1 depends on zookeeper 3.4.8
+    //Curator 2.12.0 depends on zookeeper 3.4.8
     //HBase 1.2.0 depends on zookeeper 3.4.6
     //CDH5.10 uses zookeeper 3.4.5
     //It is not clear how a 3.4.6/3.4.8 ZK client will work against a 3.4.5 ZK quorum
-    curator: '2.11.1', 
+    curator: '2.12.0',
 
     //0.10.2.0 is available but seems to have issues with spring_kafka_test
     kafka: '0.10.1.1', //CDH5.11 uses kafka 0.10.0+kafka2.1

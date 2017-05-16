@@ -16,7 +16,7 @@ database:
         hibernate.id.new_generator_mappings: false
         hibernate.show_sql: false
 
-jwtTokenSecret: bd678197-a88e-499c-b03b-62c3dd7dfd2d
+jwtTokenSecret: CHANGE_ME
 
 server:
     adminMinThreads: 1
