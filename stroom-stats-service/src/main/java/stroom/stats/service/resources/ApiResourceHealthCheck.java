@@ -1,4 +1,4 @@
-package stroom.stats;
+package stroom.stats.service.resources;
 
 import com.google.inject.Inject;
 

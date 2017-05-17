@@ -17,7 +17,7 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.config;
+package stroom.stats.service.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

@@ -27,7 +27,8 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.config.Config;
+import stroom.stats.service.App;
+import stroom.stats.service.config.Config;
 
 import javax.ws.rs.client.Client;
 

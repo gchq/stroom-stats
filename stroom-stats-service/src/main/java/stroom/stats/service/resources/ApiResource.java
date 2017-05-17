@@ -17,7 +17,7 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats;
+package stroom.stats.service.resources;
 
 import com.codahale.metrics.annotation.Timed;
 import com.codahale.metrics.health.HealthCheck;
@@ -29,7 +29,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.query.api.DocRef;
 import stroom.query.api.SearchRequest;
+import stroom.stats.HBaseClient;
 import stroom.stats.schema.Statistics;
+import stroom.stats.service.ExternalServices;
+import stroom.stats.service.ServiceDiscoveryManager;
+import stroom.stats.service.User;
 
 import javax.inject.Inject;
 import javax.validation.Valid;

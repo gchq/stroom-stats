@@ -17,11 +17,9 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats;
+package stroom.stats.service;
 
-import com.codahale.metrics.health.HealthCheck;
 import com.github.toastshaman.dropwizard.auth.jwt.JwtAuthFilter;
-import com.google.common.util.concurrent.Service;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.dropwizard.Application;
@@ -42,19 +40,19 @@ import org.jose4j.jwt.consumer.JwtConsumerBuilder;
 import org.jose4j.keys.HmacKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.config.Config;
+import stroom.stats.service.resources.ApiResource;
+import stroom.stats.HBaseClient;
+import stroom.stats.StroomStatsServiceModule;
+import stroom.stats.service.config.Config;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticConfigurationEntityDAOImpl;
 import stroom.stats.configuration.common.Folder;
-import stroom.stats.mixins.HasHealthCheck;
-import stroom.stats.streams.StatisticsFlatMappingService;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.tasks.StartProcessingTask;
 import stroom.stats.tasks.StopProcessingTask;
 
 import java.io.UnsupportedEncodingException;
 import java.util.List;
-import java.util.function.Supplier;
 
 public class App extends Application<Config> {
 
@@ -98,7 +96,7 @@ public class App extends Application<Config> {
 
         registerAPIs(environment);
         registerTasks(environment);
-        registerHealthChecks(environment);
+        HealthChecks.register(environment, injector);
         registerManagedObjects(environment);
     }
 
@@ -123,54 +121,7 @@ public class App extends Application<Config> {
         environment.admin().addTask(task);
     }
 
-    private void registerHealthChecks(Environment environment) {
-        registerHealthCheck(environment, "ApiResource",
-                () -> injector.getInstance(ApiResource.class).getHealth());
 
-        ServiceDiscoveryManager serviceDiscoveryManager = injector.getInstance(ServiceDiscoveryManager.class);
-        serviceDiscoveryManager.checks()
-                .forEach(hasHealthCheck -> registerHealthCheck(environment, hasHealthCheck));
-
-        StatisticsFlatMappingService statisticsFlatMappingService = injector.getInstance(StatisticsFlatMappingService.class);
-        registerHealthCheck(environment, statisticsFlatMappingService);
-
-        statisticsFlatMappingService.getHealthCheckProviders()
-                .forEach(hasHealthCheck -> registerHealthCheck(environment, hasHealthCheck));
-
-        StatisticsAggregationService statisticsAggregationService = injector.getInstance(StatisticsAggregationService.class);
-        registerHealthCheck(environment, statisticsAggregationService);
-
-        statisticsAggregationService.getHealthCheckProviders()
-                .forEach(hasHealthCheck -> registerHealthCheck(environment, hasHealthCheck));
-
-    }
-
-    private void registerHealthCheck(final Environment environment,
-                                     final String name,
-                                     final Supplier<HealthCheck.Result> healthCheckResultSupplier) {
-
-        LOGGER.info("Registering health check with name {}", name);
-
-        environment.healthChecks().register(name, new HealthCheck() {
-            @Override
-            protected Result check() throws Exception {
-                return healthCheckResultSupplier.get();
-            }
-        });
-    }
-
-    private void registerHealthCheck(final Environment environment,
-                                     final HasHealthCheck hasHealthCheck) {
-
-        LOGGER.info("Registering health check with name {}", hasHealthCheck.getName());
-
-        environment.healthChecks().register(hasHealthCheck.getName(), new HealthCheck() {
-            @Override
-            protected Result check() throws Exception {
-                return hasHealthCheck.check();
-            }
-        });
-    }
 
     private void registerManagedObjects(Environment environment) {
         registerManagedObject(environment, StatisticsIngestService.class);

@@ -28,10 +28,11 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.config.Config;
+import stroom.stats.service.config.Config;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.common.Folder;
 import stroom.stats.properties.StroomPropertyService;
+import stroom.stats.service.App;
 
 public class HeadlessTestApp extends Application<Config> {
 

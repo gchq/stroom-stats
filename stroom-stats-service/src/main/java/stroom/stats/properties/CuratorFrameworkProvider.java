@@ -25,8 +25,8 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.data.Stat;
-import stroom.stats.config.Config;
-import stroom.stats.config.ZookeeperConfig;
+import stroom.stats.service.config.Config;
+import stroom.stats.service.config.ZookeeperConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -17,34 +17,32 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.config;
+package stroom.stats.service;
 
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
+import java.security.Principal;
 
-public class KafkaConfig {
+public class User implements Principal {
 
-    @NotNull
-    @Valid
-    private String groupId;
+    private String name;
+    private String jwt;
 
-    @NotNull
-    @Valid
-    private String statisticsTopic;
+    public User(){}
 
-    public String getGroupId() {
-        return groupId;
+    public User(String name){
+        this.name = name;
     }
 
-    public String getStatisticsTopic() {
-        return statisticsTopic;
+    public User(String name, String jwt){
+        this.jwt = jwt;
+        this.name = name;
     }
 
     @Override
-    public String toString() {
-        return "KafkaConfig{" +
-                "groupId='" + groupId + '\'' +
-                ", statisticsTopic='" + statisticsTopic + '\'' +
-                '}';
+    public String getName() {
+        return name;
+    }
+
+    public String getJwt() {
+        return jwt;
     }
 }

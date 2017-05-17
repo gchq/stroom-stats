@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="stroom-service" type="Application" factoryName="Application">
     <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
-    <option name="MAIN_CLASS_NAME" value="stroom.stats.App" />
+    <option name="MAIN_CLASS_NAME" value="stroom.stats.service.App" />
     <option name="VM_PARAMETERS" value="" />
     <option name="PROGRAM_PARAMETERS" value="server config_dev.yml" />
     <option name="WORKING_DIRECTORY" value="file://$PROJECT_DIR$/stroom-stats-service" />

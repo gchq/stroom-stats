@@ -17,27 +17,34 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats;
+package stroom.stats.service.config;
 
-import io.dropwizard.auth.AuthenticationException;
-import io.dropwizard.auth.Authenticator;
-import org.jose4j.jwt.MalformedClaimException;
-import org.jose4j.jwt.consumer.JwtContext;
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 
-import java.util.Optional;
+public class KafkaConfig {
 
-public class UserAuthenticator implements Authenticator<JwtContext, User> {
+    @NotNull
+    @Valid
+    private String groupId;
+
+    @NotNull
+    @Valid
+    private String statisticsTopic;
+
+    public String getGroupId() {
+        return groupId;
+    }
+
+    public String getStatisticsTopic() {
+        return statisticsTopic;
+    }
 
     @Override
-    public Optional<User> authenticate(JwtContext context) throws AuthenticationException {
-        //TODO: If we want to check anything else about the user we need to do it here.
-        try {
-            return Optional.of(new User(
-                    context.getJwtClaims().getSubject(),
-                    context.getJwt()));
-        }
-        catch (MalformedClaimException e) {
-            return Optional.empty();
-        }
+    public String toString() {
+        return "KafkaConfig{" +
+                "groupId='" + groupId + '\'' +
+                ", statisticsTopic='" + statisticsTopic + '\'' +
+                '}';
     }
 }

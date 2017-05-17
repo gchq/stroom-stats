@@ -26,7 +26,7 @@ import org.ehcache.CacheManager;
 import org.ehcache.config.builders.CacheManagerBuilder;
 import org.hibernate.SessionFactory;
 import stroom.stats.api.StatisticsService;
-import stroom.stats.config.Config;
+import stroom.stats.service.config.Config;
 import stroom.stats.configuration.StatisticConfigurationEntityDAO;
 import stroom.stats.configuration.StatisticConfigurationEntityDAOImpl;
 import stroom.stats.configuration.StatisticConfigurationService;
@@ -34,6 +34,7 @@ import stroom.stats.configuration.StatisticConfigurationServiceImpl;
 import stroom.stats.properties.CuratorFrameworkProvider;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.properties.StroomPropertyServiceImpl;
+import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.xml.StatisticsMarshaller;
 

@@ -25,7 +25,7 @@ import org.junit.ClassRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.HeadlessTestApp;
-import stroom.stats.config.Config;
+import stroom.stats.service.config.Config;
 
 import java.time.Duration;
 

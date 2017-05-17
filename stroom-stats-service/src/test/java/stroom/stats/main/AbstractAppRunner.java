@@ -22,7 +22,7 @@ package stroom.stats.main;
 import com.google.inject.Injector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.App;
+import stroom.stats.service.App;
 
 public abstract class AbstractAppRunner {
 

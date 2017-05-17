@@ -26,8 +26,8 @@ import org.apache.curator.framework.recipes.cache.TreeCache;
 import org.apache.curator.framework.recipes.cache.TreeCacheEvent;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.zookeeper.data.Stat;
-import stroom.stats.config.Config;
-import stroom.stats.config.ZookeeperConfig;
+import stroom.stats.service.config.Config;
+import stroom.stats.service.config.ZookeeperConfig;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;

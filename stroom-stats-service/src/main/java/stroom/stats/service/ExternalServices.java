@@ -1,4 +1,4 @@
-package stroom.stats;
+package stroom.stats.service;
 
 public enum ExternalServices {
     HBASE ("hbase"),

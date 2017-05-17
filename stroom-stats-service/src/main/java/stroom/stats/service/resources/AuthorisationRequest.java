@@ -1,4 +1,4 @@
-package stroom.stats;
+package stroom.stats.service.resources;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import stroom.query.api.DocRef;

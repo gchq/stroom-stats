@@ -22,8 +22,9 @@ package stroom.stats;
 import com.codahale.metrics.health.HealthCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.config.Config;
+import stroom.stats.service.config.Config;
 import stroom.stats.schema.Statistics;
+import stroom.stats.service.ServiceDiscoveryManager;
 
 import javax.inject.Singleton;
 import javax.xml.bind.JAXBContext;

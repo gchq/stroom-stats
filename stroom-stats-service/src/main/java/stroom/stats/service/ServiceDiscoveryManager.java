@@ -17,7 +17,7 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats;
+package stroom.stats.service;
 
 import com.codahale.metrics.health.HealthCheck;
 import com.google.common.base.Preconditions;
@@ -32,10 +32,10 @@ import org.apache.curator.x.discovery.ServiceDiscovery;
 import org.apache.curator.x.discovery.ServiceDiscoveryBuilder;
 import org.apache.curator.x.discovery.ServiceInstance;
 import org.apache.curator.x.discovery.ServiceProvider;
-import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.config.Config;
+import stroom.stats.HBaseClient;
+import stroom.stats.service.config.Config;
 import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.mixins.HasHealthChecks;
 
@@ -170,7 +170,6 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
 
     private HealthCheck.Result checkThis(final ServiceInstance<String> serviceInstance,
                                      final String serviceInstanceName) {
-
         if (serviceInstance == null) {
             return HealthCheck.Result.unhealthy(String.format(
                     "There are no registered instances of the '%s' service for me to use!",
