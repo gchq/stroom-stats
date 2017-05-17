@@ -21,7 +21,7 @@ jwtTokenSecret: CHANGE_ME
 server:
     adminMinThreads: 1
     adminMaxThreads: 10
-    adminContextPath: /admin
+    adminContextPath: /
     applicationContextPath: /
     applicationConnectors:
         - type: http

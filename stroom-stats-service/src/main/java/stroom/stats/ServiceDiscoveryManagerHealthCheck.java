@@ -23,6 +23,10 @@ import com.codahale.metrics.health.HealthCheck;
 import org.apache.curator.x.discovery.ServiceInstance;
 
 import javax.inject.Inject;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
 
 public class ServiceDiscoveryManagerHealthCheck {
 
@@ -30,26 +34,18 @@ public class ServiceDiscoveryManagerHealthCheck {
 
     @Inject
     public ServiceDiscoveryManagerHealthCheck(ServiceDiscoveryManager serviceDiscoveryManager) {
-
         this.serviceDiscoveryManager = serviceDiscoveryManager;
     }
 
-    public HealthCheck.Result getKafkaHealth() {
-        return check(serviceDiscoveryManager.getKafka(), "Kafka");
-
-    }
-
-    public HealthCheck.Result getHBaseHealth() {
-        return check(serviceDiscoveryManager.getHBase(), "HBase");
-
-    }
-
-    public HealthCheck.Result getStroomDBHealth() {
-        return check(serviceDiscoveryManager.getStroomDB(), "stroom-db");
-    }
-
-    public HealthCheck.Result getStroomHealth() {
-        return check(serviceDiscoveryManager.getStroom(), "stroom");
+    public Map<ExternalServices, Supplier<HealthCheck.Result>> getChecks(){
+        Map<ExternalServices, Supplier<HealthCheck.Result>> checks = new HashMap<>();
+        Arrays.stream(ExternalServices.values()).forEach(externalService ->
+                checks.put(
+                        externalService,
+                        () -> check(serviceDiscoveryManager.get(externalService), externalService.getName())
+                )
+        );
+        return checks;
     }
 
     private HealthCheck.Result check(final ServiceInstance<String> serviceInstance,
@@ -57,14 +53,13 @@ public class ServiceDiscoveryManagerHealthCheck {
 
         if (serviceInstance == null) {
             return HealthCheck.Result.unhealthy(String.format(
-                    "There are no registered instances of %s for me to use!",
+                    "There are no registered instances of the '%s' service for me to use!",
                     serviceInstanceName));
         } else {
             return HealthCheck.Result.healthy(String.format(
-                    "Found a %s instance for me to use at %s:%s.",
+                    "Found an instance of the '%s' service for me to use at %s.",
                     serviceInstanceName,
-                    serviceInstance.getAddress(),
-                    serviceInstance.getPort()));
+                    serviceInstance.getAddress()));
         }
     }
 

@@ -127,17 +127,17 @@ public class App extends Application<Config> {
         registerHealthCheck(environment, "ApiResource",
                 () -> injector.getInstance(ApiResource.class).getHealth());
 
-        registerHealthCheck(environment, "ServiceDiscoveryManager_Kafka",
-                () -> injector.getInstance(ServiceDiscoveryManagerHealthCheck.class).getKafkaHealth());
-
-        registerHealthCheck(environment, "ServiceDiscoveryManager_HBase",
-                () -> injector.getInstance(ServiceDiscoveryManagerHealthCheck.class).getKafkaHealth());
-
-        registerHealthCheck(environment, "ServiceDiscoveryManager_StroomDB",
-                () -> injector.getInstance(ServiceDiscoveryManagerHealthCheck.class).getKafkaHealth());
-
-        registerHealthCheck(environment, "StatisticsFlatMappingService",
-                () -> injector.getInstance(StatisticsFlatMappingService.class).check());
+        ServiceDiscoveryManagerHealthCheck serviceDiscoveryManagerHealthCheck = injector.getInstance(ServiceDiscoveryManagerHealthCheck.class);
+        serviceDiscoveryManagerHealthCheck.getChecks().entrySet().forEach(check -> {
+            environment.healthChecks().register(
+                    "ServiceDiscoveryManager_" + check.getKey().getName(),
+                    new HealthCheck() {
+                        @Override
+                        protected Result check() throws Exception {
+                            return check.getValue().get();
+                        }
+                    });
+        });
 
         StatisticsFlatMappingService statisticsFlatMappingService = injector.getInstance(StatisticsFlatMappingService.class);
         registerHealthCheck(environment, statisticsFlatMappingService);

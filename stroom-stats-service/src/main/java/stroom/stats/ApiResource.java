@@ -21,7 +21,6 @@ package stroom.stats;
 
 import com.codahale.metrics.annotation.Timed;
 import com.codahale.metrics.health.HealthCheck;
-import com.google.common.base.Strings;
 import io.dropwizard.auth.Auth;
 import io.dropwizard.hibernate.UnitOfWork;
 import org.glassfish.jersey.client.ClientConfig;
@@ -32,6 +31,7 @@ import stroom.query.api.DocRef;
 import stroom.query.api.SearchRequest;
 import stroom.stats.schema.Statistics;
 
+import javax.inject.Inject;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -43,6 +43,7 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.util.Optional;
 
 @Path("/")
 @Produces(MediaType.APPLICATION_JSON)
@@ -50,12 +51,13 @@ public class ApiResource {
     private static final Logger LOGGER = LoggerFactory.getLogger(ApiResource.class);
     private HBaseClient hBaseClient;
     private ServiceDiscoveryManager serviceDiscoveryManager;
-    private static final String NO_STROOM_MESSAGE = "I don't have an address for Stroom, so I can't authorise requests!";
+    private static final String NO_AUTHORISATION_SERVICE_MESSAGE
+            = "I don't have an address for the Authorisation service, so I can't authorise requests!";
 
+    @Inject
     public ApiResource(HBaseClient hBaseClient, ServiceDiscoveryManager serviceDiscoveryManager) {
         this.hBaseClient = hBaseClient;
         this.serviceDiscoveryManager = serviceDiscoveryManager;
-
     }
 
     @GET
@@ -85,10 +87,11 @@ public class ApiResource {
     public Response postQueryData(@Auth User user, @Valid SearchRequest searchRequest){
         LOGGER.debug("Received search request");
 
-        if(serviceDiscoveryManager.getStroomAddress().isPresent()){
+        Optional<String> authorisationServiceAddress = serviceDiscoveryManager.getAddress(ExternalServices.AUTHORISATION);
+        if(authorisationServiceAddress.isPresent()){
             String authorisationUrl = String.format(
                     "%s/api/authorisation/isAuthorised",
-                    serviceDiscoveryManager.getStroomAddress().get());
+                    authorisationServiceAddress.get());
 
             boolean isAuthorised = checkPermissions(authorisationUrl, user, searchRequest.getQuery().getDataSource());
             if(!isAuthorised){
@@ -98,7 +101,7 @@ public class ApiResource {
                         .build();
             }
         } else {
-            LOGGER.error(NO_STROOM_MESSAGE);
+            LOGGER.error(NO_AUTHORISATION_SERVICE_MESSAGE);
             return Response
                     .serverError()
                     .entity("This request cannot be authorised because the authorisation service (Stroom) is not available.")
@@ -125,11 +128,11 @@ public class ApiResource {
 
 
     public HealthCheck.Result getHealth(){
-        if(serviceDiscoveryManager.getStroomAddress().isPresent()){
+        if(serviceDiscoveryManager.getAddress(ExternalServices.AUTHORISATION).isPresent()){
             return HealthCheck.Result.healthy();
         }
         else{
-            return HealthCheck.Result.unhealthy(NO_STROOM_MESSAGE);
+            return HealthCheck.Result.unhealthy(NO_AUTHORISATION_SERVICE_MESSAGE);
         }
     }
 
