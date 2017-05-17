@@ -35,6 +35,7 @@ import org.apache.curator.x.discovery.ServiceProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.HBaseClient;
+import stroom.stats.properties.CuratorFrameworkProvider;
 import stroom.stats.service.config.Config;
 import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.mixins.HasHealthChecks;
@@ -60,15 +61,15 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
     // "When using Curator 2.x (Zookeeper 3.4.x) it's essential that service provider objects are cached by your
     // application and reused." - http://curator.apache.org/curator-x-discovery/
     private Map<ExternalServices, ServiceProvider<String>> serviceProviders = new HashMap<>();
+    private CuratorFrameworkProvider curatorFrameworkProvider;
 
     @Inject
-    public ServiceDiscoveryManager(Config config) throws Exception {
+    public ServiceDiscoveryManager(Config config, CuratorFrameworkProvider curatorFrameworkProvider) throws Exception {
         LOGGER.info("ServiceDiscoveryManager starting...");
+        this.curatorFrameworkProvider = curatorFrameworkProvider;
         this.config = config;
 
-        RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        CuratorFramework client = CuratorFrameworkFactory.newClient(config.getZookeeperConfig().getQuorum(), retryPolicy);
-        client.start();
+        CuratorFramework client = curatorFrameworkProvider.get();
 
         // First register this service
         serviceDiscovery = ServiceDiscoveryBuilder
