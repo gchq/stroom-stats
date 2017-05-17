@@ -33,7 +33,7 @@ public class ZookeeperConfig {
 
     @NotNull
     @JsonProperty
-    private String rootPath;
+    private String statsPath;
 
     @NotNull
     @JsonProperty
@@ -45,12 +45,16 @@ public class ZookeeperConfig {
     @JsonProperty
     private int propertyServiceTreeCacheTimeoutMs;
 
+    @NotNull
+    @JsonProperty
+    private String serviceDiscoveryPath;
+
     public String getQuorum() {
         return quorum;
     }
 
-    public String getRootPath() {
-        return rootPath;
+    public String getStatsPath() {
+        return statsPath;
     }
 
     public String getPropertyServicePath() {
@@ -61,13 +65,18 @@ public class ZookeeperConfig {
         return propertyServiceTreeCacheTimeoutMs;
     }
 
+    public String getServiceDiscoveryPath() {
+        return serviceDiscoveryPath;
+    }
+
     @Override
     public String toString() {
         return "ZookeeperConfig{" +
                 "quorum='" + quorum + '\'' +
-                ", rootPath='" + rootPath + '\'' +
+                ", statsPath='" + statsPath + '\'' +
                 ", propertyServicePath='" + propertyServicePath + '\'' +
                 ", propertyServiceTreeCacheTimeoutMs=" + propertyServiceTreeCacheTimeoutMs +
+                ", serviceDiscoveryPath=" + serviceDiscoveryPath +
                 '}';
     }
 }

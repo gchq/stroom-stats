@@ -24,10 +24,7 @@ import com.google.common.base.Preconditions;
 import io.dropwizard.jetty.ConnectorFactory;
 import io.dropwizard.jetty.HttpConnectorFactory;
 import io.dropwizard.server.DefaultServerFactory;
-import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.x.discovery.ServiceDiscovery;
 import org.apache.curator.x.discovery.ServiceDiscoveryBuilder;
 import org.apache.curator.x.discovery.ServiceInstance;
@@ -35,7 +32,8 @@ import org.apache.curator.x.discovery.ServiceProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.HBaseClient;
-import stroom.stats.properties.CuratorFrameworkProvider;
+import stroom.stats.properties.ServiceDiscoveryCuratorFramework;
+import stroom.stats.properties.ServiceDiscoveryCuratorFrameworkProvider;
 import stroom.stats.service.config.Config;
 import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.mixins.HasHealthChecks;
@@ -61,20 +59,18 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
     // "When using Curator 2.x (Zookeeper 3.4.x) it's essential that service provider objects are cached by your
     // application and reused." - http://curator.apache.org/curator-x-discovery/
     private Map<ExternalServices, ServiceProvider<String>> serviceProviders = new HashMap<>();
-    private CuratorFrameworkProvider curatorFrameworkProvider;
+    private ServiceDiscoveryCuratorFrameworkProvider serviceDiscoveryCuratorFrameworkProvider;
 
     @Inject
-    public ServiceDiscoveryManager(Config config, CuratorFrameworkProvider curatorFrameworkProvider) throws Exception {
+    public ServiceDiscoveryManager(Config config, @ServiceDiscoveryCuratorFramework CuratorFramework curatorFramework) throws Exception {
         LOGGER.info("ServiceDiscoveryManager starting...");
-        this.curatorFrameworkProvider = curatorFrameworkProvider;
+        this.serviceDiscoveryCuratorFrameworkProvider = serviceDiscoveryCuratorFrameworkProvider;
         this.config = config;
-
-        CuratorFramework client = curatorFrameworkProvider.get();
 
         // First register this service
         serviceDiscovery = ServiceDiscoveryBuilder
                 .builder(String.class)
-                .client(client)
+                .client(curatorFramework)
                 .basePath("stroom-services")
                 .thisInstance(getThisServiceInstance(config))
                 .build();
@@ -83,8 +79,6 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
         // Then register services this service depends on
         Arrays.stream(ExternalServices.values()).forEach(externalService ->
             serviceProviders.put(externalService, createProvider(externalService.getName())));
-
-        client.close();
     }
 
     private ServiceProvider<String> createProvider(String name){

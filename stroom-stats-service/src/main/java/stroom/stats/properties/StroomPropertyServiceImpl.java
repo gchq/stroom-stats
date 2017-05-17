@@ -58,7 +58,7 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
     private final Semaphore initialisedSemaphore = new Semaphore(0);
 
     @Inject
-    public StroomPropertyServiceImpl(final Config config, final CuratorFramework curatorFramework) {
+    public StroomPropertyServiceImpl(final Config config, @StatsCuratorFramework final CuratorFramework curatorFramework) {
         this.zookeeperConfig = config.getZookeeperConfig();
         this.curatorFramework = curatorFramework;
         propertyServicePath = zookeeperConfig.getPropertyServicePath();

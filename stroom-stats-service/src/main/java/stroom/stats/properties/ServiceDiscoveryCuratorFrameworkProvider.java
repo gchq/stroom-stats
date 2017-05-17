@@ -19,53 +19,48 @@
 
 package stroom.stats.properties;
 
-import com.google.common.base.Preconditions;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.data.Stat;
-import stroom.stats.service.config.Config;
-import stroom.stats.service.config.ZookeeperConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.service.config.Config;
+import stroom.stats.service.config.ZookeeperConfig;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
 
-public class CuratorFrameworkProvider implements Provider<CuratorFramework> {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(CuratorFrameworkProvider.class);
-
-    private final ZookeeperConfig zookeeperConfig;
+public class ServiceDiscoveryCuratorFrameworkProvider implements Provider<CuratorFramework> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ServiceDiscoveryCuratorFrameworkProvider.class);
+    private ZookeeperConfig zookeeperConfig;
 
     @Inject
-    public CuratorFrameworkProvider(final Config config) {
+    public ServiceDiscoveryCuratorFrameworkProvider(final Config config) {
         this.zookeeperConfig = config.getZookeeperConfig();
-        Preconditions.checkNotNull(zookeeperConfig.getPropertyServicePath());
-        Preconditions.checkNotNull(zookeeperConfig.getQuorum());
-        Preconditions.checkNotNull(zookeeperConfig.getRootPath());
     }
 
     @Override
     public CuratorFramework get() {
+        String quorum = zookeeperConfig.getQuorum();
+        String serviceDiscoveryPath = zookeeperConfig.getServiceDiscoveryPath();
+        String connectionString = quorum + serviceDiscoveryPath;
+
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
 
-        String zookeeperQuorum = zookeeperConfig.getQuorum();
-        String zookeeperRootPath = zookeeperConfig.getRootPath();
-        String connectionString = zookeeperQuorum + zookeeperRootPath;
-
         LOGGER.info("Initiating Curator connection to Zookeeper using: ", connectionString);
-        //use chroot so all subsequent paths are below /stroom-stats to avoid conflicts with hbase/zookeeper/kafka etc.
+        // Use chroot so all subsequent paths are below /stroom-services to avoid conflicts with hbase/zookeeper/kafka etc.
         CuratorFramework client = CuratorFrameworkFactory.newClient(connectionString, retryPolicy);
         client.start();
 
         try {
-            //ensure the chrooted root path exists (i.e. /stroom-stats
+            //Ensure the chrooted path for stroom-services exists
             Stat stat = client.checkExists().forPath("/");
             if (stat == null) {
-                LOGGER.info("Creating chroot-ed root node inside " + zookeeperRootPath);
-                client.create().forPath("/");
+                String errorMessage = "There is no service-discovery path on this Zookeeper!";
+                LOGGER.error(errorMessage);
+                throw new RuntimeException(errorMessage);
             }
         } catch (Exception e) {
             throw new RuntimeException("Error connecting to zookeeper using connection String: " + connectionString, e);

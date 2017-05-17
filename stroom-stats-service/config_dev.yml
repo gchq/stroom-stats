@@ -51,11 +51,13 @@ zookeeper:
     quorum: localhost:2181
     # The root path to use to chroot the zookeeper connection
     # All other paths are beneath this
-    rootPath: /stroom-stats
+    statsPath: /stroom-stats
     # The path for PropertyService content
     propertyServicePath: /propertyService
     # Timeout for waiting for initialisation of the property service tree cache
     propertyServiceTreeCacheTimeoutMs: 60000
+    # The path to use for service discovery
+    serviceDiscoveryPath: /stroom-services
 
 kafka:
     groupId: stroom-service
