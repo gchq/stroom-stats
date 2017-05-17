@@ -60,7 +60,7 @@ public class Config extends Configuration implements JobConfiguration {
         return database;
     }
 
-    public byte[] getJwtTokenSecret() throws UnsupportedEncodingException {
+    public byte[] getJwtTokenSecret() {
         return jwtTokenSecret.getBytes(Charset.defaultCharset());
     }
 

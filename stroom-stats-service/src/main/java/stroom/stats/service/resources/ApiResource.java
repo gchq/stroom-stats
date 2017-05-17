@@ -33,7 +33,7 @@ import stroom.stats.HBaseClient;
 import stroom.stats.schema.Statistics;
 import stroom.stats.service.ExternalServices;
 import stroom.stats.service.ServiceDiscoveryManager;
-import stroom.stats.service.User;
+import stroom.stats.service.auth.User;
 
 import javax.inject.Inject;
 import javax.validation.Valid;

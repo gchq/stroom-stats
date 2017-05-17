@@ -1,10 +1,11 @@
-package stroom.stats.service;
+package stroom.stats.service.startup;
 
 import com.codahale.metrics.health.HealthCheck;
 import com.google.inject.Injector;
 import io.dropwizard.setup.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.resources.ApiResource;
 import stroom.stats.StatisticsAggregationService;
 import stroom.stats.mixins.HasHealthCheck;
@@ -12,10 +13,11 @@ import stroom.stats.streams.StatisticsFlatMappingService;
 
 import java.util.function.Supplier;
 
+// Configuring HealthChecks is lengthy enough to deserve it's own file.
 public class HealthChecks {
     private static final Logger LOGGER = LoggerFactory.getLogger(HealthChecks.class);
 
-    public static void register(Environment environment, Injector injector) {
+    static void register(Environment environment, Injector injector) {
         register(environment, "ApiResource",
                 () -> injector.getInstance(ApiResource.class).getHealth());
 

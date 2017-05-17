@@ -32,7 +32,7 @@ import stroom.stats.service.config.Config;
 import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.common.Folder;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.service.App;
+import stroom.stats.service.startup.App;
 
 public class HeadlessTestApp extends Application<Config> {
 

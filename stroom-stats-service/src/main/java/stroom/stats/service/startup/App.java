@@ -17,9 +17,8 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.service;
+package stroom.stats.service.startup;
 
-import com.github.toastshaman.dropwizard.auth.jwt.JwtAuthFilter;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.dropwizard.Application;
@@ -31,39 +30,31 @@ import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.servlets.tasks.Task;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
-import javaslang.control.Try;
 import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
-import org.hibernate.Session;
-import org.hibernate.context.internal.ManagedSessionContext;
-import org.jose4j.jwt.consumer.JwtConsumer;
-import org.jose4j.jwt.consumer.JwtConsumerBuilder;
-import org.jose4j.keys.HmacKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.service.ServiceDiscoveryManager;
+import stroom.stats.service.auth.AuthenticationFilter;
+import stroom.stats.service.auth.User;
 import stroom.stats.service.resources.ApiResource;
 import stroom.stats.HBaseClient;
 import stroom.stats.StroomStatsServiceModule;
 import stroom.stats.service.config.Config;
 import stroom.stats.configuration.StatisticConfigurationEntity;
-import stroom.stats.configuration.StatisticConfigurationEntityDAOImpl;
 import stroom.stats.configuration.common.Folder;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.tasks.StartProcessingTask;
 import stroom.stats.tasks.StopProcessingTask;
 
 import java.io.UnsupportedEncodingException;
-import java.util.List;
 
 public class App extends Application<Config> {
-
-    public static final String APP_NAME = "stroom-stats";
     private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
+    public static final String APP_NAME = "stroom-stats";
     private Injector injector = null;
-
     private final HibernateBundle<Config> hibernateBundle = new HibernateBundle<Config>(
             StatisticConfigurationEntity.class,
             Folder.class) {
-
         @Override
         public DataSourceFactory getDataSourceFactory(Config configuration) {
             return configuration.getDataSourceFactory();
@@ -81,75 +72,15 @@ public class App extends Application<Config> {
 
     @Override
     public void run(Config config, Environment environment) throws UnsupportedEncodingException {
-
         configureAuthentication(config, environment);
 
-        // Bootstrap Guice
         injector = Guice.createInjector(new StroomStatsServiceModule(config, hibernateBundle.getSessionFactory()));
-        // There are no dependencies on KafkaConsumerForStatistics so we need to make sure it starts by calling getInstance(...)
         injector.getInstance(ServiceDiscoveryManager.class);
 
-
-        loadStats()
-                .onFailure(e -> LOGGER.error("Unable to retrieve statistics: {}", e))
-                .onSuccess(stats -> LOGGER.info("Retrieved {} statistics, but not doing anything", stats.size()));
-
-        registerAPIs(environment);
+        registerResources(environment);
         registerTasks(environment);
         HealthChecks.register(environment, injector);
         registerManagedObjects(environment);
-    }
-
-    private void registerAPIs(final Environment environment) {
-
-        LOGGER.info("Registering API");
-        environment.jersey().register(new ApiResource(
-                injector.getInstance(HBaseClient.class),
-                injector.getInstance(ServiceDiscoveryManager.class)));
-    }
-
-    private void registerTasks(final Environment environment) {
-
-        registerTask(environment, StartProcessingTask.class);
-        registerTask(environment, StopProcessingTask.class);
-    }
-
-    private <T extends Task> void registerTask(final Environment environment, Class<T> type) {
-
-        LOGGER.info("Registering task with class {}", type.getName());
-        T task = injector.getInstance(type);
-        environment.admin().addTask(task);
-    }
-
-
-
-    private void registerManagedObjects(Environment environment) {
-        registerManagedObject(environment, StatisticsIngestService.class);
-    }
-
-    private <T extends Managed> void registerManagedObject(final Environment environment, Class<T> type) {
-
-        LOGGER.info("Registering managed object with class {}", type.getName());
-        T managed = injector.getInstance(type);
-        environment.lifecycle().manage(managed);
-    }
-
-    /**
-     * This is an example method, showing how to load statistics.
-     * <p>
-     * We're loading stats outside a Jersey call so we can't use @UnitOfWork to set up the session.
-     * We need to get a session manually, as demonstrated here.
-     */
-    private Try<List<StatisticConfigurationEntity>> loadStats() {
-        try (Session session = hibernateBundle.getSessionFactory().openSession()) {
-            ManagedSessionContext.bind(session);
-            session.beginTransaction();
-            StatisticConfigurationEntityDAOImpl dao = injector.getInstance(StatisticConfigurationEntityDAOImpl.class);
-            List<StatisticConfigurationEntity> allStats = dao.loadAll();
-            return Try.success(allStats);
-        } catch (Exception e) {
-            return Try.failure(e);
-        }
     }
 
     @Override
@@ -161,26 +92,38 @@ public class App extends Application<Config> {
         return injector;
     }
 
-    private static void configureAuthentication(Config config, Environment environment) throws UnsupportedEncodingException {
+    private void registerResources(final Environment environment) {
+        LOGGER.info("Registering API");
+        environment.jersey().register(new ApiResource(
+                injector.getInstance(HBaseClient.class),
+                injector.getInstance(ServiceDiscoveryManager.class)));
+    }
 
-        final JwtConsumer consumer = new JwtConsumerBuilder()
-                .setAllowedClockSkewInSeconds(30) // allow some leeway in validating time based claims to account for clock skew
-                .setRequireExpirationTime() // the JWT must have an expiration time
-                .setRequireSubject() // the JWT must have a subject claim
-                .setVerificationKey(new HmacKey(config.getJwtTokenSecret())) // verify the signature with the public key
-                .setRelaxVerificationKeyValidation() // relaxes key length requirement
-                .setExpectedIssuer("stroom")
-                .build();
+    private void registerTasks(final Environment environment) {
+        registerTask(environment, StartProcessingTask.class);
+        registerTask(environment, StopProcessingTask.class);
+    }
 
-        environment.jersey().register(new AuthDynamicFeature(
-                new JwtAuthFilter.Builder<User>()
-                        .setJwtConsumer(consumer)
-                        .setRealm("realm")
-                        .setPrefix("Bearer")
-                        .setAuthenticator(new UserAuthenticator())
-                        .buildAuthFilter()));
+    private <T extends Task> void registerTask(final Environment environment, Class<T> type) {
+        LOGGER.info("Registering task with class {}", type.getName());
+        T task = injector.getInstance(type);
+        environment.admin().addTask(task);
+    }
 
+    private void registerManagedObjects(Environment environment) {
+        registerManagedObject(environment, StatisticsIngestService.class);
+    }
+
+    private <T extends Managed> void registerManagedObject(final Environment environment, Class<T> type) {
+        LOGGER.info("Registering managed object with class {}", type.getName());
+        T managed = injector.getInstance(type);
+        environment.lifecycle().manage(managed);
+    }
+
+    private static void configureAuthentication(Config config, Environment environment) {
+        environment.jersey().register(new AuthDynamicFeature(AuthenticationFilter.get(config)));
         environment.jersey().register(new AuthValueFactoryProvider.Binder<>(User.class));
         environment.jersey().register(RolesAllowedDynamicFeature.class);
     }
+
 }

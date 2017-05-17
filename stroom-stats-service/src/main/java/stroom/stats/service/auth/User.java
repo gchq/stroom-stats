@@ -17,27 +17,32 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.service;
+package stroom.stats.service.auth;
 
-import io.dropwizard.auth.AuthenticationException;
-import io.dropwizard.auth.Authenticator;
-import org.jose4j.jwt.MalformedClaimException;
-import org.jose4j.jwt.consumer.JwtContext;
+import java.security.Principal;
 
-import java.util.Optional;
+public class User implements Principal {
 
-public class UserAuthenticator implements Authenticator<JwtContext, User> {
+    private String name;
+    private String jwt;
+
+    public User(){}
+
+    public User(String name){
+        this.name = name;
+    }
+
+    public User(String name, String jwt){
+        this.jwt = jwt;
+        this.name = name;
+    }
 
     @Override
-    public Optional<User> authenticate(JwtContext context) throws AuthenticationException {
-        //TODO: If we want to check anything else about the user we need to do it here.
-        try {
-            return Optional.of(new User(
-                    context.getJwtClaims().getSubject(),
-                    context.getJwt()));
-        }
-        catch (MalformedClaimException e) {
-            return Optional.empty();
-        }
+    public String getName() {
+        return name;
+    }
+
+    public String getJwt() {
+        return jwt;
     }
 }
