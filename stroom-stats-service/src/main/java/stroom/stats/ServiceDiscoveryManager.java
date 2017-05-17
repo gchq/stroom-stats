@@ -19,6 +19,7 @@
 
 package stroom.stats;
 
+import com.codahale.metrics.health.HealthCheck;
 import com.google.common.base.Preconditions;
 import io.dropwizard.jetty.ConnectorFactory;
 import io.dropwizard.jetty.HttpConnectorFactory;
@@ -31,13 +32,17 @@ import org.apache.curator.x.discovery.ServiceDiscovery;
 import org.apache.curator.x.discovery.ServiceDiscoveryBuilder;
 import org.apache.curator.x.discovery.ServiceInstance;
 import org.apache.curator.x.discovery.ServiceProvider;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.config.Config;
+import stroom.stats.mixins.HasHealthCheck;
+import stroom.stats.mixins.HasHealthChecks;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -45,7 +50,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Singleton
-public class ServiceDiscoveryManager {
+public class ServiceDiscoveryManager implements HasHealthChecks {
     private final Logger LOGGER = LoggerFactory.getLogger(HBaseClient.class);
 
     private Config config;
@@ -77,6 +82,8 @@ public class ServiceDiscoveryManager {
         // Then register services this service depends on
         Arrays.stream(ExternalServices.values()).forEach(externalService ->
             serviceProviders.put(externalService, createProvider(externalService.getName())));
+
+        client.close();
     }
 
     private ServiceProvider<String> createProvider(String name){
@@ -138,5 +145,41 @@ public class ServiceDiscoveryManager {
             port = connector.getPort();
         }
         return port;
+    }
+
+    @Override
+    public List<HasHealthCheck> checks() {
+        List<HasHealthCheck> checks = new ArrayList<>();
+        for (ExternalServices externalService : ExternalServices.values()) {
+            checks.add(
+                    new HasHealthCheck() {
+                        @Override
+                        public HealthCheck.Result check() {
+                            return checkThis(get(externalService), externalService.getName());
+                        }
+
+                        @Override
+                        public String getName() {
+                            return "ServiceDiscoveryManager_" + externalService.getName();
+                        }
+                    }
+            );
+        }
+        return checks;
+    }
+
+    private HealthCheck.Result checkThis(final ServiceInstance<String> serviceInstance,
+                                     final String serviceInstanceName) {
+
+        if (serviceInstance == null) {
+            return HealthCheck.Result.unhealthy(String.format(
+                    "There are no registered instances of the '%s' service for me to use!",
+                    serviceInstanceName));
+        } else {
+            return HealthCheck.Result.healthy(String.format(
+                    "Found an instance of the '%s' service for me to use at %s.",
+                    serviceInstanceName,
+                    serviceInstance.getAddress()));
+        }
     }
 }

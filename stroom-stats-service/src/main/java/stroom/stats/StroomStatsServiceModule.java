@@ -63,7 +63,6 @@ public class StroomStatsServiceModule extends AbstractModule {
         bind(HBaseClient.class);
         bind(StatisticsIngestService.class).asEagerSingleton();
         bind(ServiceDiscoveryManager.class);
-        bind(ServiceDiscoveryManagerHealthCheck.class);
         bind(SessionFactory.class).toInstance(sessionFactory);
         bind(StatisticConfigurationEntityDAO.class).to(StatisticConfigurationEntityDAOImpl.class);
         bind(StatisticConfigurationService.class).to(StatisticConfigurationServiceImpl.class);

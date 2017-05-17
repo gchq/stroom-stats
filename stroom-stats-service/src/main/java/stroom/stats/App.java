@@ -127,17 +127,9 @@ public class App extends Application<Config> {
         registerHealthCheck(environment, "ApiResource",
                 () -> injector.getInstance(ApiResource.class).getHealth());
 
-        ServiceDiscoveryManagerHealthCheck serviceDiscoveryManagerHealthCheck = injector.getInstance(ServiceDiscoveryManagerHealthCheck.class);
-        serviceDiscoveryManagerHealthCheck.getChecks().entrySet().forEach(check -> {
-            environment.healthChecks().register(
-                    "ServiceDiscoveryManager_" + check.getKey().getName(),
-                    new HealthCheck() {
-                        @Override
-                        protected Result check() throws Exception {
-                            return check.getValue().get();
-                        }
-                    });
-        });
+        ServiceDiscoveryManager serviceDiscoveryManager = injector.getInstance(ServiceDiscoveryManager.class);
+        serviceDiscoveryManager.checks()
+                .forEach(hasHealthCheck -> registerHealthCheck(environment, hasHealthCheck));
 
         StatisticsFlatMappingService statisticsFlatMappingService = injector.getInstance(StatisticsFlatMappingService.class);
         registerHealthCheck(environment, statisticsFlatMappingService);
