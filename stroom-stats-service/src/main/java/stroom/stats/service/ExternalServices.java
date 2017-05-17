@@ -1,9 +1,6 @@
 package stroom.stats.service;
 
 public enum ExternalServices {
-    HBASE ("hbase"),
-    KAFKA ("kafka"),
-    STROOM_DB ("stroom-db"),
     INDEX ("index"),
     AUTHORISATION ("authorisation"),
     AUTHENTICATION ("authentication");
