@@ -59,19 +59,19 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
     // "When using Curator 2.x (Zookeeper 3.4.x) it's essential that service provider objects are cached by your
     // application and reused." - http://curator.apache.org/curator-x-discovery/
     private Map<ExternalServices, ServiceProvider<String>> serviceProviders = new HashMap<>();
-    private ServiceDiscoveryCuratorFrameworkProvider serviceDiscoveryCuratorFrameworkProvider;
+    private CuratorFramework curatorFramework;
 
     @Inject
     public ServiceDiscoveryManager(Config config, @ServiceDiscoveryCuratorFramework CuratorFramework curatorFramework) throws Exception {
         LOGGER.info("ServiceDiscoveryManager starting...");
-        this.serviceDiscoveryCuratorFrameworkProvider = serviceDiscoveryCuratorFrameworkProvider;
+        this.curatorFramework = curatorFramework;
         this.config = config;
 
         // First register this service
         serviceDiscovery = ServiceDiscoveryBuilder
                 .builder(String.class)
                 .client(curatorFramework)
-                .basePath("stroom-services")
+                .basePath("/")
                 .thisInstance(getThisServiceInstance(config))
                 .build();
         serviceDiscovery.start();
