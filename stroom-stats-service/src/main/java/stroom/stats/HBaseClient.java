@@ -23,7 +23,7 @@ import com.google.common.base.Preconditions;
 import io.dropwizard.lifecycle.Managed;
 import stroom.dashboard.expression.FieldIndexMap;
 import stroom.query.*;
-import stroom.query.api.*;
+import stroom.query.api.v1.*;
 import stroom.stats.api.StatisticsService;
 import stroom.stats.common.*;
 import stroom.stats.common.rollup.RollUpBitMask;

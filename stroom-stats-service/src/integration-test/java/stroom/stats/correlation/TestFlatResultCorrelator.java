@@ -1,9 +1,9 @@
 package stroom.stats.correlation;
 
 import org.junit.Test;
-import stroom.query.api.Field;
-import stroom.query.api.FlatResult;
-import stroom.query.api.Row;
+import stroom.query.api.v1.Field;
+import stroom.query.api.v1.FlatResult;
+import stroom.query.api.v1.Row;
 
 import java.util.ArrayList;
 import java.util.Arrays;

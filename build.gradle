@@ -40,7 +40,7 @@ ext.versions = [
     spring_kafka_test: '1.1.1.RELEASE',
 
     //same version for both stroom-query-api and stroom-query-common
-    stroomQuery: 'v0.1.0',
+    stroomQuery: 'v1.0.0',
     stroomExpression: 'v0.1.0'
 ]
 

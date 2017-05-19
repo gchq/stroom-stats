@@ -1,7 +1,7 @@
 package stroom.stats.correlation;
 
-import stroom.query.api.Field;
-import stroom.query.api.FlatResult;
+import stroom.query.api.v1.Field;
+import stroom.query.api.v1.FlatResult;
 
 import java.util.ArrayList;
 import java.util.Collection;

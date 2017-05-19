@@ -2,12 +2,12 @@ package stroom.stats;
 
 import org.junit.Assert;
 import org.junit.Test;
-import stroom.query.api.ExpressionOperator;
-import stroom.query.api.ExpressionOperator.Op;
-import stroom.query.api.ExpressionTerm;
-import stroom.query.api.ExpressionTerm.Condition;
-import stroom.query.api.Query;
-import stroom.query.api.SearchRequest;
+import stroom.query.api.v1.ExpressionOperator;
+import stroom.query.api.v1.ExpressionOperator.Op;
+import stroom.query.api.v1.ExpressionTerm;
+import stroom.query.api.v1.ExpressionTerm.Condition;
+import stroom.query.api.v1.Query;
+import stroom.query.api.v1.SearchRequest;
 import stroom.stats.common.FilterTermsTree;
 import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.configuration.MockStatisticConfiguration;
