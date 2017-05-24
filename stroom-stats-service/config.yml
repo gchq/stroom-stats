@@ -3,11 +3,11 @@ database:
     # the name of the JDBC driver, mysql in our case
     driverClass: com.mysql.jdbc.Driver
     # the username
-    user: stroomuser
+    user: ${STATS_DB_USER:- stroomuser}
     # the password
-    password: stroompassword1
+    password: ${STATS_DB_PASSWORD:- stroompassword1}
     # the JDBC URL; the database is called DWGettingStarted
-    url: jdbc:mysql://localhost:3307/stroom?useUnicode=yes&characterEncoding=UTF-8
+    url: ${STATS_DB_URL:- jdbc:mysql://localhost:3307/stroom?useUnicode=yes&characterEncoding=UTF-8}
 
     properties:
         charSet: UTF-8
@@ -16,7 +16,7 @@ database:
         hibernate.id.new_generator_mappings: false
         hibernate.show_sql: false
 
-jwtTokenSecret: CHANGE_ME
+jwtTokenSecret: ${STATS_JWT_SECRET:- CHANGE_ME}
 
 server:
     adminMinThreads: 1
@@ -34,8 +34,8 @@ logging:
     level: WARN
     loggers:
         org.hibernate.SQL: WARN
-        stroom.stats: INFO
-        io.dropwizard: INFO
+        stroom.stats: ${STATS_LOGGING_LEVEL:- INFO}
+        io.dropwizard: ${STATS_LOGGING_LEVEL_DROPWIZARD:- INFO}
 #        stroom.stats.streams.StatisticsAggregationProcessor: TRACE
 #        stroom.stats.streams.FullEndToEndIT: TRACE
 #        stroom.stats.hbase.table.HBaseEventStoreTable: TRACE
@@ -48,16 +48,16 @@ logging:
 zookeeper:
     # The quorum of zookeeper hosts to connect to
     # of the form host1:port1,host2:port2 etc.
-    quorum: localhost:2181
+    quorum: ${STATS_ZK_QUORUM:- localhost:2181}
     # The root path to use to chroot the zookeeper connection
     # All other paths are beneath this
-    statsPath: /stroom-stats
+    statsPath: ${STATS_ZK_PATH:- /stroom-stats}
     # The path for PropertyService content
-    propertyServicePath: /propertyService
+    propertyServicePath: ${STATS_SK_PROPERTY_SERVICE_PATH:- /propertyService}
     # Timeout for waiting for initialisation of the property service tree cache
     propertyServiceTreeCacheTimeoutMs: 60000
     # The path to use for service discovery
-    serviceDiscoveryPath: /stroom-services
+    serviceDiscoveryPath: ${STATS_ZK_SD_PATH:- /stroom-services}
 
 kafka:
     groupId: stroom-service

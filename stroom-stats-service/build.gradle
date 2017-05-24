@@ -4,21 +4,23 @@ plugins {
 }
 
 apply plugin: 'application'
-mainClassName = 'stroom.stats.App'
+mainClassName = 'stroom.stats.service.startup.App'
 
 jar {
     manifest {
         attributes(
                 "Implementation-Title": "stroom-stats",
                 "Implementation-Version": version,
-                "Main-Class" : "stroom.stats.App"
+                "Main-Class" : "stroom.stats.service.startup.App"
         )
     }
+    archiveName 'stroom-stats.jar'
 }
 
 shadowJar {
     // A transformer to merges files in META-INF/services
     mergeServiceFiles()
+    archiveName 'stroom-stats-all.jar'
 }
 
 dependencies {
@@ -56,6 +58,7 @@ dependencies {
     compile libs.dropwizard_metrics_annotation
     compile libs.dropwizard_metrics_healthchecks
     compile libs.dropwizard_servlets
+    compile libs.dropwizard_configuration
     compile libs.ehcache
     compile libs.find_bugs
     compile libs.guava
@@ -105,7 +108,7 @@ dependencies {
 }
 
 run {
-    args 'server', './config_dev.yml'
+    args 'server', './config.yml'
 }
 
 sourceSets {
