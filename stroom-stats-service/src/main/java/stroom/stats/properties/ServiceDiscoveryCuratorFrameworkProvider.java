@@ -58,9 +58,8 @@ public class ServiceDiscoveryCuratorFrameworkProvider implements Provider<Curato
             //Ensure the chrooted path for stroom-services exists
             Stat stat = client.checkExists().forPath("/");
             if (stat == null) {
-                String errorMessage = "There is no service-discovery path on this Zookeeper!";
-                LOGGER.error(errorMessage);
-                throw new RuntimeException(errorMessage);
+                LOGGER.info("Creating chroot-ed root node inside " + serviceDiscoveryPath);
+                client.create().forPath("/");
             }
         } catch (Exception e) {
             throw new RuntimeException("Error connecting to zookeeper using connection String: " + connectionString, e);

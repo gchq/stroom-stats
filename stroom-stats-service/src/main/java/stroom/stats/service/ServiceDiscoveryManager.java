@@ -51,9 +51,6 @@ import java.util.Optional;
 @Singleton
 public class ServiceDiscoveryManager implements HasHealthChecks {
     private final Logger LOGGER = LoggerFactory.getLogger(HBaseClient.class);
-
-    private Config config;
-
     private final ServiceDiscovery<String> serviceDiscovery;
 
     // "When using Curator 2.x (Zookeeper 3.4.x) it's essential that service provider objects are cached by your
@@ -65,7 +62,6 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
     public ServiceDiscoveryManager(Config config, @ServiceDiscoveryCuratorFramework CuratorFramework curatorFramework) throws Exception {
         LOGGER.info("ServiceDiscoveryManager starting...");
         this.curatorFramework = curatorFramework;
-        this.config = config;
 
         // First register this service
         serviceDiscovery = ServiceDiscoveryBuilder
