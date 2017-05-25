@@ -3,7 +3,7 @@
     <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
     <option name="MAIN_CLASS_NAME" value="stroom.stats.service.startup.App" />
     <option name="VM_PARAMETERS" value="" />
-    <option name="PROGRAM_PARAMETERS" value="server config_dev.yml" />
+    <option name="PROGRAM_PARAMETERS" value="server config.yml" />
     <option name="WORKING_DIRECTORY" value="file://$PROJECT_DIR$/stroom-stats-service" />
     <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
     <option name="ALTERNATIVE_JRE_PATH" value="1.8" />
