@@ -53,8 +53,8 @@ public class Config extends Configuration implements JobConfiguration {
 
     @NotNull
     @Valid
-    @JsonProperty("properties")
-    private Map<String,String> properties;
+    @JsonProperty("defaultProperties")
+    private Map<String,String> defaultProperties;
 
     @NotNull
     @Valid
@@ -77,8 +77,8 @@ public class Config extends Configuration implements JobConfiguration {
         return zookeeperConfig;
     }
 
-    public Map<String, String> getProperties() {
-        return properties;
+    public Map<String, String> getDefaultProperties() {
+        return defaultProperties;
     }
 
     @Override
@@ -87,7 +87,7 @@ public class Config extends Configuration implements JobConfiguration {
                 "jwtTokenSecret='" + jwtTokenSecret + '\'' +
                 ", kafkaConfig=" + kafkaConfig +
                 ", zookeeperConfig=" + zookeeperConfig +
-                ", properties=" + properties +
+                ", defaultProperties=" + defaultProperties +
                 ", database=" + database +
                 '}';
     }

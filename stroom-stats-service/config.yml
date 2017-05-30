@@ -64,7 +64,7 @@ kafka:
     statisticsTopic: statistics
 
 
-properties:
+defaultProperties:
     stroom.stats.streams.kafka.bootstrapServers: ${STATS_KAFKA_BOOTSTRAP:- localhost:9092}
     stroom.stats.streams.kafka.num.stream.threads: 2
     stroom.stats.streams.kafka.commit.aggregationInterval.ms: 30000

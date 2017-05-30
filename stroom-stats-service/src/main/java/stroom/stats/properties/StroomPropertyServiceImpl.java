@@ -63,7 +63,7 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
         int initTimeout = zookeeperConfig.getPropertyServiceTreeCacheTimeoutMs();
         ensurePropertyServicePathExists();
 
-        initialisePropertyKeys(config.getProperties());
+        initialisePropertyKeys(config.getDefaultProperties());
 
         treeCache = TreeCache.newBuilder(curatorFramework, propertyServicePath)
                 .setCacheData(true)
