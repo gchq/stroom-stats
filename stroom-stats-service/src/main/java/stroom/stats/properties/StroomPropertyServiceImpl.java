@@ -31,8 +31,6 @@ import stroom.stats.service.config.ZookeeperConfig;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -65,7 +63,7 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
         int initTimeout = zookeeperConfig.getPropertyServiceTreeCacheTimeoutMs();
         ensurePropertyServicePathExists();
 
-        initialisePropertyKeys();
+        initialisePropertyKeys(config.getProperties());
 
         treeCache = TreeCache.newBuilder(curatorFramework, propertyServicePath)
                 .setCacheData(true)
@@ -91,22 +89,13 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
         }
     }
 
-    private void initialisePropertyKeys() {
+    private void initialisePropertyKeys(Map<String, String> properties) {
         LOGGER.info("Ensuring property keys exist");
-
         Properties defaultProps = new Properties();
-        try (InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(PROPERTY_DEFAULTS_FILE_NAME)) {
-            if (inputStream == null) {
-                throw new RuntimeException(String.format("Could not find resource %s", PROPERTY_DEFAULTS_FILE_NAME));
-            }
-            defaultProps.load(inputStream);
-            //Ensure we have all the required property keys, with default values if not already set
-            defaultProps.stringPropertyNames().stream()
-                    .sorted()
-                    .forEach(name -> defaultIfNotExists(name, defaultProps.getProperty(name)));
-        } catch (IOException e) {
-            throw new RuntimeException(String.format("Error initialising property keys"), e);
-        }
+        defaultProps.putAll(properties);
+        defaultProps.stringPropertyNames().stream()
+                .sorted()
+                .forEach(name -> defaultIfNotExists(name, defaultProps.getProperty(name)));
     }
 
 

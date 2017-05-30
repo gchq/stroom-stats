@@ -26,8 +26,8 @@ import io.dropwizard.db.DataSourceFactory;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
+import java.util.Map;
 
 public class Config extends Configuration implements JobConfiguration {
     //TODO add all the stroom hbase properties in here
@@ -53,6 +53,11 @@ public class Config extends Configuration implements JobConfiguration {
 
     @NotNull
     @Valid
+    @JsonProperty("properties")
+    private Map<String,String> properties;
+
+    @NotNull
+    @Valid
     @JsonProperty
     private DataSourceFactory database = new DataSourceFactory();
 
@@ -72,12 +77,17 @@ public class Config extends Configuration implements JobConfiguration {
         return zookeeperConfig;
     }
 
+    public Map<String, String> getProperties() {
+        return properties;
+    }
+
     @Override
     public String toString() {
         return "Config{" +
                 "jwtTokenSecret='" + jwtTokenSecret + '\'' +
                 ", kafkaConfig=" + kafkaConfig +
                 ", zookeeperConfig=" + zookeeperConfig +
+                ", properties=" + properties +
                 ", database=" + database +
                 '}';
     }

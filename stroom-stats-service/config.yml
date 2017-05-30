@@ -25,10 +25,10 @@ server:
     applicationContextPath: /
     applicationConnectors:
         - type: http
-          port: 8085
+          port: 8086
     adminConnectors:
         - type: http
-          port: 8086
+          port: 8087
 
 logging:
     level: WARN
@@ -62,3 +62,42 @@ zookeeper:
 kafka:
     groupId: stroom-service
     statisticsTopic: statistics
+
+
+properties:
+    stroom.stats.streams.kafka.bootstrapServers: ${STATS_KAFKA_BOOTSTRAP:- localhost:9092}
+    stroom.stats.streams.kafka.num.stream.threads: 2
+    stroom.stats.streams.kafka.commit.aggregationInterval.ms: 30000
+    stroom.stats.streams.kafka.num.stream.threads: 2
+    stroom.stats.streams.flatMapProcessorAppIdPrefix: FlatMapProcessor
+
+    stroom.stats.topics.statisticEventsPrefix: statisticEvents
+    stroom.stats.topics.badStatisticEventsPrefix: badStatisticEvents
+    stroom.stats.topics.statisticRollupPermsPrefix: statisticRollupPerms
+
+    stroom.stats.aggregation.processorAppIdPrefix: AggregationProcessor
+    stroom.stats.aggregation.threadsPerIntervalAndType: 2
+    stroom.stats.aggregation.minBatchSize: 100000
+    stroom.stats.aggregation.maxFlushIntervalMs: 10000
+    stroom.stats.aggregation.maxEventIds: 100
+    stroom.stats.aggregation.pollTimeoutMs: 100
+    stroom.stats.aggregation.pollRecords: 5000
+    stroom.stats.aggregation.autoOffsetRest: latest
+
+    stroom.stats.cache.nameToStatisticConfigurationCache.maxEntriesHeap: 1000
+    stroom.stats.cache.uuidToStatisticConfigurationCache.maxEntriesHeap: 1000
+    stroom.stats.cache.nameToUidCache.maxEntriesHeap: 100000
+    stroom.stats.cache.nameToUidCache.timeToIdleSecs: 300
+    stroom.stats.cache.uidToNameCache.maxEntriesHeap: 100000
+    stroom.stats.cache.uidToNameCache.timeToIdleSecs: 300
+
+    stroom.stats.hbase.config.client.write.buffer: 4194304
+    stroom.stats.hbase.config.rpc.timeout: 180000
+    stroom.stats.hbase.config.zookeeper.property.clientPort: 2181
+    stroom.stats.hbase.config.zookeeper.quorum: ${STATS_HBASE_ZK_QUORUM:- localhost}
+    stroom.stats.hbase.dataStore.maxCheckAndPutRetries: 5
+    stroom.stats.hbase.dataStore.purge.intervalsToRetain.day: 6
+    stroom.stats.hbase.dataStore.purge.intervalsToRetain.hour: 39
+    stroom.stats.hbase.dataStore.purge.intervalsToRetain.minute: 60
+    stroom.stats.hbase.dataStore.purge.intervalsToRetain.second: 48
+    stroom.stats.hbase.search.maxTimeIntervalsInPeriod: 200
