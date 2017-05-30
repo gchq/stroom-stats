@@ -63,7 +63,7 @@ kafka:
     groupId: stroom-service
     statisticsTopic: statistics
 
-
+# These properties prime ZK - and once they've been set changing the below won't change the values.
 defaultProperties:
     stroom.stats.streams.kafka.bootstrapServers: ${STATS_KAFKA_BOOTSTRAP:- localhost:9092}
     stroom.stats.streams.kafka.num.stream.threads: 2
