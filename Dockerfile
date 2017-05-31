@@ -31,6 +31,6 @@ RUN echo "http_proxy: $http_proxy" && \
     apk add --no-cache bash && \
     rm -rf /var/cache/apk/*
 
-EXPOSE 8084
+EXPOSE 8086 8087
 
 CMD java -jar stroom-stats-all.jar server config.yml
