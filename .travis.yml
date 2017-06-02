@@ -12,9 +12,9 @@ before_script:
   - "echo $JAVA_OPTS"
   - "export JAVA_OPTS=-Xmx1024m"
   - "git clone https://github.com/gchq/stroom-resources.git"
-  - "cd stroom-resources"
-  - "docker-compose -f hbase-kafka-mysql-stroom-zk.yml up -d"
-  - "cd .."
+  - "pushd stroom-resources/bin"
+  - "./bounceIt.sh compose/hbase-kafka-mysql-stroom-zk.yml"
+  - "popd"
 
 # We run a script to build dependencies and do database setup
 install: "./.travis.install.sh"
