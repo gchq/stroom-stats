@@ -10,6 +10,7 @@ sudo: false
 before_script:
   - "echo $JAVA_OPTS"
   - "export JAVA_OPTS=-Xmx1024m"
+  - "[ -d urlDependencies ] && echo Using urlDependencies plugin from cache"
   - "[ ! -d urlDependencies ] || git clone https://github.com/gchq/urlDependencies-plugin.git"
   - "pushd urlDependencies-plugin"
   - "[ ! -d urlDependencies ] || ./gradlew clean build publishToMavenLocal"
