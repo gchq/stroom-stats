@@ -1,5 +1,5 @@
-def projectVersion = "1.0-SNAPSHOT"
-def projectGroup = "stroom"
+def projectGroup = "stroom-stats"
+def projectVersion = "${version}"
 
 buildscript {
     repositories {
@@ -114,9 +114,6 @@ ext.libs = [
     zookeeper: "org.apache.zookeeper:zookeeper:3.4.5",
 ] 
 
-
-//apply from: "properties.gradle"
-
 subprojects {
     apply plugin: 'java'
     apply plugin: 'ca.cutterslade.analyze'
@@ -138,12 +135,6 @@ subprojects {
             //url "http://repository.cloudera.com/artifactory/cloudera-repos/"
         //}
     }
-
-    // This task lets us publish source. Useful for debugging.
-    task sourceJar(type: Jar){
-        from sourceSets.main.allJava
-        classifier 'sources'
-    }
 }
 
 urlDependencies {
@@ -156,26 +147,44 @@ urlDependencies {
             "https://github.com/gchq/stroom-expression/releases/download/$versions.stroomExpression/${urlLibs.stroomExpression}.jar")
 }
 
-project(':stroom-stats-service') {
-    publishing {
-        publications {
-            mavenJava(MavenPublication) {
-                artifactId 'stats-service'
-                from components.java
-                artifact sourceJar
-            }
-        }
-    }
-}
-
 project(':stroom-stats-api') {
     publishing {
         publications {
             mavenJava(MavenPublication) {
-                artifactId 'stats-api'
+                artifactId 'stroom-stats-api'
                 from components.java
-                artifact sourceJar
+                artifact sourcesJar
             }
         }
     }
+
+    configurations {
+        testArtifacts
+        sourceArtifacts
+    }
+    task testJar(type: Jar) {
+        baseName = "${project.name}-test"
+        from sourceSets.test.output
+    }
+    task sourcesJar(type: Jar) {
+        baseName = "${project.name}-source"
+        from sourceSets.main.allSource
+    }
+    artifacts {
+        testArtifacts testJar
+        sourceArtifacts sourcesJar
+    }
+
+    task packageTests(type: Jar) {
+        from sourceSets.test.output
+        classifier = 'tests'
+    }
+    artifacts.archives packageTests
+
+    task packageSources(type: Jar) {
+        classifier = 'sources'
+        from sourceSets.main.allSource
+
+    }
+    artifacts.archives packageSources
 }
