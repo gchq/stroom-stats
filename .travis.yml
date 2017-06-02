@@ -10,14 +10,13 @@ sudo: false
 before_script:
   - "echo $JAVA_OPTS"
   - "export JAVA_OPTS=-Xmx1024m"
-  - '[ ! -d urlDependencies-plugin ] || echo "Using urlDependencies-plugin from cache"'
-  - "[ -d urlDependencies-plugin ] || git clone https://github.com/gchq/urlDependencies-plugin.git"
+  - "git clone https://github.com/gchq/urlDependencies-plugin.git"
   - "pushd urlDependencies-plugin"
-  - "[ -d urlDependencies-plugin ] || ./gradlew clean build publishToMavenLocal"
+  - "./gradlew clean build publishToMavenLocal"
   - "popd"
   - "git clone https://github.com/gchq/stroom-resources.git"
   - "pushd stroom-resources/dev-resources/compose"
-  - "docker-compose -f hbase-kafka-mysql-stroom-zk.yml up -d"
+  #- "docker-compose -f hbase-kafka-mysql-stroom-zk.yml up -d"
   - "popd"
 
 install: echo "skip 'gradle assemble' step to speed up build"
@@ -63,4 +62,3 @@ cache:
     - $HOME/.m2
     - $HOME/.gradle/caches/
     - $HOME/.gradle/wrapper/
-    - urlDependencies-plugin
