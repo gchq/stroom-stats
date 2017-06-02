@@ -6,13 +6,13 @@ services:
 jdk: oraclejdk8
 sudo: false
 
-# Increase the size of the heap
+# Increase the size of the heap, use urlDependencies plugin from cache
 before_script:
   - "echo $JAVA_OPTS"
   - "export JAVA_OPTS=-Xmx1024m"
-  - "git clone https://github.com/gchq/urlDependencies-plugin.git"
+  - "[ ! -d urlDependencies ] || git clone https://github.com/gchq/urlDependencies-plugin.git"
   - "pushd urlDependencies-plugin"
-  - "./gradlew clean build publishToMavenLocal"
+  - "[ ! -d urlDependencies ] || ./gradlew clean build publishToMavenLocal"
   - "popd"
   - "git clone https://github.com/gchq/stroom-resources.git"
   - "pushd stroom-resources/dev-resources/compose"
