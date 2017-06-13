@@ -78,7 +78,7 @@ public abstract class AbstractAppIT {
     }
 
     @ClassRule
-    public static final DropwizardAppRule<Config> RULE = new DropwizardAppRule<>(App.class, "config_dev.yml");
+    public static final DropwizardAppRule<Config> RULE = new DropwizardAppRule<>(App.class, "config.yml");
 
 
     protected static Client getClient() {
