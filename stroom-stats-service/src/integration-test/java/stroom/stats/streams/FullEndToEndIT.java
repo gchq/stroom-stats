@@ -139,7 +139,7 @@ public class FullEndToEndIT extends AbstractAppIT {
         statisticConfigurations.forEach(stat -> {
             String statName = stat.getName();
             StatisticType statisticType = stat.getStatisticType();
-            EventStoreTimeIntervalEnum interval = stat.getPrecisionAsInterval();
+            EventStoreTimeIntervalEnum interval = stat.getPrecision();
 
             LOGGER.info("Processing {} - {}", statisticType, interval);
 

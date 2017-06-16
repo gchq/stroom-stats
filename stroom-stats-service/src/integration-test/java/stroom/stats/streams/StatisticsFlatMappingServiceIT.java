@@ -1029,7 +1029,7 @@ public class StatisticsFlatMappingServiceIT {
                 statConfig.getStatisticType(),
                 statConfig.getRollUpType(),
                 statConfig.getFieldNames(),
-                statConfig.getPrecisionAsInterval());
+                statConfig.getPrecision());
 
         mockStatisticConfigurationService.addStatisticConfiguration(statConfig);
     }

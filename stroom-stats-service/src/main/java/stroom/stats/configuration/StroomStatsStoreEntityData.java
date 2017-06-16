@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-@XmlAccessorType(XmlAccessType.FIELD)
+@XmlAccessorType(XmlAccessType.PROPERTY)
 @XmlRootElement(name = "data")
 public class StroomStatsStoreEntityData implements SharedObject {
 
@@ -53,7 +53,7 @@ public class StroomStatsStoreEntityData implements SharedObject {
      * XMLTransient to force JAXB to use the setter
      */
     @XmlTransient
-    private Set<CustomRollUpMask> customRollUpMasks;
+    private Set<CustomRollUpMaskEntityObject> customRollUpMasks;
 
     // cache the positions of the
     @XmlTransient
@@ -68,7 +68,7 @@ public class StroomStatsStoreEntityData implements SharedObject {
     }
 
     public StroomStatsStoreEntityData(final List<StatisticField> statisticFields,
-                                      final Set<CustomRollUpMask> customRollUpMasks) {
+                                      final Set<CustomRollUpMaskEntityObject> customRollUpMasks) {
         this.statisticFields = statisticFields;
         this.customRollUpMasks = customRollUpMasks;
 
@@ -88,11 +88,11 @@ public class StroomStatsStoreEntityData implements SharedObject {
     }
 
     @XmlElement(name = "customRollUpMask")
-    public Set<CustomRollUpMask> getCustomRollUpMasks() {
+    public Set<CustomRollUpMaskEntityObject> getCustomRollUpMasks() {
         return customRollUpMasks;
     }
 
-    public void setCustomRollUpMasks(final Set<CustomRollUpMask> customRollUpMasks) {
+    public void setCustomRollUpMasks(final Set<CustomRollUpMaskEntityObject> customRollUpMasks) {
         this.customRollUpMasks = customRollUpMasks;
     }
 
@@ -127,7 +127,7 @@ public class StroomStatsStoreEntityData implements SharedObject {
         return false;
     }
 
-    public void addCustomRollUpMask(final CustomRollUpMask customRollUpMask) {
+    public void addCustomRollUpMask(final CustomRollUpMaskEntityObject customRollUpMask) {
         if (customRollUpMasks == null) {
             customRollUpMasks = new HashSet<>();
         }
@@ -135,7 +135,7 @@ public class StroomStatsStoreEntityData implements SharedObject {
         customRollUpMasks.add(customRollUpMask);
     }
 
-    public void removeCustomRollUpMask(final CustomRollUpMask customRollUpMask) {
+    public void removeCustomRollUpMask(final CustomRollUpMaskEntityObject customRollUpMask) {
         if (customRollUpMasks != null) {
             customRollUpMasks.remove(customRollUpMask);
         }
@@ -147,7 +147,7 @@ public class StroomStatsStoreEntityData implements SharedObject {
         }
     }
 
-    public boolean containsCustomRollUpMask(final CustomRollUpMask customRollUpMask) {
+    public boolean containsCustomRollUpMask(final CustomRollUpMaskEntityObject customRollUpMask) {
         if (customRollUpMasks != null) {
             return customRollUpMasks.contains(customRollUpMask);
         }
@@ -236,10 +236,10 @@ public class StroomStatsStoreEntityData implements SharedObject {
             newFieldList.add(statisticField.deepCopy());
         }
 
-        final Set<CustomRollUpMask> newMaskList = new HashSet<>();
+        final Set<CustomRollUpMaskEntityObject> newMaskList = new HashSet<>();
 
-        for (final CustomRollUpMask customRollUpMask : customRollUpMasks) {
-            newMaskList.add(customRollUpMask.deepCopy());
+        for (final CustomRollUpMaskEntityObject customRollUpMask : customRollUpMasks) {
+            newMaskList.add((CustomRollUpMaskEntityObject) customRollUpMask.deepCopy());
         }
 
         return new StroomStatsStoreEntityData(newFieldList, newMaskList);

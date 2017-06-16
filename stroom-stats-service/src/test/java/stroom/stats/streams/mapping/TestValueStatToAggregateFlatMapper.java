@@ -136,7 +136,7 @@ public class TestValueStatToAggregateFlatMapper {
                 .isEqualTo(statistic.getTags().getTag().stream()
                         .map(TagType::getValue)
                         .collect(Collectors.toList()));
-        assertThat(statKey.getInterval()).isEqualTo(statisticConfiguration.getPrecisionAsInterval());
+        assertThat(statKey.getInterval()).isEqualTo(statisticConfiguration.getPrecision());
 
         assertThat(statKey.getRollupMask()).isEqualTo(RollUpBitMask.ZERO_MASK);
     }
@@ -284,7 +284,7 @@ public class TestValueStatToAggregateFlatMapper {
                 .isEqualTo(statistic.getTags().getTag().stream()
                         .map(TagType::getName)
                         .collect(Collectors.toList()));
-        assertThat(statKey.getInterval()).isEqualTo(statisticConfiguration.getPrecisionAsInterval());
+        assertThat(statKey.getInterval()).isEqualTo(statisticConfiguration.getPrecision());
 
         assertThat(statAggregate).isNotNull();
         assertThat(statAggregate).isExactlyInstanceOf(ValueAggregate.class);

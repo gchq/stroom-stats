@@ -86,7 +86,7 @@ public interface StatisticConfiguration {
 
     StatisticRollUpType getRollUpType();
 
-    EventStoreTimeIntervalEnum getPrecisionAsInterval();
+    EventStoreTimeIntervalEnum getPrecision();
 
     boolean isEnabled();
 

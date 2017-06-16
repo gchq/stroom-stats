@@ -121,7 +121,7 @@ public abstract class AbstractStatisticFlatMapper {
         Optional<EventStoreTimeIntervalEnum> currentInterval = Optional.of(
                 statisticWrapper.getOptionalStatisticConfiguration()
                         .orElseThrow(() -> new RuntimeException("Statistic configuration should never be null here as it has already been through validation"))
-                        .getPrecisionAsInterval()
+                        .getPrecision()
         );
 
         do {

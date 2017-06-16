@@ -138,7 +138,7 @@ public class MockStatisticConfiguration implements StatisticConfiguration {
     }
 
     @Override
-    public EventStoreTimeIntervalEnum getPrecisionAsInterval() {
+    public EventStoreTimeIntervalEnum getPrecision() {
         return precision;
     }
 

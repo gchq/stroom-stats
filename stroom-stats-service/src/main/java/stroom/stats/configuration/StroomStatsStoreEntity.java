@@ -53,7 +53,7 @@ public class StroomStatsStoreEntity extends DocumentEntity implements StatisticC
     private String description;
     private byte pStatisticType;
     private byte pRollUpType;
-    private String precision;
+    private String pPrecision;
     private boolean enabled = false;
 
     private String data;
@@ -69,6 +69,7 @@ public class StroomStatsStoreEntity extends DocumentEntity implements StatisticC
         setPrecision(DEFAULT_PRECISION_INTERVAL);
     }
 
+    @Override
     @Column(name = SQLNameConstants.DESCRIPTION)
     @Lob
     public String getDescription() {
@@ -94,6 +95,7 @@ public class StroomStatsStoreEntity extends DocumentEntity implements StatisticC
         this.pStatisticType = pStatisticType;
     }
 
+    @Override
     @Transient
     public StatisticType getStatisticType() {
         return StatisticType.PRIMITIVE_VALUE_CONVERTER.fromPrimitiveValue(pStatisticType);
@@ -112,6 +114,7 @@ public class StroomStatsStoreEntity extends DocumentEntity implements StatisticC
         this.pRollUpType = pRollUpType;
     }
 
+    @Override
     @Transient
     public StatisticRollUpType getRollUpType() {
         return StatisticRollUpType.PRIMITIVE_VALUE_CONVERTER.fromPrimitiveValue(pRollUpType);
@@ -122,24 +125,25 @@ public class StroomStatsStoreEntity extends DocumentEntity implements StatisticC
     }
 
     @Column(name = PRECISION, nullable = false)
-    public String getPrecision() {
-        return precision;
+    public String getpPrecision() {
+        return pPrecision;
+    }
+
+    public void setpPrecision(final String pPrecision) {
+        this.pPrecision = pPrecision;
     }
 
     @Transient
-    public EventStoreTimeIntervalEnum getPrecisionAsInterval() {
-        return EventStoreTimeIntervalEnum.valueOf(precision);
-    }
-
-    public void setPrecision(final String precision) {
-        this.precision = precision;
+    public EventStoreTimeIntervalEnum getPrecision() {
+        return EventStoreTimeIntervalEnum.valueOf(pPrecision);
     }
 
     @Transient
     public void setPrecision(final EventStoreTimeIntervalEnum interval) {
-        this.precision = interval.toString();
+        this.pPrecision = interval.toString();
     }
 
+    @Override
     @Column(name = SQLNameConstants.ENABLED, nullable = false)
     public boolean isEnabled() {
         return enabled;
@@ -170,6 +174,7 @@ public class StroomStatsStoreEntity extends DocumentEntity implements StatisticC
         this.stroomStatsStoreDataObject = statisticDataSourceDataObject;
     }
 
+    @Override
     @Transient
     public boolean isValidField(final String fieldName) {
         if (stroomStatsStoreDataObject == null) {
@@ -183,6 +188,7 @@ public class StroomStatsStoreEntity extends DocumentEntity implements StatisticC
         }
     }
 
+    @Override
     @Transient
     public boolean isRollUpCombinationSupported(final Set<String> rolledUpFieldNames) {
         if (rolledUpFieldNames == null || rolledUpFieldNames.isEmpty()) {
@@ -207,11 +213,13 @@ public class StroomStatsStoreEntity extends DocumentEntity implements StatisticC
         return stroomStatsStoreDataObject.isRollUpCombinationSupported(rolledUpFieldNames);
     }
 
+    @Override
     @Transient
     public Integer getPositionInFieldList(final String fieldName) {
         return stroomStatsStoreDataObject.getFieldPositionInList(fieldName);
     }
 
+    @Override
     @Transient
     public List<String> getFieldNames() {
         if (stroomStatsStoreDataObject != null) {
@@ -240,7 +248,7 @@ public class StroomStatsStoreEntity extends DocumentEntity implements StatisticC
     }
 
     @Transient
-    public Set<CustomRollUpMask> getCustomRollUpMasks() {
+    public Set<? extends CustomRollUpMask> getCustomRollUpMasks() {
         if (stroomStatsStoreDataObject != null) {
             return stroomStatsStoreDataObject.getCustomRollUpMasks();
         } else {
@@ -254,7 +262,7 @@ public class StroomStatsStoreEntity extends DocumentEntity implements StatisticC
                 "description='" + description + '\'' +
                 ", StatisticType=" + getStatisticType() +
                 ", RollUpType=" + getRollUpType() +
-                ", precision='" + precision + '\'' +
+                ", precision='" + pPrecision + '\'' +
                 ", enabled=" + enabled +
                 ", data='" + data + '\'' +
                 ", stroomStatsStoreDataObject=" + stroomStatsStoreDataObject +
