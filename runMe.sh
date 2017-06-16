@@ -8,6 +8,9 @@ checkContainerStatus() {
     fi
 }
 
+#while stroom-stats does not depend on stroom, stroom will need to have been run to set up the database tables
+#(in stroom-db) read by stroom-stats
+checkContainerStatus stroom
 checkContainerStatus stroom-db
 checkContainerStatus zookeeper
 checkContainerStatus kafka
