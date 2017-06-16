@@ -1,20 +1,17 @@
 /*
- * Copyright 2017 Crown Copyright
+ * Copyright 2016 Crown Copyright
  *
- * This file is part of Stroom-Stats.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Stroom-Stats is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Stroom-Stats is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package stroom.stats.configuration;
@@ -38,44 +35,40 @@ import java.util.List;
 import java.util.Set;
 
 @Entity
-@Table(name = "STAT_DAT_SRC", uniqueConstraints = @UniqueConstraint(columnNames = { "NAME", "ENGINE_NAME" }) )
-public class StatisticConfigurationEntity extends DocumentEntity implements StatisticConfiguration {
+@Table(name = "STROOM_STATS_STORE", uniqueConstraints = @UniqueConstraint(columnNames = { "NAME" }) )
+public class StroomStatsStoreEntity extends DocumentEntity implements StatisticConfiguration {
+    public static final String ENTITY_TYPE = "StroomStatsStore";
+    public static final String ENTITY_TYPE_FOR_DISPLAY = "Stroom-Stats Store";
+
     // Hibernate table/column names
-    public static final String TABLE_NAME = SQLNameConstants.STATISTIC + SEP + SQLNameConstants.DATA + SEP
-            + SQLNameConstants.SOURCE;
-    public static final String ENGINE_NAME = SQLNameConstants.ENGINE + SEP + SQLNameConstants.NAME;
+    public static final String TABLE_NAME = "STROOM_STATS_STORE";
     public static final String STATISTIC_TYPE = SQLNameConstants.STATISTIC + SEP + SQLNameConstants.TYPE;
     public static final String PRECISION = SQLNameConstants.PRECISION;
     public static final String ROLLUP_TYPE = SQLNameConstants.ROLLUP + SEP + SQLNameConstants.TYPE;
-    public static final String FOREIGN_KEY = FK_PREFIX + TABLE_NAME + ID_SUFFIX;
-    public static final String NOT_SET = "NOT SET";
-    public static final Long DEFAULT_PRECISION = EventStoreTimeIntervalEnum.HOUR.columnInterval();
+    public static final EventStoreTimeIntervalEnum DEFAULT_PRECISION_INTERVAL = EventStoreTimeIntervalEnum.HOUR;
     public static final String DEFAULT_NAME_PATTERN_VALUE = "^[a-zA-Z0-9_\\- \\.\\(\\)]{1,}$";
 
-    private static final long serialVersionUID = -649286188919707915L;
+    private static final long serialVersionUID = -1667372785365881297L;
 
     private String description;
-    private String engineName;
     private byte pStatisticType;
     private byte pRollUpType;
-    private Long precision;
+    private String precision;
     private boolean enabled = false;
 
     private String data;
-    private StatisticConfigurationEntityData statisticConfigurationEntityDataObject;
+    private StroomStatsStoreEntityData stroomStatsStoreDataObject;
 
-    public StatisticConfigurationEntity() {
+    public StroomStatsStoreEntity() {
         setDefaults();
     }
 
     private void setDefaults() {
         this.pStatisticType = StatisticType.COUNT.getPrimitiveValue();
         this.pRollUpType = StatisticRollUpType.NONE.getPrimitiveValue();
-        this.engineName = NOT_SET;
-        this.precision = DEFAULT_PRECISION;
+        setPrecision(DEFAULT_PRECISION_INTERVAL);
     }
 
-    @Override
     @Column(name = SQLNameConstants.DESCRIPTION)
     @Lob
     public String getDescription() {
@@ -89,17 +82,7 @@ public class StatisticConfigurationEntity extends DocumentEntity implements Stat
     @Override
     @Transient
     public String getType() {
-        return StatisticConfiguration.super.getType();
-    }
-
-    @Override
-    @Column(name = ENGINE_NAME, nullable = false)
-    public String getEngineName() {
-        return engineName;
-    }
-
-    public void setEngineName(final String engineName) {
-        this.engineName = engineName;
+        return ENTITY_TYPE;
     }
 
     @Column(name = STATISTIC_TYPE, nullable = false)
@@ -111,7 +94,6 @@ public class StatisticConfigurationEntity extends DocumentEntity implements Stat
         this.pStatisticType = pStatisticType;
     }
 
-    @Override
     @Transient
     public StatisticType getStatisticType() {
         return StatisticType.PRIMITIVE_VALUE_CONVERTER.fromPrimitiveValue(pStatisticType);
@@ -130,7 +112,6 @@ public class StatisticConfigurationEntity extends DocumentEntity implements Stat
         this.pRollUpType = pRollUpType;
     }
 
-    @Override
     @Transient
     public StatisticRollUpType getRollUpType() {
         return StatisticRollUpType.PRIMITIVE_VALUE_CONVERTER.fromPrimitiveValue(pRollUpType);
@@ -140,17 +121,25 @@ public class StatisticConfigurationEntity extends DocumentEntity implements Stat
         this.pRollUpType = rollUpType.getPrimitiveValue();
     }
 
-    @Override
     @Column(name = PRECISION, nullable = false)
-    public Long getPrecision() {
+    public String getPrecision() {
         return precision;
     }
 
-    public void setPrecision(final Long precision) {
+    @Transient
+    public EventStoreTimeIntervalEnum getPrecisionAsInterval() {
+        return EventStoreTimeIntervalEnum.valueOf(precision);
+    }
+
+    public void setPrecision(final String precision) {
         this.precision = precision;
     }
 
-    @Override
+    @Transient
+    public void setPrecision(final EventStoreTimeIntervalEnum interval) {
+        this.precision = interval.toString();
+    }
+
     @Column(name = SQLNameConstants.ENABLED, nullable = false)
     public boolean isEnabled() {
         return enabled;
@@ -173,27 +162,27 @@ public class StatisticConfigurationEntity extends DocumentEntity implements Stat
 
     @Transient
     @XmlTransient
-    public StatisticConfigurationEntityData getStatisticDataSourceDataObject() {
-        return statisticConfigurationEntityDataObject;
+    public StroomStatsStoreEntityData getDataObject() {
+        return stroomStatsStoreDataObject;
     }
 
-    public void setStatisticDataSourceDataObject(final StatisticConfigurationEntityData statisticDataSourceDataObject) {
-        this.statisticConfigurationEntityDataObject = statisticDataSourceDataObject;
+    public void setDataObject(final StroomStatsStoreEntityData statisticDataSourceDataObject) {
+        this.stroomStatsStoreDataObject = statisticDataSourceDataObject;
     }
 
-    @Override
     @Transient
     public boolean isValidField(final String fieldName) {
-        if (statisticConfigurationEntityDataObject == null) {
+        if (stroomStatsStoreDataObject == null) {
             return false;
-        } else if (statisticConfigurationEntityDataObject.getStatisticFields() == null) {
+        } else if (stroomStatsStoreDataObject.getStatisticFields() == null) {
+            return false;
+        } else if (stroomStatsStoreDataObject.getStatisticFields().size() == 0) {
             return false;
         } else {
-            return statisticConfigurationEntityDataObject.getStatisticFields().contains(new StatisticField(fieldName));
+            return stroomStatsStoreDataObject.getStatisticFields().contains(new StatisticField(fieldName));
         }
     }
 
-    @Override
     @Transient
     public boolean isRollUpCombinationSupported(final Set<String> rolledUpFieldNames) {
         if (rolledUpFieldNames == null || rolledUpFieldNames.isEmpty()) {
@@ -210,55 +199,65 @@ public class StatisticConfigurationEntity extends DocumentEntity implements Stat
 
         // rolledUpFieldNames not empty if we get here
 
-        if (statisticConfigurationEntityDataObject == null) {
+        if (stroomStatsStoreDataObject == null) {
             throw new RuntimeException(
                     "isRollUpCombinationSupported called with non-empty list but data source has no statistic fields or custom roll up masks");
         }
 
-        return statisticConfigurationEntityDataObject.isRollUpCombinationSupported(rolledUpFieldNames);
+        return stroomStatsStoreDataObject.isRollUpCombinationSupported(rolledUpFieldNames);
     }
 
-    @Override
     @Transient
     public Integer getPositionInFieldList(final String fieldName) {
-        return statisticConfigurationEntityDataObject.getFieldPositionInList(fieldName);
+        return stroomStatsStoreDataObject.getFieldPositionInList(fieldName);
     }
 
-    @Override
     @Transient
     public List<String> getFieldNames() {
-        if (statisticConfigurationEntityDataObject != null) {
-            final List<String> fieldNames = new ArrayList<>();
-            for (final StatisticField statisticField : statisticConfigurationEntityDataObject.getStatisticFields()) {
+        if (stroomStatsStoreDataObject != null) {
+            final List<String> fieldNames = new ArrayList<String>();
+            for (final StatisticField statisticField : stroomStatsStoreDataObject.getStatisticFields()) {
                 fieldNames.add(statisticField.getFieldName());
             }
             return fieldNames;
-        } else {
-            return Collections.<String> emptyList();
-        }
-    }
-
-    @Transient
-    public int getStatisticFieldCount() {
-        return statisticConfigurationEntityDataObject == null ? 0 : statisticConfigurationEntityDataObject.getStatisticFields().size();
-    }
-
-    @Transient
-    public List<StatisticField> getStatisticFields() {
-        if (statisticConfigurationEntityDataObject != null) {
-            return statisticConfigurationEntityDataObject.getStatisticFields();
         } else {
             return Collections.emptyList();
         }
     }
 
-    @Override
     @Transient
-    public Set<? extends CustomRollUpMask> getCustomRollUpMasks() {
-        if (statisticConfigurationEntityDataObject != null) {
-            return statisticConfigurationEntityDataObject.getCustomRollUpMasks();
+    public int getStatisticFieldCount() {
+        return stroomStatsStoreDataObject == null ? 0 : stroomStatsStoreDataObject.getStatisticFields().size();
+    }
+
+    @Transient
+    public List<StatisticField> getStatisticFields() {
+        if (stroomStatsStoreDataObject != null) {
+            return stroomStatsStoreDataObject.getStatisticFields();
+        } else {
+            return Collections.emptyList();
+        }
+    }
+
+    @Transient
+    public Set<CustomRollUpMask> getCustomRollUpMasks() {
+        if (stroomStatsStoreDataObject != null) {
+            return stroomStatsStoreDataObject.getCustomRollUpMasks();
         } else {
             return Collections.emptySet();
         }
+    }
+
+    @Override
+    public String toString() {
+        return "StroomStatsStoreEntity{" +
+                "description='" + description + '\'' +
+                ", StatisticType=" + getStatisticType() +
+                ", RollUpType=" + getRollUpType() +
+                ", precision='" + precision + '\'' +
+                ", enabled=" + enabled +
+                ", data='" + data + '\'' +
+                ", stroomStatsStoreDataObject=" + stroomStatsStoreDataObject +
+                '}';
     }
 }

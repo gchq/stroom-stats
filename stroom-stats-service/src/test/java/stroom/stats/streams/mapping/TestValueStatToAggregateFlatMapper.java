@@ -114,7 +114,7 @@ public class TestValueStatToAggregateFlatMapper {
                 .setStatisticType(StatisticType.VALUE)
                 .setRollUpType(StatisticRollUpType.NONE)
                 .addFieldNames(tag1, tag2)
-                .setPrecision(1_000L);
+                .setPrecision(EventStoreTimeIntervalEnum.SECOND);
 
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
@@ -136,7 +136,7 @@ public class TestValueStatToAggregateFlatMapper {
                 .isEqualTo(statistic.getTags().getTag().stream()
                         .map(TagType::getValue)
                         .collect(Collectors.toList()));
-        assertThat(statKey.getInterval()).isEqualTo(EventStoreTimeIntervalEnum.fromColumnInterval(statisticConfiguration.getPrecision()));
+        assertThat(statKey.getInterval()).isEqualTo(statisticConfiguration.getPrecisionAsInterval());
 
         assertThat(statKey.getRollupMask()).isEqualTo(RollUpBitMask.ZERO_MASK);
     }
@@ -151,7 +151,7 @@ public class TestValueStatToAggregateFlatMapper {
                 .setStatisticType(StatisticType.VALUE)
                 .setRollUpType(StatisticRollUpType.ALL)
                 .addFieldNames(tag1, tag2)
-                .setPrecision(1_000L);
+                .setPrecision(EventStoreTimeIntervalEnum.SECOND);
 
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
@@ -205,7 +205,7 @@ public class TestValueStatToAggregateFlatMapper {
                 .addCustomRollupMask(new MockCustomRollupMask(mask1.getTagPositionsAsList()))
                 .addCustomRollupMask(new MockCustomRollupMask(mask2.getTagPositionsAsList()))
                 .addFieldNames(tag1, tag2)
-                .setPrecision(1_000L);
+                .setPrecision(EventStoreTimeIntervalEnum.SECOND);
 
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
@@ -253,7 +253,7 @@ public class TestValueStatToAggregateFlatMapper {
                 .setStatisticType(StatisticType.COUNT)
                 .setRollUpType(StatisticRollUpType.ALL)
                 .addFieldNames(tag1, tag2)
-                .setPrecision(1_000L);
+                .setPrecision(EventStoreTimeIntervalEnum.SECOND);
 
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
@@ -284,7 +284,7 @@ public class TestValueStatToAggregateFlatMapper {
                 .isEqualTo(statistic.getTags().getTag().stream()
                         .map(TagType::getName)
                         .collect(Collectors.toList()));
-        assertThat(statKey.getInterval()).isEqualTo(EventStoreTimeIntervalEnum.fromColumnInterval(statisticConfiguration.getPrecision()));
+        assertThat(statKey.getInterval()).isEqualTo(statisticConfiguration.getPrecisionAsInterval());
 
         assertThat(statAggregate).isNotNull();
         assertThat(statAggregate).isExactlyInstanceOf(ValueAggregate.class);

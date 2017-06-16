@@ -24,13 +24,11 @@ package stroom.stats.configuration;
 import java.util.List;
 import java.util.Optional;
 
-public interface StatisticConfigurationEntityDAO {
-//    String FIELD_NAME_DATE_TIME = "Date Time";
-//    String FIELD_NAME_VALUE = "Value";
+public interface StroomStatsStoreEntityDAO {
 
-    Optional<StatisticConfigurationEntity> loadByName(String name);
+    Optional<StroomStatsStoreEntity> loadByName(String name);
 
-    Optional<StatisticConfigurationEntity> loadByUuid(String uuid);
+    Optional<StroomStatsStoreEntity> loadByUuid(String uuid);
 
-    List<StatisticConfigurationEntity> loadAll();
+    List<StroomStatsStoreEntity> loadAll();
 }

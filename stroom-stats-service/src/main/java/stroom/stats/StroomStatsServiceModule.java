@@ -30,8 +30,8 @@ import stroom.stats.properties.ServiceDiscoveryCuratorFrameworkProvider;
 import stroom.stats.properties.ServiceDiscoveryCuratorFramework;
 import stroom.stats.properties.StatsCuratorFramework;
 import stroom.stats.service.config.Config;
-import stroom.stats.configuration.StatisticConfigurationEntityDAO;
-import stroom.stats.configuration.StatisticConfigurationEntityDAOImpl;
+import stroom.stats.configuration.StroomStatsStoreEntityDAO;
+import stroom.stats.configuration.StroomStatsStoreEntityDAOImpl;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.configuration.StatisticConfigurationServiceImpl;
 import stroom.stats.properties.StatsCuratorFrameworkProvider;
@@ -69,7 +69,7 @@ public class StroomStatsServiceModule extends AbstractModule {
         bind(StatisticsIngestService.class).asEagerSingleton();
         bind(ServiceDiscoveryManager.class);
         bind(SessionFactory.class).toInstance(sessionFactory);
-        bind(StatisticConfigurationEntityDAO.class).to(StatisticConfigurationEntityDAOImpl.class);
+        bind(StroomStatsStoreEntityDAO.class).to(StroomStatsStoreEntityDAOImpl.class);
         bind(StatisticConfigurationService.class).to(StatisticConfigurationServiceImpl.class);
         //singleton to avoid cost of repeatedly creating JAXBContext
         bind(StatisticsMarshaller.class).asEagerSingleton();

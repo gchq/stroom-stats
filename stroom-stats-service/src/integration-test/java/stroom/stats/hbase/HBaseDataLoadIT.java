@@ -46,9 +46,8 @@ import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.ValueStatisticDataPoint;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
+import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -58,8 +57,8 @@ import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
 import stroom.stats.test.QueryApiHelper;
-import stroom.stats.test.StatisticConfigurationEntityBuilder;
-import stroom.stats.test.StatisticConfigurationEntityHelper;
+import stroom.stats.test.StroomStatsStoreEntityBuilder;
+import stroom.stats.test.StroomStatsStoreEntityHelper;
 import stroom.stats.util.DateUtil;
 
 import java.time.Instant;
@@ -87,7 +86,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     private StatisticsService statisticsService = injector.getInstance(StatisticsService.class);
     private HBaseClient hBaseClient = injector.getInstance(HBaseClient.class);
     private SessionFactory sessionFactory = injector.getInstance(SessionFactory.class);
-    private StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller = injector.getInstance(StatisticConfigurationEntityMarshaller.class);
+    private StroomStatsStoreEntityMarshaller stroomStatsStoreEntityMarshaller = injector.getInstance(StroomStatsStoreEntityMarshaller.class);
 
     private EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.DAY;
     private ChronoUnit workingChronoUnit = ChronoUnit.DAYS;
@@ -159,17 +158,17 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //Put time in the statName to allow us to re-run the test without an empty HBase
         String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString();
 
-        StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
+        StatisticConfiguration statisticConfigurationEntity = new StroomStatsStoreEntityBuilder(
                 statNameStr,
                 statisticType,
-                interval.columnInterval(),
+                interval,
                 StatisticRollUpType.ALL)
                 .addFields(tag1Str, tag2Str)
                 .build();
 
-        StatisticConfigurationEntityHelper.addStatConfig(
+        StroomStatsStoreEntityHelper.addStatConfig(
                 sessionFactory,
-                statisticConfigurationEntityMarshaller,
+                stroomStatsStoreEntityMarshaller,
                 statisticConfigurationEntity);
 
         UID statName = uniqueIdCache.getOrCreateId(statNameStr);
@@ -255,13 +254,13 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     }
 
     private SearchStatisticsCriteria buildSearchStatisticsCriteria(String statNameStr,
-                                                                   StatisticConfigurationEntity statisticConfigurationEntity,
+                                                                   StatisticConfiguration statisticConfiguration,
                                                                    FilterTermsTree.Node... childNodes) {
 
         SearchStatisticsCriteria.SearchStatisticsCriteriaBuilder builder = SearchStatisticsCriteria
                 .builder(new Period(), statNameStr)
                 .setInterval(interval)
-                .setRequiredDynamicFields(statisticConfigurationEntity.getFieldNames());
+                .setRequiredDynamicFields(statisticConfiguration.getFieldNames());
         if (childNodes != null && childNodes.length > 0) {
             builder.setFilterTermsTree(new FilterTermsTree(new OperatorNode(
                     FilterTermsTree.Operator.AND, childNodes)));
@@ -282,18 +281,18 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         //Put time in the statName to allow us to re-run the test without an empty HBase
         String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString();
 
-        StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
+        StatisticConfiguration statisticConfiguration = new StroomStatsStoreEntityBuilder(
                 statNameStr,
                 statisticType,
-                interval.columnInterval(),
+                interval,
                 StatisticRollUpType.ALL)
                 .addFields(tag1Str, tag2Str)
                 .build();
 
-        StatisticConfigurationEntityHelper.addStatConfig(
+        StroomStatsStoreEntityHelper.addStatConfig(
                 sessionFactory,
-                statisticConfigurationEntityMarshaller,
-                statisticConfigurationEntity);
+                stroomStatsStoreEntityMarshaller,
+                statisticConfiguration);
 
         UID statName = uniqueIdCache.getOrCreateId(statNameStr);
         assertThat(statName).isNotNull();
@@ -327,26 +326,26 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
 
         SearchStatisticsCriteria criteriaAllData = buildSearchStatisticsCriteria(statNameStr,
-                statisticConfigurationEntity);
+                statisticConfiguration);
 
         SearchStatisticsCriteria criteriaSpecificRow = buildSearchStatisticsCriteria(statNameStr,
-                statisticConfigurationEntity,
+                statisticConfiguration,
                 tag1Term,
                 tag2Term);
 
         SearchStatisticsCriteria criteriaNoDataFound = buildSearchStatisticsCriteria(statNameStr,
-                statisticConfigurationEntity,
+                statisticConfiguration,
                 tag1Term,
                 tag2TermNotFound);
 
-        List<StatisticDataPoint> dataPoints = runCriteria(statisticsService, criteriaAllData, statisticConfigurationEntity, 2);
+        List<StatisticDataPoint> dataPoints = runCriteria(statisticsService, criteriaAllData, statisticConfiguration, 2);
 
         //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(tag1Val1Str, tag2Val1Str, tag2Val2Str);
         assertThat(computeSumOfValueValues(dataPoints)).isEqualTo((statValue1) + (statValue2));
 
-        dataPoints = runCriteria(statisticsService, criteriaSpecificRow, statisticConfigurationEntity, 1);
+        dataPoints = runCriteria(statisticsService, criteriaSpecificRow, statisticConfiguration, 1);
 
         //should only get two distinct tag values as we have just one row back
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
@@ -354,12 +353,12 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         assertThat(computeSumOfValueValues(dataPoints)).isEqualTo(statValue1);
 
         //should get nothing back as the requested tagvalue is not in the store
-        runCriteria(statisticsService, criteriaNoDataFound, statisticConfigurationEntity, 0);
+        runCriteria(statisticsService, criteriaNoDataFound, statisticConfiguration, 0);
 
         //now put the same events again so HBase should aggregated the values in the cells
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
 
-        dataPoints = runCriteria(statisticsService, criteriaAllData, statisticConfigurationEntity, 2);
+        dataPoints = runCriteria(statisticsService, criteriaAllData, statisticConfiguration, 2);
 
         //should have 3 distinct tag values as t1 is same for btoh and t2 is different for each
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
@@ -367,7 +366,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         assertThat(computeSumOfValueValues(dataPoints)).isEqualTo((statValue1) + (statValue2));
         assertThat(computeSumOfValueCounts(dataPoints)).isEqualTo(2 + 2);
 
-        dataPoints = runCriteria(statisticsService, criteriaSpecificRow, statisticConfigurationEntity, 1);
+        dataPoints = runCriteria(statisticsService, criteriaSpecificRow, statisticConfiguration, 1);
 
         //should only get two distinct tag values as we have just one row back
         assertThat(dataPoints.stream().flatMap(dataPoint -> dataPoint.getTags().stream()).map(StatisticTag::getValue).distinct().collect(Collectors.toSet()))
@@ -376,20 +375,20 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         assertThat(computeSumOfValueCounts(dataPoints)).isEqualTo(2);
 
         //should get nothing back as the requested tagvalue is not in the store
-        runCriteria(statisticsService, criteriaNoDataFound, statisticConfigurationEntity, 0);
+        runCriteria(statisticsService, criteriaNoDataFound, statisticConfiguration, 0);
     }
 
     @Test
     public void testDateHandling_missingDateTerm() {
 
-        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(StatisticType.COUNT);
+        StatisticConfiguration statisticConfiguration = loadStatData(StatisticType.COUNT);
 
         Query query = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new DocRef(StatisticConfiguration.ENTITY_TYPE, statisticConfiguration.getUuid()),
                 new ExpressionOperator(true, ExpressionOperator.Op.AND));
 
         //all records should come back
-        runQuery(statisticsService, wrapQuery(query, statisticConfigurationEntity), statisticConfigurationEntity, times.size());
+        runQuery(statisticsService, wrapQuery(query, statisticConfiguration), statisticConfiguration, times.size());
     }
 
     @Test
@@ -397,31 +396,31 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         Set<RollUpBitMask> rollUpBitMasks = RollUpBitMask.getRollUpBitMasks(2);
 
-        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(StatisticType.COUNT, rollUpBitMasks);
+        StatisticConfiguration statisticConfiguration = loadStatData(StatisticType.COUNT, rollUpBitMasks);
 
         Query query = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new DocRef(StatisticConfiguration.ENTITY_TYPE, statisticConfiguration.getUuid()),
                 new ExpressionOperator(true, ExpressionOperator.Op.AND));
 
         //only put the static fields in the table settings so we will expect it to roll up all the tags
         SearchRequest searchRequest = QueryApiHelper.wrapQuery(query, StatisticConfiguration.STATIC_FIELDS_MAP.get(StatisticType.COUNT));
 
         //all records should come back
-        SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfigurationEntity, times.size());
+        SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfiguration, times.size());
 
         List<String> fields = searchRequest.getResultRequests().get(0).getMappings().get(0).getFields().stream()
                 .map(Field::getName)
                 .collect(Collectors.toList());
 
         assertThat(fields).doesNotContain(
-                statisticConfigurationEntity.getFieldNames().toArray(
-                        new String[statisticConfigurationEntity.getFieldNames().size()]));
+                statisticConfiguration.getFieldNames().toArray(
+                        new String[statisticConfiguration.getFieldNames().size()]));
     }
 
     @Test
     public void testDateHandling_equals() {
 
-        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(StatisticType.COUNT);
+        StatisticConfiguration statisticConfiguration = loadStatData(StatisticType.COUNT);
 
         //use timesTruncated as that is how they are stored in hbase
         ExpressionItem dateTerm = new ExpressionTerm(
@@ -430,13 +429,13 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 DateUtil.createNormalDateTimeString(timesTruncated.get(2).toEpochMilli()));
 
         Query query = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new DocRef(StatisticConfiguration.ENTITY_TYPE, statisticConfiguration.getUuid()),
                 new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
 
-        SearchRequest searchRequest = wrapQuery(query, statisticConfigurationEntity);
+        SearchRequest searchRequest = wrapQuery(query, statisticConfiguration);
 
         //only find the the one we equal
-        SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfigurationEntity, 1);
+        SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfiguration, 1);
 
         List<Instant> times = getInstants(searchResponse);
 
@@ -447,7 +446,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     @Test
     public void testDateHandling_lessThan() {
 
-        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(StatisticType.COUNT);
+        StatisticConfiguration statisticConfiguration = loadStatData(StatisticType.COUNT);
 
         //use timesTruncated as that is how they are stored in hbase
         ExpressionItem dateTerm = new ExpressionTerm(
@@ -456,13 +455,13 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 DateUtil.createNormalDateTimeString(timesTruncated.get(2).toEpochMilli()));
 
         Query query = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new DocRef(StatisticConfiguration.ENTITY_TYPE, statisticConfiguration.getUuid()),
                 new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
 
-        SearchRequest searchRequest = wrapQuery(query, statisticConfigurationEntity);
+        SearchRequest searchRequest = wrapQuery(query, statisticConfiguration);
 
         //should only get the two times below the middle one we have aimed for
-        SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfigurationEntity, 2);
+        SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfiguration, 2);
 
         List<Instant> times = getInstants(searchResponse);
 
@@ -472,7 +471,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     @Test
     public void testDateHandling_lessThanEqualTo() {
 
-        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(StatisticType.COUNT);
+        StatisticConfiguration statisticConfiguration = loadStatData(StatisticType.COUNT);
 
         //use timesTruncated as that is how they are stored in hbase
         ExpressionItem dateTerm = new ExpressionTerm(
@@ -481,13 +480,13 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 DateUtil.createNormalDateTimeString(timesTruncated.get(2).toEpochMilli()));
 
         Query query = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new DocRef(StatisticConfiguration.ENTITY_TYPE, statisticConfiguration.getUuid()),
                 new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
 
-        SearchRequest searchRequest = wrapQuery(query, statisticConfigurationEntity);
+        SearchRequest searchRequest = wrapQuery(query, statisticConfiguration);
 
         //should only get the two times below the middle one we have aimed for
-        SearchResponse searchResponse = runQuery(statisticsService, wrapQuery(query, statisticConfigurationEntity), statisticConfigurationEntity, 3);
+        SearchResponse searchResponse = runQuery(statisticsService, wrapQuery(query, statisticConfiguration), statisticConfiguration, 3);
         List<Instant> times = getInstants(searchResponse);
 
         assertThat(times).containsExactlyInAnyOrder(timesTruncated.get(0), timesTruncated.get(1), timesTruncated.get(2));
@@ -496,7 +495,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     @Test
     public void testDateHandling_greaterThan() {
 
-        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(StatisticType.COUNT);
+        StatisticConfiguration statisticConfiguration = loadStatData(StatisticType.COUNT);
 
         //truncate the original stat time down to the interval so we can find it with an EQUALS
         ExpressionItem dateTerm = new ExpressionTerm(
@@ -505,13 +504,13 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 DateUtil.createNormalDateTimeString(timesTruncated.get(2).toEpochMilli()));
 
         Query query = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new DocRef(StatisticConfiguration.ENTITY_TYPE, statisticConfiguration.getUuid()),
                 new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
 
-        SearchRequest searchRequest = wrapQuery(query, statisticConfigurationEntity);
+        SearchRequest searchRequest = wrapQuery(query, statisticConfiguration);
 
         //should only get the two times below the middle one we have aimed for
-        SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfigurationEntity, 2);
+        SearchResponse searchResponse = runQuery(statisticsService, searchRequest, statisticConfiguration, 2);
         List<Instant> times = getInstants(searchResponse);
         assertThat(times).containsExactlyInAnyOrder(timesTruncated.get(3), timesTruncated.get(4));
     }
@@ -519,7 +518,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     @Test
     public void testDateHandling_greaterThanEqualTo() {
 
-        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(StatisticType.COUNT);
+        StatisticConfiguration statisticConfiguration = loadStatData(StatisticType.COUNT);
 
         //use timesTruncated as that is how they are stored in hbase
         ExpressionItem dateTerm = new ExpressionTerm(
@@ -528,13 +527,13 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 DateUtil.createNormalDateTimeString(timesTruncated.get(2).toEpochMilli()));
 
         Query query = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new DocRef(StatisticConfiguration.ENTITY_TYPE, statisticConfiguration.getUuid()),
                 new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
 
-        SearchRequest searchRequest = wrapQuery(query, statisticConfigurationEntity);
+        SearchRequest searchRequest = wrapQuery(query, statisticConfiguration);
 
         //should only get the two times below the middle one we have aimed for
-        SearchResponse searchResponse = runQuery(statisticsService, wrapQuery(query, statisticConfigurationEntity), statisticConfigurationEntity, 3);
+        SearchResponse searchResponse = runQuery(statisticsService, wrapQuery(query, statisticConfiguration), statisticConfiguration, 3);
 
         List<Instant> times = getInstants(searchResponse);
 
@@ -544,7 +543,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     @Test
     public void testDateHandling_between() {
 
-        StatisticConfigurationEntity statisticConfigurationEntity = loadStatData(StatisticType.COUNT);
+        StatisticConfiguration statisticConfiguration = loadStatData(StatisticType.COUNT);
 
         //use timesTruncated as that is how they are stored in hbase
         ExpressionItem dateTerm = new ExpressionTerm(
@@ -555,52 +554,51 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                         DateUtil.createNormalDateTimeString(timesTruncated.get(3).toEpochMilli())));
 
         Query query = new Query(
-                new DocRef(StatisticConfigurationEntity.ENTITY_TYPE, statisticConfigurationEntity.getUuid()),
+                new DocRef(StatisticConfiguration.ENTITY_TYPE, statisticConfiguration.getUuid()),
                 new ExpressionOperator(true, ExpressionOperator.Op.AND, dateTerm, precisionTerm));
 
-        SearchRequest searchRequest = wrapQuery(query, statisticConfigurationEntity);
+        SearchRequest searchRequest = wrapQuery(query, statisticConfiguration);
 
         //should only get the two times below the middle one we have aimed for
-        SearchResponse searchResponse = runQuery(statisticsService, wrapQuery(query, statisticConfigurationEntity), statisticConfigurationEntity, 3);
+        SearchResponse searchResponse = runQuery(statisticsService, wrapQuery(query, statisticConfiguration), statisticConfiguration, 3);
         List<Instant> times = getInstants(searchResponse);
         assertThat(times).containsExactlyInAnyOrder(timesTruncated.get(1), timesTruncated.get(2), timesTruncated.get(3));
     }
 
-    private StatisticConfigurationEntity createStatConfEntity(final String statNameStr,
-                                                              final StatisticType statisticType) {
-        StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
+    private StatisticConfiguration createStatConf(final String statNameStr,
+                                                        final StatisticType statisticType) {
+
+        StatisticConfiguration statisticConfiguration = new StroomStatsStoreEntityBuilder(
                 statNameStr,
                 statisticType,
-                interval.columnInterval(),
+                interval,
                 StatisticRollUpType.ALL)
                 .addFields(tag1Str, tag2Str)
                 .build();
 
-        StatisticConfigurationEntityHelper.addStatConfig(
+        StroomStatsStoreEntityHelper.addStatConfig(
                 sessionFactory,
-                statisticConfigurationEntityMarshaller,
-                statisticConfigurationEntity);
+                stroomStatsStoreEntityMarshaller,
+                statisticConfiguration);
 
-
-        return statisticConfigurationEntity;
-
+        return statisticConfiguration;
     }
 
-    private StatisticConfigurationEntity loadStatData(final StatisticType statisticType) {
+    private StatisticConfiguration loadStatData(final StatisticType statisticType) {
         return loadStatData(statisticType, Collections.singleton(ROLL_UP_BIT_MASK));
     }
 
-    private StatisticConfigurationEntity loadStatData(final StatisticType statisticType, Set<RollUpBitMask> rollUpBitMasks) {
+    private StatisticConfiguration loadStatData(final StatisticType statisticType, Set<RollUpBitMask> rollUpBitMasks) {
         //Put time in the statName to allow us to re-run the test without an empty HBase
         String statNameBase = this.getClass().getName() + "-test-" + Instant.now().toString();
-        List<StatisticConfigurationEntity> entities = new ArrayList<>();
+        List<StatisticConfiguration> entities = new ArrayList<>();
 
         //create stats for multiple stat names to make sure we are not picking up other records
         Arrays.asList("A", "B", "C").forEach(postFix -> {
 
             String statNameStr = statNameBase + "-" + postFix;
-            StatisticConfigurationEntity statisticConfigurationEntity = createStatConfEntity(statNameStr, statisticType);
-            entities.add(statisticConfigurationEntity);
+            StatisticConfiguration statisticConfiguration = createStatConf(statNameStr, statisticType);
+            entities.add(statisticConfiguration);
 
             UID statName = uniqueIdCache.getOrCreateId(statNameStr);
             assertThat(statName).isNotNull();
@@ -636,9 +634,9 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     private List<StatisticDataPoint> runCriteria(
             StatisticsService statisticsService,
             SearchStatisticsCriteria searchStatisticsCriteria,
-            StatisticConfigurationEntity statisticConfigurationEntity,
+            StatisticConfiguration statisticConfiguration,
             int expectedRecCount) {
-        StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(searchStatisticsCriteria, statisticConfigurationEntity);
+        StatisticDataSet statisticDataSet = statisticsService.searchStatisticsData(searchStatisticsCriteria, statisticConfiguration);
 
         assertThat(statisticDataSet).isNotNull();
         assertThat(statisticDataSet).size().isEqualTo(expectedRecCount);
@@ -648,7 +646,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     private SearchResponse runQuery(
             StatisticsService statisticsService,
             SearchRequest searchRequest,
-            StatisticConfigurationEntity statisticConfigurationEntity,
+            StatisticConfiguration statisticConfiguration,
             int expectedRecCount) {
 
         SearchResponse searchResponse = hBaseClient.query(searchRequest);

@@ -20,6 +20,7 @@
 package stroom.stats.configuration;
 
 import stroom.stats.api.StatisticType;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -32,7 +33,7 @@ public class MockStatisticConfiguration implements StatisticConfiguration {
     private String engineName;
     private StatisticType statisticType;
     private StatisticRollUpType rollUpType;
-    private Long precision;
+    private EventStoreTimeIntervalEnum precision;
     private List<String> fieldNames = new ArrayList<>();
     private Set<CustomRollUpMask> customRollUpMasks = new HashSet<>();
 
@@ -40,8 +41,10 @@ public class MockStatisticConfiguration implements StatisticConfiguration {
         uuid = UUID.randomUUID().toString();
     }
 
-    public MockStatisticConfiguration(final String name, final StatisticType statisticType,
-                                      final StatisticRollUpType rollUpType, final Long precision,
+    public MockStatisticConfiguration(final String name,
+                                      final StatisticType statisticType,
+                                      final StatisticRollUpType rollUpType,
+                                      final EventStoreTimeIntervalEnum precision,
                                       final Set<CustomRollUpMask> customRollUpMasks,
                                       final String... fieldNames) {
         this.name = name;
@@ -82,7 +85,7 @@ public class MockStatisticConfiguration implements StatisticConfiguration {
         return this;
     }
 
-    public MockStatisticConfiguration setPrecision(final Long precision) {
+    public MockStatisticConfiguration setPrecision(final EventStoreTimeIntervalEnum precision) {
         this.precision = precision;
         return this;
     }
@@ -125,11 +128,6 @@ public class MockStatisticConfiguration implements StatisticConfiguration {
     }
 
     @Override
-    public String getEngineName() {
-        return engineName;
-    }
-
-    @Override
     public StatisticType getStatisticType() {
         return statisticType;
     }
@@ -140,7 +138,7 @@ public class MockStatisticConfiguration implements StatisticConfiguration {
     }
 
     @Override
-    public Long getPrecision() {
+    public EventStoreTimeIntervalEnum getPrecisionAsInterval() {
         return precision;
     }
 

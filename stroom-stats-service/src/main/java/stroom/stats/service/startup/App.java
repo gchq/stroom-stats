@@ -35,6 +35,7 @@ import io.dropwizard.setup.Environment;
 import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.configuration.StroomStatsStoreEntity;
 import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.auth.AuthenticationFilter;
 import stroom.stats.service.auth.User;
@@ -42,7 +43,6 @@ import stroom.stats.service.resources.ApiResource;
 import stroom.stats.HBaseClient;
 import stroom.stats.StroomStatsServiceModule;
 import stroom.stats.service.config.Config;
-import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.common.Folder;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.tasks.StartProcessingTask;
@@ -54,9 +54,11 @@ public class App extends Application<Config> {
     private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
     public static final String APP_NAME = "stroom-stats";
     private Injector injector = null;
+
     private final HibernateBundle<Config> hibernateBundle = new HibernateBundle<Config>(
-            StatisticConfigurationEntity.class,
+            StroomStatsStoreEntity.class,
             Folder.class) {
+
         @Override
         public DataSourceFactory getDataSourceFactory(Config configuration) {
             return configuration.getDataSourceFactory();

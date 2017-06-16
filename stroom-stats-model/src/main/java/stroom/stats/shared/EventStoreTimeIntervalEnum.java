@@ -196,4 +196,13 @@ public enum EventStoreTimeIntervalEnum {
             super(msg);
         }
     }
+
+    public boolean isLargerThan(final EventStoreTimeIntervalEnum other) {
+        return this.columnInterval > other.columnInterval;
+    }
+
+    public boolean isSmnallerThan(final EventStoreTimeIntervalEnum other) {
+        return this.columnInterval < other.columnInterval;
+    }
+
 }

@@ -43,14 +43,13 @@ import stroom.stats.AbstractAppIT;
 import stroom.stats.HBaseClient;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
+import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.QueryApiHelper;
-import stroom.stats.test.StatisticConfigurationEntityHelper;
+import stroom.stats.test.StroomStatsStoreEntityHelper;
 import stroom.stats.xml.StatisticsMarshaller;
 
 import javax.annotation.Nullable;
@@ -129,7 +128,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
 
         LOGGER.info("Starting to load data (async)...");
         //create stat configs and put the test data on the topics
-        Map<StatisticType, StatisticConfigurationEntity> statConfigs = loadData(statisticType);
+        Map<StatisticType, StatisticConfiguration> statConfigs = loadData(statisticType);
         LOGGER.info("Finished loading data (async)...");
 
         StatisticConfiguration statisticConfiguration = statConfigs.get(statisticType);
@@ -202,7 +201,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         Thread.sleep(1_000);
 
         //create stat configs and put the test data on the topics
-        Map<StatisticType, StatisticConfigurationEntity> statConfigs = loadData(statisticType);
+        Map<StatisticType, StatisticConfiguration> statConfigs = loadData(statisticType);
 
         StatisticConfiguration statisticConfiguration = statConfigs.get(statisticType);
 
@@ -313,13 +312,13 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         return countsMap;
     }
 
-    private Map<StatisticType, StatisticConfigurationEntity> loadData(StatisticType... statisticTypes) {
+    private Map<StatisticType, StatisticConfiguration> loadData(StatisticType... statisticTypes) {
 
         final KafkaProducer<String, String> kafkaProducer = buildKafkaProducer(stroomPropertyService);
 
 //        StatisticType[] types = new StatisticType[] {StatisticType.COUNT};
 
-        Map<StatisticType, StatisticConfigurationEntity> statConfigs = new HashMap<>();
+        Map<StatisticType, StatisticConfiguration> statConfigs = new HashMap<>();
 
         int numberOfStatWrappers = Math.max(1, ITERATION_COUNT / 250);
 
@@ -329,7 +328,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
 
 
 
-            Tuple2<StatisticConfigurationEntity, List<Statistics>> testData = GenerateSampleStatisticsData.generateData(
+            Tuple2<StatisticConfiguration, List<Statistics>> testData = GenerateSampleStatisticsData.generateData(
                     statNameStr,
                     statisticType,
                     SMALLEST_INTERVAL,
@@ -446,11 +445,11 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         });
     }
 
-    private void persistStatConfig(final StatisticConfigurationEntity statisticConfigurationEntity) {
-        StatisticConfigurationEntityHelper.addStatConfig(
+    private void persistStatConfig(final StatisticConfiguration statisticConfiguration) {
+        StroomStatsStoreEntityHelper.addStatConfig(
                 injector.getInstance(SessionFactory.class),
-                injector.getInstance(StatisticConfigurationEntityMarshaller.class),
-                statisticConfigurationEntity);
+                injector.getInstance(StroomStatsStoreEntityMarshaller.class),
+                statisticConfiguration);
     }
 
 

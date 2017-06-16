@@ -25,17 +25,17 @@ import org.junit.Assert;
 import org.junit.Test;
 import stroom.stats.configuration.CustomRollUpMask;
 import stroom.stats.configuration.CustomRollUpMaskEntityObject;
-import stroom.stats.configuration.StatisticConfigurationEntity;
 import stroom.stats.configuration.StatisticField;
+import stroom.stats.configuration.StroomStatsStoreEntity;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class TestStatisticConfigurationEntityMarshaller {
+public class TestStroomStatsStoreEntityMarshaller {
     @Test
     public void testUnmarshall() {
-        StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntity();
+        StroomStatsStoreEntity stroomStatsStoreEntity = new StroomStatsStoreEntity();
 
         String str = "";
         str += "<?xml version=\"1.1\" encoding=\"UTF-8\"?>";
@@ -62,17 +62,17 @@ public class TestStatisticConfigurationEntityMarshaller {
         str += " </customRollUpMask>";
         str += "</data>";
 
-        statisticConfigurationEntity.setData(str);
+        stroomStatsStoreEntity.setData(str);
 
-        final StatisticConfigurationEntityMarshaller marshaller = new StatisticConfigurationEntityMarshaller();
+        final StroomStatsStoreEntityMarshaller marshaller = new StroomStatsStoreEntityMarshaller();
 
-        statisticConfigurationEntity = marshaller.unmarshal(statisticConfigurationEntity);
+        stroomStatsStoreEntity = marshaller.unmarshal(stroomStatsStoreEntity);
 
-        Assert.assertNotNull(statisticConfigurationEntity.getStatisticDataSourceDataObject());
+        Assert.assertNotNull(stroomStatsStoreEntity.getDataObject());
 
-        final List<StatisticField> fields = statisticConfigurationEntity.getStatisticDataSourceDataObject()
+        final List<StatisticField> fields = stroomStatsStoreEntity.getDataObject()
                 .getStatisticFields();
-        final Set<? extends CustomRollUpMask> masks = statisticConfigurationEntity.getStatisticDataSourceDataObject()
+        final Set<? extends CustomRollUpMask> masks = stroomStatsStoreEntity.getDataObject()
                 .getCustomRollUpMasks();
 
         Assert.assertEquals(2, fields.size());
@@ -86,8 +86,8 @@ public class TestStatisticConfigurationEntityMarshaller {
 
         // make sure the field positions are being cached when the object is
         // unmarshalled
-        Assert.assertEquals(0, statisticConfigurationEntity.getPositionInFieldList("feed").intValue());
-        Assert.assertEquals(1, statisticConfigurationEntity.getPositionInFieldList("user").intValue());
+        Assert.assertEquals(0, stroomStatsStoreEntity.getPositionInFieldList("feed").intValue());
+        Assert.assertEquals(1, stroomStatsStoreEntity.getPositionInFieldList("user").intValue());
 
     }
 

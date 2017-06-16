@@ -21,40 +21,41 @@ package stroom.stats.configuration.marshaller;
 
 
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.configuration.StatisticConfigurationEntity;
-import stroom.stats.configuration.StatisticConfigurationEntityData;
+import stroom.stats.configuration.StroomStatsStoreEntity;
+import stroom.stats.configuration.StroomStatsStoreEntityData;
 
 //TODO need an approach to marshalling the entity, i.e. turning the XML in the data col into an object
-public class StatisticConfigurationEntityMarshaller extends EntityMarshaller<StatisticConfigurationEntity, StatisticConfigurationEntityData> {
-    public StatisticConfigurationEntityMarshaller() {
+public class StroomStatsStoreEntityMarshaller
+        extends EntityMarshaller<StroomStatsStoreEntity, StroomStatsStoreEntityData> {
+    public StroomStatsStoreEntityMarshaller() {
     }
 
     @Override
-    public StatisticConfigurationEntityData getObject(final StatisticConfigurationEntity entity) {
-        return entity.getStatisticDataSourceDataObject();
+    public StroomStatsStoreEntityData getObject(final StroomStatsStoreEntity entity) {
+        return entity.getDataObject();
     }
 
     @Override
-    public void setObject(final StatisticConfigurationEntity entity, final StatisticConfigurationEntityData object) {
+    public void setObject(final StroomStatsStoreEntity entity, final StroomStatsStoreEntityData object) {
         //ensure the field order map is populated and the field list is sorted
         object.reOrderStatisticFields();
-        entity.setStatisticDataSourceDataObject(object);
+        entity.setDataObject(object);
 
     }
 
     @Override
-    protected String getData(final StatisticConfigurationEntity entity) {
+    protected String getData(final StroomStatsStoreEntity entity) {
         return entity.getData();
     }
 
     @Override
-    protected void setData(final StatisticConfigurationEntity entity, final String data) {
+    protected void setData(final StroomStatsStoreEntity entity, final String data) {
         entity.setData(data);
     }
 
     @Override
-    protected Class<StatisticConfigurationEntityData> getObjectType() {
-        return StatisticConfigurationEntityData.class;
+    protected Class<StroomStatsStoreEntityData> getObjectType() {
+        return StroomStatsStoreEntityData.class;
     }
 
     @Override

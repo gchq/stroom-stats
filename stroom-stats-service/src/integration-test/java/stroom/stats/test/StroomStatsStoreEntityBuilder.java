@@ -23,66 +23,66 @@ import com.google.common.base.Preconditions;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.CustomRollUpMask;
 import stroom.stats.configuration.CustomRollUpMaskEntityObject;
-import stroom.stats.configuration.StatisticConfigurationEntity;
-import stroom.stats.configuration.StatisticConfigurationEntityData;
 import stroom.stats.configuration.StatisticField;
 import stroom.stats.configuration.StatisticRollUpType;
+import stroom.stats.configuration.StroomStatsStoreEntity;
+import stroom.stats.configuration.StroomStatsStoreEntityData;
 import stroom.stats.configuration.common.Folder;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.Arrays;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-public class StatisticConfigurationEntityBuilder {
+public class StroomStatsStoreEntityBuilder {
 
-    private final StatisticConfigurationEntity statisticConfigurationEntity;
-    private final StatisticConfigurationEntityData statisticConfigurationEntityData;
+    private final StroomStatsStoreEntity stroomStatsStoreEntity;
+    private final StroomStatsStoreEntityData stroomStatsStoreEntityData;
 
-    public StatisticConfigurationEntityBuilder(final String statName,
-                                               final StatisticType statisticType,
-                                               final long precision,
-                                               final StatisticRollUpType statisticRollUpType) {
+    public StroomStatsStoreEntityBuilder(final String statName,
+                                         final StatisticType statisticType,
+                                         final EventStoreTimeIntervalEnum interval,
+                                         final StatisticRollUpType statisticRollUpType) {
 
         Preconditions.checkNotNull(statName);
         Preconditions.checkNotNull(statisticType);
-        Preconditions.checkArgument(precision > 0, "precision should be greater than 0");
         Preconditions.checkNotNull(statisticRollUpType);
 
-        statisticConfigurationEntity = new StatisticConfigurationEntity();
-        statisticConfigurationEntity.setName(statName);
-        statisticConfigurationEntity.setStatisticType(statisticType);
-        statisticConfigurationEntity.setPrecision(precision);
-        statisticConfigurationEntity.setRollUpType(statisticRollUpType);
-        statisticConfigurationEntity.setUuid(UUID.randomUUID().toString());
+        stroomStatsStoreEntity = new StroomStatsStoreEntity();
+        stroomStatsStoreEntity.setName(statName);
+        stroomStatsStoreEntity.setStatisticType(statisticType);
+        stroomStatsStoreEntity.setPrecision(interval);
+        stroomStatsStoreEntity.setRollUpType(statisticRollUpType);
+        stroomStatsStoreEntity.setUuid(UUID.randomUUID().toString());
 
         //Use the same folder for all entities
         Folder folder = Folder.create(null, "RootFolder");
         folder.setUuid(UUID.randomUUID().toString());
-        statisticConfigurationEntity.setFolder(folder);
+        stroomStatsStoreEntity.setFolder(folder);
 
-        statisticConfigurationEntityData = new StatisticConfigurationEntityData();
-        statisticConfigurationEntity.setStatisticDataSourceDataObject(statisticConfigurationEntityData);
+        stroomStatsStoreEntityData = new StroomStatsStoreEntityData();
+        stroomStatsStoreEntity.setDataObject(stroomStatsStoreEntityData);
     }
 
-    public StatisticConfigurationEntityBuilder addFields(final String... fields) {
+    public StroomStatsStoreEntityBuilder addFields(final String... fields) {
 
-        statisticConfigurationEntityData.setStatisticFields(
+        stroomStatsStoreEntityData.setStatisticFields(
                 Arrays.stream(fields)
                         .map(StatisticField::new)
                         .collect(Collectors.toList()));
         return this;
     }
 
-    public StatisticConfigurationEntityBuilder addCustomMasks(final CustomRollUpMask... customRollUpMasks) {
+    public StroomStatsStoreEntityBuilder addCustomMasks(final CustomRollUpMask... customRollUpMasks) {
 
-        statisticConfigurationEntityData.setCustomRollUpMasks(
+        stroomStatsStoreEntityData.setCustomRollUpMasks(
                 Arrays.stream(customRollUpMasks)
                         .map(mask -> new CustomRollUpMaskEntityObject(mask.getRolledUpTagPositions()))
                         .collect(Collectors.toSet()));
         return this;
     }
 
-    public StatisticConfigurationEntity build() {
-        return statisticConfigurationEntity;
+    public StroomStatsStoreEntity build() {
+        return stroomStatsStoreEntity;
     }
 }

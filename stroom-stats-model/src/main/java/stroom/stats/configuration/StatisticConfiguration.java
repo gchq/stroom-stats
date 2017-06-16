@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import stroom.stats.api.StatisticType;
 import stroom.stats.common.rollup.RollUpBitMask;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -81,13 +82,11 @@ public interface StatisticConfiguration {
 
     String getDescription();
 
-    String getEngineName();
-
     StatisticType getStatisticType();
 
     StatisticRollUpType getRollUpType();
 
-    Long getPrecision();
+    EventStoreTimeIntervalEnum getPrecisionAsInterval();
 
     boolean isEnabled();
 
@@ -124,7 +123,5 @@ public interface StatisticConfiguration {
     boolean isRollUpCombinationSupported(final Set<String> rolledUpFieldNames);
 
     boolean isValidField(final String fieldName);
-
-
 
 }

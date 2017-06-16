@@ -23,14 +23,17 @@ import io.dropwizard.hibernate.AbstractDAO;
 import org.hibernate.HibernateException;
 import org.hibernate.SessionFactory;
 import org.hibernate.criterion.Restrictions;
-import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
+import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Optional;
 
-public class StatisticConfigurationEntityDAOImpl extends AbstractDAO<StatisticConfigurationEntity> implements StatisticConfigurationEntityDAO {
-    private final StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller;
+public class StroomStatsStoreEntityDAOImpl
+        extends AbstractDAO<StroomStatsStoreEntity>
+        implements StroomStatsStoreEntityDAO {
+
+    private final StroomStatsStoreEntityMarshaller stroomStatsStoreEntityMarshaller;
 
     /**
      * Creates a new DAO with a given session provider.
@@ -38,15 +41,15 @@ public class StatisticConfigurationEntityDAOImpl extends AbstractDAO<StatisticCo
      * @param sessionFactory a session provider
      */
     @Inject
-    public StatisticConfigurationEntityDAOImpl(final SessionFactory sessionFactory,
-                                               final StatisticConfigurationEntityMarshaller statisticConfigurationEntityMarshaller) {
+    public StroomStatsStoreEntityDAOImpl(final SessionFactory sessionFactory,
+                                         final StroomStatsStoreEntityMarshaller stroomStatsStoreEntityMarshaller) {
         super(sessionFactory);
-        this.statisticConfigurationEntityMarshaller = statisticConfigurationEntityMarshaller;
+        this.stroomStatsStoreEntityMarshaller = stroomStatsStoreEntityMarshaller;
     }
 
     @Override
-    public Optional<StatisticConfigurationEntity> loadByName(final String name) {
-        List entities = null;
+    public Optional<StroomStatsStoreEntity> loadByName(final String name) {
+        List<?> entities;
         try {
             entities = super.criteria()
                     .add(Restrictions.eq("name", name))
@@ -59,8 +62,8 @@ public class StatisticConfigurationEntityDAOImpl extends AbstractDAO<StatisticCo
     }
 
     @Override
-    public Optional<StatisticConfigurationEntity> loadByUuid(final String uuid) {
-        List entities = null;
+    public Optional<StroomStatsStoreEntity> loadByUuid(final String uuid) {
+        List<?> entities;
         try {
             entities = super.criteria()
                     .add(Restrictions.eq("uuid", uuid))
@@ -73,23 +76,23 @@ public class StatisticConfigurationEntityDAOImpl extends AbstractDAO<StatisticCo
     }
 
     @Override
-    public List<StatisticConfigurationEntity> loadAll() {
-        List<StatisticConfigurationEntity> entities = null;
+    public List<StroomStatsStoreEntity> loadAll() {
+        List<StroomStatsStoreEntity> entities;
         try {
             entities = super.criteria().list();
         } catch (HibernateException e) {
             throw new RuntimeException("Error loading all statisticConfiguration entities", e);
         }
         entities.forEach(entity -> {
-            statisticConfigurationEntityMarshaller.unmarshal(entity);
+            stroomStatsStoreEntityMarshaller.unmarshal(entity);
         });
         return entities;
     }
 
-    Optional<StatisticConfigurationEntity> getSingleEntity(List<?> entities) {
+    Optional<StroomStatsStoreEntity> getSingleEntity(final List<?> entities) {
         if (entities.size() == 1) {
-            StatisticConfigurationEntity statisticConfigurationEntity = (StatisticConfigurationEntity) entities.get(0);
-            statisticConfigurationEntityMarshaller.unmarshal(statisticConfigurationEntity);
+            StroomStatsStoreEntity statisticConfigurationEntity = (StroomStatsStoreEntity) entities.get(0);
+            stroomStatsStoreEntityMarshaller.unmarshal(statisticConfigurationEntity);
             return Optional.of(statisticConfigurationEntity);
         } else if (entities.isEmpty()) {
             return Optional.empty();

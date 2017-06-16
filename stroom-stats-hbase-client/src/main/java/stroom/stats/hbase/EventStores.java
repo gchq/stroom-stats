@@ -152,8 +152,8 @@ public class EventStores {
         // the optimum may be finer than that configured for the data source so
         // if it is try the one from the data
         // source
-        if (bestFitInterval.columnInterval() < statisticConfiguration.getPrecision()) {
-            bestFitInterval = EventStoreTimeIntervalEnum.fromColumnInterval(statisticConfiguration.getPrecision());
+        if (bestFitInterval.isSmnallerThan(statisticConfiguration.getPrecisionAsInterval())) {
+            bestFitInterval = statisticConfiguration.getPrecisionAsInterval();
         }
         final EventStoreTimeIntervalEnum bestFitBasedOnDataSource = bestFitInterval;
 

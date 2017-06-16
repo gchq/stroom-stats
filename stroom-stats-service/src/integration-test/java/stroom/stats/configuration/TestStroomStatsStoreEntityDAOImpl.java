@@ -28,9 +28,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.api.StatisticType;
-import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
-import stroom.stats.test.StatisticConfigurationEntityBuilder;
-import stroom.stats.test.StatisticConfigurationEntityHelper;
+import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.test.StroomStatsStoreEntityBuilder;
+import stroom.stats.test.StroomStatsStoreEntityHelper;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -38,13 +39,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.IntStream;
 
-public class TestStatisticConfigurationEntityDAOImpl extends AbstractAppIT {
+public class TestStroomStatsStoreEntityDAOImpl extends AbstractAppIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TestStatisticConfigurationEntityDAOImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestStroomStatsStoreEntityDAOImpl.class);
 
     private Injector injector = getApp().getInjector();
     private SessionFactory sessionFactory = injector.getInstance(SessionFactory.class);
-    private StatisticConfigurationEntityMarshaller marshaller = injector.getInstance(StatisticConfigurationEntityMarshaller.class);
+    private StroomStatsStoreEntityMarshaller marshaller = injector.getInstance(StroomStatsStoreEntityMarshaller.class);
 
     private StatisticConfigurationService statisticConfigurationService = injector.getInstance(StatisticConfigurationService.class);
 
@@ -137,12 +138,12 @@ public class TestStatisticConfigurationEntityDAOImpl extends AbstractAppIT {
 
     private StatisticConfiguration createStatisticConfigurationEntity(String prefix) {
 
-        return StatisticConfigurationEntityHelper.addStatConfig(
+        return StroomStatsStoreEntityHelper.addStatConfig(
                 sessionFactory,
                 marshaller,
-                new StatisticConfigurationEntityBuilder(prefix + Instant.now().toString(),
+                new StroomStatsStoreEntityBuilder(prefix + Instant.now().toString(),
                         StatisticType.COUNT,
-                        1_000,
+                        EventStoreTimeIntervalEnum.SECOND,
                         StatisticRollUpType.ALL).build()
         )
                 .onFailure(e -> {

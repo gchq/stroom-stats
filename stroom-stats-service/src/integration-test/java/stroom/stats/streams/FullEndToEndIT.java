@@ -30,14 +30,14 @@ import org.hibernate.SessionFactory;
 import org.junit.Test;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.api.StatisticType;
-import stroom.stats.configuration.StatisticConfigurationEntity;
-import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
+import stroom.stats.configuration.StatisticConfiguration;
+import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.Statistics;
 import stroom.stats.schema.TagType;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.test.StatisticConfigurationEntityHelper;
+import stroom.stats.test.StroomStatsStoreEntityHelper;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.util.logging.LambdaLogger;
 import stroom.stats.xml.StatisticsMarshaller;
@@ -68,16 +68,16 @@ public class FullEndToEndIT extends AbstractAppIT {
         LOGGER.info("Start time is {}", startTime);
 
         configure(stroomPropertyService);
-        List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> statNameMap = createDummyStatisticConfigurations();
+        List<StatisticConfiguration> statisticConfigurations = createDummyStatisticConfigurations();
 
-        StatisticConfigurationEntityHelper.persistDummyStatisticConfigurations(
-                statNameMap,
+        StroomStatsStoreEntityHelper.persistDummyStatisticConfigurations(
+                statisticConfigurations,
                 injector.getInstance(SessionFactory.class),
-                injector.getInstance(StatisticConfigurationEntityMarshaller.class));
+                injector.getInstance(StroomStatsStoreEntityMarshaller.class));
 
 
         Map<String, List<Statistics>> statistics = createDummyStatistics(
-                statNameMap,
+                statisticConfigurations,
                 stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX),
                 startTime);
 
@@ -105,19 +105,20 @@ public class FullEndToEndIT extends AbstractAppIT {
         stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 500);
     }
 
-    private static List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> createDummyStatisticConfigurations(){
-        List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> stats = new ArrayList<>();
-        stats.add(StatisticConfigurationEntityHelper.createDummyStatisticConfiguration(
+    private static List<StatisticConfiguration> createDummyStatisticConfigurations(){
+        List<StatisticConfiguration> stats = new ArrayList<>();
+        stats.add(StroomStatsStoreEntityHelper.createDummyStatisticConfiguration(
                 "FullEndToEndIT-test-", StatisticType.COUNT, EventStoreTimeIntervalEnum.SECOND, TAG_ENV, TAG_SYSTEM));
-        stats.add(StatisticConfigurationEntityHelper.createDummyStatisticConfiguration(
+        stats.add(StroomStatsStoreEntityHelper.createDummyStatisticConfiguration(
                 "FullEndToEndIT-test-", StatisticType.VALUE, EventStoreTimeIntervalEnum.SECOND, TAG_ENV, TAG_SYSTEM));
         return stats;
     }
 
     private static Map<String, List<Statistics>> createDummyStatistics(
-            List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> stats,
-            String topicPrefix,
-            ZonedDateTime startTime) {
+            final List<StatisticConfiguration> statisticConfigurations,
+            final String topicPrefix,
+            final ZonedDateTime startTime) {
+
         final String VAL_ENV_OPS = "OPS";
         final String VAL_ENV_DEV = "DEV";
         final String VAL_SYSTEM_ABC = "SystemABC";
@@ -135,10 +136,10 @@ public class FullEndToEndIT extends AbstractAppIT {
         final AtomicLong counter = new AtomicLong(0);
         List<Statistics.Statistic> statList = new ArrayList<>();
 
-        stats.forEach(stat -> {
-            String statName = stat._1().getName();
-            StatisticType statisticType = stat._1().getStatisticType();
-            EventStoreTimeIntervalEnum interval = stat._2();
+        statisticConfigurations.forEach(stat -> {
+            String statName = stat.getName();
+            StatisticType statisticType = stat.getStatisticType();
+            EventStoreTimeIntervalEnum interval = stat.getPrecisionAsInterval();
 
             LOGGER.info("Processing {} - {}", statisticType, interval);
 

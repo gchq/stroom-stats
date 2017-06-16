@@ -35,17 +35,17 @@ public class StatisticConfigurationCacheByUuidLoaderWriter implements CacheLoade
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticConfigurationCacheByUuidLoaderWriter.class);
 
 
-    private final StatisticConfigurationEntityDAO statisticConfigurationEntityDAO;
+    private final StroomStatsStoreEntityDAO stroomStatsStoreEntityDAO;
 
     @Inject
-    public StatisticConfigurationCacheByUuidLoaderWriter(final StatisticConfigurationEntityDAO statisticConfigurationEntityDAO) {
-        this.statisticConfigurationEntityDAO = statisticConfigurationEntityDAO;
+    public StatisticConfigurationCacheByUuidLoaderWriter(final StroomStatsStoreEntityDAO stroomStatsStoreEntityDAO) {
+        this.stroomStatsStoreEntityDAO = stroomStatsStoreEntityDAO;
     }
 
     @Override
     public StatisticConfiguration load(final String key) throws Exception {
         LOGGER.debug("load called for key {}", key);
-        return statisticConfigurationEntityDAO.loadByUuid(key)
+        return stroomStatsStoreEntityDAO.loadByUuid(key)
                 .orElseThrow(() -> new Exception(String.format("Statistic configuration with uuid %s cannot be found in the database", key)));
     }
 
@@ -53,7 +53,7 @@ public class StatisticConfigurationCacheByUuidLoaderWriter implements CacheLoade
     public Map<String, StatisticConfiguration> loadAll(final Iterable<? extends String> keys) throws BulkCacheLoadingException, Exception {
         LOGGER.debug("loadAll called for keys {}", keys);
         //unique key constraint shoudl ensure we only have one stat config per uuid, hence (o1,o2) -> o1
-        return statisticConfigurationEntityDAO.loadAll().stream()
+        return stroomStatsStoreEntityDAO.loadAll().stream()
                 .map(statConfigEntity -> (StatisticConfiguration) statConfigEntity)
                 .collect(Collectors.toMap(StatisticConfiguration::getUuid, Function.identity(), (o1, o2) -> o1));
     }

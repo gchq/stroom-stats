@@ -179,7 +179,7 @@ public class StatisticsFlatMappingServiceIT {
                 statName,
                 statisticType,
                 Arrays.asList(tag1, tag2),
-                interval.columnInterval());
+                interval);
 
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
@@ -276,7 +276,7 @@ public class StatisticsFlatMappingServiceIT {
                 statName,
                 statisticType,
                 Arrays.asList(tag1, tag2),
-                interval.columnInterval());
+                interval);
 
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
@@ -354,7 +354,7 @@ public class StatisticsFlatMappingServiceIT {
                         statName,
                         statisticType,
                         Arrays.asList(tag1, tag2),
-                        interval.columnInterval());
+                        interval);
 
                 Statistics statistics;
                 if (statisticType.equals(StatisticType.COUNT)) {
@@ -438,7 +438,7 @@ public class StatisticsFlatMappingServiceIT {
                 statName,
                 statisticType,
                 Arrays.asList(tag1, tag2),
-                interval.columnInterval());
+                interval);
 
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
@@ -524,7 +524,7 @@ public class StatisticsFlatMappingServiceIT {
                 statName,
                 statisticType,
                 Arrays.asList(tag1, tag2),
-                interval.columnInterval());
+                interval);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
                 StatisticsHelper.buildCountStatistic(statName, timeNow, 1L,
@@ -605,7 +605,7 @@ public class StatisticsFlatMappingServiceIT {
                 statName,
                 statisticType,
                 Arrays.asList(tag1, tag2),
-                interval.columnInterval());
+                interval);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
                 //bump up to MIN interval
@@ -713,7 +713,7 @@ public class StatisticsFlatMappingServiceIT {
                             statName,
                             statisticType,
                             Arrays.asList(tag1, tag2),
-                            interval.columnInterval());
+                            interval);
 
                     for (int i : IntStream.rangeClosed(1, msgCntPerStatNameAndIntervalAndType).toArray()) {
 
@@ -1016,7 +1016,7 @@ public class StatisticsFlatMappingServiceIT {
                                String statName,
                                StatisticType statisticType,
                                List<String> fieldNames,
-                               long precision) {
+                               EventStoreTimeIntervalEnum precision) {
         MockStatisticConfiguration statConfig = new MockStatisticConfiguration()
                 .setName(statName)
                 .setStatisticType(statisticType)
@@ -1029,7 +1029,7 @@ public class StatisticsFlatMappingServiceIT {
                 statConfig.getStatisticType(),
                 statConfig.getRollUpType(),
                 statConfig.getFieldNames(),
-                statConfig.getPrecision());
+                statConfig.getPrecisionAsInterval());
 
         mockStatisticConfigurationService.addStatisticConfiguration(statConfig);
     }

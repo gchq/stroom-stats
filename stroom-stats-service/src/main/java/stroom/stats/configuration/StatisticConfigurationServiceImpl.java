@@ -41,19 +41,19 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
     static final String KEY_BY_NAME_CACHE_NAME = "nameToStatisticConfigurationCache";
     static final String KEY_BY_UUID_CACHE_NAME = "uuidToStatisticConfigurationCache";
 
-    private final StatisticConfigurationEntityDAO statisticConfigurationEntityDAO;
+    private final StroomStatsStoreEntityDAO stroomStatsStoreEntityDAO;
     private final Cache<String, StatisticConfiguration> keyByNameCache;
     private final Cache<String, StatisticConfiguration> keyByUuidCache;
     private final SessionFactory sessionFactory;
 
     @Inject
     public StatisticConfigurationServiceImpl(final CacheFactory cacheFactory,
-                                             final StatisticConfigurationEntityDAO statisticConfigurationEntityDAO,
+                                             final StroomStatsStoreEntityDAO stroomStatsStoreEntityDAO,
                                              final StatisticConfigurationCacheByNameLoaderWriter byNameLoaderWriter,
                                              final StatisticConfigurationCacheByUuidLoaderWriter byUuidLoaderWriter,
                                              final SessionFactory sessionFactory) {
 
-        this.statisticConfigurationEntityDAO = statisticConfigurationEntityDAO;
+        this.stroomStatsStoreEntityDAO = stroomStatsStoreEntityDAO;
         this.sessionFactory = sessionFactory;
 
         this.keyByNameCache = cacheFactory.getOrCreateCache(
@@ -72,7 +72,7 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
     @Override
     public List<StatisticConfiguration> fetchAll() {
         return executeInSession(() ->
-                new ArrayList<>(statisticConfigurationEntityDAO.loadAll())
+                new ArrayList<>(stroomStatsStoreEntityDAO.loadAll())
         );
     }
 

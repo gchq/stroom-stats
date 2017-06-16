@@ -107,7 +107,7 @@ public class TestStatisticValidator {
                 .setRollUpType(StatisticRollUpType.ALL)
                 .addFieldName(tag1)
                 .addFieldName(tag2)
-                .setPrecision(interval.columnInterval());
+                .setPrecision(interval);
 
         return new StatisticWrapper(statistic, Optional.of(statConfig));
     }

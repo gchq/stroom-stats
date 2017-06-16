@@ -119,9 +119,9 @@ public abstract class AbstractStatisticFlatMapper {
 
         //Start with the smallest precision defined in the stat config and iterate up from there
         Optional<EventStoreTimeIntervalEnum> currentInterval = Optional.of(
-                EventStoreTimeIntervalEnum.fromColumnInterval(statisticWrapper.getOptionalStatisticConfiguration()
+                statisticWrapper.getOptionalStatisticConfiguration()
                         .orElseThrow(() -> new RuntimeException("Statistic configuration should never be null here as it has already been through validation"))
-                        .getPrecision())
+                        .getPrecisionAsInterval()
         );
 
         do {

@@ -24,12 +24,12 @@ import javaslang.Tuple4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
-import stroom.stats.configuration.StatisticConfigurationEntity;
+import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.schema.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.test.StatisticConfigurationEntityBuilder;
 import stroom.stats.test.StatisticsHelper;
+import stroom.stats.test.StroomStatsStoreEntityBuilder;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -91,7 +91,7 @@ public class GenerateSampleStatisticsData {
         return ZonedDateTime.ofInstant(Instant.now().truncatedTo(ChronoUnit.DAYS), ZoneOffset.UTC);
     }
 
-    public static Tuple2<StatisticConfigurationEntity, List<Statistics>> generateData(
+    public static Tuple2<StatisticConfiguration, List<Statistics>> generateData(
             String statName,
             StatisticType statisticType,
             EventStoreTimeIntervalEnum smallestInterval,
@@ -108,10 +108,10 @@ public class GenerateSampleStatisticsData {
                 EVENT_TIME_DELTA_MS);
 
         //build the stat config for the stats we are about to generate
-        StatisticConfigurationEntity statisticConfiguration = new StatisticConfigurationEntityBuilder(
+        StatisticConfiguration statisticConfiguration = new StroomStatsStoreEntityBuilder(
                 statName,
                 statisticType,
-                smallestInterval.columnInterval(),
+                smallestInterval,
                 statisticRollUpType)
                 .addFields(TAGS)
                 .build();

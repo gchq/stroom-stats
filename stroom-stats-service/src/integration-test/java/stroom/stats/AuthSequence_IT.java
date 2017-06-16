@@ -20,7 +20,6 @@
 package stroom.stats;
 
 import com.google.inject.Injector;
-import javaslang.Tuple2;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientResponse;
 import org.hibernate.SessionFactory;
@@ -43,10 +42,9 @@ import stroom.query.api.v1.TableSettings;
 import stroom.query.api.v1.TimeZone;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.configuration.StatisticConfigurationEntity;
-import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
+import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.test.StatisticConfigurationEntityHelper;
+import stroom.stats.test.StroomStatsStoreEntityHelper;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -76,13 +74,13 @@ public class AuthSequence_IT extends AbstractAppIT {
      */
     @Test
     public void testPostQueryData_validCredentials() throws UnsupportedEncodingException {
-        List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> statNameMap =
-                createDummyStatisticConfigurations();
 
-        List<String> uuids = StatisticConfigurationEntityHelper.persistDummyStatisticConfigurations(
-                statNameMap,
+        List<StatisticConfiguration> statisticConfigurations = createDummyStatisticConfigurations();
+
+        List<String> uuids = StroomStatsStoreEntityHelper.persistDummyStatisticConfigurations(
+                statisticConfigurations,
                 injector.getInstance(SessionFactory.class),
-                injector.getInstance(StatisticConfigurationEntityMarshaller.class));
+                injector.getInstance(StroomStatsStoreEntityMarshaller.class));
         statisticConfigurationUuid = uuids.get(0);
 
         String jwtToken = loginToStroomAsAdmin();
@@ -94,11 +92,11 @@ public class AuthSequence_IT extends AbstractAppIT {
         assertAccepted(response);
     }
 
-    private static List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> createDummyStatisticConfigurations(){
-        List<Tuple2<StatisticConfigurationEntity, EventStoreTimeIntervalEnum>> stats = new ArrayList<>();
-        stats.add(StatisticConfigurationEntityHelper.createDummyStatisticConfiguration(
+    private static List<StatisticConfiguration> createDummyStatisticConfigurations(){
+        List<StatisticConfiguration> stats = new ArrayList<>();
+        stats.add(StroomStatsStoreEntityHelper.createDummyStatisticConfiguration(
                 "AuthSequence_IT-", StatisticType.COUNT, EventStoreTimeIntervalEnum.SECOND, TAG_ENV, TAG_SYSTEM));
-        stats.add(StatisticConfigurationEntityHelper.createDummyStatisticConfiguration(
+        stats.add(StroomStatsStoreEntityHelper.createDummyStatisticConfiguration(
                 "AuthSequence_IT-", StatisticType.VALUE, EventStoreTimeIntervalEnum.SECOND, TAG_ENV, TAG_SYSTEM));
         return stats;
     }

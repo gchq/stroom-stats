@@ -4,31 +4,32 @@ import com.google.inject.Injector;
 import javaslang.control.Try;
 import org.hibernate.SessionFactory;
 import stroom.stats.api.StatisticType;
-import stroom.stats.configuration.StatisticConfigurationEntity;
+import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.configuration.marshaller.StatisticConfigurationEntityMarshaller;
+import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.test.StatisticConfigurationEntityBuilder;
-import stroom.stats.test.StatisticConfigurationEntityHelper;
+import stroom.stats.test.StroomStatsStoreEntityBuilder;
+import stroom.stats.test.StroomStatsStoreEntityHelper;
 
 public class StatisticConfigurationCreator {
+
     public static String create(
             Injector injector,
             String statName,
             StatisticType statisticType,
             EventStoreTimeIntervalEnum interval,
             String... fields){
-        StatisticConfigurationEntity statisticConfigurationEntity = new StatisticConfigurationEntityBuilder(
+        StatisticConfiguration statisticConfigurationEntity = new StroomStatsStoreEntityBuilder(
                 statName,
                 statisticType,
-                interval.columnInterval(),
+                interval,
                 StatisticRollUpType.ALL)
                 .addFields(fields)
                 .build();
 
         SessionFactory sessionFactory = injector.getInstance(SessionFactory.class);
-        StatisticConfigurationEntityMarshaller statisticConfigurationMarshaller = injector.getInstance(StatisticConfigurationEntityMarshaller.class);
-        Try<StatisticConfigurationEntity> statisticConfigurationEntityTry = StatisticConfigurationEntityHelper.addStatConfig(
+        StroomStatsStoreEntityMarshaller statisticConfigurationMarshaller = injector.getInstance(StroomStatsStoreEntityMarshaller.class);
+        Try<StatisticConfiguration> statisticConfigurationEntityTry = StroomStatsStoreEntityHelper.addStatConfig(
                 sessionFactory, statisticConfigurationMarshaller, statisticConfigurationEntity);
         return statisticConfigurationEntityTry.get().getUuid();
     }

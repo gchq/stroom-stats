@@ -60,14 +60,14 @@ public class TestEventStore {
             STAT_NAME,
             StatisticType.COUNT,
             StatisticRollUpType.NONE,
-            1000L,
+            EventStoreTimeIntervalEnum.SECOND,
             Collections.emptySet());
 
     private static final StatisticConfiguration STAT_CONFIG_ROLLUP_ALL = new MockStatisticConfiguration(
                 STAT_NAME,
                 StatisticType.COUNT,
                 StatisticRollUpType.ALL,
-                1000L,
+                EventStoreTimeIntervalEnum.SECOND,
                 Collections.emptySet(),
                 TAG0,
                 TAG1,
@@ -78,7 +78,7 @@ public class TestEventStore {
             STAT_NAME,
             StatisticType.COUNT,
             StatisticRollUpType.CUSTOM,
-            1000L,
+            EventStoreTimeIntervalEnum.SECOND,
             new HashSet<>(Arrays.asList(
                     new MockCustomRollupMask(Collections.emptyList()), //zero mask
                     new MockCustomRollupMask(Arrays.asList(0, 1, 2, 3)), //all rolled up
