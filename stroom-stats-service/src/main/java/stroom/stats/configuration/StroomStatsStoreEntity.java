@@ -133,6 +133,7 @@ public class StroomStatsStoreEntity extends DocumentEntity implements StatisticC
         this.pPrecision = pPrecision;
     }
 
+    @Override
     @Transient
     public EventStoreTimeIntervalEnum getPrecision() {
         return EventStoreTimeIntervalEnum.valueOf(pPrecision);
@@ -247,6 +248,7 @@ public class StroomStatsStoreEntity extends DocumentEntity implements StatisticC
         }
     }
 
+    @Override
     @Transient
     public Set<? extends CustomRollUpMask> getCustomRollUpMasks() {
         if (stroomStatsStoreDataObject != null) {
