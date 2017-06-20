@@ -1,10 +1,11 @@
 # Basic configuration
 language: java
 dist: trusty
+group: edge
 services:
   - docker
 jdk: oraclejdk8
-sudo: false
+sudo: required
 
 # Increase the size of the heap, use urlDependencies plugin from cache
 before_script:
