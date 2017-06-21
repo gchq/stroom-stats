@@ -1,5 +1,6 @@
 plugins {
-    id "net.ltgt.errorprone" version "0.0.10"
+    //errorprone plugin relies on guava 21 and will not work on guava 20
+    id "net.ltgt.errorprone" version "0.0.10" 
     id 'com.github.johnrengelman.shadow' version '1.2.3'
 }
 
@@ -78,6 +79,7 @@ dependencies {
     compile libs.kafka_clients
     compile libs.kafka_streams
     compile libs.kryo
+    compile libs.logback_classic
     compile libs.objenesis //used for Kryo strategies
     compile libs.slf4j_api
     compile libs.xml_apis
