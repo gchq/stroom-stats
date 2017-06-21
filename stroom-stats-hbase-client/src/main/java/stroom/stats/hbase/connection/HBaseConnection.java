@@ -26,6 +26,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Table;
 import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.hbase.exception.HBaseException;
@@ -84,9 +85,20 @@ public class HBaseConnection {
 
         autoCreateTables = true;
 
+        //test the connection to HBase to avoid NPEs bubbling up form inside the HBase code
+        try {
+            HBaseAdmin.checkHBaseAvailable(configuration);
+        } catch (final Exception e) {
+            LOGGER.error("Error while testing connection to HBase with zookeeper quorum [" + quorum +
+                    "]. HBase may be down or the configuration may be incorrect", e);
+            LOGGER.info("Shutting down the system due to lack of an HBase connection");
+            System.exit(1);
+        }
+
         try {
             sharedClusterConnection = ConnectionFactory.createConnection(configuration);
         } catch (final IOException e) {
+            LOGGER.error("Unable to open a connection to HBase", e);
             throw new HBaseException("Unable to open a connection to HBase", e);
         }
 
@@ -126,7 +138,6 @@ public class HBaseConnection {
     }
 
     //TODO Need alternative implementation of shutdown hook
-//    @StroomShutdown(priority = 5)
     public void shutdown() {
         try {
             final Connection connection = getConnection();

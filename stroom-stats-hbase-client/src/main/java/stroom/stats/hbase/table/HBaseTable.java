@@ -21,6 +21,7 @@
 
 package stroom.stats.hbase.table;
 
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
@@ -49,7 +50,8 @@ public abstract class HBaseTable implements GenericTable {
     private final HBaseConnection hBaseConnection;
 
     public HBaseTable(final HBaseConnection hBaseConnection) {
-        this.hBaseConnection = hBaseConnection;
+        this.hBaseConnection = Preconditions.checkNotNull(hBaseConnection,
+                "hBaseConnection is null, maybe HBase is down or connection details are wrong");
     }
 
     /**
@@ -59,6 +61,7 @@ public abstract class HBaseTable implements GenericTable {
         // HBaseAdmin admin = null;
         boolean isTableBeingCreated = false;
         try (Admin admin = hBaseConnection.getConnection().getAdmin()) {
+            Preconditions.checkNotNull(admin);
             if (admin.isTableAvailable(getName())) {
                 LOGGER.info("Found HBase table '{}'", getDisplayName());
 
