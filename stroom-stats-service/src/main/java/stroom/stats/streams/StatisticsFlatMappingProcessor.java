@@ -185,7 +185,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
     }
 
     @Override
-    public HealthCheck.Result check() {
+    public HealthCheck.Result getHealth() {
         switch (runState) {
             case RUNNING:
                 return HealthCheck.Result.healthy(runState.toString());

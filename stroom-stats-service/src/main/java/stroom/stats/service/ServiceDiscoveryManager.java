@@ -145,7 +145,7 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
             checks.add(
                     new HasHealthCheck() {
                         @Override
-                        public HealthCheck.Result check() {
+                        public HealthCheck.Result getHealth() {
                             return checkThis(get(externalService), externalService.getName());
                         }
 

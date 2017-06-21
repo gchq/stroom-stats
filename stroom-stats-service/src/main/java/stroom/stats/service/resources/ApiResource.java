@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import stroom.query.api.v1.DocRef;
 import stroom.query.api.v1.SearchRequest;
 import stroom.stats.HBaseClient;
+import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.schema.Statistics;
 import stroom.stats.service.ExternalServices;
 import stroom.stats.service.ServiceDiscoveryManager;
@@ -51,7 +52,7 @@ import java.util.Optional;
 
 @Path("/")
 @Produces(MediaType.APPLICATION_JSON)
-public class ApiResource {
+public class ApiResource implements HasHealthCheck {
     private static final Logger LOGGER = LoggerFactory.getLogger(ApiResource.class);
     private HBaseClient hBaseClient;
     private ServiceDiscoveryManager serviceDiscoveryManager;
@@ -131,6 +132,7 @@ public class ApiResource {
     }
 
 
+    @Override
     public HealthCheck.Result getHealth(){
         if(serviceDiscoveryManager.getAddress(ExternalServices.AUTHORISATION).isPresent()){
             return HealthCheck.Result.healthy();

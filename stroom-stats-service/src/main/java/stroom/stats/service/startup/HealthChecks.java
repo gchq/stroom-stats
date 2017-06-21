@@ -19,7 +19,7 @@ public class HealthChecks {
 
     static void register(Environment environment, Injector injector) {
         register(environment, "ApiResource",
-                () -> injector.getInstance(ApiResource.class).getHealth());
+                () -> injector.getInstance(ApiResource.class));
 
         ServiceDiscoveryManager serviceDiscoveryManager = injector.getInstance(ServiceDiscoveryManager.class);
         serviceDiscoveryManager.checks()
@@ -39,30 +39,28 @@ public class HealthChecks {
 
     }
 
+    /**
+     * For use when the {@link HasHealthCheck} instance is not known at registration time, or may change
+     */
     private static void register(final Environment environment,
-                                     final String name,
-                                     final Supplier<HealthCheck.Result> healthCheckResultSupplier) {
+                                 final String name,
+                                 final Supplier<HasHealthCheck> hasHealthCheckSupplier) {
 
         LOGGER.info("Registering health check with name {}", name);
 
         environment.healthChecks().register(name, new HealthCheck() {
             @Override
             protected Result check() throws Exception {
-                return healthCheckResultSupplier.get();
+                return hasHealthCheckSupplier.get().getHealth();
             }
         });
     }
 
     private static void register(final Environment environment,
-                                     final HasHealthCheck hasHealthCheck) {
+                                 final HasHealthCheck hasHealthCheck) {
 
         LOGGER.info("Registering health check with name {}", hasHealthCheck.getName());
 
-        environment.healthChecks().register(hasHealthCheck.getName(), new HealthCheck() {
-            @Override
-            protected Result check() throws Exception {
-                return hasHealthCheck.check();
-            }
-        });
+        environment.healthChecks().register(hasHealthCheck.getName(), hasHealthCheck.getHealthCheck());
     }
 }

@@ -20,7 +20,6 @@
 package stroom.stats;
 
 import com.google.inject.Injector;
-import org.apache.hadoop.util.ThreadUtil;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -86,7 +85,7 @@ public class ProcessingStartStopIT extends AbstractAppIT {
 
     private void assertState(HasHealthCheck hasHealthCheck, boolean expectedIsHealthy, int timeoutMs) {
         Instant timeoutTime = Instant.now().plusMillis(timeoutMs);
-        while (hasHealthCheck.check().isHealthy() != expectedIsHealthy && Instant.now().isBefore(timeoutTime)) {
+        while (hasHealthCheck.getHealth().isHealthy() != expectedIsHealthy && Instant.now().isBefore(timeoutTime)) {
             try {
                 Thread.sleep(200);
             } catch (InterruptedException e) {
@@ -94,7 +93,7 @@ public class ProcessingStartStopIT extends AbstractAppIT {
             }
         }
 
-        Assertions.assertThat(hasHealthCheck.check().isHealthy()).isEqualTo(expectedIsHealthy);
+        Assertions.assertThat(hasHealthCheck.getHealth().isHealthy()).isEqualTo(expectedIsHealthy);
     }
 
 }
