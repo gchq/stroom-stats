@@ -15,13 +15,13 @@ jar {
                 "Main-Class" : "stroom.stats.service.startup.App"
         )
     }
-    //archiveName 'stroom-stats.jar'
+    archiveName "stroom-stats-${version}.jar"
 }
 
 shadowJar {
     // A transformer to merges files in META-INF/services
     mergeServiceFiles()
-    //archiveName 'stroom-stats-all.jar'
+    archiveName "stroom-stats-all-${version}.jar"
 }
 
 dependencies {
