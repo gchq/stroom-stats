@@ -60,10 +60,7 @@ public class StatisticValidator {
                 return addErrorMsg(statName, statisticWrapper, String.format("Statistic is of type VALUE but getValue is null"));
             }
 
-            if (!statisticConfiguration.getFieldNames().containsAll(
-                    statistic.getTags().getTag().stream()
-                            .map(TagType::getName)
-                            .collect(Collectors.toList()))) {
+            if (!doTagNamesMatch(statisticConfiguration, statistic)) {
                 return addErrorMsg(statName, statisticWrapper, String.format("The tag names in the event %s do not match those configured for the statistic %s",
                         statistic.getTags().getTag().stream()
                                 .map(TagType::getName)
@@ -81,6 +78,21 @@ public class StatisticValidator {
 
     public static KeyValue<String, StatisticWrapper> addErrorMsg(String statName, StatisticWrapper statisticWrapper, String message) {
         return new KeyValue<>(statName, statisticWrapper.addErrorMessage(message));
+    }
+
+    private static boolean doTagNamesMatch(final StatisticConfiguration statisticConfiguration,
+                                    final Statistics.Statistic statistic) {
+
+        //All the tags names in the stat must be in the stat config.  It is ok however for the stat config
+        //to have tag names that are not in the stat, as these will just be treated as null
+        if (statistic.getTags() == null) {
+            return true;
+        } else {
+            return statisticConfiguration.getFieldNames().containsAll(
+                            statistic.getTags().getTag().stream()
+                                    .map(TagType::getName)
+                                    .collect(Collectors.toList()));
+        }
     }
 
 }
