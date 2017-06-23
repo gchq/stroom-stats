@@ -28,15 +28,17 @@ import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Table;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.hbase.exception.HBaseException;
 import stroom.stats.properties.StroomPropertyService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 
 /**
  * Singleton instance to hold the HBaseConfiguration object which contains the connection to HBase.
@@ -85,9 +87,11 @@ public class HBaseConnection {
 
         autoCreateTables = true;
 
-        //test the connection to HBase to avoid NPEs bubbling up form inside the HBase code
         try {
-            HBaseAdmin.checkHBaseAvailable(configuration);
+            //test the connection to HBase to avoid NPEs bubbling up form inside the HBase code
+            //If hbase and stroom-stats are started at the same time then it is likely that when stroom-stats
+            //tries to connect, hbase will not yet be up so keep retrying for a while then give up
+            waitForHBaseConnection(Duration.ofMinutes(2));
         } catch (final Exception e) {
             LOGGER.error("Error while testing connection to HBase with zookeeper quorum [" + quorum +
                     "]. HBase may be down or the configuration may be incorrect", e);
@@ -103,6 +107,39 @@ public class HBaseConnection {
         }
 
         LOGGER.info("HBaseTableConfiguration initialised");
+    }
+    
+    private void waitForHBaseConnection(final Duration timeout) throws Exception {
+
+        boolean connectionEstablished = false;
+        Instant timeoutTime = Instant.now().plus(timeout);
+        int retryIntervalMs = 2_000;
+        Exception lastException = null;
+
+        while (!connectionEstablished && Instant.now().isBefore(timeoutTime)) {
+            try {
+                HBaseAdmin.checkHBaseAvailable(configuration);
+                connectionEstablished = true;
+                LOGGER.info("HBase connection established");
+            } catch (Exception e) {
+                lastException = e;
+                LOGGER.info("HBase not available due to [{}], retrying in {}s", e.getMessage(), retryIntervalMs);
+                try {
+                    Thread.sleep(retryIntervalMs);
+                } catch (InterruptedException e1) {
+                    Thread.currentThread().interrupt();
+                    LOGGER.warn("Thread interrupted while waiting for HBase to start, giving up");
+                    break;
+                }
+            }
+        }
+        if (!connectionEstablished) {
+            if (lastException != null) {
+                throw lastException;
+            } else {
+                throw new RuntimeException("Unable to establish connection to HBase");
+            }
+        }
     }
 
     /**
