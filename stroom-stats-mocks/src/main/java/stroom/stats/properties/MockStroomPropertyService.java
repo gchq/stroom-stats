@@ -23,6 +23,7 @@ import stroom.stats.util.logging.LambdaLogger;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -85,6 +86,11 @@ public class MockStroomPropertyService implements StroomPropertyService {
     @Override
     public List<String> getAllPropertyKeys() {
         return properties.keySet().stream().collect(Collectors.toList());
+    }
+
+    @Override
+    public Map<String, String> getAllProperties() {
+        return new HashMap<>(properties);
     }
 
     /**

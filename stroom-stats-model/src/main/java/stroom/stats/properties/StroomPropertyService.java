@@ -20,6 +20,7 @@
 package stroom.stats.properties;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
@@ -39,6 +40,8 @@ public interface StroomPropertyService {
     void setProperty(final String name, final String value);
 
     List<String> getAllPropertyKeys();
+
+    Map<String, String> getAllProperties();
 
     /**
      * Dumps all properties using the supplied logMethod

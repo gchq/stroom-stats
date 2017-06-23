@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 
 //TODO probably needs moving out into its own module
 public class StroomPropertyServiceImpl implements StroomPropertyService {
+
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StroomPropertyServiceImpl.class);
 
     public static final String PROPERTY_DEFAULTS_FILE_NAME = "default-stroom-stats.properties";
@@ -56,7 +57,8 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
     private final Semaphore initialisedSemaphore = new Semaphore(0);
 
     @Inject
-    public StroomPropertyServiceImpl(final Config config, @StatsCuratorFramework final CuratorFramework curatorFramework) {
+    public StroomPropertyServiceImpl(final Config config,
+                                     @StatsCuratorFramework final CuratorFramework curatorFramework) {
         this.zookeeperConfig = config.getZookeeperConfig();
         this.curatorFramework = curatorFramework;
         propertyServicePath = zookeeperConfig.getPropertyServicePath();
@@ -141,15 +143,15 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
                 break;
             }
             case NODE_ADDED: {
-                LOGGER.info("Property added: " + childDataToString(treeCacheEvent.getData()));
+                LOGGER.info("Property added: " + childDataToLogString(treeCacheEvent.getData()));
                 break;
             }
             case NODE_REMOVED: {
-                LOGGER.info("Property removed: " + childDataToString(treeCacheEvent.getData()));
+                LOGGER.info("Property removed: " + childDataToLogString(treeCacheEvent.getData()));
                 break;
             }
             case NODE_UPDATED: {
-                LOGGER.info("Property updated: " + childDataToString(treeCacheEvent.getData()));
+                LOGGER.info("Property updated: " + childDataToLogString(treeCacheEvent.getData()));
                 break;
             }
             case CONNECTION_LOST: {
@@ -175,8 +177,7 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
 
         String fullPath = buildPath(name);
         Optional<String> optValue = Optional.ofNullable(treeCache.getCurrentData(fullPath))
-                .flatMap(childData -> Optional.ofNullable(childData.getData()))
-                .map(bVal -> Bytes.toString(bVal));
+                .map(this::childDataToString);
         return optValue;
     }
 
@@ -202,6 +203,14 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
         return propertyMap.keySet().stream().collect(Collectors.toList());
     }
 
+    @Override
+    public Map<String, String> getAllProperties() {
+        return getPropertyMap(propertyServicePath).entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> childDataToString(entry.getValue())));
+    }
+
     private Map<String, ChildData> getPropertyMap(String propertyServicePath) {
         Map<String, ChildData> propertyMap = treeCache.getCurrentChildren(propertyServicePath);
         if (propertyMap == null) {
@@ -223,6 +232,13 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
     }
 
     private String childDataToString(final ChildData childData) {
+        if (childData == null) {
+            return null;
+        }
+        return Bytes.toString(childData.getData());
+    }
+
+    private String childDataToLogString(final ChildData childData) {
         return new StringBuilder()
                 .append(childData.getPath())
                 .append(" - ")

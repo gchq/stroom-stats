@@ -26,18 +26,19 @@ import org.ehcache.CacheManager;
 import org.ehcache.config.builders.CacheManagerBuilder;
 import org.hibernate.SessionFactory;
 import stroom.stats.api.StatisticsService;
-import stroom.stats.properties.ServiceDiscoveryCuratorFrameworkProvider;
-import stroom.stats.properties.ServiceDiscoveryCuratorFramework;
-import stroom.stats.properties.StatsCuratorFramework;
-import stroom.stats.service.config.Config;
-import stroom.stats.configuration.StroomStatsStoreEntityDAO;
-import stroom.stats.configuration.StroomStatsStoreEntityDAOImpl;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.configuration.StatisticConfigurationServiceImpl;
+import stroom.stats.configuration.StroomStatsStoreEntityDAO;
+import stroom.stats.configuration.StroomStatsStoreEntityDAOImpl;
+import stroom.stats.properties.ServiceDiscoveryCuratorFramework;
+import stroom.stats.properties.ServiceDiscoveryCuratorFrameworkProvider;
+import stroom.stats.properties.StatsCuratorFramework;
 import stroom.stats.properties.StatsCuratorFrameworkProvider;
 import stroom.stats.properties.StroomPropertyService;
+import stroom.stats.properties.StroomPropertyServiceHealthCheck;
 import stroom.stats.properties.StroomPropertyServiceImpl;
 import stroom.stats.service.ServiceDiscoveryManager;
+import stroom.stats.service.config.Config;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.xml.StatisticsMarshaller;
 
@@ -75,6 +76,7 @@ public class StroomStatsServiceModule extends AbstractModule {
         bind(StatisticsMarshaller.class).asEagerSingleton();
         //Singleton as it holds a cache of the properties
         bind(StroomPropertyService.class).to(StroomPropertyServiceImpl.class).asEagerSingleton();
+        bind(StroomPropertyServiceHealthCheck.class);
     }
 
     @Provides

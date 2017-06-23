@@ -19,7 +19,6 @@
 
 package stroom.stats;
 
-import org.apache.hadoop.util.ThreadUtil;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -31,6 +30,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
@@ -89,6 +89,15 @@ public class StatisticsAggregationServiceIT {
 
     @Mock
     StatisticsService mockStatisticsService;
+
+    @Captor
+    ArgumentCaptor<Map<StatKey, StatAggregate>> aggregatesMapCaptor;
+
+    @Captor
+    ArgumentCaptor<StatisticType> statTypeCaptor;
+
+    @Captor
+    ArgumentCaptor<EventStoreTimeIntervalEnum> intervalCaptor;
 
     @Test
     public void testAggregation() throws InterruptedException {
@@ -205,9 +214,6 @@ public class StatisticsAggregationServiceIT {
      */
     private long getAggSum(UID statNameUid) {
 
-        ArgumentCaptor<StatisticType> statTypeCaptor = ArgumentCaptor.forClass(StatisticType.class);
-        ArgumentCaptor<EventStoreTimeIntervalEnum> intervalCaptor = ArgumentCaptor.forClass(EventStoreTimeIntervalEnum.class);
-        ArgumentCaptor<Map<StatKey, StatAggregate>> aggregatesMapCaptor = ArgumentCaptor.forClass(Map.class);
 
         Mockito.verify(mockStatisticsService, Mockito.atLeast(0)).putAggregatedEvents(statTypeCaptor.capture(),
                 intervalCaptor.capture(),

@@ -6,6 +6,7 @@ import io.dropwizard.setup.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.logging.LogLevelInspector;
+import stroom.stats.properties.StroomPropertyServiceHealthCheck;
 import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.resources.ApiResource;
 import stroom.stats.StatisticsAggregationService;
@@ -39,6 +40,8 @@ public class HealthChecks {
                 .forEach(hasHealthCheck -> register(environment, hasHealthCheck));
 
         register(environment, LogLevelInspector.INSTANCE);
+
+        register(environment, injector.getInstance(StroomPropertyServiceHealthCheck.class));
     }
 
     /**
