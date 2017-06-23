@@ -31,15 +31,11 @@ public class HealthChecks {
         StatisticsFlatMappingService statisticsFlatMappingService = injector.getInstance(StatisticsFlatMappingService.class);
         register(environment, statisticsFlatMappingService);
 
-//        statisticsFlatMappingService.getHealthCheckProviders()
-//                .forEach(hasHealthCheck -> register(environment, hasHealthCheck));
         register(environment, "FlatMappingService", statisticsFlatMappingService.getHealthCheckProviders());
 
         StatisticsAggregationService statisticsAggregationService = injector.getInstance(StatisticsAggregationService.class);
         register(environment, statisticsAggregationService);
 
-//        statisticsAggregationService.getHealthCheckProviders()
-//                .forEach(hasHealthCheck -> register(environment, hasHealthCheck));
         register(environment, "AggregationService", statisticsAggregationService.getHealthCheckProviders());
 
         register(environment, LogLevelInspector.INSTANCE);

@@ -22,6 +22,7 @@ package stroom.stats.mixins;
 import com.codahale.metrics.health.HealthCheck;
 import javaslang.Tuple2;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -60,6 +61,7 @@ public interface HasHealthCheck extends hasName {
                 List<Tuple2<String, HealthCheck.Result>> results = healthCheckProviders.stream()
                         .map(healthCheckProvider ->
                                 new Tuple2<>(healthCheckProvider.getName(), healthCheckProvider.getHealth()))
+                        .sorted(Comparator.comparing(Tuple2::_1))
                         .collect(Collectors.toList());
 
                 boolean isHealthyOverall = !results.stream()
