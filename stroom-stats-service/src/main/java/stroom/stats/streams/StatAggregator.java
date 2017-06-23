@@ -36,7 +36,7 @@ class StatAggregator {
 
     private Map<StatKey, StatAggregate> buffer;
     private final int minSize;
-    private final Instant expiredTime;
+    private final Instant expiryTime;
     private final EventStoreTimeIntervalEnum aggregationInterval;
     private int inputCount = 0;
 
@@ -52,7 +52,7 @@ class StatAggregator {
         //initial size to avoid it rehashing. x1.2 to allow for it going a bit over the min value
         this.buffer = new HashMap<>((int) Math.ceil((minSize * 1.2) / 0.75));
         this.minSize = minSize;
-        this.expiredTime = Instant.now().plusMillis(timeToLiveMs);
+        this.expiryTime = Instant.now().plusMillis(timeToLiveMs);
         this.aggregationInterval = aggregationInterval;
     }
 
@@ -90,8 +90,8 @@ class StatAggregator {
         return inputCount;
     }
 
-    public Instant getExpiredTime() {
-        return expiredTime;
+    public Instant getExpiryTime() {
+        return expiryTime;
     }
 
     /**
@@ -115,7 +115,7 @@ class StatAggregator {
      * been passed.
      */
     public boolean isReadyForFlush() {
-        return (Instant.now().isAfter(expiredTime) || buffer.size() > minSize);
+        return (Instant.now().isAfter(expiryTime) || buffer.size() > minSize);
     }
 
     public EventStoreTimeIntervalEnum getAggregationInterval() {
@@ -132,7 +132,7 @@ class StatAggregator {
     public String toString() {
         return "StatAggregator{" +
                 "minSize=" + minSize +
-                ", expiredTime=" + expiredTime +
+                ", expiredTime=" + expiryTime +
                 ", aggregationInterval=" + aggregationInterval +
                 ", current size=" + buffer.size() +
                 ", inputCount=" + inputCount +

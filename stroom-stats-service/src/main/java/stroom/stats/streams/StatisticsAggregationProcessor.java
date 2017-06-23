@@ -540,23 +540,38 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     public HealthCheck.Result getHealth() {
         switch (runState) {
             case RUNNING:
-                return HealthCheck.Result.healthy(produceHealthCheckSummary());
+                return HealthCheck.Result.builder()
+                        .healthy()
+                        .withMessage(runState.toString())
+                        .withDetail("status", produceHealthCheckSummary())
+                        .build();
             default:
-                return HealthCheck.Result.unhealthy(runState.toString());
+                return HealthCheck.Result.builder()
+                        .unhealthy()
+                        .withMessage(runState.toString())
+                        .withDetail("status", produceHealthCheckSummary())
+                        .build();
         }
     }
 
-    private String produceHealthCheckSummary() {
+    private Map<String, String> produceHealthCheckSummary() {
 
         //TODO accessing the variables in statAggregator is not safe as we are outside the thread that is mutating
         //the aggregator, may be sufficient for a health check peek.
-        return String.format("%s - buffer input count: %s, size: %s, %% aggregation%%: %.2f, expiredTime: %s, partition count [%s]",
-                runState,
-                (statAggregator == null ? "null" : statAggregator.getInputCount()),
-                (statAggregator == null ? "null" : statAggregator.size()),
-                (statAggregator == null ? 0 : statAggregator.getAggregationPercentage()),
-                (statAggregator == null ? "null" : statAggregator.getExpiredTime().toString()),
-                assignedPartitions.size());
+        Map<String, String> statusMap = new TreeMap<>();
+
+        statusMap.put("buffer input count",
+                statAggregator == null ? "-" : Integer.toString(statAggregator.getInputCount()));
+        statusMap.put("size",
+                statAggregator == null ? "-" : Integer.toString(statAggregator.size()));
+        statusMap.put("aggregation %",
+                statAggregator == null ? "-" : String.format("%.2f", statAggregator.getAggregationPercentage()));
+        statusMap.put("expiry time",
+                statAggregator == null ? "-" : statAggregator.getExpiryTime().toString());
+        statusMap.put("partition count",
+                statAggregator == null ? "-" : Integer.toString(assignedPartitions.size()));
+
+        return statusMap;
     }
 
     public int getInstanceId() {

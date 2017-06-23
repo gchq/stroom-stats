@@ -222,7 +222,7 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
 
     public List<HasHealthCheck> getHealthCheckProviders() {
         List<HasHealthCheck> healthCheckProviders = new ArrayList<>();
-        processors.forEach(processor -> healthCheckProviders.add((HasHealthCheck) processor));
+        processors.forEach(healthCheckProviders::add);
         return healthCheckProviders;
     }
 
