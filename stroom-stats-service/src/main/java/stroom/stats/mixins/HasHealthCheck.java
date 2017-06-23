@@ -20,16 +20,64 @@
 package stroom.stats.mixins;
 
 import com.codahale.metrics.health.HealthCheck;
+import javaslang.Tuple2;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public interface HasHealthCheck extends hasName {
 
+    /**
+     * @return A non-null {@link com.codahale.metrics.health.HealthCheck.Result} object.
+     */
     HealthCheck.Result getHealth();
 
+    /**
+     * @return An instance of {@link HealthCheck} that will provide
+     * a {@link com.codahale.metrics.health.HealthCheck.Result}
+     */
     default HealthCheck getHealthCheck() {
         return new HealthCheck() {
             @Override
             protected Result check() throws Exception {
                 return getHealth();
+            }
+        };
+    }
+
+    static HasHealthCheck getAggregateHealthCheck(final String healthCheckName,
+                                               final List<HasHealthCheck> healthCheckProviders) {
+
+        return new HasHealthCheck() {
+
+            @Override
+            public String getName() {
+                return healthCheckName;
+            }
+
+            @Override
+            public HealthCheck.Result getHealth() {
+                List<Tuple2<String, HealthCheck.Result>> results = healthCheckProviders.stream()
+                        .map(healthCheckProvider ->
+                                new Tuple2<>(healthCheckProvider.getName(), healthCheckProvider.getHealth()))
+                        .collect(Collectors.toList());
+
+                boolean isHealthyOverall = !results.stream()
+                        .anyMatch(result -> !result._2().isHealthy());
+
+                HealthCheck.ResultBuilder builder = HealthCheck.Result.builder();
+
+                if (isHealthyOverall) {
+                    builder.healthy();
+                } else {
+                    builder.unhealthy();
+                }
+                builder.withMessage("Aggregated health check");
+                results.forEach(result ->
+                        builder.withDetail(result._1(), result._2()));
+
+                HealthCheck.Result result = builder.build();
+                return result;
             }
         };
     }

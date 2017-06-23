@@ -5,14 +5,15 @@ import com.google.inject.Injector;
 import io.dropwizard.setup.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.StatisticsAggregationService;
 import stroom.stats.logging.LogLevelInspector;
+import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.properties.StroomPropertyServiceHealthCheck;
 import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.resources.ApiResource;
-import stroom.stats.StatisticsAggregationService;
-import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.streams.StatisticsFlatMappingService;
 
+import java.util.List;
 import java.util.function.Supplier;
 
 // Configuring HealthChecks is lengthy enough to deserve it's own file.
@@ -24,20 +25,22 @@ public class HealthChecks {
                 () -> injector.getInstance(ApiResource.class));
 
         ServiceDiscoveryManager serviceDiscoveryManager = injector.getInstance(ServiceDiscoveryManager.class);
-        serviceDiscoveryManager.checks()
+        serviceDiscoveryManager.getHealthCheckProviders()
                 .forEach(hasHealthCheck -> register(environment, hasHealthCheck));
 
         StatisticsFlatMappingService statisticsFlatMappingService = injector.getInstance(StatisticsFlatMappingService.class);
         register(environment, statisticsFlatMappingService);
 
-        statisticsFlatMappingService.getHealthCheckProviders()
-                .forEach(hasHealthCheck -> register(environment, hasHealthCheck));
+//        statisticsFlatMappingService.getHealthCheckProviders()
+//                .forEach(hasHealthCheck -> register(environment, hasHealthCheck));
+        register(environment, "FlatMappingService", statisticsFlatMappingService.getHealthCheckProviders());
 
         StatisticsAggregationService statisticsAggregationService = injector.getInstance(StatisticsAggregationService.class);
         register(environment, statisticsAggregationService);
 
-        statisticsAggregationService.getHealthCheckProviders()
-                .forEach(hasHealthCheck -> register(environment, hasHealthCheck));
+//        statisticsAggregationService.getHealthCheckProviders()
+//                .forEach(hasHealthCheck -> register(environment, hasHealthCheck));
+        register(environment, "AggregationService", statisticsAggregationService.getHealthCheckProviders());
 
         register(environment, LogLevelInspector.INSTANCE);
 
@@ -68,4 +71,15 @@ public class HealthChecks {
 
         environment.healthChecks().register(hasHealthCheck.getName(), hasHealthCheck.getHealthCheck());
     }
+
+    private static void register(final Environment environment,
+                                 final String healthCheckName,
+                                 final List<HasHealthCheck> healthCheckProviders) {
+
+        LOGGER.info("Registering aggregate health check with name {}", healthCheckName);
+
+        environment.healthChecks().register(healthCheckName,
+                HasHealthCheck.getAggregateHealthCheck(healthCheckName, healthCheckProviders).getHealthCheck());
+    }
+
 }

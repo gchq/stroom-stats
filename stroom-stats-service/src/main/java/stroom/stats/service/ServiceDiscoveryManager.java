@@ -32,11 +32,10 @@ import org.apache.curator.x.discovery.ServiceProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.HBaseClient;
-import stroom.stats.properties.ServiceDiscoveryCuratorFramework;
-import stroom.stats.properties.ServiceDiscoveryCuratorFrameworkProvider;
-import stroom.stats.service.config.Config;
 import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.mixins.HasHealthChecks;
+import stroom.stats.properties.ServiceDiscoveryCuratorFramework;
+import stroom.stats.service.config.Config;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -139,7 +138,7 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
     }
 
     @Override
-    public List<HasHealthCheck> checks() {
+    public List<HasHealthCheck> getHealthCheckProviders() {
         List<HasHealthCheck> checks = new ArrayList<>();
         for (ExternalServices externalService : ExternalServices.values()) {
             checks.add(

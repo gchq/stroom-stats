@@ -4,5 +4,5 @@ import java.util.List;
 
 @FunctionalInterface
 public interface HasHealthChecks {
-    List<HasHealthCheck> checks();
+    List<HasHealthCheck> getHealthCheckProviders();
 }
