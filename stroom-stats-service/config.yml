@@ -11,6 +11,37 @@ database:
         hibernate.id.new_generator_mappings: false
         hibernate.show_sql: false
 
+    # the maximum amount of time to wait on an empty pool before throwing an exception
+    maxWaitForConnection: 30s
+
+    # the SQL query to run when validating a connection's liveness
+    validationQuery: "/* MyApplication Health Check */ SELECT 1"
+
+    # the minimum number of connections to keep open
+    # Set this to 0 to prevent errors on startup if the DB hasn't started yet
+    initialSize: 0
+
+    # the minimum number of connections to keep open
+    # Set this to 0 to prevent errors on startup if the DB hasn't started yet
+    minSize: 0
+
+    # the maximum number of connections to keep open
+    maxSize: 50
+
+    # whether or not idle connections should be validated
+    checkConnectionWhileIdle: true
+
+    #Whether or not connections will be validated before being borrowed from the pool.
+    #If the connection fails to validate, it will be dropped from the pool, and another will be borrowed.
+    checkConnectionOnBorrow: true
+
+    #Whether or not connections will be validated before being added to the pool.
+    #If the connection fails to validate, it won’t be added to the pool.
+    checkConnectionOnConnect: true
+
+
+
+
 jwtTokenSecret: ${STATS_JWT_SECRET:- CHANGE_ME}
 
 server:
