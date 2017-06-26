@@ -123,7 +123,7 @@ public class HBaseConnection {
                 LOGGER.info("HBase connection established");
             } catch (Exception e) {
                 lastException = e;
-                LOGGER.info("HBase not available due to [{}], retrying in {}s", e.getMessage(), retryIntervalMs);
+                LOGGER.info("HBase not available due to [{}], retrying in {}ms", e.getMessage(), retryIntervalMs);
                 try {
                     Thread.sleep(retryIntervalMs);
                 } catch (InterruptedException e1) {
