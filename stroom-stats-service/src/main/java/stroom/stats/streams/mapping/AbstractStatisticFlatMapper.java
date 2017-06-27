@@ -171,19 +171,24 @@ public abstract class AbstractStatisticFlatMapper {
         //then find the corresponding value from the stat event.
         //This way we allow for the stat event not including null values
         //We map null values to a magic null string
-        List<TagType> tagTypes = statistic.getTags().getTag();
-        //TODO may want to build a cache of statconf to a tuple3 of (statNameUID, List<TagValues>, ESTIE)
-        //to speed the construction of the StatKey, though would still need to spawn a new list for the tagValues
-        List<TagValue> tagValues = statisticConfiguration.getFieldNames().stream()
-                .map(tag -> {
-                    Optional<String> optValue = tagTypes.stream()
-                            .filter(tagType -> tagType.getName().equals(tag))
-                            .findFirst()
-                            .map(TagType::getValue);
+        List<TagValue> tagValues;
+        if (statistic.getTags() != null) {
+            List<TagType> tagTypes = statistic.getTags().getTag();
+            //TODO may want to build a cache of statconf to a tuple3 of (statNameUID, List<TagValues>, ESTIE)
+            //to speed the construction of the StatKey, though would still need to spawn a new list for the tagValues
+            tagValues = statisticConfiguration.getFieldNames().stream()
+                    .map(tag -> {
+                        Optional<String> optValue = tagTypes.stream()
+                                .filter(tagType -> tagType.getName().equals(tag))
+                                .findFirst()
+                                .map(TagType::getValue);
 
-                    return buildTagValue(tag, optValue);
-                })
-                .collect(Collectors.toList());
+                        return buildTagValue(tag, optValue);
+                    })
+                    .collect(Collectors.toList());
+        } else {
+            tagValues = Collections.emptyList();
+        }
 
         StatKey statKey = new StatKey(statNameUid, rollupMask, interval, timeMs, tagValues);
 
