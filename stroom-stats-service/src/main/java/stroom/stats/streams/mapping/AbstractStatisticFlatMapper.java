@@ -219,7 +219,7 @@ public abstract class AbstractStatisticFlatMapper {
                 .orElseThrow(() -> new RuntimeException("Statistic configuration should never be null here as it has already been through validation"));
 
         //bad jaxb naming
-        final int tagListSize = statistic.getTags().getTag().size();
+        final int tagListSize = statistic.getTags() == null ? 0 : statistic.getTags().getTag().size();
         final StatisticRollUpType rollUpType = statisticConfiguration.getRollUpType();
 
 
