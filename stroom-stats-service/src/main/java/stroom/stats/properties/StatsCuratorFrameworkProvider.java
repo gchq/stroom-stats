@@ -24,13 +24,12 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.data.Stat;
-import stroom.stats.service.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.service.config.Config;
 import stroom.stats.service.config.ZookeeperConfig;
 
 import javax.inject.Inject;
-import javax.inject.Named;
 import javax.inject.Provider;
 
 public class StatsCuratorFrameworkProvider implements Provider<CuratorFramework> {
@@ -50,7 +49,7 @@ public class StatsCuratorFrameworkProvider implements Provider<CuratorFramework>
 
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
 
-        LOGGER.info("Initiating Curator connection to Zookeeper using: ", connectionString);
+        LOGGER.info("Initiating Curator connection to Zookeeper using: [{}]", connectionString);
         // Use chroot so all subsequent paths are below /stroom-stats to avoid conflicts with hbase/zookeeper/kafka etc.
         CuratorFramework client = CuratorFrameworkFactory.newClient(connectionString, retryPolicy);
         client.start();
