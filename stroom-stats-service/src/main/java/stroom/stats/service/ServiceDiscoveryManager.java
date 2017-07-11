@@ -54,7 +54,7 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
 
     // "When using Curator 2.x (Zookeeper 3.4.x) it's essential that service provider objects are cached by your
     // application and reused." - http://curator.apache.org/curator-x-discovery/
-    private Map<ExternalServices, ServiceProvider<String>> serviceProviders = new HashMap<>();
+    private Map<ExternalService, ServiceProvider<String>> serviceProviders = new HashMap<>();
     private CuratorFramework curatorFramework;
 
     @Inject
@@ -72,7 +72,7 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
         serviceDiscovery.start();
 
         // Then register services this service depends on
-        Arrays.stream(ExternalServices.values()).forEach(externalService ->
+        Arrays.stream(ExternalService.values()).forEach(externalService ->
             serviceProviders.put(externalService, createProvider(externalService.getName())));
     }
 
@@ -90,7 +90,7 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
         return provider;
     }
 
-    public ServiceInstance<String> get(ExternalServices externalService){
+    public ServiceInstance<String> get(ExternalService externalService){
         try {
             return serviceProviders.get(externalService).getInstance();
         } catch (Exception e) {
@@ -98,7 +98,7 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
         }
     }
 
-    public Optional<String> getAddress(ExternalServices externalService) {
+    public Optional<String> getAddress(ExternalService externalService) {
         ServiceInstance<String> instance = get(externalService);
         return instance == null ?
                 Optional.empty() :
@@ -140,7 +140,7 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
     @Override
     public List<HasHealthCheck> getHealthCheckProviders() {
         List<HasHealthCheck> checks = new ArrayList<>();
-        for (ExternalServices externalService : ExternalServices.values()) {
+        for (ExternalService externalService : ExternalService.values()) {
             checks.add(
                     new HasHealthCheck() {
                         @Override

@@ -1,13 +1,14 @@
 package stroom.stats.service;
 
-public enum ExternalServices {
+public enum ExternalService {
+    //TODO think index can be removed
     INDEX ("index"),
     AUTHORISATION ("authorisation"),
     AUTHENTICATION ("authentication");
 
     private final String name;
 
-    ExternalServices(String name){
+    ExternalService(String name){
         this.name = name;
     }
 

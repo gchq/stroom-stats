@@ -32,7 +32,7 @@ import stroom.query.api.v1.SearchRequest;
 import stroom.stats.HBaseClient;
 import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.schema.Statistics;
-import stroom.stats.service.ExternalServices;
+import stroom.stats.service.ExternalService;
 import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.auth.User;
 
@@ -92,7 +92,7 @@ public class ApiResource implements HasHealthCheck {
     public Response postQueryData(@Auth User user, @Valid SearchRequest searchRequest){
         LOGGER.debug("Received search request");
 
-        Optional<String> authorisationServiceAddress = serviceDiscoveryManager.getAddress(ExternalServices.AUTHORISATION);
+        Optional<String> authorisationServiceAddress = serviceDiscoveryManager.getAddress(ExternalService.AUTHORISATION);
         if(authorisationServiceAddress.isPresent()){
             String authorisationUrl = String.format(
                     "%s/api/authorisation/isAuthorised",
@@ -134,7 +134,7 @@ public class ApiResource implements HasHealthCheck {
 
     @Override
     public HealthCheck.Result getHealth(){
-        if(serviceDiscoveryManager.getAddress(ExternalServices.AUTHORISATION).isPresent()){
+        if(serviceDiscoveryManager.getAddress(ExternalService.AUTHORISATION).isPresent()){
             return HealthCheck.Result.healthy();
         }
         else{
