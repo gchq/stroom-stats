@@ -40,9 +40,6 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-//TODO everything about this class needs work, including its name
-//TODO Does this need to be a singleton?
-//@Singleton
 public class HBaseClient implements Managed {
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(HBaseClient.class);
 

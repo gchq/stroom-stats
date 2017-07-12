@@ -107,15 +107,15 @@ public class ServiceDiscoveryManager implements HasHealthChecks {
                         Optional.of(instance.getAddress());
     }
 
-    //TODO registering needs to go somewhere else
+    //TODO registering needs to go somewhere else, see gh-19
     private static ServiceInstance<String> getThisServiceInstance(Config config) throws Exception {
         String ipAddress = InetAddress.getLocalHost().getHostAddress();
         int port = getPort(config);
 
         ServiceInstance<String> thisInstance = ServiceInstance.<String>builder()
-                .name("stats")
-                .address(ipAddress)
-                .port(port)
+                .name("stroom-stats-v1") //TODO should be in config
+                .address(ipAddress) //TODO should be overridable in config
+                .port(port) //TODO should be overridable in config
                 .build();
         return thisInstance;
     }

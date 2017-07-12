@@ -38,8 +38,8 @@ import java.util.stream.Collectors;
  * finest precision and tag names
  */
 public interface StatisticConfiguration {
-    String ENTITY_TYPE = "StatisticConfiguration";
-    String ENTITY_TYPE_FOR_DISPLAY = "Statistic Store";
+    String ENTITY_TYPE = "StroomStatsStore";
+    String ENTITY_TYPE_FOR_DISPLAY = "Stroom Stats Store";
 
     //static field names
     String FIELD_NAME_STATISTIC = "Statistic Name";
@@ -102,6 +102,18 @@ public interface StatisticConfiguration {
         List<String> allFieldNames = new ArrayList<>(STATIC_FIELDS_MAP.get(getStatisticType()));
         allFieldNames.addAll(getFieldNames());
         return allFieldNames;
+    }
+
+    /**
+     * @return All static fields for this statistic taking into account the type of the statistic
+     */
+    default List<String> getStaticFieldNames() {
+        List<String> allFieldNames = new ArrayList<>(STATIC_FIELDS_MAP.get(getStatisticType()));
+        return allFieldNames;
+    }
+
+    default boolean isDynamicField(final String fieldName) {
+        return getFieldNames().contains(fieldName);
     }
 
     Set<? extends CustomRollUpMask> getCustomRollUpMasks();

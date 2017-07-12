@@ -28,8 +28,10 @@ import org.glassfish.jersey.client.ClientResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.query.api.v1.DocRef;
+import stroom.query.api.v1.QueryKey;
 import stroom.query.api.v1.SearchRequest;
 import stroom.stats.HBaseClient;
+import stroom.stats.datasource.DataSourceService;
 import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.schema.Statistics;
 import stroom.stats.service.ExternalService;
@@ -49,19 +51,26 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 @Path("/")
 @Produces(MediaType.APPLICATION_JSON)
 public class ApiResource implements HasHealthCheck {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ApiResource.class);
-    private HBaseClient hBaseClient;
-    private ServiceDiscoveryManager serviceDiscoveryManager;
+
+    private final HBaseClient hBaseClient;
+    private final DataSourceService dataSourceService;
+    private final ServiceDiscoveryManager serviceDiscoveryManager;
     private static final String NO_AUTHORISATION_SERVICE_MESSAGE
             = "I don't have an address for the Authorisation service, so I can't authorise requests!";
 
     @Inject
-    public ApiResource(HBaseClient hBaseClient, ServiceDiscoveryManager serviceDiscoveryManager) {
+    public ApiResource(final HBaseClient hBaseClient,
+                       final DataSourceService dataSourceService,
+                       final ServiceDiscoveryManager serviceDiscoveryManager) {
         this.hBaseClient = hBaseClient;
+        this.dataSourceService = dataSourceService;
         this.serviceDiscoveryManager = serviceDiscoveryManager;
     }
 
@@ -84,6 +93,20 @@ public class ApiResource implements HasHealthCheck {
     }
 
     @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("datasource")
+    @Timed
+    public Response getDataSource(@Auth User user, @Valid final DocRef docRef) {
+
+        return performWithAuthorisation(user,
+                docRef,
+                () -> dataSourceService.getDatasource(docRef)
+                        .map(dataSource -> Response.accepted(dataSource).build())
+                        .orElse(Response.noContent().build()));
+    }
+
+    @POST
     @Path("search")
     @Consumes({MediaType.APPLICATION_JSON})
     @Produces({MediaType.APPLICATION_JSON})
@@ -92,13 +115,33 @@ public class ApiResource implements HasHealthCheck {
     public Response postQueryData(@Auth User user, @Valid SearchRequest searchRequest){
         LOGGER.debug("Received search request");
 
+        return performWithAuthorisation(user,
+                searchRequest.getQuery().getDataSource(),
+                () -> Response.accepted(hBaseClient.query(searchRequest)).build());
+    }
+
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("destroy")
+    @Timed
+    public Response destroy(@Auth User user, @Valid final QueryKey queryKey) {
+
+        return Response
+                .serverError()
+                .status(Response.Status.NOT_IMPLEMENTED)
+                .build();
+    }
+
+    private Response performWithAuthorisation(final User user, final DocRef docRef, final Supplier<Response> responseProvider) {
+
         Optional<String> authorisationServiceAddress = serviceDiscoveryManager.getAddress(ExternalService.AUTHORISATION);
         if(authorisationServiceAddress.isPresent()){
             String authorisationUrl = String.format(
                     "%s/api/authorisation/isAuthorised",
                     authorisationServiceAddress.get());
 
-            boolean isAuthorised = checkPermissions(authorisationUrl, user, searchRequest.getQuery().getDataSource());
+            boolean isAuthorised = checkPermissions(authorisationUrl, user, docRef);
             if(!isAuthorised){
                 return Response
                         .status(Response.Status.UNAUTHORIZED)
@@ -113,8 +156,15 @@ public class ApiResource implements HasHealthCheck {
                     .build();
         }
 
-
-        return Response.accepted(hBaseClient.query(searchRequest)).build();
+        try {
+            return responseProvider.get();
+        } catch (Exception e) {
+            LOGGER.error("Error processing web service request",e);
+            return Response
+                    .serverError()
+                    .entity("Unexpected error processing request, check the server logs")
+                    .build();
+        }
     }
 
     private boolean checkPermissions(String authorisationUrl, User user, DocRef statisticRef){

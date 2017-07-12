@@ -36,6 +36,7 @@ import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.configuration.StroomStatsStoreEntity;
+import stroom.stats.datasource.DataSourceService;
 import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.auth.AuthenticationFilter;
 import stroom.stats.service.auth.User;
@@ -103,6 +104,7 @@ public class App extends Application<Config> {
         LOGGER.info("Registering API");
         environment.jersey().register(new ApiResource(
                 injector.getInstance(HBaseClient.class),
+                injector.getInstance(DataSourceService.class),
                 injector.getInstance(ServiceDiscoveryManager.class)));
     }
 
