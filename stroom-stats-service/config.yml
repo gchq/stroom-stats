@@ -51,10 +51,10 @@ server:
     applicationContextPath: /
     applicationConnectors:
         - type: http
-          port: 8086
+          port: ${APPLICATION_PORT:- 8086}
     adminConnectors:
         - type: http
-          port: 8087
+          port: ${ADMIN_PORT:- 8087}
 
 logging:
     level: WARN
