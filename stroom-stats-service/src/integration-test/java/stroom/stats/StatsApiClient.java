@@ -58,18 +58,18 @@ public class StatsApiClient {
         return this;
     }
 
-    public Response postStats(){
-        this.url = AbstractAppIT.STATISTICS_URL;
-        //TODO validations
-        switch(mediaType){
-            case MediaType.APPLICATION_JSON: return postJson();
-            case MediaType.APPLICATION_XML: return postXml();
-            default: throw new RuntimeException("Unsupported media type: " + mediaType);
-        }
-    }
+//    public Response postStats(){
+//        this.url = AbstractAppIT.STATISTICS_URL;
+//        //TODO validations
+//        switch(mediaType){
+//            case MediaType.APPLICATION_JSON: return postJson();
+//            case MediaType.APPLICATION_XML: return postXml();
+//            default: throw new RuntimeException("Unsupported media type: " + mediaType);
+//        }
+//    }
 
     public Response getStats(){
-        this.url = AbstractAppIT.QUERY_URL;
+        this.url = AbstractAppIT.QUERY_SEARCH_URL;
         //TODO validations
         switch(mediaType){
             case MediaType.APPLICATION_JSON: return postJson();

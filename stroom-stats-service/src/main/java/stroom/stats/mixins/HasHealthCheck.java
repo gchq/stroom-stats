@@ -26,7 +26,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public interface HasHealthCheck extends hasName {
+public interface HasHealthCheck extends HasName {
 
     /**
      * @return A non-null {@link com.codahale.metrics.health.HealthCheck.Result} object.

@@ -124,3 +124,19 @@ defaultProperties:
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.minute: 60
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.second: 48
     stroom.stats.hbase.search.maxTimeIntervalsInPeriod: 200
+
+    #If set registers this instance with service discovery using the specified address,
+    #else it uses the local hostname or ip address
+    #stroom.stats.serviceDiscovery.servicesHostNameOrIpAddress:
+    #As above but for port
+    #stroom.stats.serviceDiscovery.servicesPort:
+
+    stroom.services.stroomIndex.name: stroom-index
+    stroom.services.stroomIndex.version: 1
+    stroom.services.stroomIndex.docRefType: Index
+    stroom.services.authentication.name: authentication
+    stroom.services.authentication.version: 1
+    stroom.services.authorisation.name: authorisation
+    stroom.services.authorisation.version: 1
+
+

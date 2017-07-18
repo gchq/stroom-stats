@@ -17,7 +17,7 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.service.resources;
+package stroom.stats.service.resources.query.v1;
 
 import com.codahale.metrics.annotation.Timed;
 import com.codahale.metrics.health.HealthCheck;
@@ -33,10 +33,11 @@ import stroom.query.api.v1.SearchRequest;
 import stroom.stats.HBaseClient;
 import stroom.stats.datasource.DataSourceService;
 import stroom.stats.mixins.HasHealthCheck;
-import stroom.stats.schema.Statistics;
 import stroom.stats.service.ExternalService;
-import stroom.stats.service.ServiceDiscoveryManager;
+import stroom.stats.service.ResourcePaths;
+import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.auth.User;
+import stroom.stats.service.resources.AuthorisationRequest;
 
 import javax.inject.Inject;
 import javax.validation.Valid;
@@ -53,25 +54,29 @@ import javax.ws.rs.core.Response;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-@Path("/")
+@Path(ResourcePaths.ROOT_PATH + ResourcePaths.STROOM_STATS + ResourcePaths.V1)
 @Produces(MediaType.APPLICATION_JSON)
-public class ApiResource implements HasHealthCheck {
+public class QueryResource implements HasHealthCheck {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ApiResource.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(QueryResource.class);
+
+    public static final String DATASOURCE_ENDPOINT = "/datasource";
+    public static final String SEARCH_ENDPOINT = "/search";
+    public static final String DESTROY_ENDPOINT = "/destroy";
 
     private final HBaseClient hBaseClient;
     private final DataSourceService dataSourceService;
-    private final ServiceDiscoveryManager serviceDiscoveryManager;
+    private final ServiceDiscoverer serviceDiscoverer;
     private static final String NO_AUTHORISATION_SERVICE_MESSAGE
             = "I don't have an address for the Authorisation service, so I can't authorise requests!";
 
     @Inject
-    public ApiResource(final HBaseClient hBaseClient,
-                       final DataSourceService dataSourceService,
-                       final ServiceDiscoveryManager serviceDiscoveryManager) {
+    public QueryResource(final HBaseClient hBaseClient,
+                         final DataSourceService dataSourceService,
+                         final ServiceDiscoverer serviceDiscoverer) {
         this.hBaseClient = hBaseClient;
         this.dataSourceService = dataSourceService;
-        this.serviceDiscoveryManager = serviceDiscoveryManager;
+        this.serviceDiscoverer = serviceDiscoverer;
     }
 
     @GET
@@ -80,22 +85,22 @@ public class ApiResource implements HasHealthCheck {
         return "Welcome to the stroom-stats-service.";
     }
 
-    @POST
-    @Path("statistics")
-    @Consumes(MediaType.APPLICATION_XML)
-    @Produces(MediaType.APPLICATION_JSON)
-    @Timed
-    @UnitOfWork
-    public Response postStatistics(@Auth User user, @Valid Statistics statistics){
-        LOGGER.debug("Received statistic");
-        hBaseClient.addStatistics(statistics);
-        return Response.accepted().build();
-    }
+//    @POST
+//    @Path("statistics")
+//    @Consumes(MediaType.APPLICATION_XML)
+//    @Produces(MediaType.APPLICATION_JSON)
+//    @Timed
+//    @UnitOfWork
+//    public Response postStatistics(@Auth User user, @Valid Statistics statistics){
+//        LOGGER.debug("Received statistic");
+//        hBaseClient.addStatistics(statistics);
+//        return Response.accepted().build();
+//    }
 
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("datasource")
+    @Path(DATASOURCE_ENDPOINT)
     @Timed
     public Response getDataSource(@Auth User user, @Valid final DocRef docRef) {
 
@@ -107,7 +112,7 @@ public class ApiResource implements HasHealthCheck {
     }
 
     @POST
-    @Path("search")
+    @Path(SEARCH_ENDPOINT)
     @Consumes({MediaType.APPLICATION_JSON})
     @Produces({MediaType.APPLICATION_JSON})
     @Timed
@@ -123,7 +128,7 @@ public class ApiResource implements HasHealthCheck {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("destroy")
+    @Path(DESTROY_ENDPOINT)
     @Timed
     public Response destroy(@Auth User user, @Valid final QueryKey queryKey) {
 
@@ -135,10 +140,12 @@ public class ApiResource implements HasHealthCheck {
 
     private Response performWithAuthorisation(final User user, final DocRef docRef, final Supplier<Response> responseProvider) {
 
-        Optional<String> authorisationServiceAddress = serviceDiscoveryManager.getAddress(ExternalService.AUTHORISATION);
+        Optional<String> authorisationServiceAddress = serviceDiscoverer.getServiceInstanceAddress(ExternalService.AUTHORISATION);
+
         if(authorisationServiceAddress.isPresent()){
             String authorisationUrl = String.format(
-                    "%s/api/authorisation/isAuthorised",
+//                    "%s/api/authorisation/isAuthorised",
+                    "%s/isAuthorised",
                     authorisationServiceAddress.get());
 
             boolean isAuthorised = checkPermissions(authorisationUrl, user, docRef);
@@ -184,10 +191,9 @@ public class ApiResource implements HasHealthCheck {
 
     @Override
     public HealthCheck.Result getHealth(){
-        if(serviceDiscoveryManager.getAddress(ExternalService.AUTHORISATION).isPresent()){
+        if(serviceDiscoverer.getServiceInstance(ExternalService.AUTHORISATION).isPresent()){
             return HealthCheck.Result.healthy();
-        }
-        else{
+        } else {
             return HealthCheck.Result.unhealthy(NO_AUTHORISATION_SERVICE_MESSAGE);
         }
     }

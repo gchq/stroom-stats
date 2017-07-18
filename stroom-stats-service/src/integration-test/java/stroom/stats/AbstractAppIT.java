@@ -27,8 +27,10 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.service.startup.App;
+import stroom.stats.service.ResourcePaths;
 import stroom.stats.service.config.Config;
+import stroom.stats.service.resources.query.v1.QueryResource;
+import stroom.stats.service.startup.App;
 
 import javax.ws.rs.client.Client;
 
@@ -40,7 +42,7 @@ public abstract class AbstractAppIT {
     private static App app;
 
     protected static String STATISTICS_URL;
-    protected static String QUERY_URL;
+    protected static String QUERY_SEARCH_URL;
 
     protected static String BASE_TASKS_URL;
     protected static String HEALTH_CHECKS_URL;
@@ -63,15 +65,19 @@ public abstract class AbstractAppIT {
         APPLICATION_PORT = RULE.getLocalPort();
         ADMIN_PORT = RULE.getAdminPort();
 
-        STATISTICS_URL = String.format("http://localhost:%d/statistics", APPLICATION_PORT);
-        QUERY_URL = String.format("http://localhost:%d/search", APPLICATION_PORT);
+//        STATISTICS_URL = String.format("http://localhost:%d/statistics", APPLICATION_PORT);
+        QUERY_SEARCH_URL = String.format("http://localhost:%d" +
+                ResourcePaths.ROOT_PATH +
+                ResourcePaths.STROOM_STATS +
+                ResourcePaths.V1 +
+                QueryResource.SEARCH_ENDPOINT, APPLICATION_PORT);
 
-        BASE_TASKS_URL = String.format("http://localhost:%d/admin/tasks/", ADMIN_PORT);
+        BASE_TASKS_URL = String.format("http://localhost:%d/tasks/", ADMIN_PORT);
         HEALTH_CHECKS_URL = String.format("http://localhost:%d/admin/healthcheck?pretty=true", ADMIN_PORT);
         START_PROCESSING_URL = BASE_TASKS_URL + "startProcessing";
         STOP_PROCESSING_URL = BASE_TASKS_URL + "stopProcessing";
 
-        LOGGER.info("Querl url:            {}", QUERY_URL);
+        LOGGER.info("Query url:            {}", QUERY_SEARCH_URL);
         LOGGER.info("Health checks url:    {}", HEALTH_CHECKS_URL);
         LOGGER.info("Start processing url: {}, e.g. curl -X POST {}", START_PROCESSING_URL, START_PROCESSING_URL);
         LOGGER.info("Stop processing url:  {}, e.g. curl -X POST {}", STOP_PROCESSING_URL, STOP_PROCESSING_URL);

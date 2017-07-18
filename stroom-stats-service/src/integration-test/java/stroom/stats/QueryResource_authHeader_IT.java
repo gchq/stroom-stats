@@ -36,7 +36,6 @@ import stroom.query.api.v1.Sort;
 import stroom.query.api.v1.TableSettings;
 import stroom.query.api.v1.TimeZone;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.schema.Statistics;
 
 import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
@@ -46,44 +45,44 @@ import static stroom.query.api.v1.ExpressionTerm.Condition;
 import static stroom.stats.HttpAsserts.assertAccepted;
 import static stroom.stats.HttpAsserts.assertUnauthorized;
 
-public class ApiResource_authHeader_IT extends AbstractAppIT {
+public class QueryResource_authHeader_IT extends AbstractAppIT {
 
-    @Test
-    public void postEmptyStatistics_validCredentials() throws UnsupportedEncodingException {
-        Response response = req().useXml().body(Statistics::new).postStats();
-        assertAccepted(response);
-    }
-
-    @Test
-    public void postEmptyStatistics_missingCredentials() {
-        Response response = req().useXml().body(Statistics::new).authHeader(AuthHeader.MISSING).postStats();
-        assertUnauthorized(response);
-    }
-
-    @Test
-    public void postEmptyStatistics_invalidCredentials() throws UnsupportedEncodingException {
-        Response response = req().useXml().body(Statistics::new).authHeader(AuthHeader.INVALID).postStats();
-        assertUnauthorized(response);
-    }
+//    @Test
+//    public void postEmptyStatistics_validCredentials() throws UnsupportedEncodingException {
+//        Response response = req().useXml().body(Statistics::new).postStats();
+//        assertAccepted(response);
+//    }
+//
+//    @Test
+//    public void postEmptyStatistics_missingCredentials() {
+//        Response response = req().useXml().body(Statistics::new).authHeader(AuthHeader.MISSING).postStats();
+//        assertUnauthorized(response);
+//    }
+//
+//    @Test
+//    public void postEmptyStatistics_invalidCredentials() throws UnsupportedEncodingException {
+//        Response response = req().useXml().body(Statistics::new).authHeader(AuthHeader.INVALID).postStats();
+//        assertUnauthorized(response);
+//    }
 
     /**
      * This test depends on SetupSampleData being run - the DocRef with the uuid needs to exist.
      */
     @Test
     public void testPostQueryData_validCredentials() throws UnsupportedEncodingException {
-        Response response = req().body(ApiResource_authHeader_IT::getSearchRequest).getStats();
+        Response response = req().body(QueryResource_authHeader_IT::getSearchRequest).getStats();
         assertAccepted(response);
     }
 
     @Test
     public void postQueryData_missingCredentials(){
-        Response response = req().body(ApiResource_authHeader_IT::getSearchRequest).authHeader(AuthHeader.MISSING).getStats();
+        Response response = req().body(QueryResource_authHeader_IT::getSearchRequest).authHeader(AuthHeader.MISSING).getStats();
         assertUnauthorized(response);
     }
 
     @Test
     public void postQueryData_invalidCredentials() throws UnsupportedEncodingException {
-        Response response = req().body(ApiResource_authHeader_IT::getSearchRequest).authHeader(AuthHeader.INVALID).getStats();
+        Response response = req().body(QueryResource_authHeader_IT::getSearchRequest).authHeader(AuthHeader.INVALID).getStats();
         assertUnauthorized(response);
     }
 

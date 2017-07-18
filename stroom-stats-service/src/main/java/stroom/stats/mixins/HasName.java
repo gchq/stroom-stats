@@ -19,7 +19,7 @@
 
 package stroom.stats.mixins;
 
-public interface hasName {
+public interface HasName {
 
     default String getName(){
         return this.getClass().getName();

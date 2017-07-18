@@ -30,12 +30,6 @@ import java.nio.charset.Charset;
 import java.util.Map;
 
 public class Config extends Configuration implements JobConfiguration {
-    //TODO add all the stroom hbase properties in here
-
-    //TODO need to figure out what to do about cluster wide properties
-    //when we have multiple dropwiz instances, e.g. the ZK quorum prop.
-    //Maybe we just congure each instance individually and ensure that
-    //each instance has the correct values.
 
     @NotNull
     @Valid

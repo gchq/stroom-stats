@@ -22,6 +22,8 @@ package stroom.stats;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.dropwizard.Application;
+import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
+import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.hibernate.HibernateBundle;
 import io.dropwizard.setup.Bootstrap;
@@ -29,9 +31,9 @@ import io.dropwizard.setup.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.configuration.StroomStatsStoreEntity;
-import stroom.stats.service.config.Config;
 import stroom.stats.configuration.common.Folder;
 import stroom.stats.properties.StroomPropertyService;
+import stroom.stats.service.config.Config;
 import stroom.stats.service.startup.App;
 
 public class HeadlessTestApp extends Application<Config> {
@@ -57,6 +59,9 @@ public class HeadlessTestApp extends Application<Config> {
 
     @Override
     public void initialize(Bootstrap<Config> bootstrap) {
+        bootstrap.setConfigurationSourceProvider(new SubstitutingSourceProvider(
+                bootstrap.getConfigurationSourceProvider(),
+                new EnvironmentVariableSubstitutor(false)));
         bootstrap.addBundle(hibernateBundle);
     }
 

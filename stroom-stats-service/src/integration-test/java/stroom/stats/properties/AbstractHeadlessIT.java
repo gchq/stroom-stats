@@ -33,7 +33,8 @@ public abstract class AbstractHeadlessIT {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractHeadlessIT.class);
 
     @ClassRule
-    public static DropwizardAppRule<Config> appRule = new DropwizardAppRule<>(HeadlessTestApp.class, "config_dev.yml");
+    public static DropwizardAppRule<Config> appRule = new DropwizardAppRule<>(
+            HeadlessTestApp.class, "config.yml");
 
     private HeadlessTestApp app;
 

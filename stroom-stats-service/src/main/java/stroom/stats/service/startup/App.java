@@ -37,10 +37,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.configuration.StroomStatsStoreEntity;
 import stroom.stats.datasource.DataSourceService;
+import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.auth.AuthenticationFilter;
 import stroom.stats.service.auth.User;
-import stroom.stats.service.resources.ApiResource;
+import stroom.stats.service.resources.query.v1.QueryResource;
 import stroom.stats.HBaseClient;
 import stroom.stats.StroomStatsServiceModule;
 import stroom.stats.service.config.Config;
@@ -102,10 +103,10 @@ public class App extends Application<Config> {
 
     private void registerResources(final Environment environment) {
         LOGGER.info("Registering API");
-        environment.jersey().register(new ApiResource(
+        environment.jersey().register(new QueryResource(
                 injector.getInstance(HBaseClient.class),
                 injector.getInstance(DataSourceService.class),
-                injector.getInstance(ServiceDiscoveryManager.class)));
+                injector.getInstance(ServiceDiscoverer.class)));
     }
 
     private void registerTasks(final Environment environment) {
@@ -121,6 +122,7 @@ public class App extends Application<Config> {
 
     private void registerManagedObjects(Environment environment) {
         registerManagedObject(environment, StatisticsIngestService.class);
+        registerManagedObject(environment, ServiceDiscoverer.class);
     }
 
     private <T extends Managed> void registerManagedObject(final Environment environment, Class<T> type) {

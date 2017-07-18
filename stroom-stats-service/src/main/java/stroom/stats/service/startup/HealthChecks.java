@@ -10,7 +10,7 @@ import stroom.stats.logging.LogLevelInspector;
 import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.properties.StroomPropertyServiceHealthCheck;
 import stroom.stats.service.ServiceDiscoveryManager;
-import stroom.stats.service.resources.ApiResource;
+import stroom.stats.service.resources.query.v1.QueryResource;
 import stroom.stats.streams.StatisticsFlatMappingService;
 
 import java.util.List;
@@ -21,12 +21,12 @@ public class HealthChecks {
     private static final Logger LOGGER = LoggerFactory.getLogger(HealthChecks.class);
 
     static void register(Environment environment, Injector injector) {
-        register(environment, "ApiResource",
-                () -> injector.getInstance(ApiResource.class));
+        register(environment, "QueryResource",
+                () -> injector.getInstance(QueryResource.class));
 
         ServiceDiscoveryManager serviceDiscoveryManager = injector.getInstance(ServiceDiscoveryManager.class);
-        serviceDiscoveryManager.getHealthCheckProviders()
-                .forEach(hasHealthCheck -> register(environment, hasHealthCheck));
+//        serviceDiscoveryManager.getHealthCheckProviders()
+//                .forEach(hasHealthCheck -> register(environment, hasHealthCheck));
 
         StatisticsFlatMappingService statisticsFlatMappingService = injector.getInstance(StatisticsFlatMappingService.class);
         register(environment, statisticsFlatMappingService);
