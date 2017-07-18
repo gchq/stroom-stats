@@ -27,5 +27,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 @Retention(RUNTIME)
 @BindingAnnotation
-public @interface StatsCuratorFramework {
+public @interface StroomPropertyServiceCuratorFramework {
 }

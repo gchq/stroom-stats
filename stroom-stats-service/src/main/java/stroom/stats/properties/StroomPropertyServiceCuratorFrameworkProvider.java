@@ -32,19 +32,19 @@ import stroom.stats.service.config.ZookeeperConfig;
 import javax.inject.Inject;
 import javax.inject.Provider;
 
-public class StatsCuratorFrameworkProvider implements Provider<CuratorFramework> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(StatsCuratorFrameworkProvider.class);
+public class StroomPropertyServiceCuratorFrameworkProvider implements Provider<CuratorFramework> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StroomPropertyServiceCuratorFrameworkProvider.class);
     private ZookeeperConfig zookeeperConfig;
 
     @Inject
-    public StatsCuratorFrameworkProvider(final Config config) {
+    public StroomPropertyServiceCuratorFrameworkProvider(final Config config) {
         this.zookeeperConfig = config.getZookeeperConfig();
     }
 
     @Override
     public CuratorFramework get() {
         String quorum = zookeeperConfig.getQuorum();
-        String statsPath = zookeeperConfig.getStatsPath();
+        String statsPath = zookeeperConfig.getPropertyServicePath();
         String connectionString = quorum + statsPath;
 
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);

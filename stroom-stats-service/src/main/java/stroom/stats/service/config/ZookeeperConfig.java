@@ -33,10 +33,6 @@ public class ZookeeperConfig {
 
     @NotNull
     @JsonProperty
-    private String statsPath;
-
-    @NotNull
-    @JsonProperty
     private String propertyServicePath;
 
     @NotNull
@@ -51,10 +47,6 @@ public class ZookeeperConfig {
 
     public String getQuorum() {
         return quorum;
-    }
-
-    public String getStatsPath() {
-        return statsPath;
     }
 
     public String getPropertyServicePath() {
@@ -73,7 +65,6 @@ public class ZookeeperConfig {
     public String toString() {
         return "ZookeeperConfig{" +
                 "quorum='" + quorum + '\'' +
-                ", statsPath='" + statsPath + '\'' +
                 ", propertyServicePath='" + propertyServicePath + '\'' +
                 ", propertyServiceTreeCacheTimeoutMs=" + propertyServiceTreeCacheTimeoutMs +
                 ", serviceDiscoveryPath=" + serviceDiscoveryPath +

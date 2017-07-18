@@ -49,7 +49,7 @@ public class ServiceDiscoveryCuratorFrameworkProvider implements Provider<Curato
 
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
 
-        LOGGER.info("Initiating Curator connection to Zookeeper using: ", connectionString);
+        LOGGER.info("Initiating Curator connection to Zookeeper using: {}", connectionString);
         // Use chroot so all subsequent paths are below /stroom-services to avoid conflicts with hbase/zookeeper/kafka etc.
         CuratorFramework client = CuratorFrameworkFactory.newClient(connectionString, retryPolicy);
         client.start();

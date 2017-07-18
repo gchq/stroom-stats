@@ -51,23 +51,24 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
 
     private final ZookeeperConfig zookeeperConfig;
     private final CuratorFramework curatorFramework;
-    private final String propertyServicePath;
+    private final String pathToCache;
     private final TreeCache treeCache;
 
     private final Semaphore initialisedSemaphore = new Semaphore(0);
 
     @Inject
     public StroomPropertyServiceImpl(final Config config,
-                                     @StatsCuratorFramework final CuratorFramework curatorFramework) {
+                                     @StroomPropertyServiceCuratorFramework final CuratorFramework curatorFramework) {
         this.zookeeperConfig = config.getZookeeperConfig();
         this.curatorFramework = curatorFramework;
-        propertyServicePath = zookeeperConfig.getPropertyServicePath();
+        //we are inside a chrooted path so just cache the root
+        pathToCache = "/";
         int initTimeout = zookeeperConfig.getPropertyServiceTreeCacheTimeoutMs();
-        ensurePropertyServicePathExists();
+        ensurePathToCacheExists();
 
         initialisePropertyKeys(config.getDefaultProperties());
 
-        treeCache = TreeCache.newBuilder(curatorFramework, propertyServicePath)
+        treeCache = TreeCache.newBuilder(curatorFramework, pathToCache)
                 .setCacheData(true)
                 .setMaxDepth(3)
                 .build();
@@ -124,14 +125,14 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
         }
     }
 
-    private void ensurePropertyServicePathExists() {
+    private void ensurePathToCacheExists() {
         try {
-            Stat propertyServiceNode = curatorFramework.checkExists().forPath(propertyServicePath);
+            Stat propertyServiceNode = curatorFramework.checkExists().forPath(pathToCache);
             if (propertyServiceNode == null) {
-                curatorFramework.create().forPath(propertyServicePath);
+                curatorFramework.create().forPath(pathToCache);
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error ensuring the existence of path: " + propertyServicePath);
+            throw new RuntimeException("Error ensuring the existence of path: " + pathToCache);
         }
     }
 
@@ -199,13 +200,13 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
 
     @Override
     public List<String> getAllPropertyKeys() {
-        Map<String, ChildData> propertyMap = getPropertyMap(propertyServicePath);
+        Map<String, ChildData> propertyMap = getPropertyMap(pathToCache);
         return propertyMap.keySet().stream().collect(Collectors.toList());
     }
 
     @Override
     public Map<String, String> getAllProperties() {
-        return getPropertyMap(propertyServicePath).entrySet().stream()
+        return getPropertyMap(pathToCache).entrySet().stream()
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
                         entry -> childDataToString(entry.getValue())));
@@ -228,7 +229,9 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
 
 
     private String buildPath(final String propertyName) {
-        return propertyServicePath + "/" + propertyName;
+        String fullPath = pathToCache + "/" + propertyName;
+        //ensure we have no double slashes
+        return fullPath.replace("//", "/");
     }
 
     private String childDataToString(final ChildData childData) {

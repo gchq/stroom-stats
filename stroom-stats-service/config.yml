@@ -75,10 +75,7 @@ zookeeper:
     # The quorum of zookeeper hosts to connect to
     # of the form host1:port1,host2:port2 etc.
     quorum: ${STATS_ZK_QUORUM:- localhost:2181}
-    # The root path to use to chroot the zookeeper connection
-    # All other paths are beneath this
-    statsPath: ${STATS_ZK_PATH:- /stroom-stats}
-    # The path for PropertyService content
+    # The path to chroot the zookeeper connection for the property service
     propertyServicePath: ${STATS_SK_PROPERTY_SERVICE_PATH:- /propertyService}
     # Timeout for waiting for initialisation of the property service tree cache
     propertyServiceTreeCacheTimeoutMs: 60000

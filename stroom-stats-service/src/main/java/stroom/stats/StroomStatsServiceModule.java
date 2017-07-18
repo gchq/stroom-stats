@@ -32,8 +32,8 @@ import stroom.stats.configuration.StroomStatsStoreEntityDAO;
 import stroom.stats.configuration.StroomStatsStoreEntityDAOImpl;
 import stroom.stats.properties.ServiceDiscoveryCuratorFramework;
 import stroom.stats.properties.ServiceDiscoveryCuratorFrameworkProvider;
-import stroom.stats.properties.StatsCuratorFramework;
-import stroom.stats.properties.StatsCuratorFrameworkProvider;
+import stroom.stats.properties.StroomPropertyServiceCuratorFramework;
+import stroom.stats.properties.StroomPropertyServiceCuratorFrameworkProvider;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.properties.StroomPropertyServiceHealthCheck;
 import stroom.stats.properties.StroomPropertyServiceImpl;
@@ -64,7 +64,7 @@ public class StroomStatsServiceModule extends AbstractModule {
                 .toProvider(() -> CacheManagerBuilder.newCacheManagerBuilder().build(true))
                 .asEagerSingleton();
         //Singleton as this holds the connection to Zookeeper
-        bind(CuratorFramework.class).annotatedWith(StatsCuratorFramework.class).toProvider(StatsCuratorFrameworkProvider.class).asEagerSingleton();
+        bind(CuratorFramework.class).annotatedWith(StroomPropertyServiceCuratorFramework.class).toProvider(StroomPropertyServiceCuratorFrameworkProvider.class).asEagerSingleton();
         bind(CuratorFramework.class).annotatedWith(ServiceDiscoveryCuratorFramework.class).toProvider(ServiceDiscoveryCuratorFrameworkProvider.class).asEagerSingleton();
         bind(HBaseClient.class);
         bind(StatisticsIngestService.class).asEagerSingleton();
