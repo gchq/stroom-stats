@@ -17,13 +17,14 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 package stroom.stats.configuration;
 
 import io.dropwizard.hibernate.AbstractDAO;
 import org.hibernate.HibernateException;
 import org.hibernate.SessionFactory;
-import org.hibernate.criterion.Restrictions;
 import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
+import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -32,6 +33,8 @@ import java.util.Optional;
 public class StroomStatsStoreEntityDAOImpl
         extends AbstractDAO<StroomStatsStoreEntity>
         implements StroomStatsStoreEntityDAO {
+
+    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StroomStatsStoreEntityDAOImpl.class);
 
     private final StroomStatsStoreEntityMarshaller stroomStatsStoreEntityMarshaller;
 
@@ -49,55 +52,68 @@ public class StroomStatsStoreEntityDAOImpl
 
     @Override
     public Optional<StroomStatsStoreEntity> loadByName(final String name) {
-        List<?> entities;
         try {
-            entities = super.criteria()
-                    .add(Restrictions.eq("name", name))
-                    .list();
 
+            StroomStatsStoreEntity entity = super.currentSession()
+                    .createQuery(
+                            "from StroomStatsStoreEntity " +
+                                    "where name = :pName",
+                            StroomStatsStoreEntity.class)
+                    .setParameter("pName", name)
+                    .getSingleResult();
+
+            LOGGER.trace("Returning StroomStatsStoreEntity {} for name {}", entity, name);
+            return unmarshalEntity(entity);
         } catch (HibernateException e) {
             throw new RuntimeException("Error loading statisticConfiguration with name " + name, e);
         }
-        return getSingleEntity(entities);
     }
 
     @Override
     public Optional<StroomStatsStoreEntity> loadByUuid(final String uuid) {
-        List<?> entities;
         try {
-            entities = super.criteria()
-                    .add(Restrictions.eq("uuid", uuid))
-                    .list();
+            StroomStatsStoreEntity entity = super.currentSession()
+                    .createQuery(
+                            "from StroomStatsStoreEntity " +
+                                    "where uuid = :pUuid",
+                            StroomStatsStoreEntity.class)
+                    .setParameter("pUuid", uuid)
+                    .getSingleResult();
+
+            LOGGER.trace("Returning StroomStatsStoreEntity {} for uuid {}", entity, uuid);
+            return unmarshalEntity(entity);
 
         } catch (HibernateException e) {
             throw new RuntimeException("Error loading statisticConfiguration with UUID " + uuid, e);
         }
-        return getSingleEntity(entities);
     }
 
     @Override
     public List<StroomStatsStoreEntity> loadAll() {
         List<StroomStatsStoreEntity> entities;
         try {
-            entities = super.criteria().list();
+            entities = super.currentSession()
+                    .createQuery(
+                            "from StroomStatsStoreEntity ",
+                            StroomStatsStoreEntity.class)
+                    .getResultList();
         } catch (HibernateException e) {
             throw new RuntimeException("Error loading all statisticConfiguration entities", e);
         }
         entities.forEach(entity -> {
             stroomStatsStoreEntityMarshaller.unmarshal(entity);
         });
+        LOGGER.trace(() -> String.format("Returning %s StroomStatsStoreEntities", entities.size()));
         return entities;
     }
 
-    Optional<StroomStatsStoreEntity> getSingleEntity(final List<?> entities) {
-        if (entities.size() == 1) {
-            StroomStatsStoreEntity statisticConfigurationEntity = (StroomStatsStoreEntity) entities.get(0);
-            stroomStatsStoreEntityMarshaller.unmarshal(statisticConfigurationEntity);
-            return Optional.of(statisticConfigurationEntity);
-        } else if (entities.isEmpty()) {
-            return Optional.empty();
+    private Optional<StroomStatsStoreEntity> unmarshalEntity(final StroomStatsStoreEntity entity) {
+        if (entity != null) {
+            stroomStatsStoreEntityMarshaller.unmarshal(entity);
+            return Optional.of(entity);
         } else {
-            throw new RuntimeException("Too many entities found");
+            return Optional.empty();
         }
     }
+
 }
