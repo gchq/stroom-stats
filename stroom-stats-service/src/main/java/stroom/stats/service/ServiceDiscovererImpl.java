@@ -71,7 +71,7 @@ public class ServiceDiscovererImpl implements ServiceDiscoverer {
                         externalService.getType().equals(ExternalService.Type.CLIENT_AND_SERVER))
                 .forEach(externalService -> {
                     ServiceProvider<String> serviceProvider = createProvider(serviceDiscovery, externalService);
-                    LOGGER.debug("Adding service provider {}", externalService.getVersionedServiceName(stroomPropertyService));
+                    LOGGER.debug("Adding discoverable service provider {}", externalService.getVersionedServiceName(stroomPropertyService));
                     serviceProviders.put(externalService, serviceProvider);
                 });
     }
