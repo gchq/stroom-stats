@@ -60,7 +60,7 @@ public class QueryResource implements HasHealthCheck {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(QueryResource.class);
 
-    public static final String DATASOURCE_ENDPOINT = "/datasource";
+    public static final String DATASOURCE_ENDPOINT = "/dataSource";
     public static final String SEARCH_ENDPOINT = "/search";
     public static final String DESTROY_ENDPOINT = "/destroy";
 
