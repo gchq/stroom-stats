@@ -9,7 +9,9 @@ import stroom.stats.StatisticsAggregationService;
 import stroom.stats.logging.LogLevelInspector;
 import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.properties.StroomPropertyServiceHealthCheck;
+import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.ServiceDiscoveryManager;
+import stroom.stats.service.ServiceDiscoveryRegistrar;
 import stroom.stats.service.resources.query.v1.QueryResource;
 import stroom.stats.streams.StatisticsFlatMappingService;
 
@@ -27,6 +29,10 @@ public class HealthChecks {
         ServiceDiscoveryManager serviceDiscoveryManager = injector.getInstance(ServiceDiscoveryManager.class);
 //        serviceDiscoveryManager.getHealthCheckProviders()
 //                .forEach(hasHealthCheck -> register(environment, hasHealthCheck));
+
+        register(environment, injector.getInstance(ServiceDiscoverer.class));
+
+        register(environment, injector.getInstance(ServiceDiscoveryRegistrar.class));
 
         StatisticsFlatMappingService statisticsFlatMappingService = injector.getInstance(StatisticsFlatMappingService.class);
         register(environment, statisticsFlatMappingService);
