@@ -1,15 +1,12 @@
 package stroom.stats.service;
 
 import com.codahale.metrics.health.HealthCheck;
-import io.dropwizard.lifecycle.Managed;
 import javaslang.Tuple2;
 import org.apache.curator.x.discovery.ServiceDiscovery;
 import org.apache.curator.x.discovery.ServiceInstance;
 import org.apache.curator.x.discovery.ServiceProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.mixins.HasHealthCheck;
-import stroom.stats.mixins.Stoppable;
 import stroom.stats.properties.StroomPropertyService;
 
 import javax.inject.Inject;
@@ -69,12 +66,14 @@ public class ServiceDiscovererImpl implements ServiceDiscoverer {
     private void initProviders(final ServiceDiscovery<String> serviceDiscovery) {
 
         //Attempt to create ServiceProviders for each of the ExternalServices
-        Arrays.stream(ExternalService.values()).forEach(externalService -> {
-            ServiceProvider<String> serviceProvider = createProvider(serviceDiscovery, externalService);
-            LOGGER.debug("Adding service provider {}", externalService.getVersionedServiceName(stroomPropertyService));
-            serviceProviders.put(externalService, serviceProvider);
-        });
-
+        Arrays.stream(ExternalService.values())
+                .filter(externalService -> externalService.getType().equals(ExternalService.Type.CLIENT) ||
+                        externalService.getType().equals(ExternalService.Type.CLIENT_AND_SERVER))
+                .forEach(externalService -> {
+                    ServiceProvider<String> serviceProvider = createProvider(serviceDiscovery, externalService);
+                    LOGGER.debug("Adding service provider {}", externalService.getVersionedServiceName(stroomPropertyService));
+                    serviceProviders.put(externalService, serviceProvider);
+                });
     }
 
     private ServiceProvider<String> createProvider(final ServiceDiscovery<String> serviceDiscovery, final ExternalService externalService) {
