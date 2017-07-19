@@ -122,6 +122,7 @@ public class App extends Application<Config> {
 
     private void registerManagedObjects(Environment environment) {
         registerManagedObject(environment, StatisticsIngestService.class);
+        registerManagedObject(environment, ServiceDiscoveryManager.class);
         registerManagedObject(environment, ServiceDiscoverer.class);
     }
 
