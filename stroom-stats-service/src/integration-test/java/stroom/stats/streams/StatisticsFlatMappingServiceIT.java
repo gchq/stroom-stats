@@ -135,6 +135,11 @@ public class StatisticsFlatMappingServiceIT {
             //prefix the streams app IDs with the test method name so there are no clashes between tests as the embeded kafka
             //doesn't seem to clean up properly after itself
             setAppIdPrefixes(description.getMethodName() + Instant.now().toEpochMilli());
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("TRACE enabled");
+            } else if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("DEBUG enabled");
+            }
         }
     };
 
@@ -476,6 +481,7 @@ public class StatisticsFlatMappingServiceIT {
                 100);
 
         CountDownLatch badTopicsLatch = startBadEventsConsumer(consumerProps, expectedBadMsgCount, badEvents);
+        startInputEventsConsumer(consumerProps);
 
         LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), topic);
         producer.send(buildProducerRecord(topic, statistics)).get();
@@ -1010,6 +1016,31 @@ public class StatisticsFlatMappingServiceIT {
             }
         });
         return latch;
+    }
+
+    private void startInputEventsConsumer(final Map<String, Object> consumerProps) {
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.execute(() -> {
+            KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(consumerProps,
+                    Serdes.String().deserializer(),
+                    Serdes.String().deserializer());
+
+            //Subscribe to all bad event topics
+            kafkaConsumer.subscribe(INPUT_TOPICS_MAP.values());
+
+            try {
+                while (true) {
+                    ConsumerRecords<String, String> records = kafkaConsumer.poll(100);
+                    for (ConsumerRecord<String, String> record : records) {
+                        LOGGER.info("Input events Consumer - topic = {}, partition = {}, offset = {}, key = {}, value = {}",
+                                record.topic(), record.partition(), record.offset(), record.key(), record.value());
+                    }
+                }
+            } finally {
+                kafkaConsumer.close();
+            }
+        });
     }
 
     private void addStatConfig(MockStatisticConfigurationService mockStatisticConfigurationService,
