@@ -17,10 +17,11 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.mixins;
+package stroom.stats.util.healthchecks;
 
 import com.codahale.metrics.health.HealthCheck;
 import javaslang.Tuple2;
+import stroom.stats.util.HasName;
 
 import java.util.Comparator;
 import java.util.List;

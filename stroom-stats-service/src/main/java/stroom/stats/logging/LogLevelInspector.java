@@ -4,7 +4,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import com.codahale.metrics.health.HealthCheck;
 import org.slf4j.LoggerFactory;
-import stroom.stats.mixins.HasHealthCheck;
+import stroom.stats.util.healthchecks.HasHealthCheck;
 
 import java.util.Map;
 import java.util.TreeMap;

@@ -24,8 +24,8 @@ import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.mixins.HasHealthCheck;
-import stroom.stats.mixins.HasRunState;
+import stroom.stats.util.healthchecks.HasHealthCheck;
+import stroom.stats.util.HasRunState;
 import stroom.stats.streams.StatisticsFlatMappingService;
 
 import java.time.Instant;

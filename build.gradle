@@ -23,7 +23,7 @@ ext.libsDir = "libs"
 
 ext.versions = [
     dropwizard: '1.1.0',
-    dropwizardMetrics: '3.1.2', //keep in sync with dropwizard
+    dropwizardMetrics: '3.2.2', //keep in sync with dropwizard (1.1.0 => 3.2.2)
     slf4j: '1.7.24', //in line with dropwiz version
     logback: '1.2.1', //in line with dropwiz version
     hbase: '1.2.0', //CDH5.10 uses hbase 1.2.0

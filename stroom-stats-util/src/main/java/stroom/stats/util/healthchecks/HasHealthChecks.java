@@ -1,4 +1,4 @@
-package stroom.stats.mixins;
+package stroom.stats.util.healthchecks;
 
 import java.util.List;
 

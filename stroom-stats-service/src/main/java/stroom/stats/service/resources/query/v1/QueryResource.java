@@ -32,7 +32,7 @@ import stroom.query.api.v1.QueryKey;
 import stroom.query.api.v1.SearchRequest;
 import stroom.stats.HBaseClient;
 import stroom.stats.datasource.DataSourceService;
-import stroom.stats.mixins.HasHealthCheck;
+import stroom.stats.util.healthchecks.HasHealthCheck;
 import stroom.stats.service.ExternalService;
 import stroom.stats.service.ResourcePaths;
 import stroom.stats.service.ServiceDiscoverer;

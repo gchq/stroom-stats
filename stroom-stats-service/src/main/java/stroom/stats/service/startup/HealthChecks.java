@@ -6,14 +6,14 @@ import io.dropwizard.setup.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.StatisticsAggregationService;
+import stroom.stats.hbase.connection.HBaseConnection;
 import stroom.stats.logging.LogLevelInspector;
-import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.properties.StroomPropertyServiceHealthCheck;
 import stroom.stats.service.ServiceDiscoverer;
-import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.ServiceDiscoveryRegistrar;
 import stroom.stats.service.resources.query.v1.QueryResource;
 import stroom.stats.streams.StatisticsFlatMappingService;
+import stroom.stats.util.healthchecks.HasHealthCheck;
 
 import java.util.List;
 import java.util.function.Supplier;
@@ -26,27 +26,18 @@ public class HealthChecks {
         register(environment, "QueryResource",
                 () -> injector.getInstance(QueryResource.class));
 
-        ServiceDiscoveryManager serviceDiscoveryManager = injector.getInstance(ServiceDiscoveryManager.class);
-//        serviceDiscoveryManager.getHealthCheckProviders()
-//                .forEach(hasHealthCheck -> register(environment, hasHealthCheck));
-
         register(environment, injector.getInstance(ServiceDiscoverer.class));
-
         register(environment, injector.getInstance(ServiceDiscoveryRegistrar.class));
 
         StatisticsFlatMappingService statisticsFlatMappingService = injector.getInstance(StatisticsFlatMappingService.class);
-        register(environment, statisticsFlatMappingService);
-
         register(environment, "FlatMappingService", statisticsFlatMappingService.getHealthCheckProviders());
 
         StatisticsAggregationService statisticsAggregationService = injector.getInstance(StatisticsAggregationService.class);
-        register(environment, statisticsAggregationService);
-
         register(environment, "AggregationService", statisticsAggregationService.getHealthCheckProviders());
 
         register(environment, LogLevelInspector.INSTANCE);
-
         register(environment, injector.getInstance(StroomPropertyServiceHealthCheck.class));
+        register(environment, injector.getInstance(HBaseConnection.class));
     }
 
     /**

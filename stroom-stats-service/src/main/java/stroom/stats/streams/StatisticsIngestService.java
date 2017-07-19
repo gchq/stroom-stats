@@ -4,9 +4,9 @@ import io.dropwizard.lifecycle.Managed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.StatisticsAggregationService;
-import stroom.stats.mixins.HasRunState;
-import stroom.stats.mixins.Startable;
-import stroom.stats.mixins.Stoppable;
+import stroom.stats.util.HasRunState;
+import stroom.stats.util.Startable;
+import stroom.stats.util.Stoppable;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;

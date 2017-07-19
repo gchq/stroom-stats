@@ -106,6 +106,11 @@ public class StatisticsFlatMappingStreamFactory {
         //TODO currently the stat name is both the msg key and in the Statistic object.
         //Should probably just be in the key
         KStream<String, StatisticWrapper>[] forkedStreams = inputStream
+                .filter((key, value) -> {
+                    //like a peek function
+                    LOGGER.trace("Received {} : {}", key, value);
+                    return true;
+                })
                 .mapValues(statisticsMarshaller::unMarshallXml)
                 .flatMapValues(Statistics::getStatistic) //flatMap a batch of stats down to individual events, badly named jaxb objects
                 .mapValues(this::buildStatisticWrapper) //wrap the stat event with its stat config

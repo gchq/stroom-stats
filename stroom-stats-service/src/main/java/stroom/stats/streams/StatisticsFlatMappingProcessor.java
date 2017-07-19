@@ -26,7 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.StatisticsProcessor;
 import stroom.stats.api.StatisticType;
-import stroom.stats.mixins.HasRunState;
+import stroom.stats.util.HasRunState;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
 

@@ -2,8 +2,8 @@ package stroom.stats.service;
 
 import io.dropwizard.lifecycle.Managed;
 import org.apache.curator.x.discovery.ServiceInstance;
-import stroom.stats.mixins.HasHealthCheck;
-import stroom.stats.mixins.Stoppable;
+import stroom.stats.util.healthchecks.HasHealthCheck;
+import stroom.stats.util.Stoppable;
 
 import java.util.Optional;
 

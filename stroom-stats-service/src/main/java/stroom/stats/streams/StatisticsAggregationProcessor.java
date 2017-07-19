@@ -34,7 +34,7 @@ import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
 import stroom.stats.hbase.EventStoreTimeIntervalHelper;
 import stroom.stats.hbase.uid.UID;
-import stroom.stats.mixins.HasRunState;
+import stroom.stats.util.HasRunState;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.StatAggregate;

@@ -11,7 +11,7 @@ import org.apache.curator.x.discovery.ServiceType;
 import org.apache.curator.x.discovery.UriSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.mixins.HasHealthCheck;
+import stroom.stats.util.healthchecks.HasHealthCheck;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.service.config.Config;
 
