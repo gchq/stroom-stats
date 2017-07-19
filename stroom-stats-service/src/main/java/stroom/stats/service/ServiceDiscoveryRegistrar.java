@@ -166,4 +166,9 @@ public class ServiceDiscoveryRegistrar implements HasHealthCheck {
     public HealthCheck.Result getHealth() {
         return health;
     }
+
+    @Override
+    public String getName() {
+        return "ServiceDiscoveryRegistrar";
+    }
 }

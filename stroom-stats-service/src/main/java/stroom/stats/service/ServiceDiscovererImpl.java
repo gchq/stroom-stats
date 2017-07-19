@@ -151,4 +151,9 @@ public class ServiceDiscovererImpl implements ServiceDiscoverer {
             }
         }
     }
+
+    @Override
+    public String getName() {
+        return "ServiceDiscoverer";
+    }
 }
