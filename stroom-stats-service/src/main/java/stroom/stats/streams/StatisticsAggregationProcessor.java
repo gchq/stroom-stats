@@ -564,7 +564,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                 statAggregator == null ? "-" : Integer.toString(statAggregator.getInputCount()));
         statusMap.put("size",
                 statAggregator == null ? "-" : Integer.toString(statAggregator.size()));
-        statusMap.put("aggregation %",
+        statusMap.put("aggregation-compression-savings %",
                 statAggregator == null ? "-" : String.format("%.2f", statAggregator.getAggregationPercentage()));
         statusMap.put("expiry time",
                 statAggregator == null ? "-" : statAggregator.getExpiryTime().toString());
