@@ -60,7 +60,7 @@ logging:
     level: WARN
     loggers:
         org.hibernate.SQL: WARN
-        stroom.stats: ${STATS_LOGGING_LEVEL:- INFO}
+        stroom.stats: ${STATS_LOGGING_LEVEL:- DEBUG}
         io.dropwizard: ${STATS_LOGGING_LEVEL_DROPWIZARD:- INFO}
 #        stroom.stats.streams.StatisticsAggregationProcessor: TRACE
 #        stroom.stats.streams.FullEndToEndIT: TRACE
@@ -70,6 +70,7 @@ logging:
     appenders:
       - type: console
         logFormat: "%-6level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %X{code} %msg %n"
+        target: stdout
 
 zookeeper:
     # The quorum of zookeeper hosts to connect to
@@ -131,12 +132,21 @@ defaultProperties:
     #As above but for port
     #stroom.stats.serviceDiscovery.servicesPort:
 
+    #----------Service Discovery START ---------------
+    #Stroom-Stats
+    stroom.services.stroomStats.name: stroom-stats
+    stroom.services.stroomStats.version: 1
+    stroom.services.stroomStats.docRefType: StroomStatsStore
+    #Stroom-Index
     stroom.services.stroomIndex.name: stroom-index
     stroom.services.stroomIndex.version: 1
     stroom.services.stroomIndex.docRefType: Index
+    #authentication
     stroom.services.authentication.name: authentication
     stroom.services.authentication.version: 1
+    #authorisation
     stroom.services.authorisation.name: authorisation
     stroom.services.authorisation.version: 1
+    #----------Service Discovery END -----------------
 
 
