@@ -60,7 +60,7 @@ public class QueryResource implements HasHealthCheck {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(QueryResource.class);
 
-    public static final String DATASOURCE_ENDPOINT = "/dataSource";
+    public static final String DATA_SOURCE_ENDPOINT = "/dataSource";
     public static final String SEARCH_ENDPOINT = "/search";
     public static final String DESTROY_ENDPOINT = "/destroy";
 
@@ -100,7 +100,7 @@ public class QueryResource implements HasHealthCheck {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @Path(DATASOURCE_ENDPOINT)
+    @Path(DATA_SOURCE_ENDPOINT)
     @Timed
     public Response getDataSource(@Auth User user, @Valid final DocRef docRef) {
 
