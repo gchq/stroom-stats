@@ -45,11 +45,11 @@ public class ServiceDiscoveryCuratorFrameworkProvider implements Provider<Curato
     public CuratorFramework get() {
         String quorum = zookeeperConfig.getQuorum();
         String serviceDiscoveryPath = zookeeperConfig.getServiceDiscoveryPath();
-        String connectionString = quorum + serviceDiscoveryPath;
+        String connectionString = quorum + (serviceDiscoveryPath == null ? "" : serviceDiscoveryPath);
 
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
 
-        LOGGER.info("Initiating Curator connection to Zookeeper using: {}", connectionString);
+        LOGGER.info("Initiating Curator connection to Zookeeper using: [{}]", connectionString);
         // Use chroot so all subsequent paths are below /stroom-services to avoid conflicts with hbase/zookeeper/kafka etc.
         CuratorFramework client = CuratorFrameworkFactory.newClient(connectionString, retryPolicy);
         client.start();

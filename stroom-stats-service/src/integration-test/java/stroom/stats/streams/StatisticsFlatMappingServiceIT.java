@@ -1104,6 +1104,8 @@ public class StatisticsFlatMappingServiceIT {
         ZookeeperConfig mockZookeeperConfig = Mockito.mock(ZookeeperConfig.class);
         Config mockConfig = Mockito.mock(Config.class);
         Mockito.when(mockZookeeperConfig.getQuorum()).thenReturn(kafkaEmbedded.getZookeeperConnectionString());
+        Mockito.when(mockZookeeperConfig.getPropertyServicePath()).thenReturn("/propertyService");
+        Mockito.when(mockZookeeperConfig.getServiceDiscoveryPath()).thenReturn("/stroom-services");
         Mockito.when(mockConfig.getZookeeperConfig()).thenReturn(mockZookeeperConfig);
 
 
