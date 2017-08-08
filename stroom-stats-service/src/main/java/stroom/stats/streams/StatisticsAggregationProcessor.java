@@ -178,7 +178,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
             Map<String, Object> props = getConsumerProps();
             LOGGER.debug(() ->
                 "Starting aggregation consumer [" + instanceId + "] with properties:\n" + props.entrySet().stream()
-                        .map(entry -> entry.getKey() + ": " + entry.getValue().toString())
+                        .map(entry -> "    " + entry.getKey() + ": " + entry.getValue().toString())
                         .collect(Collectors.joining("\n"))
             );
             KafkaConsumer<StatKey, StatAggregate> kafkaConsumer = new KafkaConsumer<>(

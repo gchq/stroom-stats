@@ -21,6 +21,7 @@ package stroom.stats;
 
 import com.codahale.metrics.health.HealthCheck;
 import com.google.common.base.Preconditions;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Serde;
@@ -28,10 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
-import stroom.stats.util.healthchecks.HasHealthCheck;
-import stroom.stats.util.HasRunState;
-import stroom.stats.util.Startable;
-import stroom.stats.util.Stoppable;
 import stroom.stats.partitions.StatKeyPartitioner;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -41,6 +38,10 @@ import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatKeySerde;
+import stroom.stats.util.HasRunState;
+import stroom.stats.util.Startable;
+import stroom.stats.util.Stoppable;
+import stroom.stats.util.healthchecks.HasHealthCheck;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -53,6 +54,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
@@ -166,7 +168,10 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
 
         int processorCount = StatisticType.values().length * EventStoreTimeIntervalEnum.values().length * instanceCount;
 
-        ExecutorService executorService = Executors.newFixedThreadPool(processorCount);
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("agg-proc-thread-%d")
+                .build();
+        ExecutorService executorService = Executors.newFixedThreadPool(processorCount, namedThreadFactory);
 
         //create all the processor instances and hold their references
         for (StatisticType statisticType : StatisticType.values()) {
