@@ -79,7 +79,6 @@ public class StatisticsAggregationServiceIT {
     private static final StatisticType WORKING_STAT_TYPE = StatisticType.COUNT;
     private static final EventStoreTimeIntervalEnum WORKING_INTERVAL = EventStoreTimeIntervalEnum.DAY;
 
-
     private MockStroomPropertyService mockStroomPropertyService = new MockStroomPropertyService();
 
     private MockUniqueIdCache mockUniqueIdCache = new MockUniqueIdCache();
@@ -88,16 +87,16 @@ public class StatisticsAggregationServiceIT {
     public MockitoRule rule = MockitoJUnit.rule();
 
     @Mock
-    StatisticsService mockStatisticsService;
+    private StatisticsService mockStatisticsService;
 
     @Captor
-    ArgumentCaptor<Map<StatKey, StatAggregate>> aggregatesMapCaptor;
+    private ArgumentCaptor<Map<StatKey, StatAggregate>> aggregatesMapCaptor;
 
     @Captor
-    ArgumentCaptor<StatisticType> statTypeCaptor;
+    private ArgumentCaptor<StatisticType> statTypeCaptor;
 
     @Captor
-    ArgumentCaptor<EventStoreTimeIntervalEnum> intervalCaptor;
+    private ArgumentCaptor<EventStoreTimeIntervalEnum> intervalCaptor;
 
     @Test
     public void testAggregation() throws InterruptedException {
@@ -241,7 +240,7 @@ public class StatisticsAggregationServiceIT {
 
         //for testing we only ever want to grab from the latest offset when we spin up a new test to avoid consuming records
         //from a previous run, does mean we have to spin up the consumer(s) before putting records on a topic
-        mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_AUTO_OFFSET_RESET, "latest");
+        mockStroomPropertyService.setProperty(StatisticsIngestService.PROP_KEY_KAFKA_AUTO_OFFSET_RESET, "latest");
     }
 
     private static KafkaProducer<StatKey, StatAggregate> buildKafkaProducer(StroomPropertyService stroomPropertyService) {

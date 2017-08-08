@@ -99,7 +99,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     public static final String PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS = "stroom.stats.aggregation.maxFlushIntervalMs";
     public static final String PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS = "stroom.stats.aggregation.pollTimeoutMs";
     public static final String PROP_KEY_AGGREGATOR_POLL_RECORDS = "stroom.stats.aggregation.pollRecords";
-    public static final String PROP_KEY_AGGREGATOR_AUTO_OFFSET_RESET = "stroom.stats.aggregation.autoOffsetReset";
 
     public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECS = 120;
 
@@ -176,8 +175,14 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private KafkaConsumer<StatKey, StatAggregate> buildConsumer() {
 
         try {
+            Map<String, Object> props = getConsumerProps();
+            LOGGER.debug(() ->
+                "Starting aggregation consumer [" + instanceId + "] with properties:\n" + props.entrySet().stream()
+                        .map(entry -> entry.getKey() + ": " + entry.getValue().toString())
+                        .collect(Collectors.joining("\n"))
+            );
             KafkaConsumer<StatKey, StatAggregate> kafkaConsumer = new KafkaConsumer<>(
-                    getConsumerProps(),
+                    props,
                     statKeySerde.deserializer(),
                     statAggregateSerde.deserializer());
 
@@ -595,7 +600,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     }
 
     private String getAutoOffsetReset() {
-        return stroomPropertyService.getProperty(PROP_KEY_AGGREGATOR_AUTO_OFFSET_RESET, "earliest");
+        return stroomPropertyService.getProperty(StatisticsIngestService.PROP_KEY_KAFKA_AUTO_OFFSET_RESET, "latest");
     }
 
     @Override

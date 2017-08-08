@@ -25,9 +25,12 @@ import org.mockito.Mockito;
 import stroom.stats.api.StatisticsService;
 import stroom.stats.configuration.MockStatisticConfigurationService;
 import stroom.stats.configuration.StatisticConfigurationService;
+import stroom.stats.hbase.connection.HBaseConnection;
 import stroom.stats.hbase.table.EventStoreTableFactory;
+import stroom.stats.hbase.table.HBaseEventStoreTableFactory;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
 import stroom.stats.hbase.uid.UniqueIdCache;
+import stroom.stats.hbase.uid.UniqueIdGenerator;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.properties.StroomPropertyService;
 
@@ -72,13 +75,20 @@ public class StroomStatsEmbeddedOverrideModule extends AbstractModule {
         bind(StroomPropertyService.class).toInstance(mockStroomPropertyService);
 
         bind(StatisticConfigurationService.class).toInstance(mockStatisticConfigurationService);
-    }
 
-    public StatisticsService getMockStatisticsService() {
-        return mockStatisticsService;
+        //don't want an actual hbase so just mock the classes
+        bindToMock(HBaseConnection.class);
+        bindToMock(HBaseEventStoreTableFactory.class);
+        bindToMock(UniqueIdGenerator.class);
     }
 
     public MockStatisticConfigurationService getMockStatisticConfigurationService() {
         return mockStatisticConfigurationService;
+    }
+
+    private <T> T bindToMock(Class<T> clazz) {
+        T mock = Mockito.mock(clazz);
+        bind(clazz).toInstance(mock);
+        return mock;
     }
 }

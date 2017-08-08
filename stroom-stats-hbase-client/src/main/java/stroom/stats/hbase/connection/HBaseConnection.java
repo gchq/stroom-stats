@@ -62,9 +62,9 @@ public class HBaseConnection implements HasHealthCheck{
     private final Connection sharedClusterConnection;
 
     // HBase property names for configuring HBase
-    private static final String HBASE_ZOOKEEPER_QUORUM_PROPERTY_NAME = "hbase.zookeeper.quorum";
-    private static final String HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME = "hbase.zookeeper.property.clientPort";
-    private static final String HBASE_RPC_TIMEOUT_MS_PROPERTY_NAME = "hbase.rpc.timeout";
+    private static final String PROP_KEY_HBASE_ZOOKEEPER_QUORUM = "hbase.zookeeper.quorum";
+    private static final String PROP_KEY_HBASE_ZOOKEEPER_CLIENT_PORT = "hbase.zookeeper.property.clientPort";
+    private static final String PROP_KEY_HBASE_RPC_TIMEOUT_MS = "hbase.rpc.timeout";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseConnection.class);
 
@@ -80,12 +80,12 @@ public class HBaseConnection implements HasHealthCheck{
 
         // if you want the local hbase instance rather than the ref cluster
         // comment these two out
-        configuration.set(HBASE_ZOOKEEPER_QUORUM_PROPERTY_NAME, quorum);
+        configuration.set(PROP_KEY_HBASE_ZOOKEEPER_QUORUM, quorum);
 
-        configuration.set(HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME,
+        configuration.set(PROP_KEY_HBASE_ZOOKEEPER_CLIENT_PORT,
                 propertyService.getPropertyOrThrow(HBaseStatisticConstants.HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME));
 
-        configuration.set(HBASE_RPC_TIMEOUT_MS_PROPERTY_NAME,
+        configuration.set(PROP_KEY_HBASE_RPC_TIMEOUT_MS,
                 propertyService.getPropertyOrThrow(HBaseStatisticConstants.HBASE_RPC_TIMEOUT_MS_PROPERTY_NAME));
 
         autoCreateTables = true;
@@ -152,7 +152,7 @@ public class HBaseConnection implements HasHealthCheck{
     public HBaseConnection(final Connection connection) {
         this.sharedClusterConnection = connection;
         this.configuration = connection.getConfiguration();
-        this.quorum = connection.getConfiguration().get(HBASE_ZOOKEEPER_QUORUM_PROPERTY_NAME);
+        this.quorum = connection.getConfiguration().get(PROP_KEY_HBASE_ZOOKEEPER_QUORUM);
         autoCreateTables = true;
     }
 

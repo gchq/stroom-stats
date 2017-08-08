@@ -32,6 +32,7 @@ public class StatisticsIngestService implements Startable, Stoppable, HasRunStat
     public static final String PROP_KEY_KAFKA_BOOTSTRAP_SERVERS = PROP_KEY_PREFIX_KAFKA + "bootstrapServers";
     public static final String PROP_KEY_KAFKA_COMMIT_INTERVAL_MS = PROP_KEY_PREFIX_KAFKA + "commit.interval.ms";
     public static final String PROP_KEY_KAFKA_STREAM_THREADS = PROP_KEY_PREFIX_KAFKA + "num.stream.threads";
+    public static final String PROP_KEY_KAFKA_AUTO_OFFSET_RESET = PROP_KEY_PREFIX_KAFKA + "auto.offset.reset";
 
 
     public static final String PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX = "stroom.stats.topics.statisticEventsPrefix";

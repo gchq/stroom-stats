@@ -92,7 +92,7 @@ defaultProperties:
     stroom.stats.streams.kafka.bootstrapServers: ${STATS_KAFKA_BOOTSTRAP:- localhost:9092}
     stroom.stats.streams.kafka.num.stream.threads: 2
     stroom.stats.streams.kafka.commit.aggregationInterval.ms: 30000
-    stroom.stats.streams.kafka.num.stream.threads: 2
+    stroom.stats.streams.kafka.auto.offset.reset: latest
     stroom.stats.streams.flatMapProcessorAppIdPrefix: FlatMapProcessor
 
     stroom.stats.topics.statisticEventsPrefix: statisticEvents
@@ -106,7 +106,6 @@ defaultProperties:
     stroom.stats.aggregation.maxEventIds: 100
     stroom.stats.aggregation.pollTimeoutMs: 100
     stroom.stats.aggregation.pollRecords: 5000
-    stroom.stats.aggregation.autoOffsetRest: latest
 
     stroom.stats.cache.nameToStatisticConfigurationCache.maxEntriesHeap: 1000
     stroom.stats.cache.uuidToStatisticConfigurationCache.maxEntriesHeap: 1000

@@ -15,6 +15,11 @@ public class KafkaEmbededUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaEmbededUtils.class);
 
+    public static void deleteAndCreateTopics(final KafkaEmbedded kafkaEmbedded, final String... topics) {
+        //attempt deletion first to ensure the topics don't already exist
+        deleteTopics(kafkaEmbedded, topics);
+        createTopics(kafkaEmbedded, topics);
+    }
     public static void createTopics(final KafkaEmbedded kafkaEmbedded, final String... topics) {
 
         ZkUtils zkUtils = new ZkUtils(kafkaEmbedded.getZkClient(), null, false);
@@ -40,6 +45,7 @@ public class KafkaEmbededUtils {
                 while (AdminUtils.topicExists(zkUtils, topic)) {
                     //wait for topic to die
                 }
+                kafkaEmbedded.waitUntilSynced(topic, 0);
             }
         }
     }

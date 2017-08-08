@@ -87,8 +87,6 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
         this.stroomPropertyService = stroomPropertyService;
         this.statisticsService = statisticsService;
 
-        kafkaProducer = buildProducer();
-
         //hold an instance of the executorService in case we want to query it for a health check
         executorService = buildProcessors();
     }

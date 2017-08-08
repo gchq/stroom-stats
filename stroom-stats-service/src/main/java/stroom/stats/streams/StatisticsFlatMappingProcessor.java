@@ -20,6 +20,7 @@
 package stroom.stats.streams;
 
 import com.codahale.metrics.health.HealthCheck;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
 import org.slf4j.Logger;
@@ -71,7 +72,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
     }
 
     private KafkaStreams configureStream(final StatisticType statisticType,
-                                               final AbstractStatisticFlatMapper mapper) {
+                                         final AbstractStatisticFlatMapper mapper) {
 
         Map<String, Object> props = new HashMap<>();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, appId);
@@ -99,13 +100,12 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
 
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, getKafkaBootstrapServers());
         props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, getStreamsCommitIntervalMs());
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, getAutoOffsetReset());
 
         //TODO not clear if this is needed for not. Normal Kafka doesn't need it but streams may do
         //leaving it in seems to cause zookeeper connection warnings in the tests.  Tests seem to work ok
         //without it
 //        props.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeperConfig.getQuorum());
-
-        //serdes will be defined explicitly in code
 
         //Add any additional props, overwriting any from above
         props.putAll(additionalProps);
@@ -144,6 +144,10 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
 
     private String getKafkaBootstrapServers() {
         return stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS);
+    }
+
+    private String getAutoOffsetReset() {
+        return stroomPropertyService.getProperty(StatisticsIngestService.PROP_KEY_KAFKA_AUTO_OFFSET_RESET, "latest");
     }
 
     @Override

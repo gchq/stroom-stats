@@ -104,7 +104,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 500);
         //setting this to latest ensure we don't pick up messages from previous runs, requires us to spin up the processors
         //before putting msgs on the topics
-        stroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_AUTO_OFFSET_RESET, "latest");
+        stroomPropertyService.setProperty(StatisticsIngestService.PROP_KEY_KAFKA_AUTO_OFFSET_RESET, "latest");
     }
 
     @Test
