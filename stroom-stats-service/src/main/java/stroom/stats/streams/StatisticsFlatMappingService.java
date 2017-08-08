@@ -43,7 +43,10 @@ public class StatisticsFlatMappingService implements Startable, Stoppable, HasRu
 
     private final List<StatisticsFlatMappingProcessor> processors = new ArrayList<>();
 
-    private RunState runState = RunState.STOPPED;
+    private volatile RunState runState = RunState.STOPPED;
+
+    //used for thread synchronization
+    private final Object startStopMonitor = new Object();
 
     @Inject
     public StatisticsFlatMappingService(final StroomPropertyService stroomPropertyService,
@@ -64,26 +67,29 @@ public class StatisticsFlatMappingService implements Startable, Stoppable, HasRu
                 StatisticType.VALUE,
                 valueStatToAggregateMapper);
         processors.add(valueStatisticsProcessor);
-
     }
 
     @Override
     public void start() {
 
-        runState = RunState.STARTING;
-        LOGGER.info("Starting the Statistics Flat Mapping Service");
+        synchronized (startStopMonitor) {
+            runState = RunState.STARTING;
+            LOGGER.info("Starting the Statistics Flat Mapping Service");
 
-        processors.forEach(StatisticsFlatMappingProcessor::start);
-        runState = RunState.RUNNING;
+            processors.forEach(StatisticsFlatMappingProcessor::start);
+            runState = RunState.RUNNING;
+        }
     }
 
     @Override
     public void stop() {
-        runState = RunState.STOPPING;
-        LOGGER.info("Stopping the Statistics Flat Mapping Service");
+        synchronized (startStopMonitor) {
+            runState = RunState.STOPPING;
+            LOGGER.info("Stopping the Statistics Flat Mapping Service");
 
-        processors.forEach(StatisticsFlatMappingProcessor::stop);
-        runState = RunState.STOPPED;
+            processors.forEach(StatisticsFlatMappingProcessor::stop);
+            runState = RunState.STOPPED;
+        }
     }
 
     @Override
@@ -117,7 +123,7 @@ public class StatisticsFlatMappingService implements Startable, Stoppable, HasRu
 
     public List<HasHealthCheck> getHealthCheckProviders() {
         List<HasHealthCheck> healthCheckProviders = new ArrayList<>();
-        processors.forEach(processor -> healthCheckProviders.add((HasHealthCheck) processor));
+        processors.forEach(healthCheckProviders::add);
         return healthCheckProviders;
     }
 

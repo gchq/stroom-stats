@@ -44,13 +44,16 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
     private final StroomPropertyService stroomPropertyService;
     private final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory;
     private final StatisticType statisticType;
-    private KafkaStreams kafkaStreams;
+    private volatile KafkaStreams kafkaStreams;
     private final String appId;
     private final String inputTopic;
     private final String badEventTopic;
     private final String permsTopicsPrefix;
     private final AbstractStatisticFlatMapper mapper;
-    private HasRunState.RunState runState = HasRunState.RunState.STOPPED;
+    private volatile HasRunState.RunState runState = HasRunState.RunState.STOPPED;
+
+    //used for thread synchronization
+    private final Object startStopMonitor = new Object();
 
     public StatisticsFlatMappingProcessor(final StroomPropertyService stroomPropertyService,
                                           final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory,
@@ -152,25 +155,27 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
 
     @Override
     public void stop() {
-
-        runState = HasRunState.RunState.STOPPING;
-        if (kafkaStreams != null) {
-            kafkaStreams.close();
+        synchronized (startStopMonitor) {
+            runState = RunState.STOPPING;
+            if (kafkaStreams != null) {
+                kafkaStreams.close();
+                //kstream will be recreated on start allowing for different configuration
+                kafkaStreams = null;
+            }
+            runState = RunState.STOPPED;
+            LOGGER.info("Stopped processor {} for input topic {}", appId, inputTopic);
         }
-        runState = HasRunState.RunState.STOPPED;
-        LOGGER.info("Stopped processor {} for input topic {}", appId, inputTopic);
-
     }
 
     @Override
     public void start() {
-
-        runState = HasRunState.RunState.STARTING;
-        kafkaStreams = configureStream(statisticType, mapper);
-        kafkaStreams.start();
-        runState = HasRunState.RunState.RUNNING;
-        LOGGER.info("Started processor {} for input topic {} with {} stream threads", appId, inputTopic, getStreamThreads());
-
+        synchronized (startStopMonitor) {
+            runState = RunState.STARTING;
+            kafkaStreams = configureStream(statisticType, mapper);
+            kafkaStreams.start();
+            runState = RunState.RUNNING;
+            LOGGER.info("Started processor {} for input topic {} with {} stream threads", appId, inputTopic, getStreamThreads());
+        }
     }
 
     @Override
