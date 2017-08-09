@@ -20,15 +20,29 @@
 package stroom.stats.common;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
+import stroom.stats.configuration.StatisticConfiguration;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 public class BasicStatisticDataPoint implements StatisticDataPoint {
+
+    private static final Map<String, Function<StatisticDataPoint, String>> FIELD_VALUE_FUNCTION_MAP;
+
+    static {
+        FIELD_VALUE_FUNCTION_MAP = ImmutableMap.<String, Function<StatisticDataPoint, String>>builder()
+                .put(StatisticConfiguration.FIELD_NAME_STATISTIC, StatisticDataPoint::getStatisticName)
+                .put(StatisticConfiguration.FIELD_NAME_DATE_TIME, dataPoint -> Long.toString(dataPoint.getTimeMs()))
+                .put(StatisticConfiguration.FIELD_NAME_PRECISION, StatisticDataPoint::getPrecision)
+                .put(StatisticConfiguration.FIELD_NAME_PRECISION_MS, dataPoint -> Long.toString(dataPoint.getPrecisionMs()))
+                .build();
+    }
 
     private final String statisticName;
     private final long timeMs;
@@ -94,7 +108,14 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
 
     @Override
     public String getFieldValue(final String fieldName) {
-        return tagToValueMap.get(fieldName);
+        Function<StatisticDataPoint, String> fieldValueFunction = FIELD_VALUE_FUNCTION_MAP.get(fieldName);
+
+        if (fieldValueFunction == null) {
+            //either it is a tag field or we don't know about this field
+            return tagToValueMap.get(fieldName);
+        } else {
+            return fieldValueFunction.apply(this);
+        }
     }
 
     @Override

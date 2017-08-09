@@ -21,7 +21,6 @@
 
 package stroom.stats.common;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
@@ -29,7 +28,7 @@ import stroom.stats.configuration.StatisticConfiguration;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 
 /**
@@ -38,7 +37,20 @@ import java.util.function.Supplier;
  * This represents an aggregated value of 1-many statistic events
  */
 public class ValueStatisticDataPoint implements StatisticDataPoint {
+
     private static final StatisticType STATISTIC_TYPE = StatisticType.VALUE;
+
+    private static final Map<String, Function<ValueStatisticDataPoint, String>> FIELD_VALUE_FUNCTION_MAP;
+
+    static {
+        //hold a map of field names to functions that we get a value for that named field, converted to a string
+        FIELD_VALUE_FUNCTION_MAP = ImmutableMap.<String, Function<ValueStatisticDataPoint, String>>builder()
+                .put(StatisticConfiguration.FIELD_NAME_COUNT, dataPoint -> Long.toString(dataPoint.count))
+                .put(StatisticConfiguration.FIELD_NAME_VALUE, dataPoint -> Double.toString(dataPoint.value))
+                .put(StatisticConfiguration.FIELD_NAME_MIN_VALUE, dataPoint -> Double.toString(dataPoint.minValue))
+                .put(StatisticConfiguration.FIELD_NAME_MAX_VALUE, dataPoint -> Double.toString(dataPoint.maxValue))
+                .build();
+    }
 
     private final BasicStatisticDataPoint delegate;
     private final long count;
@@ -46,25 +58,16 @@ public class ValueStatisticDataPoint implements StatisticDataPoint {
     private final double minValue;
     private final double maxValue;
 
-    private final Map<String, Supplier<String>> fieldValueSupplierMap;
-
-
     /**
      * Constructor for a value type statistic data point
      *
-     * @param timeMs
-     *            The timestamp of the aggregated data point
-     * @param tags
-     *            The list of tav/value pairs that qualify the data point
-     * @param value
-     *            The mean value of the data point in this time period
-     * @param count
-     *            The count of the number of statistic events that have happened
-     *            in this period
-     * @param minValue
-     *            The min value in this time period
-     * @param maxValue
-     *            The max value in this time period
+     * @param timeMs   The timestamp of the aggregated data point
+     * @param tags     The list of tav/value pairs that qualify the data point
+     * @param value    The mean value of the data point in this time period
+     * @param count    The count of the number of statistic events that have happened
+     *                 in this period
+     * @param minValue The min value in this time period
+     * @param maxValue The max value in this time period
      * @return A populated {@link ValueStatisticDataPoint} instance
      */
     public ValueStatisticDataPoint(final String statisticName,
@@ -81,17 +84,6 @@ public class ValueStatisticDataPoint implements StatisticDataPoint {
         this.value = value;
         this.minValue = minValue;
         this.maxValue = maxValue;
-
-        fieldValueSupplierMap = ImmutableMap.<String, Supplier<String>>builder()
-                .put(StatisticConfiguration.FIELD_NAME_STATISTIC, delegate::getStatisticName)
-                .put(StatisticConfiguration.FIELD_NAME_DATE_TIME, () -> Long.toString(delegate.getTimeMs()))
-                .put(StatisticConfiguration.FIELD_NAME_PRECISION, this::getPrecision)
-                .put(StatisticConfiguration.FIELD_NAME_PRECISION_MS, () -> Long.toString(delegate.getPrecisionMs()))
-                .put(StatisticConfiguration.FIELD_NAME_COUNT, () -> Long.toString(count))
-                .put(StatisticConfiguration.FIELD_NAME_VALUE, () -> Double.toString(value))
-                .put(StatisticConfiguration.FIELD_NAME_MIN_VALUE, () -> Double.toString(minValue))
-                .put(StatisticConfiguration.FIELD_NAME_MAX_VALUE, () -> Double.toString(maxValue))
-                .build();
     }
 
     @Override
@@ -116,7 +108,7 @@ public class ValueStatisticDataPoint implements StatisticDataPoint {
 
     @Override
     public Map<String, String> getTagsAsMap() {
-        return  delegate.getTagsAsMap();
+        return delegate.getTagsAsMap();
     }
 
     public long getCount() {
@@ -142,14 +134,13 @@ public class ValueStatisticDataPoint implements StatisticDataPoint {
 
     @Override
     public String getFieldValue(final String fieldName) {
-        Supplier<String> fieldValueSupplier = fieldValueSupplierMap.get(fieldName);
+        Function<ValueStatisticDataPoint, String> fieldValueFunction = FIELD_VALUE_FUNCTION_MAP.get(fieldName);
 
-        if (fieldValueSupplier == null) {
-            //either it is a tag field or we don't know what it is
-
+        if (fieldValueFunction == null) {
+            //we don't know what it is so see if the delegate does
             return delegate.getFieldValue(fieldName);
         } else {
-            return Preconditions.checkNotNull(fieldValueSupplier, "Unknown field %s", fieldName).get();
+            return fieldValueFunction.apply(this);
         }
     }
 

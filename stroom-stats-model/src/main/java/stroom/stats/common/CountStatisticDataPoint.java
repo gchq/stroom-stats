@@ -21,7 +21,6 @@
 
 package stroom.stats.common;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
@@ -29,7 +28,7 @@ import stroom.stats.configuration.StatisticConfiguration;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 
 /**
@@ -44,20 +43,19 @@ public class CountStatisticDataPoint implements StatisticDataPoint {
     private final BasicStatisticDataPoint delegate;
     private final long count;
 
-    private final Map<String, Supplier<String>> fieldValueSupplierMap;
+    private static final Map<String, Function<CountStatisticDataPoint, String>> FIELD_VALUE_FUNCTION_MAP;
+
+    static {
+        //hold a map of field names to functions that we get a value for that named field, converted to a string
+        FIELD_VALUE_FUNCTION_MAP = ImmutableMap.<String, Function<CountStatisticDataPoint, String>>builder()
+                .put(StatisticConfiguration.FIELD_NAME_COUNT, dataPoint -> Long.toString(dataPoint.getCount()))
+                .build();
+    }
 
     public CountStatisticDataPoint(final String statisticName, final long timeMs, final long precisionMs, final List<StatisticTag> tags,
                                    final Long count) {
         this.delegate = new BasicStatisticDataPoint(statisticName, timeMs, precisionMs, tags);
         this.count = count;
-
-        fieldValueSupplierMap = ImmutableMap.<String, Supplier<String>>builder()
-                .put(StatisticConfiguration.FIELD_NAME_STATISTIC, delegate::getStatisticName)
-                .put(StatisticConfiguration.FIELD_NAME_DATE_TIME, () -> Long.toString(delegate.getTimeMs()))
-                .put(StatisticConfiguration.FIELD_NAME_PRECISION, this::getPrecision)
-                .put(StatisticConfiguration.FIELD_NAME_PRECISION_MS, () -> Long.toString(delegate.getPrecisionMs()))
-                .put(StatisticConfiguration.FIELD_NAME_COUNT, () -> Long.toString(getCount()))
-                .build();
     }
 
     @Override
@@ -82,7 +80,7 @@ public class CountStatisticDataPoint implements StatisticDataPoint {
 
     @Override
     public Map<String, String> getTagsAsMap() {
-        return  delegate.getTagsAsMap();
+        return delegate.getTagsAsMap();
     }
 
     public long getCount() {
@@ -94,21 +92,15 @@ public class CountStatisticDataPoint implements StatisticDataPoint {
         return STATISTIC_TYPE;
     }
 
-//    @Override
-//    public Map<String, Object> getFieldToValueMap() {
-//        return null;
-//    }
-
     @Override
     public String getFieldValue(final String fieldName) {
-        Supplier<String> fieldValueSupplier = fieldValueSupplierMap.get(fieldName);
+        Function<CountStatisticDataPoint, String> fieldValueFunction = FIELD_VALUE_FUNCTION_MAP.get(fieldName);
 
-        if (fieldValueSupplier == null) {
-            //either it is a tag field or we don't know what it is
-
+        if (fieldValueFunction == null) {
+            //we don't know what it is so see if the delegate does
             return delegate.getFieldValue(fieldName);
         } else {
-            return Preconditions.checkNotNull(fieldValueSupplier, "Unknown field %s", fieldName).get();
+            return fieldValueFunction.apply(this);
         }
     }
 

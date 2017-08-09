@@ -44,8 +44,6 @@ public interface StatisticDataPoint {
 
     StatisticType getStatisticType();
 
-//    Map<String, Object> getFieldToValueMap();
-
     String getFieldValue(final String fieldName);
 
 }
