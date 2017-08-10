@@ -101,11 +101,6 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
         throw new UnsupportedOperationException("A BasicStatisticDataPoint has no type");
     }
 
-//    @Override
-//    public Map<String, Object> getFieldToValueMap() {
-//        return tagToValueMap;
-//    }
-
     @Override
     public String getFieldValue(final String fieldName) {
         Function<StatisticDataPoint, String> fieldValueFunction = FIELD_VALUE_FUNCTION_MAP.get(fieldName);
