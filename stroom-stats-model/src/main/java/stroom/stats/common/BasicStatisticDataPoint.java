@@ -60,16 +60,11 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
         this.statisticName = statisticName;
         this.timeMs = timeMs;
         this.precisionMs = precisionMs;
-        this.tags = tags;
+        this.tags = Collections.unmodifiableList(tags);
 
-        if (tags.isEmpty()) {
-            this.tagToValueMap = Collections.emptyMap();
-        } else {
-            this.tagToValueMap = new HashMap<>();
-            for (StatisticTag tag : tags) {
-                this.tagToValueMap.put(tag.getTag(), tag.getValue());
-            }
-        }
+        ImmutableMap.Builder<String, String> mapBuilder = ImmutableMap.builder();
+        tags.forEach(tag -> mapBuilder.put(tag.getTag(), tag.getValue()));
+        this.tagToValueMap = mapBuilder.build();
     }
 
     public String getStatisticName() {
@@ -93,7 +88,7 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
         for (StatisticTag tag : tags) {
             map.put(tag.getTag(), tag.getValue());
         }
-        return map;
+        return ImmutableMap.copyOf(tagToValueMap);
     }
 
     @Override
