@@ -62,9 +62,9 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
         this.precisionMs = precisionMs;
         this.tags = Collections.unmodifiableList(tags);
 
-        ImmutableMap.Builder<String, String> mapBuilder = ImmutableMap.builder();
-        tags.forEach(tag -> mapBuilder.put(tag.getTag(), tag.getValue()));
-        this.tagToValueMap = mapBuilder.build();
+        final Map<String, String> tempMap = new HashMap<>();
+        tags.forEach(tag -> tempMap.put(tag.getTag(), tag.getValue()));
+        this.tagToValueMap = Collections.unmodifiableMap(tempMap);
     }
 
     public String getStatisticName() {
