@@ -43,7 +43,7 @@ database:
 
 
 jwtTokenSecret: ${STATS_JWT_SECRET:- CHANGE_ME}
-
+authorisationServiceUrl: ${AUTHORISATION_SERVICE_URL:- http://localhost/authorisationService}
 server:
     adminMinThreads: 1
     adminMaxThreads: 10

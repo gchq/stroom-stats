@@ -61,6 +61,11 @@ public class Config extends Configuration implements JobConfiguration {
     @JsonProperty
     private DataSourceFactory database = new DataSourceFactory();
 
+    @NotNull
+    @Valid
+    @JsonProperty
+    private String authorisationServiceUrl;
+
     public DataSourceFactory getDataSourceFactory() {
         return database;
     }
@@ -90,6 +95,10 @@ public class Config extends Configuration implements JobConfiguration {
                 ", defaultProperties=" + defaultProperties +
                 ", database=" + database +
                 '}';
+    }
+
+    public String getAuthorisationServiceUrl() {
+        return authorisationServiceUrl;
     }
 }
 

@@ -34,9 +34,9 @@ import stroom.stats.HBaseClient;
 import stroom.stats.datasource.DataSourceService;
 import stroom.stats.mixins.HasHealthCheck;
 import stroom.stats.schema.Statistics;
-import stroom.stats.service.ExternalService;
 import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.auth.User;
+import stroom.stats.service.config.Config;
 
 import javax.inject.Inject;
 import javax.validation.Valid;
@@ -50,7 +50,6 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.Optional;
 import java.util.function.Supplier;
 
 @Path("/")
@@ -59,6 +58,7 @@ public class ApiResource implements HasHealthCheck {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApiResource.class);
 
+    private Config config;
     private final HBaseClient hBaseClient;
     private final DataSourceService dataSourceService;
     private final ServiceDiscoveryManager serviceDiscoveryManager;
@@ -66,9 +66,10 @@ public class ApiResource implements HasHealthCheck {
             = "I don't have an address for the Authorisation service, so I can't authorise requests!";
 
     @Inject
-    public ApiResource(final HBaseClient hBaseClient,
+    public ApiResource(Config config, final HBaseClient hBaseClient,
                        final DataSourceService dataSourceService,
                        final ServiceDiscoveryManager serviceDiscoveryManager) {
+        this.config = config;
         this.hBaseClient = hBaseClient;
         this.dataSourceService = dataSourceService;
         this.serviceDiscoveryManager = serviceDiscoveryManager;
@@ -134,25 +135,15 @@ public class ApiResource implements HasHealthCheck {
     }
 
     private Response performWithAuthorisation(final User user, final DocRef docRef, final Supplier<Response> responseProvider) {
+        String authorisationUrl = String.format(
+            "%s/isAuthorised",
+            config.getAuthorisationServiceUrl());
 
-        Optional<String> authorisationServiceAddress = serviceDiscoveryManager.getAddress(ExternalService.AUTHORISATION);
-        if(authorisationServiceAddress.isPresent()){
-            String authorisationUrl = String.format(
-                    "%s/api/authorisation/isAuthorised",
-                    authorisationServiceAddress.get());
-
-            boolean isAuthorised = checkPermissions(authorisationUrl, user, docRef);
-            if(!isAuthorised){
-                return Response
-                        .status(Response.Status.UNAUTHORIZED)
-                        .entity("User is not authorised to perform this action.")
-                        .build();
-            }
-        } else {
-            LOGGER.error(NO_AUTHORISATION_SERVICE_MESSAGE);
+        boolean isAuthorised = checkPermissions(authorisationUrl, user, docRef);
+        if(!isAuthorised){
             return Response
-                    .serverError()
-                    .entity("This request cannot be authorised because the authorisation service (Stroom) is not available.")
+                    .status(Response.Status.UNAUTHORIZED)
+                    .entity("User is not authorised to perform this action.")
                     .build();
         }
 
@@ -184,15 +175,6 @@ public class ApiResource implements HasHealthCheck {
 
     @Override
     public HealthCheck.Result getHealth(){
-        if(serviceDiscoveryManager.getAddress(ExternalService.AUTHORISATION).isPresent()){
-            return HealthCheck.Result.healthy();
-        }
-        else{
-            return HealthCheck.Result.unhealthy(NO_AUTHORISATION_SERVICE_MESSAGE);
-        }
+        return HealthCheck.Result.healthy();
     }
-
-    //TODO need an endpoint for completely purging a whole set of stats (passing in a stat data source uuid)
-
-    //TODO need an endpoint for purging all stats to the configured retention periods
 }

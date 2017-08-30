@@ -28,9 +28,9 @@ import java.net.Socket;
 
 public class HostAvailabilityIT {
 
-    public static final String HBASE_HOSTNAME = "stroom.hbase";
+    public static final String HBASE_HOSTNAME = "hbase";
     public static final int HBASE_PORT = 60000;
-    public static final String KAFKA_HOSTNAME = "stroom.kafka";
+    public static final String KAFKA_HOSTNAME = "kafka";
     public static final int KAFKA_PORT = 9092;
 
     @Test

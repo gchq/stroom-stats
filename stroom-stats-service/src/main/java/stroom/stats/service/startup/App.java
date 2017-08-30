@@ -85,7 +85,7 @@ public class App extends Application<Config> {
         injector = Guice.createInjector(new StroomStatsServiceModule(config, hibernateBundle.getSessionFactory()));
         injector.getInstance(ServiceDiscoveryManager.class);
 
-        registerResources(environment);
+        registerResources(environment, config);
         registerTasks(environment);
         HealthChecks.register(environment, injector);
         registerManagedObjects(environment);
@@ -100,9 +100,10 @@ public class App extends Application<Config> {
         return injector;
     }
 
-    private void registerResources(final Environment environment) {
+    private void registerResources(final Environment environment, Config config) {
         LOGGER.info("Registering API");
         environment.jersey().register(new ApiResource(
+                config,
                 injector.getInstance(HBaseClient.class),
                 injector.getInstance(DataSourceService.class),
                 injector.getInstance(ServiceDiscoveryManager.class)));
