@@ -40,7 +40,7 @@ database:
     checkConnectionOnConnect: true
 
 
-defaultMaxResultSizes: [1000000,100,10,1]
+defaultMaxResultSizes: ${STATS_DEFAULT_MAX_RESULT_SIZES:- [1000000,100,10,1]}
 
 jwtTokenSecret: ${STATS_JWT_SECRET:- CHANGE_ME}
 authorisationServiceUrl: ${AUTHORISATION_SERVICE_URL:- http://localhost/authorisationService}
@@ -48,13 +48,14 @@ server:
     adminMinThreads: 1
     adminMaxThreads: 10
     adminContextPath: ${ADMIN_CONTEXT_PATH:- /}
-    applicationContextPath: /
+    applicationContextPath: ${APPLICATION_CONTEXT_PATH:- /}
     applicationConnectors:
-        - type: http
-          port: 8086
+      - type: ${APPLICATION_CONNEXTOR_TYPE:- http}
+        port: ${APPLICATION_CONNEXTOR_PORT:- 8086}
     adminConnectors:
-        - type: http
-          port: 8087
+      - type: ${ADMIN_CONNEXTOR_TYPE:- http}
+        port: ${ADMIN_CONNEXTOR_PORT:- 8087}
+
 
 logging:
     level: WARN
@@ -83,8 +84,8 @@ zookeeper:
     serviceDiscoveryPath: ${STATS_ZK_SD_PATH:- /stroom-services}
 
 kafka:
-    groupId: stroom-service
-    statisticsTopic: statistics
+    groupId: ${STATS_KAFKA_GROUP_ID:- stroom-service}
+    statisticsTopic: ${STATS_KAFKA_STATS_TOPIC:- statistics}
 
 # These properties prime ZK - and once they've been set changing the below won't change the values.
 defaultProperties:
