@@ -22,6 +22,8 @@ package stroom.stats;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.dropwizard.Application;
+import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
+import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.hibernate.HibernateBundle;
 import io.dropwizard.setup.Bootstrap;
@@ -57,6 +59,11 @@ public class HeadlessTestApp extends Application<Config> {
 
     @Override
     public void initialize(Bootstrap<Config> bootstrap) {
+        // This allows us to use templating in the YAML configuration.
+        bootstrap.setConfigurationSourceProvider(new SubstitutingSourceProvider(
+            bootstrap.getConfigurationSourceProvider(),
+            new EnvironmentVariableSubstitutor(false)));
+
         bootstrap.addBundle(hibernateBundle);
     }
 

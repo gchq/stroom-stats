@@ -21,9 +21,23 @@ package stroom.stats;
 
 import com.google.common.base.Preconditions;
 import io.dropwizard.lifecycle.Managed;
-import stroom.dashboard.expression.FieldIndexMap;
-import stroom.query.*;
-import stroom.query.api.v1.*;
+import stroom.dashboard.expression.v1.FieldIndexMap;
+import stroom.query.api.v2.DocRef;
+import stroom.query.api.v2.ExpressionItem;
+import stroom.query.api.v2.ExpressionOperator;
+import stroom.query.api.v2.ExpressionTerm;
+import stroom.query.api.v2.Param;
+import stroom.query.api.v2.Query;
+import stroom.query.api.v2.SearchRequest;
+import stroom.query.api.v2.SearchResponse;
+import stroom.query.common.v2.Coprocessor;
+import stroom.query.common.v2.CoprocessorSettings;
+import stroom.query.common.v2.CoprocessorSettingsMap;
+import stroom.query.common.v2.DateExpressionParser;
+import stroom.query.common.v2.Payload;
+import stroom.query.common.v2.SearchResponseCreator;
+import stroom.query.common.v2.TableCoprocessor;
+import stroom.query.common.v2.TableCoprocessorSettings;
 import stroom.stats.api.StatisticsService;
 import stroom.stats.common.*;
 import stroom.stats.common.rollup.RollUpBitMask;
@@ -31,6 +45,7 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.schema.Statistics;
+import stroom.stats.service.config.Config;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.util.logging.LambdaLogger;
 import stroom.util.shared.HasTerminate;
@@ -63,11 +78,15 @@ public class HBaseClient implements Managed {
 
     private final StatisticsService statisticsService;
     private final StatisticConfigurationService statisticConfigurationService;
+    private Config config;
 
     @Inject
-    public HBaseClient(final StatisticsService statisticsService, final StatisticConfigurationService statisticConfigurationService) {
+    public HBaseClient(final StatisticsService statisticsService,
+                       final StatisticConfigurationService statisticConfigurationService,
+                       final Config config) {
         this.statisticsService = statisticsService;
         this.statisticConfigurationService = statisticConfigurationService;
+        this.config = config;
     }
 
     /**
@@ -211,7 +230,10 @@ public class HBaseClient implements Managed {
             store.coprocessorMap(coprocessorMap);
             store.payloadMap(payloadMap);
 
-            SearchResponseCreator searchResponseCreator = new SearchResponseCreator(store);
+            // defaultMaxResultsSizes could be obtained from the StatisticsStore but at this point that object is ephemeral.
+            // It seems a little pointless to put it into the StatisticsStore only to get it out again so for now
+            // we'll just get it straight from the config.
+            SearchResponseCreator searchResponseCreator = new SearchResponseCreator(store, config.getDefaultMaxResultSizes());
             SearchResponse searchResponse = searchResponseCreator.create(searchRequest);
 
             return searchResponse;
@@ -277,8 +299,8 @@ public class HBaseClient implements Managed {
                                                 final FieldIndexMap fieldIndexMap, final Map<String, String> paramMap, final HasTerminate taskMonitor) {
         if (settings instanceof TableCoprocessorSettings) {
             final TableCoprocessorSettings tableCoprocessorSettings = (TableCoprocessorSettings) settings;
-            final TableCoprocessor tableCoprocessor = new TableCoprocessor(tableCoprocessorSettings,
-                    fieldIndexMap, taskMonitor, paramMap);
+            final TableCoprocessor tableCoprocessor = new TableCoprocessor(
+                tableCoprocessorSettings, fieldIndexMap, taskMonitor, paramMap);
             return tableCoprocessor;
         }
         return null;

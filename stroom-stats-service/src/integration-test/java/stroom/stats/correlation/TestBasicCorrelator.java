@@ -2,7 +2,7 @@ package stroom.stats.correlation;
 
 import com.google.common.collect.Sets;
 import org.junit.Test;
-import stroom.query.api.v1.Row;
+import stroom.query.api.v2.Row;
 
 import java.util.ArrayList;
 import java.util.Arrays;
