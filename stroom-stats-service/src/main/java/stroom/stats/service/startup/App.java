@@ -73,9 +73,11 @@ public class App extends Application<Config> {
 
     @Override
     public void initialize(Bootstrap<Config> bootstrap) {
+        // This allows us to use templating in the YAML configuration.
         bootstrap.setConfigurationSourceProvider(new SubstitutingSourceProvider(
-                bootstrap.getConfigurationSourceProvider(),
-                new EnvironmentVariableSubstitutor(false)));
+            bootstrap.getConfigurationSourceProvider(),
+            new EnvironmentVariableSubstitutor(false)));
+
         bootstrap.addBundle(hibernateBundle);
     }
 

@@ -19,29 +19,30 @@
 
 package stroom.stats;
 
+import org.junit.Ignore;
 import org.junit.Test;
-import stroom.query.api.v1.DateTimeFormat;
-import stroom.query.api.v1.DocRef;
-import stroom.query.api.v1.ExpressionOperator;
-import stroom.query.api.v1.ExpressionTerm;
-import stroom.query.api.v1.Field;
-import stroom.query.api.v1.Filter;
-import stroom.query.api.v1.Format;
-import stroom.query.api.v1.NumberFormat;
-import stroom.query.api.v1.Query;
-import stroom.query.api.v1.QueryKey;
-import stroom.query.api.v1.ResultRequest;
-import stroom.query.api.v1.SearchRequest;
-import stroom.query.api.v1.Sort;
-import stroom.query.api.v1.TableSettings;
-import stroom.query.api.v1.TimeZone;
+import stroom.query.api.v2.DateTimeFormat;
+import stroom.query.api.v2.DocRef;
+import stroom.query.api.v2.ExpressionOperator;
+import stroom.query.api.v2.ExpressionTerm;
+import stroom.query.api.v2.Field;
+import stroom.query.api.v2.Filter;
+import stroom.query.api.v2.Format;
+import stroom.query.api.v2.NumberFormat;
+import stroom.query.api.v2.Query;
+import stroom.query.api.v2.QueryKey;
+import stroom.query.api.v2.ResultRequest;
+import stroom.query.api.v2.SearchRequest;
+import stroom.query.api.v2.Sort;
+import stroom.query.api.v2.TableSettings;
+import stroom.query.api.v2.TimeZone;
 import stroom.stats.configuration.StatisticConfiguration;
 
 import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 
-import static stroom.query.api.v1.ExpressionTerm.Condition;
+import static stroom.query.api.v2.ExpressionTerm.Condition;
 import static stroom.stats.HttpAsserts.assertAccepted;
 import static stroom.stats.HttpAsserts.assertUnauthorized;
 

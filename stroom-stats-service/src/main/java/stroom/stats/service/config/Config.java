@@ -27,6 +27,7 @@ import io.dropwizard.db.DataSourceFactory;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.nio.charset.Charset;
+import java.util.List;
 import java.util.Map;
 
 public class Config extends Configuration implements JobConfiguration {
@@ -54,6 +55,11 @@ public class Config extends Configuration implements JobConfiguration {
     @Valid
     @JsonProperty
     private DataSourceFactory database = new DataSourceFactory();
+
+    @NotNull
+    @Valid
+    @JsonProperty
+    private List<Integer> defaultMaxResultSizes;
 
     public DataSourceFactory getDataSourceFactory() {
         return database;
@@ -84,6 +90,10 @@ public class Config extends Configuration implements JobConfiguration {
                 ", defaultProperties=" + defaultProperties +
                 ", database=" + database +
                 '}';
+    }
+
+    public List<Integer> getDefaultMaxResultSizes() {
+        return defaultMaxResultSizes;
     }
 }
 
