@@ -40,7 +40,7 @@ database:
     checkConnectionOnConnect: true
 
 
-
+defaultMaxResultSizes: [1000000,100,10,1]
 
 jwtTokenSecret: ${STATS_JWT_SECRET:- CHANGE_ME}
 authorisationServiceUrl: ${AUTHORISATION_SERVICE_URL:- http://localhost/authorisationService}

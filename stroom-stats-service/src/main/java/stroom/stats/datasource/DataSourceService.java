@@ -2,10 +2,10 @@ package stroom.stats.datasource;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import stroom.datasource.api.v1.DataSource;
-import stroom.datasource.api.v1.DataSourceField;
-import stroom.query.api.v1.DocRef;
-import stroom.query.api.v1.ExpressionTerm;
+import stroom.datasource.api.v2.DataSource;
+import stroom.datasource.api.v2.DataSourceField;
+import stroom.query.api.v2.DocRef;
+import stroom.query.api.v2.ExpressionTerm;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
 
