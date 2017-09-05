@@ -41,7 +41,7 @@ import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.auth.AuthenticationFilter;
 import stroom.stats.service.auth.User;
-import stroom.stats.service.resources.query.v1.QueryResource;
+import stroom.stats.service.resources.query.v2.QueryResource;
 import stroom.stats.HBaseClient;
 import stroom.stats.StroomStatsServiceModule;
 import stroom.stats.service.config.Config;

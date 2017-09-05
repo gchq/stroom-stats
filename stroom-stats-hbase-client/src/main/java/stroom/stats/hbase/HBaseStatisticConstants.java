@@ -65,6 +65,8 @@ public interface HBaseStatisticConstants {
 
     String HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME = "stroom.stats.hbase.config.zookeeper.property.clientPort";
 
+    String HBASE_ZOOKEEPER_ZNODE_PARENT = "stroom.stats.hbase.config.zookeeper.znode.parent";
+
     String HBASE_RPC_TIMEOUT_MS_PROPERTY_NAME = "stroom.stats.hbase.config.rpc.timeout";
 
     String ANALYTIC_OUTPUT_FILTER_BUFFER_SIZE_PROPERTY_NAME = "stroom.stats.analyticOutput.filter.bufferSize";

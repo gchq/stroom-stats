@@ -223,27 +223,29 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
 
     @Override
     public HealthCheck.Result getHealth() {
-        switch (runState) {
-            case RUNNING:
-                return HealthCheck.Result.healthy(produceHealthCheckSummary());
-            default:
-                return HealthCheck.Result.unhealthy(produceHealthCheckSummary());
+        HealthCheck.ResultBuilder builder = HealthCheck.Result.builder();
+        long nonRunningProcessorCount = processors.stream()
+                .filter(processor -> !processor.getRunState().equals(RunState.RUNNING))
+                .count();
+        if (!runState.equals(RunState.RUNNING) || nonRunningProcessorCount > 0) {
+            builder.unhealthy();
+        } else {
+            builder.healthy();
         }
+        builder.withDetail("runState", runState.name());
+        builder.withDetail("processorCount", processors.size());
+        builder.withDetail("processors", processors.stream()
+                .collect(HasHealthCheck.buildTreeMapCollector(
+                        StatisticsAggregationProcessor::getName,
+                        StatisticsAggregationProcessor::produceHealthCheckSummary)));
+
+        return builder.build();
     }
 
     public List<HasHealthCheck> getHealthCheckProviders() {
         List<HasHealthCheck> healthCheckProviders = new ArrayList<>();
         processors.forEach(healthCheckProviders::add);
         return healthCheckProviders;
-    }
-
-    private String produceHealthCheckSummary() {
-        return new StringBuilder()
-                .append(runState)
-                .append(" - ")
-                .append("Processors: ")
-                .append(processors.size())
-                .toString();
     }
 
     @Override

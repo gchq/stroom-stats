@@ -66,7 +66,6 @@ public class ProcessingStartStopIT extends AbstractAppIT {
         assertState(statisticsAggregationService, expectedRunState, 10_000);
         statisticsAggregationService.getHealthCheckProviders().forEach(hasHealthCheck ->
                 assertState(hasHealthCheck, expectedIsHealthy, 10_000));
-
     }
 
 

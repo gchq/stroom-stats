@@ -4,7 +4,6 @@ import com.google.common.base.Preconditions;
 import javaslang.Tuple2;
 import org.apache.curator.x.discovery.ProviderStrategy;
 import org.apache.curator.x.discovery.strategies.RandomStrategy;
-import org.apache.curator.x.discovery.strategies.StickyStrategy;
 import stroom.stats.properties.StroomPropertyService;
 
 import java.util.Optional;
@@ -23,11 +22,6 @@ public enum ExternalService {
             "stroomStats",
             Type.SERVER,
             new RandomStrategy<>()),
-    //stroom index involves multiple calls to fetch the data iteratively so must be sticky
-    INDEX(
-            "stroomIndex",
-            Type.CLIENT,
-            new StickyStrategy<>(new RandomStrategy<>())),
     //stateless so random strategy
     AUTHENTICATION(
             "authentication",

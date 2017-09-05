@@ -11,7 +11,7 @@ import stroom.stats.logging.LogLevelInspector;
 import stroom.stats.properties.StroomPropertyServiceHealthCheck;
 import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.ServiceDiscoveryRegistrar;
-import stroom.stats.service.resources.query.v1.QueryResource;
+import stroom.stats.service.resources.query.v2.QueryResource;
 import stroom.stats.streams.StatisticsFlatMappingService;
 import stroom.stats.util.healthchecks.HasHealthCheck;
 
@@ -30,10 +30,10 @@ public class HealthChecks {
         register(environment, injector.getInstance(ServiceDiscoveryRegistrar.class));
 
         StatisticsFlatMappingService statisticsFlatMappingService = injector.getInstance(StatisticsFlatMappingService.class);
-        register(environment, "FlatMappingService", statisticsFlatMappingService.getHealthCheckProviders());
-
+        register(environment, statisticsFlatMappingService);
+//
         StatisticsAggregationService statisticsAggregationService = injector.getInstance(StatisticsAggregationService.class);
-        register(environment, "AggregationService", statisticsAggregationService.getHealthCheckProviders());
+        register(environment, statisticsAggregationService);
 
         register(environment, LogLevelInspector.INSTANCE);
         register(environment, injector.getInstance(StroomPropertyServiceHealthCheck.class));

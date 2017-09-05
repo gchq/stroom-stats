@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="stroom-service" type="Application" factoryName="Application">
+  <configuration default="false" name="stroom-stats" type="Application" factoryName="Application">
     <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
     <option name="MAIN_CLASS_NAME" value="stroom.stats.service.startup.App" />
     <option name="VM_PARAMETERS" value="" />

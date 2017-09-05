@@ -27,7 +27,6 @@ import io.dropwizard.db.DataSourceFactory;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.nio.charset.Charset;
-import java.util.List;
 import java.util.Map;
 
 public class Config extends Configuration implements JobConfiguration {
@@ -35,11 +34,6 @@ public class Config extends Configuration implements JobConfiguration {
     @NotNull
     @Valid
     private String jwtTokenSecret;
-
-    @NotNull
-    @Valid
-    @JsonProperty("kafka")
-    private KafkaConfig kafkaConfig;
 
     @NotNull
     @Valid
@@ -56,21 +50,12 @@ public class Config extends Configuration implements JobConfiguration {
     @JsonProperty
     private DataSourceFactory database = new DataSourceFactory();
 
-    @NotNull
-    @Valid
-    @JsonProperty
-    private List<Integer> defaultMaxResultSizes;
-
     public DataSourceFactory getDataSourceFactory() {
         return database;
     }
 
     public byte[] getJwtTokenSecret() {
         return jwtTokenSecret.getBytes(Charset.defaultCharset());
-    }
-
-    public KafkaConfig getKafkaConfig() {
-        return kafkaConfig;
     }
 
     public ZookeeperConfig getZookeeperConfig() {
@@ -85,15 +70,10 @@ public class Config extends Configuration implements JobConfiguration {
     public String toString() {
         return "Config{" +
                 "jwtTokenSecret='" + jwtTokenSecret + '\'' +
-                ", kafkaConfig=" + kafkaConfig +
                 ", zookeeperConfig=" + zookeeperConfig +
                 ", defaultProperties=" + defaultProperties +
                 ", database=" + database +
                 '}';
-    }
-
-    public List<Integer> getDefaultMaxResultSizes() {
-        return defaultMaxResultSizes;
     }
 }
 

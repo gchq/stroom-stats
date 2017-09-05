@@ -52,6 +52,7 @@ public class StatisticsAggregationRebalanceListener implements ConsumerRebalance
         //offsets.  In reality we only need to flush the partitions that we are losing but as rebalance events will
         //be fairly infrequent it is simpler just to flush everything
         statisticsAggregationProcessor.flush(kafkaConsumer);
+        //the assigned partitions will be recorded in the onPartitionsAssigned callback
     }
 
     @Override
@@ -60,7 +61,7 @@ public class StatisticsAggregationRebalanceListener implements ConsumerRebalance
         LOGGER.debug(() -> String.format("Partitions being assigned to processor %s, new partitions [%s]",
                 statisticsAggregationProcessor, extractPartitionsString(partitions)));
 
-        //nothing to do here other than record the new partitons, the new partitions will
+        //nothing to do here other than record the new partitions, the new partitions will
         //just go into the aggregator as normal
         statisticsAggregationProcessor.setAssignedPartitions(partitions);
     }

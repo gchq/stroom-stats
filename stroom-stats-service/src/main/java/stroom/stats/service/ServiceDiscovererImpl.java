@@ -141,7 +141,7 @@ public class ServiceDiscovererImpl implements ServiceDiscoverer {
                             .withMessage("%s service(s) have no registered instances");
                 } else {
                     builder.healthy()
-                            .withMessage("All external services available");
+                            .withMessage("All services (local and remote) available");
                 }
                 return builder.withDetail("discovered-service-instances", serviceInstanceMap)
                         .build();

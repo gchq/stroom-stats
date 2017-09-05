@@ -94,7 +94,7 @@ public class ServiceDiscoveryRegistrar implements HasHealthCheck {
 
             health = HealthCheck.Result.builder()
                     .healthy()
-                    .withMessage("Services registered")
+                    .withMessage("Local services registered")
                     .withDetail("registered-services", services)
                     .build();
 
@@ -131,19 +131,6 @@ public class ServiceDiscoveryRegistrar implements HasHealthCheck {
         } catch (Exception e) {
             throw new RuntimeException("Failed to register service " + registeredService.getVersionedServiceName(stroomPropertyService), e);
         }
-    }
-
-    //TODO registering needs to go somewhere else, see gh-19
-    private static ServiceInstance<String> getThisServiceInstance(Config config) throws Exception {
-        String ipAddress = InetAddress.getLocalHost().getHostAddress();
-        int port = getPort(config);
-
-        ServiceInstance<String> thisInstance = ServiceInstance.<String>builder()
-                .name("stroom-stats-v1") //TODO should be in config
-                .address(ipAddress) //TODO should be overridable in config
-                .port(port) //TODO should be overridable in config
-                .build();
-        return thisInstance;
     }
 
     private static int getPort(Config config) {

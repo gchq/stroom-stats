@@ -40,7 +40,6 @@ database:
     checkConnectionOnConnect: true
 
 
-defaultMaxResultSizes: [1000000,100,10,1]
 
 jwtTokenSecret: ${STATS_JWT_SECRET:- CHANGE_ME}
 
@@ -60,7 +59,7 @@ logging:
     level: WARN
     loggers:
         org.hibernate.SQL: WARN
-        stroom.stats: ${STATS_LOGGING_LEVEL:- DEBUG}
+        stroom.stats: ${STATS_LOGGING_LEVEL:- DBEUG}
         io.dropwizard: ${STATS_LOGGING_LEVEL_DROPWIZARD:- INFO}
 #        stroom.stats.streams.StatisticsAggregationProcessor: TRACE
 #        stroom.stats.streams.FullEndToEndIT: TRACE
@@ -77,15 +76,11 @@ zookeeper:
     # of the form host1:port1,host2:port2 etc.
     quorum: ${STATS_ZK_QUORUM:- localhost:2181}
     # The path to chroot the zookeeper connection for the property service
-    propertyServicePath: ${STATS_SK_PROPERTY_SERVICE_PATH:- /propertyService}
+    propertyServicePath: ${STATS_ZK_PROPERTY_SERVICE_PATH:- /propertyService}
     # Timeout for waiting for initialisation of the property service tree cache
     propertyServiceTreeCacheTimeoutMs: 60000
     # The path to use for service discovery
     serviceDiscoveryPath: ${STATS_ZK_SD_PATH:- /stroom-services}
-
-kafka:
-    groupId: stroom-service
-    statisticsTopic: statistics
 
 # These properties prime ZK - and once they've been set changing the below won't change the values.
 defaultProperties:
@@ -114,10 +109,16 @@ defaultProperties:
     stroom.stats.cache.uidToNameCache.maxEntriesHeap: 100000
     stroom.stats.cache.uidToNameCache.timeToIdleSecs: 300
 
+    stroom.stats.search.defaultMaxResultSizes: 1000000,100,10,1
+    stroom.stats.search.storeSzie: 1000000,100,10,1
+
     stroom.stats.hbase.config.client.write.buffer: 4194304
     stroom.stats.hbase.config.rpc.timeout: 180000
-    stroom.stats.hbase.config.zookeeper.property.clientPort: 2181
+    stroom.stats.hbase.config.zookeeper.property.clientPort: ${STATS_HBASE_ZK_PORT:- 2181}
+    #Comma delimited list of hosts in the ZK quorum, e.g. host1,host2,host3
     stroom.stats.hbase.config.zookeeper.quorum: ${STATS_HBASE_ZK_QUORUM:- localhost}
+    #The znode in zookeeper for hbase to use as its root
+    stroom.stats.hbase.config.zookeeper.znode.parent: ${STATS_HBASE_ZK_ZNODE_PARENT:- /hbase}
     stroom.stats.hbase.dataStore.maxCheckAndPutRetries: 5
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.day: 6
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.hour: 39
@@ -134,12 +135,8 @@ defaultProperties:
     #----------Service Discovery START ---------------
     #Stroom-Stats
     stroom.services.stroomStats.name: stroom-stats
-    stroom.services.stroomStats.version: 1
+    stroom.services.stroomStats.version: 2
     stroom.services.stroomStats.docRefType: StroomStatsStore
-    #Stroom-Index
-    stroom.services.stroomIndex.name: stroom-index
-    stroom.services.stroomIndex.version: 1
-    stroom.services.stroomIndex.docRefType: Index
     #authentication
     stroom.services.authentication.name: authentication
     stroom.services.authentication.version: 1

@@ -17,7 +17,7 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.service.resources.query.v1;
+package stroom.stats.service.resources.query.v2;
 
 import com.codahale.metrics.annotation.Timed;
 import com.codahale.metrics.health.HealthCheck;
@@ -32,12 +32,12 @@ import stroom.query.api.v2.QueryKey;
 import stroom.query.api.v2.SearchRequest;
 import stroom.stats.HBaseClient;
 import stroom.stats.datasource.DataSourceService;
-import stroom.stats.util.healthchecks.HasHealthCheck;
 import stroom.stats.service.ExternalService;
 import stroom.stats.service.ResourcePaths;
 import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.auth.User;
 import stroom.stats.service.resources.AuthorisationRequest;
+import stroom.stats.util.healthchecks.HasHealthCheck;
 
 import javax.inject.Inject;
 import javax.validation.Valid;
@@ -54,7 +54,7 @@ import javax.ws.rs.core.Response;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-@Path(ResourcePaths.ROOT_PATH + ResourcePaths.STROOM_STATS + ResourcePaths.V1)
+@Path(ResourcePaths.ROOT_PATH + ResourcePaths.STROOM_STATS + ResourcePaths.V2)
 @Produces(MediaType.APPLICATION_JSON)
 public class QueryResource implements HasHealthCheck {
 
@@ -82,7 +82,7 @@ public class QueryResource implements HasHealthCheck {
     @GET
     @Timed
     public String home() {
-        return "Welcome to the stroom-stats-service.";
+        return "Welcome to stroom-stats.";
     }
 
 //    @POST
@@ -103,11 +103,13 @@ public class QueryResource implements HasHealthCheck {
     @Path(DATA_SOURCE_ENDPOINT)
     @Timed
     public Response getDataSource(@Auth User user, @Valid final DocRef docRef) {
+//        public Response getDataSource(@Valid final DocRef docRef) {
 
         return performWithAuthorisation(user,
+//        return performWithAuthorisation(null,
                 docRef,
                 () -> dataSourceService.getDatasource(docRef)
-                        .map(dataSource -> Response.accepted(dataSource).build())
+                        .map(dataSource -> Response.ok(dataSource).build())
                         .orElse(Response.noContent().build()));
     }
 
@@ -117,12 +119,14 @@ public class QueryResource implements HasHealthCheck {
     @Produces({MediaType.APPLICATION_JSON})
     @Timed
     @UnitOfWork
-    public Response postQueryData(@Auth User user, @Valid SearchRequest searchRequest){
+    public Response search(@Auth User user, @Valid SearchRequest searchRequest){
+//    public Response search(@Valid SearchRequest searchRequest){
         LOGGER.debug("Received search request");
 
-        return performWithAuthorisation(user,
+//        return performWithAuthorisation(user,
+        return performWithAuthorisation(null,
                 searchRequest.getQuery().getDataSource(),
-                () -> Response.accepted(hBaseClient.query(searchRequest)).build());
+                () -> Response.ok(hBaseClient.query(searchRequest)).build());
     }
 
     @POST
@@ -130,11 +134,14 @@ public class QueryResource implements HasHealthCheck {
     @Produces(MediaType.APPLICATION_JSON)
     @Path(DESTROY_ENDPOINT)
     @Timed
-    public Response destroy(@Auth User user, @Valid final QueryKey queryKey) {
+    public Response destroy(@Valid final QueryKey queryKey) {
+//    public Response destroy(@Auth User user, @Valid final QueryKey queryKey) {
 
+        //destroy does nothing on stroom-stats as we don't hold any query state
+        //If we return a failure response then stroom will error so just silently
+        //return a 200
         return Response
-                .serverError()
-                .status(Response.Status.NOT_IMPLEMENTED)
+                .ok()
                 .build();
     }
 
@@ -177,15 +184,19 @@ public class QueryResource implements HasHealthCheck {
     private boolean checkPermissions(String authorisationUrl, User user, DocRef statisticRef){
         Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
 
-        AuthorisationRequest authorisationRequest = new AuthorisationRequest(statisticRef, "USE");
-        Response response = client
-                .target(authorisationUrl)
-                .request()
-                .header("Authorization", "Bearer " + user.getJwt())
-                .post(Entity.json(authorisationRequest));
+//        if (user != null) {
+            AuthorisationRequest authorisationRequest = new AuthorisationRequest(statisticRef, "USE");
+            Response response = client
+                    .target(authorisationUrl)
+                    .request()
+                    .header("Authorization", "Bearer " + user.getJwt())
+                    .post(Entity.json(authorisationRequest));
 
-        boolean isAuthorised = response.getStatus() == 200;
-        return isAuthorised;
+            boolean isAuthorised = response.getStatus() == 200;
+            return isAuthorised;
+//        } else {
+//            return true;
+//        }
     }
 
 

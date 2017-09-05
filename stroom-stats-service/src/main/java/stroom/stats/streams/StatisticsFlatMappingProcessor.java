@@ -27,12 +27,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.StatisticsProcessor;
 import stroom.stats.api.StatisticType;
-import stroom.stats.util.HasRunState;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
+import stroom.stats.util.HasRunState;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
 
@@ -45,6 +46,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
     private final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory;
     private final StatisticType statisticType;
     private volatile KafkaStreams kafkaStreams;
+    private volatile int streamThreads = 0;
     private final String appId;
     private final String inputTopic;
     private final String badEventTopic;
@@ -81,7 +83,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, appId);
 
         //TODO need to specify number of threads in the yml as it could be box specific
-        int streamThreads = getStreamThreads();
+        streamThreads = getStreamThreads();
         props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, streamThreads);
 
         StreamsConfig streamsConfig = buildStreamsConfig(appId, props);
@@ -201,5 +203,16 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
             default:
                 return HealthCheck.Result.unhealthy(runState.toString());
         }
+    }
+
+    public Map<String, String> produceHealthCheckSummary() {
+        Map<String, String> statusMap = new TreeMap<>();
+        statusMap.put("applicationId", appId);
+        statusMap.put("badEventTopic", badEventTopic);
+        statusMap.put("inputTopic", inputTopic);
+        statusMap.put("permsTopicsPrefix", permsTopicsPrefix);
+        statusMap.put("runState", runState.name());
+        statusMap.put("streamThreads", Integer.toString(streamThreads));
+        return statusMap;
     }
 }

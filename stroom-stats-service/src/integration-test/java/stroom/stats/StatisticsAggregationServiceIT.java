@@ -19,7 +19,6 @@
 
 package stroom.stats;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -61,7 +60,6 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.LongSummaryStatistics;
@@ -186,9 +184,9 @@ public class StatisticsAggregationServiceIT {
 
         LOGGER.info("baseTime {}", baseTime.toString());
         LOGGER.info("msgPutCount {}", msgPutCounter);
-        LOGGER.info("msgCount {}", StatisticsAggregationProcessor.msgCounter.sum());
-        LOGGER.info("minTimestamp {}", Instant.ofEpochMilli(
-                StatisticsAggregationProcessor.minTimestamp.get()).toString());
+//        LOGGER.info("msgCount {}", StatisticsAggregationProcessor.msgCounter.sum());
+//        LOGGER.info("minTimestamp {}", Instant.ofEpochMilli(
+//                StatisticsAggregationProcessor.minTimestamp.get()).toString());
 
         LOGGER.info("Producer offsets summary");
         summary.keySet().stream()
@@ -197,12 +195,12 @@ public class StatisticsAggregationServiceIT {
                 .forEach(LOGGER::info);
 
         LOGGER.info("Consumer offsets summary");
-        StatisticsAggregationProcessor.consumerRecords.entrySet().stream()
-                .sorted(Comparator.comparingInt(Map.Entry::getKey))
-                .map(entry ->
-                    entry.getKey() + " - " + entry.getValue().stream()
-                            .collect(Collectors.summarizingLong(ConsumerRecord::offset)))
-                .forEach(LOGGER::info);
+//        StatisticsAggregationProcessor.consumerRecords.entrySet().stream()
+//                .sorted(Comparator.comparingInt(Map.Entry::getKey))
+//                .map(entry ->
+//                    entry.getKey() + " - " + entry.getValue().stream()
+//                            .collect(Collectors.summarizingLong(ConsumerRecord::offset)))
+//                .forEach(LOGGER::info);
 
         Assertions.assertThat(aggSum).isEqualTo(iterations);
     }

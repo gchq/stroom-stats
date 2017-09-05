@@ -34,28 +34,34 @@ import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
 import stroom.stats.hbase.EventStoreTimeIntervalHelper;
 import stroom.stats.hbase.uid.UID;
-import stroom.stats.util.HasRunState;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatKeySerde;
+import stroom.stats.util.HasRunState;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.annotation.Nonnull;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Queue;
+import java.util.TreeMap;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
@@ -128,13 +134,15 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private Serde<StatKey> statKeySerde;
     private Serde<StatAggregate> statAggregateSerde;
 
-    private Collection<TopicPartition> assignedPartitions = Collections.emptyList();
+    private volatile Queue<Integer> assignedPartitions = new ConcurrentLinkedQueue<>();
 
+    private final LongAdder msgCounter = new LongAdder();
+
+    //The following instance/class vars are there for debugging use
     //    private Map<StatKey, StatAggregate> putEventsMap = new HashMap<>();
-    public static final LongAdder msgCounter = new LongAdder();
-    public static final AtomicLong minTimestamp = new AtomicLong(Long.MAX_VALUE);
-    public static final ConcurrentMap<Integer, List<ConsumerRecord<StatKey, StatAggregate>>> consumerRecords =
-            new ConcurrentHashMap<>();
+//    public static final AtomicLong minTimestamp = new AtomicLong(Long.MAX_VALUE);
+//    public static final ConcurrentMap<Integer, List<ConsumerRecord<StatKey, StatAggregate>>> consumerRecords =
+//            new ConcurrentHashMap<>();
 
     public StatisticsAggregationProcessor(final StatisticsService statisticsService,
                                           final StroomPropertyService stroomPropertyService,
@@ -191,6 +199,12 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                     kafkaConsumer);
 
             kafkaConsumer.subscribe(Collections.singletonList(inputTopic), rebalanceListener);
+
+            //Update our collection of partitions for later health check use
+//            assignedPartitions = kafkaConsumer.partitionsFor(inputTopic).stream()
+//                    .map(PartitionInfo::partition)
+//                    .collect(Collectors.toList());
+            setAssignedPartitions(kafkaConsumer.assignment());
 
             return kafkaConsumer;
         } catch (Exception e) {
@@ -309,6 +323,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                     ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(getPollTimeoutMs());
 
                     int recCount = records.count();
+                    //TODO should hook this in as a DropWiz metric
                     msgCounter.add(recCount);
 
                     unCommittedRecCount += recCount;
@@ -339,12 +354,12 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
                             String minTimestampStr = Instant.ofEpochMilli(minTimestamp).toString();
 
-                            StatisticsAggregationProcessor.minTimestamp.getAndUpdate(currVal ->
-                                    Math.min(currVal, minTimestamp));
+//                            StatisticsAggregationProcessor.minTimestamp.getAndUpdate(currVal ->
+//                                    Math.min(currVal, minTimestamp));
 
                             //Capture all records received
-                            records.forEach(rec ->
-                                    consumerRecords.computeIfAbsent(rec.partition(), k -> new ArrayList<>()).add(rec));
+//                            records.forEach(rec ->
+//                                    consumerRecords.computeIfAbsent(rec.partition(), k -> new ArrayList<>()).add(rec));
 
                             LOGGER.debug("Received {} records consisting of {}, on partitions {}, topic {}, min timestamp {}, processor {}",
                                     recCount, breakdown, distinctPartitions, inputTopic, minTimestampStr, this);
@@ -384,7 +399,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                     }
                 } catch (Exception e) {
                     runState = RunState.STOPPED;
-                    throw new RuntimeException(String.format("Error while polling with stat type %s on processor %s", statisticType, this), e);
+                    throw new RuntimeException(String.format("Error while polling with stat type %s on processor %s",
+                            statisticType, this), e);
                 }
             }
         } finally {
@@ -522,8 +538,11 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         }
     }
 
-    void setAssignedPartitions(@Nonnull Collection<TopicPartition> assignedPartitions) {
-        this.assignedPartitions = Preconditions.checkNotNull(assignedPartitions);
+    synchronized void setAssignedPartitions(@Nonnull Collection<TopicPartition> assignedPartitions) {
+        this.assignedPartitions.clear();
+        this.assignedPartitions.addAll(Preconditions.checkNotNull(assignedPartitions).stream()
+                .map(TopicPartition::partition)
+                .collect(Collectors.toList()));
     }
 
     @Override
@@ -559,22 +578,37 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         }
     }
 
-    private Map<String, String> produceHealthCheckSummary() {
+    public Map<String, String> produceHealthCheckSummary() {
 
         //TODO accessing the variables in statAggregator is not safe as we are outside the thread that is mutating
         //the aggregator, may be sufficient for a health check peek.
         Map<String, String> statusMap = new TreeMap<>();
 
-        statusMap.put("buffer input count",
-                statAggregator == null ? "-" : Integer.toString(statAggregator.getInputCount()));
+        statusMap.put("runState", runState.name());
+        statusMap.put("inputTopic", inputTopic);
+        statusMap.put("groupId", groupId);
+        statusMap.put("instanceId", Integer.toString(instanceId));
+        statusMap.put("bufferInputCount",
+                statAggregator == null
+                        ? "-"
+                        : Integer.toString(statAggregator.getInputCount()));
         statusMap.put("size",
-                statAggregator == null ? "-" : Integer.toString(statAggregator.size()));
+                statAggregator == null
+                        ? "-"
+                        : Integer.toString(statAggregator.size()));
         statusMap.put("aggregation-compression-savings %",
-                statAggregator == null ? "-" : String.format("%.2f", statAggregator.getAggregationPercentage()));
-        statusMap.put("expiry time",
-                statAggregator == null ? "-" : statAggregator.getExpiryTime().toString());
-        statusMap.put("partition count",
-                statAggregator == null ? "-" : Integer.toString(assignedPartitions.size()));
+                statAggregator == null
+                        ? "-"
+                        : String.format("%.2f", statAggregator.getAggregationPercentage()));
+        statusMap.put("expiryTime",
+                statAggregator == null
+                        ? "-"
+                        : statAggregator.getExpiryTime().toString());
+        statusMap.put("partitionCount",
+                statAggregator == null
+                        ? "-"
+                        : Integer.toString(assignedPartitions.size()));
+        statusMap.put("messageCounter", Long.toString(msgCounter.sum()));
 
         return statusMap;
     }

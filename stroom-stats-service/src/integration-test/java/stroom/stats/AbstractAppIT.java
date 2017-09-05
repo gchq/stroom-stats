@@ -29,7 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.service.ResourcePaths;
 import stroom.stats.service.config.Config;
-import stroom.stats.service.resources.query.v1.QueryResource;
+import stroom.stats.service.resources.query.v2.QueryResource;
 import stroom.stats.service.startup.App;
 
 import javax.ws.rs.client.Client;
