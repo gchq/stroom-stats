@@ -40,9 +40,9 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ApiResource_simpleQueries_IT extends AbstractAppIT {
+public class QueryResource_simpleQueries_IT extends AbstractAppIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ApiResource_simpleQueries_IT.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(QueryResource_simpleQueries_IT.class);
 
     private Injector injector = getApp().getInjector();
 

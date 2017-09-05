@@ -95,14 +95,13 @@ class StatAggregator {
     }
 
     /**
-     * @return The records currently in the aggregator as a percentage of all records added to the aggregator.
-     * A lower value indicates better reduction of the input data.
+     * @return The compression savings expressed as a percentage. 0% = no compression, 100% = total compression
      */
     public double getAggregationPercentage() {
         if (buffer.isEmpty()) {
             return 0;
         } else {
-            return (double) buffer.size() / inputCount * 100;
+            return 100 - ((double) buffer.size() / inputCount * 100);
         }
     }
 

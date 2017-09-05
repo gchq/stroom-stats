@@ -31,7 +31,7 @@ import static org.jose4j.jws.AlgorithmIdentifiers.HMAC_SHA256;
 
 public class AuthorizationHelper {
     // This token must match that in the applications config. I.e. config.yml:jwtTokenSecret
-    private static final byte[] VALID_JWT_TOKEN_SECRET = "bd678197-a88e-499c-b03b-62c3dd7dfd2d".getBytes(UTF_8);
+    private static final byte[] VALID_JWT_TOKEN_SECRET = "CHANGE_ME".getBytes(UTF_8);
     private static final byte[] INVALID_JWT_TOKEN_SECRET = "bad-token".getBytes(UTF_8);
 
     public static String getHeaderWithValidCredentials()  {

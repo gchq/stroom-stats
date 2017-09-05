@@ -45,7 +45,7 @@ public class StroomPropertyServiceCuratorFrameworkProvider implements Provider<C
     public CuratorFramework get() {
         String quorum = zookeeperConfig.getQuorum();
         String statsPath = zookeeperConfig.getPropertyServicePath();
-        String connectionString = quorum + statsPath;
+        String connectionString = quorum + (statsPath == null ? "" : statsPath);
 
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
 

@@ -31,9 +31,9 @@ import io.dropwizard.setup.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.configuration.StroomStatsStoreEntity;
-import stroom.stats.service.config.Config;
 import stroom.stats.configuration.common.Folder;
 import stroom.stats.properties.StroomPropertyService;
+import stroom.stats.service.config.Config;
 import stroom.stats.service.startup.App;
 
 public class HeadlessTestApp extends Application<Config> {

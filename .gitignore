@@ -20,6 +20,6 @@ gradle-app.setting
 # IntelliJ
 # Note: Deciding what IntelliJ files should be ignored is over-complicated and boring.
 # Here we ignore everything and create exceptions for what we want to share.
-/out/
+*/out/
 /.idea/*
 !/.idea/runConfigurations

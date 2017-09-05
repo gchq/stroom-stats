@@ -1,6 +1,8 @@
 
 dependencies {
+    compile libs.dropwizard_metrics_healthchecks
     compile libs.guava
+    compile libs.javaslang
     compile libs.joda_time
     compile libs.slf4j_api
 

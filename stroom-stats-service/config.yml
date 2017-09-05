@@ -40,7 +40,6 @@ database:
     checkConnectionOnConnect: true
 
 
-defaultMaxResultSizes: [1000000,100,10,1]
 
 jwtTokenSecret: ${STATS_JWT_SECRET:- CHANGE_ME}
 
@@ -51,16 +50,16 @@ server:
     applicationContextPath: /
     applicationConnectors:
         - type: http
-          port: 8086
+          port: ${APPLICATION_PORT:- 8086}
     adminConnectors:
         - type: http
-          port: 8087
+          port: ${ADMIN_PORT:- 8087}
 
 logging:
     level: WARN
     loggers:
         org.hibernate.SQL: WARN
-        stroom.stats: ${STATS_LOGGING_LEVEL:- INFO}
+        stroom.stats: ${STATS_LOGGING_LEVEL:- DBEUG}
         io.dropwizard: ${STATS_LOGGING_LEVEL_DROPWIZARD:- INFO}
 #        stroom.stats.streams.StatisticsAggregationProcessor: TRACE
 #        stroom.stats.streams.FullEndToEndIT: TRACE
@@ -70,28 +69,25 @@ logging:
     appenders:
       - type: console
         logFormat: "%-6level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %X{code} %msg %n"
+        target: stdout
 
 zookeeper:
     # The quorum of zookeeper hosts to connect to
     # of the form host1:port1,host2:port2 etc.
     quorum: ${STATS_ZK_QUORUM:- localhost:2181}
     # The path to chroot the zookeeper connection for the property service
-    propertyServicePath: ${STATS_SK_PROPERTY_SERVICE_PATH:- /propertyService}
+    propertyServicePath: ${STATS_ZK_PROPERTY_SERVICE_PATH:- /propertyService}
     # Timeout for waiting for initialisation of the property service tree cache
     propertyServiceTreeCacheTimeoutMs: 60000
     # The path to use for service discovery
     serviceDiscoveryPath: ${STATS_ZK_SD_PATH:- /stroom-services}
-
-kafka:
-    groupId: stroom-service
-    statisticsTopic: statistics
 
 # These properties prime ZK - and once they've been set changing the below won't change the values.
 defaultProperties:
     stroom.stats.streams.kafka.bootstrapServers: ${STATS_KAFKA_BOOTSTRAP:- localhost:9092}
     stroom.stats.streams.kafka.num.stream.threads: 2
     stroom.stats.streams.kafka.commit.aggregationInterval.ms: 30000
-    stroom.stats.streams.kafka.num.stream.threads: 2
+    stroom.stats.streams.kafka.auto.offset.reset: latest
     stroom.stats.streams.flatMapProcessorAppIdPrefix: FlatMapProcessor
 
     stroom.stats.topics.statisticEventsPrefix: statisticEvents
@@ -105,7 +101,6 @@ defaultProperties:
     stroom.stats.aggregation.maxEventIds: 100
     stroom.stats.aggregation.pollTimeoutMs: 100
     stroom.stats.aggregation.pollRecords: 5000
-    stroom.stats.aggregation.autoOffsetRest: latest
 
     stroom.stats.cache.nameToStatisticConfigurationCache.maxEntriesHeap: 1000
     stroom.stats.cache.uuidToStatisticConfigurationCache.maxEntriesHeap: 1000
@@ -114,13 +109,40 @@ defaultProperties:
     stroom.stats.cache.uidToNameCache.maxEntriesHeap: 100000
     stroom.stats.cache.uidToNameCache.timeToIdleSecs: 300
 
+    stroom.stats.search.defaultMaxResultSizes: 1000000,100,10,1
+    stroom.stats.search.storeSzie: 1000000,100,10,1
+
     stroom.stats.hbase.config.client.write.buffer: 4194304
     stroom.stats.hbase.config.rpc.timeout: 180000
-    stroom.stats.hbase.config.zookeeper.property.clientPort: 2181
+    stroom.stats.hbase.config.zookeeper.property.clientPort: ${STATS_HBASE_ZK_PORT:- 2181}
+    #Comma delimited list of hosts in the ZK quorum, e.g. host1,host2,host3
     stroom.stats.hbase.config.zookeeper.quorum: ${STATS_HBASE_ZK_QUORUM:- localhost}
+    #The znode in zookeeper for hbase to use as its root
+    stroom.stats.hbase.config.zookeeper.znode.parent: ${STATS_HBASE_ZK_ZNODE_PARENT:- /hbase}
     stroom.stats.hbase.dataStore.maxCheckAndPutRetries: 5
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.day: 6
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.hour: 39
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.minute: 60
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.second: 48
     stroom.stats.hbase.search.maxTimeIntervalsInPeriod: 200
+
+    #If set registers this instance with service discovery using the specified address,
+    #else it uses the local hostname or ip address
+    #stroom.stats.serviceDiscovery.servicesHostNameOrIpAddress:
+    #As above but for port
+    #stroom.stats.serviceDiscovery.servicesPort:
+
+    #----------Service Discovery START ---------------
+    #Stroom-Stats
+    stroom.services.stroomStats.name: stroom-stats
+    stroom.services.stroomStats.version: 2
+    stroom.services.stroomStats.docRefType: StroomStatsStore
+    #authentication
+    stroom.services.authentication.name: authentication
+    stroom.services.authentication.version: 1
+    #authorisation
+    stroom.services.authorisation.name: authorisation
+    stroom.services.authorisation.version: 1
+    #----------Service Discovery END -----------------
+
+

@@ -20,6 +20,8 @@
 package stroom.stats;
 
 import com.codahale.metrics.health.HealthCheck;
+import com.google.common.base.Preconditions;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Serde;
@@ -27,10 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
-import stroom.stats.mixins.HasHealthCheck;
-import stroom.stats.mixins.HasRunState;
-import stroom.stats.mixins.Startable;
-import stroom.stats.mixins.Stoppable;
 import stroom.stats.partitions.StatKeyPartitioner;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -40,10 +38,15 @@ import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatKeySerde;
+import stroom.stats.util.HasRunState;
+import stroom.stats.util.Startable;
+import stroom.stats.util.Stoppable;
+import stroom.stats.util.healthchecks.HasHealthCheck;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +54,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
@@ -66,12 +70,13 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
 
     private final StroomPropertyService stroomPropertyService;
     private final StatisticsService statisticsService;
-    private final List<StatisticsAggregationProcessor> processors = new ArrayList<>();
+
+    private final List<StatisticsAggregationProcessor> processors = Collections.synchronizedList(new ArrayList<>());
 
     //producer is thread safe so hold a single instance and share it with all processors
     //this assumes all processor instances have the same producer config
-    private KafkaProducer<StatKey, StatAggregate> kafkaProducer;
-    private final ExecutorService executorService;
+    private volatile KafkaProducer<StatKey, StatAggregate> kafkaProducer;
+    private volatile ExecutorService executorService;
 
     private HasRunState.RunState runState = HasRunState.RunState.STOPPED;
 
@@ -86,11 +91,6 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
 
         this.stroomPropertyService = stroomPropertyService;
         this.statisticsService = statisticsService;
-
-        kafkaProducer = buildProducer();
-
-        //hold an instance of the executorService in case we want to query it for a health check
-        executorService = buildProcessors();
     }
 
     @Override
@@ -100,7 +100,12 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
             runState = RunState.STARTING;
             LOGGER.info("Starting the Statistics Aggregation Service");
 
+            //shared by all processors
             kafkaProducer = buildProducer();
+
+            //hold an instance of the executorService in case we want to query it for a health check
+            //build processors on start so we can start/stop to later the processor counts if we need to
+            executorService = buildProcessors();
 
             runOnAllProcessorsAsyncThenWait("start", StatisticsAggregationProcessor::start);
 
@@ -116,19 +121,22 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
             LOGGER.info("Stopping the Statistics Aggregation Service");
 
             runOnAllProcessorsAsyncThenWait("stop", StatisticsAggregationProcessor::stop);
+            //dereference all the processors
+            processors.clear();
 
             //have to shut this down second as the processor shutdown will probably flush more items to the producer
             if (kafkaProducer != null) {
                 kafkaProducer.close(TIMEOUT_SECS, TimeUnit.SECONDS);
                 kafkaProducer = null;
             }
-
             runState = RunState.STOPPED;
         }
     }
 
     private void runOnAllProcessorsAsyncThenWait(final String actionDescription,
                                                  final Consumer<StatisticsAggregationProcessor> processorConsumer) {
+
+        Preconditions.checkArgument(!processors.isEmpty(), "Attempting to run action on all processors when there are none");
 
         //stop each processor as an async task, collecting all the futures
         CompletableFuture<Void>[] completableFutures = processors.stream()
@@ -160,7 +168,10 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
 
         int processorCount = StatisticType.values().length * EventStoreTimeIntervalEnum.values().length * instanceCount;
 
-        ExecutorService executorService = Executors.newFixedThreadPool(processorCount);
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("agg-proc-thread-%d")
+                .build();
+        ExecutorService executorService = Executors.newFixedThreadPool(processorCount, namedThreadFactory);
 
         //create all the processor instances and hold their references
         for (StatisticType statisticType : StatisticType.values()) {
@@ -212,27 +223,29 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
 
     @Override
     public HealthCheck.Result getHealth() {
-        switch (runState) {
-            case RUNNING:
-                return HealthCheck.Result.healthy(produceHealthCheckSummary());
-            default:
-                return HealthCheck.Result.unhealthy(produceHealthCheckSummary());
+        HealthCheck.ResultBuilder builder = HealthCheck.Result.builder();
+        long nonRunningProcessorCount = processors.stream()
+                .filter(processor -> !processor.getRunState().equals(RunState.RUNNING))
+                .count();
+        if (!runState.equals(RunState.RUNNING) || nonRunningProcessorCount > 0) {
+            builder.unhealthy();
+        } else {
+            builder.healthy();
         }
+        builder.withDetail("runState", runState.name());
+        builder.withDetail("processorCount", processors.size());
+        builder.withDetail("processors", processors.stream()
+                .collect(HasHealthCheck.buildTreeMapCollector(
+                        StatisticsAggregationProcessor::getName,
+                        StatisticsAggregationProcessor::produceHealthCheckSummary)));
+
+        return builder.build();
     }
 
     public List<HasHealthCheck> getHealthCheckProviders() {
         List<HasHealthCheck> healthCheckProviders = new ArrayList<>();
         processors.forEach(healthCheckProviders::add);
         return healthCheckProviders;
-    }
-
-    private String produceHealthCheckSummary() {
-        return new StringBuilder()
-                .append(runState)
-                .append(" - ")
-                .append("Processors: ")
-                .append(processors.size())
-                .toString();
     }
 
     @Override

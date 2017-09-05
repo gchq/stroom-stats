@@ -129,6 +129,7 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
         try {
             Stat propertyServiceNode = curatorFramework.checkExists().forPath(pathToCache);
             if (propertyServiceNode == null) {
+                LOGGER.info("Creating sub path {} in zookeeper for StroomPropertyService", pathToCache);
                 curatorFramework.create().forPath(pathToCache);
             }
         } catch (Exception e) {
@@ -144,15 +145,19 @@ public class StroomPropertyServiceImpl implements StroomPropertyService {
                 break;
             }
             case NODE_ADDED: {
-                LOGGER.info("Property added: " + childDataToLogString(treeCacheEvent.getData()));
+                if (!treeCacheEvent.getData().getPath().equals(pathToCache)) {
+                    LOGGER.info("Curator TreeCache property added: " + childDataToLogString(treeCacheEvent.getData()));
+                } else {
+                    LOGGER.info("Curator TreeCache path added: " + treeCacheEvent.getData().getPath());
+                }
                 break;
             }
             case NODE_REMOVED: {
-                LOGGER.info("Property removed: " + childDataToLogString(treeCacheEvent.getData()));
+                LOGGER.info("Curator TreeCache property removed: " + childDataToLogString(treeCacheEvent.getData()));
                 break;
             }
             case NODE_UPDATED: {
-                LOGGER.info("Property updated: " + childDataToLogString(treeCacheEvent.getData()));
+                LOGGER.info("Curator TreeCache property updated: " + childDataToLogString(treeCacheEvent.getData()));
                 break;
             }
             case CONNECTION_LOST: {

@@ -20,18 +20,20 @@
 package stroom.stats.streams;
 
 import com.codahale.metrics.health.HealthCheck;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.StatisticsProcessor;
 import stroom.stats.api.StatisticType;
-import stroom.stats.mixins.HasRunState;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
+import stroom.stats.util.HasRunState;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
 
@@ -43,13 +45,17 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
     private final StroomPropertyService stroomPropertyService;
     private final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory;
     private final StatisticType statisticType;
-    private KafkaStreams kafkaStreams;
+    private volatile KafkaStreams kafkaStreams;
+    private volatile int streamThreads = 0;
     private final String appId;
     private final String inputTopic;
     private final String badEventTopic;
     private final String permsTopicsPrefix;
     private final AbstractStatisticFlatMapper mapper;
-    private HasRunState.RunState runState = HasRunState.RunState.STOPPED;
+    private volatile HasRunState.RunState runState = HasRunState.RunState.STOPPED;
+
+    //used for thread synchronization
+    private final Object startStopMonitor = new Object();
 
     public StatisticsFlatMappingProcessor(final StroomPropertyService stroomPropertyService,
                                           final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory,
@@ -71,13 +77,13 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
     }
 
     private KafkaStreams configureStream(final StatisticType statisticType,
-                                               final AbstractStatisticFlatMapper mapper) {
+                                         final AbstractStatisticFlatMapper mapper) {
 
         Map<String, Object> props = new HashMap<>();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, appId);
 
         //TODO need to specify number of threads in the yml as it could be box specific
-        int streamThreads = getStreamThreads();
+        streamThreads = getStreamThreads();
         props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, streamThreads);
 
         StreamsConfig streamsConfig = buildStreamsConfig(appId, props);
@@ -99,13 +105,12 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
 
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, getKafkaBootstrapServers());
         props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, getStreamsCommitIntervalMs());
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, getAutoOffsetReset());
 
         //TODO not clear if this is needed for not. Normal Kafka doesn't need it but streams may do
         //leaving it in seems to cause zookeeper connection warnings in the tests.  Tests seem to work ok
         //without it
 //        props.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeperConfig.getQuorum());
-
-        //serdes will be defined explicitly in code
 
         //Add any additional props, overwriting any from above
         props.putAll(additionalProps);
@@ -146,27 +151,33 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
         return stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS);
     }
 
+    private String getAutoOffsetReset() {
+        return stroomPropertyService.getProperty(StatisticsIngestService.PROP_KEY_KAFKA_AUTO_OFFSET_RESET, "latest");
+    }
+
     @Override
     public void stop() {
-
-        runState = HasRunState.RunState.STOPPING;
-        if (kafkaStreams != null) {
-            kafkaStreams.close();
+        synchronized (startStopMonitor) {
+            runState = RunState.STOPPING;
+            if (kafkaStreams != null) {
+                kafkaStreams.close();
+                //kstream will be recreated on start allowing for different configuration
+                kafkaStreams = null;
+            }
+            runState = RunState.STOPPED;
+            LOGGER.info("Stopped processor {} for input topic {}", appId, inputTopic);
         }
-        runState = HasRunState.RunState.STOPPED;
-        LOGGER.info("Stopped processor {} for input topic {}", appId, inputTopic);
-
     }
 
     @Override
     public void start() {
-
-        runState = HasRunState.RunState.STARTING;
-        kafkaStreams = configureStream(statisticType, mapper);
-        kafkaStreams.start();
-        runState = HasRunState.RunState.RUNNING;
-        LOGGER.info("Started processor {} for input topic {} with {} stream threads", appId, inputTopic, getStreamThreads());
-
+        synchronized (startStopMonitor) {
+            runState = RunState.STARTING;
+            kafkaStreams = configureStream(statisticType, mapper);
+            kafkaStreams.start();
+            runState = RunState.RUNNING;
+            LOGGER.info("Started processor {} for input topic {} with {} stream threads", appId, inputTopic, getStreamThreads());
+        }
     }
 
     @Override
@@ -192,5 +203,16 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
             default:
                 return HealthCheck.Result.unhealthy(runState.toString());
         }
+    }
+
+    public Map<String, String> produceHealthCheckSummary() {
+        Map<String, String> statusMap = new TreeMap<>();
+        statusMap.put("applicationId", appId);
+        statusMap.put("badEventTopic", badEventTopic);
+        statusMap.put("inputTopic", inputTopic);
+        statusMap.put("permsTopicsPrefix", permsTopicsPrefix);
+        statusMap.put("runState", runState.name());
+        statusMap.put("streamThreads", Integer.toString(streamThreads));
+        return statusMap;
     }
 }

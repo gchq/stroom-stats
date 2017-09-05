@@ -21,6 +21,7 @@
 
 package stroom.stats.hbase.connection;
 
+import com.codahale.metrics.health.HealthCheck;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.hbase.exception.HBaseException;
 import stroom.stats.properties.StroomPropertyService;
+import stroom.stats.util.healthchecks.HasHealthCheck;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -46,8 +48,11 @@ import java.time.Instant;
  * A dependency on this class will result in a connection being made to Zookeeper
  */
 @Singleton
-public class HBaseConnection {
+public class HBaseConnection implements HasHealthCheck{
     private final Configuration configuration;
+    private final String quorum;
+    private final String clientPort;
+    private final String znodeParent;
     private final boolean autoCreateTables;
     // private final HTablePool pool;
 
@@ -59,30 +64,33 @@ public class HBaseConnection {
     private final Connection sharedClusterConnection;
 
     // HBase property names for configuring HBase
-    private static final String HBASE_ZOOKEEPER_QUORUM_PROPERTY_NAME = "hbase.zookeeper.quorum";
-    private static final String HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME = "hbase.zookeeper.property.clientPort";
-    private static final String HBASE_RPC_TIMEOUT_MS_PROPERTY_NAME = "hbase.rpc.timeout";
+    private static final String PROP_KEY_HBASE_ZOOKEEPER_QUORUM = "hbase.zookeeper.quorum";
+    private static final String PROP_KEY_HBASE_ZOOKEEPER_CLIENT_PORT = "hbase.zookeeper.property.clientPort";
+    private static final String PROP_KEY_HBASE_ZOOKEEPER_ZNODE_PARENT = "zookeeper.znode.parent";
+    private static final String PROP_KEY_HBASE_RPC_TIMEOUT_MS = "hbase.rpc.timeout";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseConnection.class);
 
     @Inject
     public HBaseConnection(final StroomPropertyService propertyService) {
 
-        final String quorum = propertyService.getPropertyOrThrow(
+        quorum = propertyService.getPropertyOrThrow(
                 HBaseStatisticConstants.HBASE_ZOOKEEPER_QUORUM_PROPERTY_NAME);
+        clientPort = propertyService.getPropertyOrThrow(
+                HBaseStatisticConstants.HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME);
+        znodeParent = propertyService.getPropertyOrThrow(
+                HBaseStatisticConstants.HBASE_ZOOKEEPER_ZNODE_PARENT);
 
-        LOGGER.info("Initialising HBaseTableConfiguration to quorum: {}", quorum);
+        LOGGER.info("Initialising HBaseTableConfiguration to quorum: {}, port: {}, znode parent {}",
+                quorum, clientPort, znodeParent);
 
         configuration = HBaseConfiguration.create();
 
-        // if you want the local hbase instance rather than the ref cluster
-        // comment these two out
-        configuration.set(HBASE_ZOOKEEPER_QUORUM_PROPERTY_NAME, quorum);
+        configuration.set(PROP_KEY_HBASE_ZOOKEEPER_QUORUM, quorum);
+        configuration.set(PROP_KEY_HBASE_ZOOKEEPER_CLIENT_PORT, clientPort);
+        configuration.set(PROP_KEY_HBASE_ZOOKEEPER_ZNODE_PARENT, znodeParent);
 
-        configuration.set(HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME,
-                propertyService.getPropertyOrThrow(HBaseStatisticConstants.HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME));
-
-        configuration.set(HBASE_RPC_TIMEOUT_MS_PROPERTY_NAME,
+        configuration.set(PROP_KEY_HBASE_RPC_TIMEOUT_MS,
                 propertyService.getPropertyOrThrow(HBaseStatisticConstants.HBASE_RPC_TIMEOUT_MS_PROPERTY_NAME));
 
         autoCreateTables = true;
@@ -149,6 +157,9 @@ public class HBaseConnection {
     public HBaseConnection(final Connection connection) {
         this.sharedClusterConnection = connection;
         this.configuration = connection.getConfiguration();
+        this.quorum = connection.getConfiguration().get(PROP_KEY_HBASE_ZOOKEEPER_QUORUM);
+        this.clientPort = connection.getConfiguration().get(PROP_KEY_HBASE_ZOOKEEPER_CLIENT_PORT);
+        this.znodeParent = connection.getConfiguration().get(PROP_KEY_HBASE_ZOOKEEPER_ZNODE_PARENT);
         autoCreateTables = true;
     }
 
@@ -184,5 +195,29 @@ public class HBaseConnection {
         } catch (final IOException e) {
             throw new HBaseException("Unable close HBase connection", e);
         }
+    }
+
+    @Override
+    public HealthCheck.Result getHealth() {
+        try {
+            HBaseAdmin.checkHBaseAvailable(configuration);
+
+            return HealthCheck.Result.builder()
+                    .healthy()
+                    .withMessage("HBase running on:")
+                    .withDetail("quorum", quorum)
+                    .withDetail("clientPort", clientPort)
+                    .withDetail("znodeParent", znodeParent)
+                    .build();
+        } catch (Exception e) {
+            return HealthCheck.Result.builder()
+                    .unhealthy(e)
+                    .build();
+        }
+    }
+
+    @Override
+    public String getName() {
+        return "HBaseConnection";
     }
 }
