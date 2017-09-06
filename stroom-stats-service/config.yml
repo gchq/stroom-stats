@@ -44,7 +44,7 @@ database:
 jwtTokenSecret: ${STATS_JWT_SECRET:- CHANGE_ME}
 #If set registers this instance with service discovery using the specified address,
 #else it uses the local hostname or ip address
-advertisedHostNameOrIpAddress: ${STATS_ADVERTISED_HOST_OR_IP:- }
+advertisedHostNameOrIp: ${STATS_ADVERTISED_HOST_OR_IP:- }
 #As above but for port
 advertisedPort: ${STATS_ADVERTISED_PORT:- }
 

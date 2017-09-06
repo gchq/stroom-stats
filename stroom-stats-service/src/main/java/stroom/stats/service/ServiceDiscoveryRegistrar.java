@@ -52,7 +52,7 @@ public class ServiceDiscoveryRegistrar implements HasHealthCheck {
     }
 
     private String getHostOrIp(final Config config) {
-        String hostOrIp = config.getAdvertisedHostNameOrIP()
+        String hostOrIp = config.getAdvertisedHostNameOrIp()
                 .orElseGet(this::getLocalHostnameOrAddress);
         return hostOrIp;
     }

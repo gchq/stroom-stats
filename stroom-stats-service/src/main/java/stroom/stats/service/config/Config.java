@@ -38,10 +38,10 @@ public class Config extends Configuration implements JobConfiguration {
     private String jwtTokenSecret;
 
     @Valid
-    private String advertisedHostNameOrIpAddress;
+    private Optional<String> advertisedHostNameOrIp;
 
     @Valid
-    private Integer advertisedPort;
+    private OptionalInt advertisedPort;
 
     @NotNull
     @Valid
@@ -66,14 +66,12 @@ public class Config extends Configuration implements JobConfiguration {
         return jwtTokenSecret.getBytes(Charset.defaultCharset());
     }
 
-    public Optional<String> getAdvertisedHostNameOrIP() {
-        return Optional.ofNullable(advertisedHostNameOrIpAddress);
+    public Optional<String> getAdvertisedHostNameOrIp() {
+        return advertisedHostNameOrIp;
     }
 
     public OptionalInt getAdvertisedPort() {
-        return Optional.ofNullable(advertisedPort)
-                .map(OptionalInt::of)
-                .orElse(OptionalInt.empty());
+        return advertisedPort;
     }
 
     public ZookeeperConfig getZookeeperConfig() {
@@ -88,7 +86,7 @@ public class Config extends Configuration implements JobConfiguration {
     public String toString() {
         return "Config{" +
                 "jwtTokenSecret='" + jwtTokenSecret + '\'' +
-                ", advertisedHostNameOrIpAddress='" + advertisedHostNameOrIpAddress + '\'' +
+                ", advertisedHostNameOrIpAddress='" + advertisedHostNameOrIp + '\'' +
                 ", advertisedPort='" + advertisedPort + '\'' +
                 ", zookeeperConfig=" + zookeeperConfig +
                 ", defaultProperties=" + defaultProperties +
