@@ -17,9 +17,9 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.mixins;
+package stroom.stats.util;
 
-public interface hasName {
+public interface HasName {
 
     default String getName(){
         return this.getClass().getName();

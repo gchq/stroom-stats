@@ -37,10 +37,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import stroom.stats.test.KafkaEmbededUtils;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -54,14 +54,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class EmbeddedKafkaIT {
     private static final Logger LOGGER = LoggerFactory.getLogger(EmbeddedKafkaIT.class);
     private static final String STREAMS_APP_ID = "TestStreamsApp";
-    private static final Path KAFKA_STREAMS_PATH = Paths.get("/tmp/kafka-streams/", STREAMS_APP_ID);
+    public static final String TOPIC_MESSAGES = "messages";
+    public static final String TOPIC_MESSAGES_MAPPED = "messages-mapped";
+    public static final String TOPIC_BRANCH_1 = "branch-1";
+    public static final String TOPIC_BRANCH_2 = "branch-2";
 
     @Rule
-    public KafkaEmbedded kafkaEmbedded = new KafkaEmbedded(1, false,
-            "messages",
-            "messages-mapped",
-            "branch-1",
-            "branch-2");
+    public KafkaEmbedded kafkaEmbedded = new KafkaEmbedded(1, true);
 
     /**
      * Put some items on the queue and make sure they can be consumed
@@ -69,21 +68,28 @@ public class EmbeddedKafkaIT {
     @Test
     public void noddyProducerConsumerTest() throws ExecutionException, InterruptedException {
 
+        String[] topics = {TOPIC_MESSAGES};
+        KafkaEmbededUtils.createTopics(kafkaEmbedded, topics);
+
         Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
         KafkaProducer<Integer, String> producer = new KafkaProducer<>(senderProps);
-        producer.send(new ProducerRecord<>("messages", 0, 0, "message0")).get();
-        producer.send(new ProducerRecord<>("messages", 0, 1, "message1")).get();
-        producer.send(new ProducerRecord<>("messages", 1, 2, "message2")).get();
-        producer.send(new ProducerRecord<>("messages", 1, 3, "message3")).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 0, "message0")).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 1, "message1")).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 2, "message2")).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 3, "message3")).get();
 
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("noddyProducerConsumerTest-consumer", "false", kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("noddyProducerConsumerTest-consumer",
+                "false",
+                kafkaEmbedded);
+        //earliest ensures we can start the consumer at any point without it missing messages
         consumerProps.put("auto.offset.reset", "earliest");
 
         final CountDownLatch latch = new CountDownLatch(4);
+        final CountDownLatch consumerShutdownLatch = new CountDownLatch(1);
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
             KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
-            kafkaConsumer.subscribe(Collections.singletonList("messages"));
+            kafkaConsumer.subscribe(Collections.singletonList(TOPIC_MESSAGES));
             try {
                 while (true) {
                     ConsumerRecords<Integer, String> records = kafkaConsumer.poll(100);
@@ -92,14 +98,23 @@ public class EmbeddedKafkaIT {
                                 record.topic(), record.partition(), record.offset(), record.key(), record.value());
                         latch.countDown();
                     }
+                    if (latch.getCount() == 0) {
+                        break;
+                    }
                 }
             } finally {
                 kafkaConsumer.close();
+                consumerShutdownLatch.countDown();
             }
         });
 
         assertThat(latch.await(90, TimeUnit.SECONDS)).isTrue();
+        consumerShutdownLatch.await();
+        producer.close();
+
+        KafkaEmbededUtils.deleteTopics(kafkaEmbedded, topics);
     }
+
 
     /**
      * Put some items on the queue and make sure they can be processed by kafka streams
@@ -107,17 +122,21 @@ public class EmbeddedKafkaIT {
     @Test
     public void noddyStreamsTest() throws ExecutionException, InterruptedException, IOException {
 
+        String[] topics = {TOPIC_MESSAGES, TOPIC_MESSAGES_MAPPED};
+        KafkaEmbededUtils.createTopics(kafkaEmbedded, topics);
+
         Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
         KafkaProducer<Integer, String> producer = new KafkaProducer<>(senderProps);
-        producer.send(new ProducerRecord<>("messages", 0, 0, "message0")).get();
-        producer.send(new ProducerRecord<>("messages", 0, 1, "message1")).get();
-        producer.send(new ProducerRecord<>("messages", 1, 2, "message2")).get();
-        producer.send(new ProducerRecord<>("messages", 1, 3, "message3")).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 0, "message0")).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 1, "message1")).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 2, "message2")).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 3, "message3")).get();
 
         Map<String, Object> streamProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         streamProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "noddyStreamsTest");
         streamProps.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
         streamProps.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+        streamProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         //We are trying to make a streams config with consumer config props, so need to remove some that
         //streams does not like.
@@ -126,10 +145,10 @@ public class EmbeddedKafkaIT {
         StreamsConfig streamsConfig = new StreamsConfig(streamProps);
 
         KStreamBuilder builder = new KStreamBuilder();
-        KStream<String, String> kafkaInput = builder.stream("messages");
+        KStream<String, String> kafkaInput = builder.stream(TOPIC_MESSAGES);
         kafkaInput
                 .mapValues(value -> value + "-mapped")
-                .to(Serdes.String(), Serdes.String(), "messages-mapped");
+                .to(Serdes.String(), Serdes.String(), TOPIC_MESSAGES_MAPPED);
 
         KafkaStreams streams = new KafkaStreams(builder, streamsConfig);
         streams.start();
@@ -138,11 +157,12 @@ public class EmbeddedKafkaIT {
         consumerProps.put("auto.offset.reset", "earliest");
 
         final CountDownLatch latch = new CountDownLatch(4);
+        final CountDownLatch consumerShutdownLatch = new CountDownLatch(1);
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
 
             KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
-            kafkaConsumer.subscribe(Collections.singletonList("messages-mapped"));
+            kafkaConsumer.subscribe(Collections.singletonList(TOPIC_MESSAGES_MAPPED));
             try {
                 while (true) {
                     ConsumerRecords<Integer, String> records = kafkaConsumer.poll(100);
@@ -151,17 +171,30 @@ public class EmbeddedKafkaIT {
                                 record.topic(), record.partition(), record.offset(), record.key(), record.value());
                         latch.countDown();
                     }
+                    if (latch.getCount() == 0) {
+                        break;
+                    }
                 }
             } finally {
                 kafkaConsumer.close();
+                consumerShutdownLatch.countDown();
             }
         });
 
-        assertThat(latch.await(90, TimeUnit.SECONDS)).isTrue();
+        assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+
+        consumerShutdownLatch.await();
+        producer.close();
+        streams.close();
+
+        KafkaEmbededUtils.deleteTopics(kafkaEmbedded, topics);
     }
 
     @Test
     public void transformerStreamsTest() throws ExecutionException, InterruptedException, IOException {
+
+        String[] topics = {TOPIC_MESSAGES, TOPIC_MESSAGES_MAPPED};
+        KafkaEmbededUtils.createTopics(kafkaEmbedded, topics);
 
         Serde<Integer> intSerde = Serdes.Integer();
         Serde<Long> longSerde = Serdes.Long();
@@ -169,16 +202,14 @@ public class EmbeddedKafkaIT {
 
         Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
         KafkaProducer<Integer, Long> producer = new KafkaProducer<>(senderProps, intSerde.serializer(), longSerde.serializer());
-        producer.send(new ProducerRecord<>("messages", 0, 0, 10L)).get();
-        producer.send(new ProducerRecord<>("messages", 0, 1, 10L)).get();
-        producer.send(new ProducerRecord<>("messages", 1, 2, 10L)).get();
-        producer.send(new ProducerRecord<>("messages", 1, 3, 10L)).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 0, 10L)).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 1, 10L)).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 2, 10L)).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 3, 10L)).get();
 
         Map<String, Object> streamProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         streamProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "transformerStreamsTest");
-//        streamProps.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.Integer().getClass().getName());
-//        streamProps.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.Long().getClass().getName());
-
+        streamProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         //We are trying to make a streams config with consumer config props, so need to remove some that
         //streams does not like.
@@ -187,23 +218,24 @@ public class EmbeddedKafkaIT {
         StreamsConfig streamsConfig = new StreamsConfig(streamProps);
 
         KStreamBuilder builder = new KStreamBuilder();
-        KStream<Integer, Long> kafkaInput = builder.stream(intSerde, longSerde, "messages");
+        KStream<Integer, Long> kafkaInput = builder.stream(intSerde, longSerde, TOPIC_MESSAGES);
         kafkaInput
                 .mapValues(value -> value + "-mapped")
-                .to(intSerde, stringSerde, "messages-mapped");
+                .to(intSerde, stringSerde, TOPIC_MESSAGES_MAPPED);
 
         KafkaStreams streams = new KafkaStreams(builder, streamsConfig);
         streams.start();
 
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("transformerStreamsTest-consumer", "false", kafkaEmbedded);
-        consumerProps.put("auto.offset.reset", "earliest");
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         final CountDownLatch latch = new CountDownLatch(4);
+        final CountDownLatch consumerShutdownLatch = new CountDownLatch(1);
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
 
             KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps, intSerde.deserializer(), stringSerde.deserializer());
-            kafkaConsumer.subscribe(Collections.singletonList("messages-mapped"));
+            kafkaConsumer.subscribe(Collections.singletonList(TOPIC_MESSAGES_MAPPED));
             try {
                 while (true) {
                     ConsumerRecords<Integer, String> records = kafkaConsumer.poll(100);
@@ -212,31 +244,46 @@ public class EmbeddedKafkaIT {
                                 record.topic(), record.partition(), record.offset(), record.key(), record.value());
                         latch.countDown();
                     }
+                    if (latch.getCount() == 0) {
+                        break;
+                    }
                 }
             } finally {
                 kafkaConsumer.close();
+                consumerShutdownLatch.countDown();
             }
         });
 
         assertThat(latch.await(90, TimeUnit.SECONDS)).isTrue();
+
+        consumerShutdownLatch.await();
+        producer.close();
+        streams.close();
+
+        KafkaEmbededUtils.deleteTopics(kafkaEmbedded, topics);
     }
+
     /**
      * Put some items on the queue and make sure they can be processed by kafka streams
      */
     @Test
     public void branchingStreamsTest() throws ExecutionException, InterruptedException {
 
+        final String[] topics = {TOPIC_MESSAGES, TOPIC_MESSAGES_MAPPED, TOPIC_BRANCH_1, TOPIC_BRANCH_2};
+        KafkaEmbededUtils.createTopics(kafkaEmbedded, topics);
+
         Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
         KafkaProducer<Integer, String> producer = new KafkaProducer<>(senderProps);
-        producer.send(new ProducerRecord<>("messages", 0, 0, "message0")).get();
-        producer.send(new ProducerRecord<>("messages", 0, 1, "message1")).get();
-        producer.send(new ProducerRecord<>("messages", 1, 2, "message2")).get();
-        producer.send(new ProducerRecord<>("messages", 1, 3, "message3")).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 0, "message0")).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 1, "message1")).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 2, "message2")).get();
+        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 3, "message3")).get();
 
         Map<String, Object> streamProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         streamProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "branchingStreamsTest");
         streamProps.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.Integer().getClass().getName());
         streamProps.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+        streamProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         //We are trying to make a streams config with consumer config props, so need to remove some that
         //streams does not like.
@@ -245,37 +292,33 @@ public class EmbeddedKafkaIT {
         StreamsConfig streamsConfig = new StreamsConfig(streamProps);
 
         KStreamBuilder builder = new KStreamBuilder();
-        KStream<Integer, String> kafkaInput = builder.stream("messages");
+        KStream<Integer, String> kafkaInput = builder.stream(TOPIC_MESSAGES);
 
         //branch odds and evens to different topics
         KStream<Integer, String>[] branchedStreams = kafkaInput
                 .mapValues(value -> value + "-mapped")
-                .through(Serdes.Integer(), Serdes.String(), "messages-mapped")
+                .through(Serdes.Integer(), Serdes.String(), TOPIC_MESSAGES_MAPPED)
                 .branch(
                         (key, value) -> key % 2 == 0,
                         (key, value) -> key % 2 != 0
                 );
 
-        branchedStreams[0].to("branch-1");
-        branchedStreams[1].to("branch-2");
+        branchedStreams[0].to(TOPIC_BRANCH_1);
+        branchedStreams[1].to(TOPIC_BRANCH_2);
 
         KafkaStreams streams = new KafkaStreams(builder, streamsConfig);
         streams.start();
 
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("branchingStreamsTest-consumer", "false", kafkaEmbedded);
-        consumerProps.put("auto.offset.reset", "earliest");
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         final CountDownLatch latch = new CountDownLatch(12);
+        final CountDownLatch consumerShutdownLatch = new CountDownLatch(1);
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
 
             KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
-            kafkaConsumer.subscribe(Collections.singletonList("messages-mapped"));
-            try {
-                kafkaEmbedded.consumeFromAllEmbeddedTopics(kafkaConsumer);
-            } catch (Exception e) {
-                throw new RuntimeException(String.format("Error subscribing to all topics"), e);
-            }
+            kafkaConsumer.subscribe(Arrays.asList(topics));
             try {
                 while (true) {
                     ConsumerRecords<Integer, String> records = kafkaConsumer.poll(100);
@@ -284,13 +327,23 @@ public class EmbeddedKafkaIT {
                                 record.topic(), record.partition(), record.offset(), record.key(), record.value());
                         latch.countDown();
                     }
+                    if (latch.getCount() == 0) {
+                        break;
+                    }
                 }
             } finally {
                 kafkaConsumer.close();
+                consumerShutdownLatch.countDown();
             }
         });
 
-        assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+
+        consumerShutdownLatch.await();
+        producer.close();
+        streams.close();
+
+        KafkaEmbededUtils.deleteTopics(kafkaEmbedded, topics);
     }
 
     /**
@@ -326,5 +379,4 @@ public class EmbeddedKafkaIT {
         });
     }
 
-//    private static class AggregatorTransformer extends AbTra
 }

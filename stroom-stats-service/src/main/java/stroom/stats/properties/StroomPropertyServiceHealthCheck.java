@@ -1,7 +1,7 @@
 package stroom.stats.properties;
 
 import com.codahale.metrics.health.HealthCheck;
-import stroom.stats.mixins.HasHealthCheck;
+import stroom.stats.util.healthchecks.HasHealthCheck;
 
 import javax.inject.Inject;
 import java.util.TreeMap;

@@ -23,10 +23,10 @@ import com.codahale.metrics.health.HealthCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
-import stroom.stats.mixins.HasHealthCheck;
-import stroom.stats.mixins.HasRunState;
-import stroom.stats.mixins.Startable;
-import stroom.stats.mixins.Stoppable;
+import stroom.stats.util.healthchecks.HasHealthCheck;
+import stroom.stats.util.HasRunState;
+import stroom.stats.util.Startable;
+import stroom.stats.util.Stoppable;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.streams.mapping.CountStatToAggregateFlatMapper;
 import stroom.stats.streams.mapping.ValueStatToAggregateFlatMapper;
@@ -43,7 +43,10 @@ public class StatisticsFlatMappingService implements Startable, Stoppable, HasRu
 
     private final List<StatisticsFlatMappingProcessor> processors = new ArrayList<>();
 
-    private RunState runState = RunState.STOPPED;
+    private volatile RunState runState = RunState.STOPPED;
+
+    //used for thread synchronization
+    private final Object startStopMonitor = new Object();
 
     @Inject
     public StatisticsFlatMappingService(final StroomPropertyService stroomPropertyService,
@@ -64,26 +67,29 @@ public class StatisticsFlatMappingService implements Startable, Stoppable, HasRu
                 StatisticType.VALUE,
                 valueStatToAggregateMapper);
         processors.add(valueStatisticsProcessor);
-
     }
 
     @Override
     public void start() {
 
-        runState = RunState.STARTING;
-        LOGGER.info("Starting the Statistics Flat Mapping Service");
+        synchronized (startStopMonitor) {
+            runState = RunState.STARTING;
+            LOGGER.info("Starting the Statistics Flat Mapping Service");
 
-        processors.forEach(StatisticsFlatMappingProcessor::start);
-        runState = RunState.RUNNING;
+            processors.forEach(StatisticsFlatMappingProcessor::start);
+            runState = RunState.RUNNING;
+        }
     }
 
     @Override
     public void stop() {
-        runState = RunState.STOPPING;
-        LOGGER.info("Stopping the Statistics Flat Mapping Service");
+        synchronized (startStopMonitor) {
+            runState = RunState.STOPPING;
+            LOGGER.info("Stopping the Statistics Flat Mapping Service");
 
-        processors.forEach(StatisticsFlatMappingProcessor::stop);
-        runState = RunState.STOPPED;
+            processors.forEach(StatisticsFlatMappingProcessor::stop);
+            runState = RunState.STOPPED;
+        }
     }
 
     @Override
@@ -93,12 +99,23 @@ public class StatisticsFlatMappingService implements Startable, Stoppable, HasRu
 
     @Override
     public HealthCheck.Result getHealth() {
-        switch (runState) {
-            case RUNNING:
-                return HealthCheck.Result.healthy(produceHealthCheckSummary());
-            default:
-                return HealthCheck.Result.unhealthy(produceHealthCheckSummary());
+        HealthCheck.ResultBuilder builder = HealthCheck.Result.builder();
+        long nonRunningProcessorCount = processors.stream()
+                .filter(processor -> !processor.getRunState().equals(RunState.RUNNING))
+                .count();
+        if (!runState.equals(RunState.RUNNING) || nonRunningProcessorCount > 0) {
+            builder.unhealthy();
+        } else {
+            builder.healthy();
         }
+        builder.withDetail("runState", runState.name());
+        builder.withDetail("processorCount", processors.size());
+        builder.withDetail("processors", processors.stream()
+                .collect(HasHealthCheck.buildTreeMapCollector(
+                        StatisticsFlatMappingProcessor::getName,
+                        StatisticsFlatMappingProcessor::produceHealthCheckSummary)));
+
+        return builder.build();
     }
 
     @Override
@@ -117,7 +134,7 @@ public class StatisticsFlatMappingService implements Startable, Stoppable, HasRu
 
     public List<HasHealthCheck> getHealthCheckProviders() {
         List<HasHealthCheck> healthCheckProviders = new ArrayList<>();
-        processors.forEach(processor -> healthCheckProviders.add((HasHealthCheck) processor));
+        processors.forEach(healthCheckProviders::add);
         return healthCheckProviders;
     }
 

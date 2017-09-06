@@ -37,6 +37,8 @@ import stroom.stats.properties.StroomPropertyServiceCuratorFrameworkProvider;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.properties.StroomPropertyServiceHealthCheck;
 import stroom.stats.properties.StroomPropertyServiceImpl;
+import stroom.stats.service.ServiceDiscoverer;
+import stroom.stats.service.ServiceDiscovererImpl;
 import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.config.Config;
 import stroom.stats.streams.StatisticsIngestService;
@@ -68,6 +70,7 @@ public class StroomStatsServiceModule extends AbstractModule {
         bind(CuratorFramework.class).annotatedWith(ServiceDiscoveryCuratorFramework.class).toProvider(ServiceDiscoveryCuratorFrameworkProvider.class).asEagerSingleton();
         bind(HBaseClient.class);
         bind(StatisticsIngestService.class).asEagerSingleton();
+        bind(ServiceDiscoverer.class).to(ServiceDiscovererImpl.class);
         bind(ServiceDiscoveryManager.class);
         bind(SessionFactory.class).toInstance(sessionFactory);
         bind(StroomStatsStoreEntityDAO.class).to(StroomStatsStoreEntityDAOImpl.class);

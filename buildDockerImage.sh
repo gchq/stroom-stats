@@ -22,4 +22,4 @@ ver="v1.0.0-SNAPSHOT"
 # Exclude tests because we want this to be fast. I guess you'd better test the build before releasing.
 ./gradlew -Pversion=$ver downloadUrlDependencies clean build shadowJar -x integrationTest
 
-docker build --tag gchq/stroom-stats:$ver .
+docker build --tag gchq/stroom-stats:auth_v0.1.1-alpha .

@@ -27,25 +27,21 @@ import io.dropwizard.db.DataSourceFactory;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.nio.charset.Charset;
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 public class Config extends Configuration implements JobConfiguration {
-    //TODO add all the stroom hbase properties in here
-
-    //TODO need to figure out what to do about cluster wide properties
-    //when we have multiple dropwiz instances, e.g. the ZK quorum prop.
-    //Maybe we just congure each instance individually and ensure that
-    //each instance has the correct values.
 
     @NotNull
     @Valid
     private String jwtTokenSecret;
 
-    @NotNull
     @Valid
-    @JsonProperty("kafka")
-    private KafkaConfig kafkaConfig;
+    private Optional<String> advertisedHostNameOrIp;
+
+    @Valid
+    private OptionalInt advertisedPort;
 
     @NotNull
     @Valid
@@ -67,11 +63,6 @@ public class Config extends Configuration implements JobConfiguration {
     @JsonProperty
     private String authorisationServiceUrl;
 
-    @NotNull
-    @Valid
-    @JsonProperty
-    private List<Integer> defaultMaxResultSizes;
-
     public DataSourceFactory getDataSourceFactory() {
         return database;
     }
@@ -80,8 +71,12 @@ public class Config extends Configuration implements JobConfiguration {
         return jwtTokenSecret.getBytes(Charset.defaultCharset());
     }
 
-    public KafkaConfig getKafkaConfig() {
-        return kafkaConfig;
+    public Optional<String> getAdvertisedHostNameOrIp() {
+        return advertisedHostNameOrIp;
+    }
+
+    public OptionalInt getAdvertisedPort() {
+        return advertisedPort;
     }
 
     public ZookeeperConfig getZookeeperConfig() {
@@ -96,7 +91,8 @@ public class Config extends Configuration implements JobConfiguration {
     public String toString() {
         return "Config{" +
                 "jwtTokenSecret='" + jwtTokenSecret + '\'' +
-                ", kafkaConfig=" + kafkaConfig +
+                ", advertisedHostNameOrIpAddress='" + advertisedHostNameOrIp + '\'' +
+                ", advertisedPort='" + advertisedPort + '\'' +
                 ", zookeeperConfig=" + zookeeperConfig +
                 ", defaultProperties=" + defaultProperties +
                 ", database=" + database +
@@ -105,10 +101,6 @@ public class Config extends Configuration implements JobConfiguration {
 
     public String getAuthorisationServiceUrl() {
         return authorisationServiceUrl;
-    }
-
-    public List<Integer> getDefaultMaxResultSizes() {
-            return defaultMaxResultSizes;
     }
 }
 

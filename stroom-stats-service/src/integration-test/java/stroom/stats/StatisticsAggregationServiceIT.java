@@ -19,7 +19,6 @@
 
 package stroom.stats;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -61,7 +60,6 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.LongSummaryStatistics;
@@ -79,7 +77,6 @@ public class StatisticsAggregationServiceIT {
     private static final StatisticType WORKING_STAT_TYPE = StatisticType.COUNT;
     private static final EventStoreTimeIntervalEnum WORKING_INTERVAL = EventStoreTimeIntervalEnum.DAY;
 
-
     private MockStroomPropertyService mockStroomPropertyService = new MockStroomPropertyService();
 
     private MockUniqueIdCache mockUniqueIdCache = new MockUniqueIdCache();
@@ -88,16 +85,16 @@ public class StatisticsAggregationServiceIT {
     public MockitoRule rule = MockitoJUnit.rule();
 
     @Mock
-    StatisticsService mockStatisticsService;
+    private StatisticsService mockStatisticsService;
 
     @Captor
-    ArgumentCaptor<Map<StatKey, StatAggregate>> aggregatesMapCaptor;
+    private ArgumentCaptor<Map<StatKey, StatAggregate>> aggregatesMapCaptor;
 
     @Captor
-    ArgumentCaptor<StatisticType> statTypeCaptor;
+    private ArgumentCaptor<StatisticType> statTypeCaptor;
 
     @Captor
-    ArgumentCaptor<EventStoreTimeIntervalEnum> intervalCaptor;
+    private ArgumentCaptor<EventStoreTimeIntervalEnum> intervalCaptor;
 
     @Test
     public void testAggregation() throws InterruptedException {
@@ -187,9 +184,9 @@ public class StatisticsAggregationServiceIT {
 
         LOGGER.info("baseTime {}", baseTime.toString());
         LOGGER.info("msgPutCount {}", msgPutCounter);
-        LOGGER.info("msgCount {}", StatisticsAggregationProcessor.msgCounter.sum());
-        LOGGER.info("minTimestamp {}", Instant.ofEpochMilli(
-                StatisticsAggregationProcessor.minTimestamp.get()).toString());
+//        LOGGER.info("msgCount {}", StatisticsAggregationProcessor.msgCounter.sum());
+//        LOGGER.info("minTimestamp {}", Instant.ofEpochMilli(
+//                StatisticsAggregationProcessor.minTimestamp.get()).toString());
 
         LOGGER.info("Producer offsets summary");
         summary.keySet().stream()
@@ -198,12 +195,12 @@ public class StatisticsAggregationServiceIT {
                 .forEach(LOGGER::info);
 
         LOGGER.info("Consumer offsets summary");
-        StatisticsAggregationProcessor.consumerRecords.entrySet().stream()
-                .sorted(Comparator.comparingInt(Map.Entry::getKey))
-                .map(entry ->
-                    entry.getKey() + " - " + entry.getValue().stream()
-                            .collect(Collectors.summarizingLong(ConsumerRecord::offset)))
-                .forEach(LOGGER::info);
+//        StatisticsAggregationProcessor.consumerRecords.entrySet().stream()
+//                .sorted(Comparator.comparingInt(Map.Entry::getKey))
+//                .map(entry ->
+//                    entry.getKey() + " - " + entry.getValue().stream()
+//                            .collect(Collectors.summarizingLong(ConsumerRecord::offset)))
+//                .forEach(LOGGER::info);
 
         Assertions.assertThat(aggSum).isEqualTo(iterations);
     }
@@ -241,7 +238,7 @@ public class StatisticsAggregationServiceIT {
 
         //for testing we only ever want to grab from the latest offset when we spin up a new test to avoid consuming records
         //from a previous run, does mean we have to spin up the consumer(s) before putting records on a topic
-        mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_AUTO_OFFSET_RESET, "latest");
+        mockStroomPropertyService.setProperty(StatisticsIngestService.PROP_KEY_KAFKA_AUTO_OFFSET_RESET, "latest");
     }
 
     private static KafkaProducer<StatKey, StatAggregate> buildKafkaProducer(StroomPropertyService stroomPropertyService) {

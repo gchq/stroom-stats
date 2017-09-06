@@ -26,6 +26,7 @@ dependencies {
     compile libs.javax_inject
     compile libs.hibernate_core
     compile libs.slf4j_api
+    compile libs.dropwizard_metrics_healthchecks
 
     testCompile libs.mockito_core
     testCompile libs.junit

@@ -1,19 +1,20 @@
 package stroom.stats;
 
 import stroom.mapreduce.v2.UnsafePairQueue;
+import stroom.query.api.v2.TableSettings;
+import stroom.query.common.v2.CompiledSorter;
 import stroom.query.common.v2.Coprocessor;
 import stroom.query.common.v2.CoprocessorSettingsMap;
 import stroom.query.common.v2.Data;
 import stroom.query.common.v2.Item;
-import stroom.query.common.v2.Items;
-import stroom.query.common.v2.ItemsArrayList;
 import stroom.query.common.v2.Key;
 import stroom.query.common.v2.Payload;
+import stroom.query.common.v2.ResultStoreCreator;
 import stroom.query.common.v2.Store;
 import stroom.query.common.v2.StoreSize;
+import stroom.query.common.v2.TableCoprocessorSettings;
 import stroom.query.common.v2.TablePayload;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +23,14 @@ public class StatisticsStore implements Store {
     private CoprocessorSettingsMap coprocessorSettingsMap;
     private Map<CoprocessorSettingsMap.CoprocessorKey, Coprocessor> coprocessorMap;
     private Map<CoprocessorSettingsMap.CoprocessorKey, Payload> payloadMap;
+
+    private final List<Integer> defaultMaxResultsSizes;
+    private final StoreSize storeSize;
+
+    public StatisticsStore(final List<Integer> defaultMaxResultsSizes, final StoreSize storeSize) {
+        this.defaultMaxResultsSizes = defaultMaxResultsSizes;
+        this.storeSize = storeSize;
+    }
 
     @Override
     public void destroy() {
@@ -40,25 +49,22 @@ public class StatisticsStore implements Store {
             return null;
         }
 
-        Coprocessor coprocessor = coprocessorMap.get(coprocessorKey);
+        TableCoprocessorSettings tableCoprocessorSettings = (TableCoprocessorSettings) coprocessorSettingsMap.getMap()
+                .get(coprocessorKey);
+        TableSettings tableSettings = tableCoprocessorSettings.getTableSettings();
+
         Payload payload = payloadMap.get(coprocessorKey);
-        TablePayload tablePayload = (TablePayload)payload;
+        TablePayload tablePayload = (TablePayload) payload;
         UnsafePairQueue<Key, Item> queue = tablePayload.getQueue();
 
-        Map<Key, Items<Item>> childMap = new HashMap<>();
-        // We should now have a reduction in the reducedQueue.
-        queue.forEach(pair -> {
-            final Item item = pair.getValue();
+        CompiledSorter compiledSorter = new CompiledSorter(tableSettings.getFields());
+        final ResultStoreCreator resultStoreCreator = new ResultStoreCreator(compiledSorter);
+        resultStoreCreator.read(queue);
 
-            if (item.getKey() != null) {
-                childMap.computeIfAbsent(item.getKey().getParent(), k -> new ItemsArrayList<>()).add(item);
-            } else {
-                childMap.computeIfAbsent(null, k -> new ItemsArrayList<>()).add(item);
-            }
-        });
+        // Trim the number of results in the store.
+        resultStoreCreator.trim(storeSize);
 
-
-        return new Data(childMap, queue.size(), queue.size());
+        return resultStoreCreator.create(queue.size(), queue.size());
     }
 
     @Override
@@ -73,12 +79,12 @@ public class StatisticsStore implements Store {
 
     @Override
     public List<Integer> getDefaultMaxResultsSizes() {
-        return null;
+        return defaultMaxResultsSizes;
     }
 
     @Override
     public StoreSize getStoreSize() {
-        return null;
+        return storeSize;
     }
 
     public void process(CoprocessorSettingsMap coprocessorSettingsMap) {

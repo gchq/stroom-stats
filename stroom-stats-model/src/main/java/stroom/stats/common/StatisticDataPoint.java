@@ -28,24 +28,48 @@ import java.util.Map;
 
 public interface StatisticDataPoint {
 
+
+    /**
+     * @return The name of the statistic that this datapoint belongs to
+     */
     String getStatisticName();
 
+    /**
+     * @return The time in ms since epoch that the statistic event(s) bucket started
+     */
     long getTimeMs();
 
+    /**
+     * @return The size of the time bucket that the data point represents
+     */
     long getPrecisionMs();
 
+    /**
+     * @return The size of the time bucket represented as thr name of a {@link EventStoreTimeIntervalEnum}
+     */
     default String getPrecision() {
         return EventStoreTimeIntervalEnum.fromColumnInterval(getPrecisionMs()).longName();
     }
 
+    /**
+     * @return A list of the {@link StatisticTag} objects that qualify the data point
+     */
     List<StatisticTag> getTags();
 
+    /**
+     * @return The qualifying {@link StatisticTag} objects represented as map with the tag as key and tag value as value
+     */
     Map<String, String> getTagsAsMap();
 
+    /**
+     * @return The {@link StatisticType} of the data point, e.g. COUNT, VALUE, etc.
+     */
     StatisticType getStatisticType();
 
-//    Map<String, Object> getFieldToValueMap();
-
+    /**
+     * @param fieldName The name of the field to get a value for
+     * @return The value of the named field (or null if it doesn't exist) represented as a string
+     */
     String getFieldValue(final String fieldName);
 
 }

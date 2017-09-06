@@ -36,14 +36,22 @@ import stroom.query.common.v2.CoprocessorSettingsMap;
 import stroom.query.common.v2.DateExpressionParser;
 import stroom.query.common.v2.Payload;
 import stroom.query.common.v2.SearchResponseCreator;
+import stroom.query.common.v2.StoreSize;
 import stroom.query.common.v2.TableCoprocessor;
 import stroom.query.common.v2.TableCoprocessorSettings;
 import stroom.stats.api.StatisticsService;
-import stroom.stats.common.*;
+import stroom.stats.common.FilterTermsTree;
+import stroom.stats.common.FilterTermsTreeBuilder;
+import stroom.stats.common.Period;
+import stroom.stats.common.Range;
+import stroom.stats.common.SearchStatisticsCriteria;
+import stroom.stats.common.StatisticDataPoint;
+import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.configuration.StatisticRollUpType;
+import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.Statistics;
 import stroom.stats.service.config.Config;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -52,11 +60,21 @@ import stroom.util.shared.HasTerminate;
 
 import javax.inject.Inject;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class HBaseClient implements Managed {
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(HBaseClient.class);
+    private static final String PROP_KEY_DEFAULT_MAX_RESULTS_SIZES = "stroom.stats.search.defaultMaxResultSizes";
+    private static final String PROP_KEY_STORE_SIZE = "stroom.stats.search.storeSize";
 
     private static final List<ExpressionTerm.Condition> SUPPORTED_DATE_CONDITIONS = Arrays.asList(
             ExpressionTerm.Condition.BETWEEN,
@@ -78,14 +96,17 @@ public class HBaseClient implements Managed {
 
     private final StatisticsService statisticsService;
     private final StatisticConfigurationService statisticConfigurationService;
+    private final StroomPropertyService stroomPropertyService;
     private Config config;
 
     @Inject
     public HBaseClient(final StatisticsService statisticsService,
                        final StatisticConfigurationService statisticConfigurationService,
+                       final StroomPropertyService stroomPropertyService,
                        final Config config) {
         this.statisticsService = statisticsService;
         this.statisticConfigurationService = statisticConfigurationService;
+        this.stroomPropertyService = stroomPropertyService;
         this.config = config;
     }
 
@@ -225,7 +246,7 @@ public class HBaseClient implements Managed {
                 }
             }
 
-            StatisticsStore store = new StatisticsStore();
+            StatisticsStore store = new StatisticsStore(getDefaultMaxResultSizes(), getStoreSize());
             store.process(coprocessorSettingsMap);
             store.coprocessorMap(coprocessorMap);
             store.payloadMap(payloadMap);
@@ -233,13 +254,22 @@ public class HBaseClient implements Managed {
             // defaultMaxResultsSizes could be obtained from the StatisticsStore but at this point that object is ephemeral.
             // It seems a little pointless to put it into the StatisticsStore only to get it out again so for now
             // we'll just get it straight from the config.
-            SearchResponseCreator searchResponseCreator = new SearchResponseCreator(store, config.getDefaultMaxResultSizes());
+
+            SearchResponseCreator searchResponseCreator = new SearchResponseCreator(store);
             SearchResponse searchResponse = searchResponseCreator.create(searchRequest);
 
             return searchResponse;
         } else {
             return EMPTY_SEARCH_RESPONSE;
         }
+    }
+
+    private List<Integer> getDefaultMaxResultSizes() {
+        return extractValues(stroomPropertyService.getProperty(PROP_KEY_DEFAULT_MAX_RESULTS_SIZES, null));
+    }
+
+    private StoreSize getStoreSize(){
+        return new StoreSize(extractValues(stroomPropertyService.getProperty(PROP_KEY_STORE_SIZE,null)));
     }
 
     private List<String> getRequestedFields(final StatisticConfiguration statisticConfiguration,
@@ -300,7 +330,7 @@ public class HBaseClient implements Managed {
         if (settings instanceof TableCoprocessorSettings) {
             final TableCoprocessorSettings tableCoprocessorSettings = (TableCoprocessorSettings) settings;
             final TableCoprocessor tableCoprocessor = new TableCoprocessor(
-                tableCoprocessorSettings, fieldIndexMap, taskMonitor, paramMap);
+                    tableCoprocessorSettings, fieldIndexMap, taskMonitor, paramMap);
             return tableCoprocessor;
         }
         return null;
@@ -569,5 +599,19 @@ public class HBaseClient implements Managed {
         List<String> queryableFields = new ArrayList<>(statisticConfiguration.getFieldNames());
         queryableFields.addAll(SUPPORTED_QUERYABLE_STATIC_FIELDS);
         return queryableFields;
+    }
+
+    private List<Integer> extractValues(String value) {
+        if (value != null) {
+            try {
+                return Arrays.stream(value.split(","))
+                        .map(String::trim)
+                        .map(Integer::valueOf)
+                        .collect(Collectors.toList());
+            } catch (Exception e) {
+                LOGGER.warn(e.getMessage());
+            }
+        }
+        return Collections.emptyList();
     }
 }
