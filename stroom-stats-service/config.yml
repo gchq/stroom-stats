@@ -82,7 +82,9 @@ zookeeper:
     # The path to use for service discovery
     serviceDiscoveryPath: ${STATS_ZK_SD_PATH:- /stroom-services}
 
-# These properties prime ZK - and once they've been set changing the below won't change the values.
+# These properties prime ZK - and once they've been set in ZK changing them below won't change the values.
+# After that they can be changed in the ZK cli doing something like:
+# set /propertyService/stroom.stats.streams.kafka.num.stream.threads 100
 defaultProperties:
     stroom.stats.streams.kafka.bootstrapServers: ${STATS_KAFKA_BOOTSTRAP:- localhost:9092}
     stroom.stats.streams.kafka.num.stream.threads: 2
