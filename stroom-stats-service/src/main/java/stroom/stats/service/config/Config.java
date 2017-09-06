@@ -28,12 +28,20 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.nio.charset.Charset;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 public class Config extends Configuration implements JobConfiguration {
 
     @NotNull
     @Valid
     private String jwtTokenSecret;
+
+    @Valid
+    private String advertisedHostNameOrIpAddress;
+
+    @Valid
+    private Integer advertisedPort;
 
     @NotNull
     @Valid
@@ -58,6 +66,16 @@ public class Config extends Configuration implements JobConfiguration {
         return jwtTokenSecret.getBytes(Charset.defaultCharset());
     }
 
+    public Optional<String> getAdvertisedHostNameOrIP() {
+        return Optional.ofNullable(advertisedHostNameOrIpAddress);
+    }
+
+    public OptionalInt getAdvertisedPort() {
+        return Optional.ofNullable(advertisedPort)
+                .map(OptionalInt::of)
+                .orElse(OptionalInt.empty());
+    }
+
     public ZookeeperConfig getZookeeperConfig() {
         return zookeeperConfig;
     }
@@ -70,6 +88,8 @@ public class Config extends Configuration implements JobConfiguration {
     public String toString() {
         return "Config{" +
                 "jwtTokenSecret='" + jwtTokenSecret + '\'' +
+                ", advertisedHostNameOrIpAddress='" + advertisedHostNameOrIpAddress + '\'' +
+                ", advertisedPort='" + advertisedPort + '\'' +
                 ", zookeeperConfig=" + zookeeperConfig +
                 ", defaultProperties=" + defaultProperties +
                 ", database=" + database +

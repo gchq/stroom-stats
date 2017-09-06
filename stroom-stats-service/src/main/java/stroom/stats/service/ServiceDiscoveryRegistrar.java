@@ -29,14 +29,11 @@ import java.util.TreeMap;
 public class ServiceDiscoveryRegistrar implements HasHealthCheck {
     private static final Logger LOGGER = LoggerFactory.getLogger(ServiceDiscoveryRegistrar.class);
 
-    private static final String PROP_KEY_SERVICE_HOST_OR_IP = "stroom.stats.serviceDiscovery.servicesHostNameOrIpAddress";
-    private static final String PROP_KEY_SERVICE_PORT = "stroom.stats.serviceDiscovery.servicesPort";
-
     private HealthCheck.Result health;
     private final ServiceDiscoveryManager serviceDiscoveryManager;
     private final StroomPropertyService stroomPropertyService;
-    private final String hostNameOrIpAddress;
-    private final int servicePort;
+    private final String advertisedHostNameOrIpAddress;
+    private final int advertisedPort;
 
     @Inject
     public ServiceDiscoveryRegistrar(final Config config,
@@ -45,17 +42,17 @@ public class ServiceDiscoveryRegistrar implements HasHealthCheck {
 
         this.serviceDiscoveryManager = serviceDiscoveryManager;
         this.stroomPropertyService = stroomPropertyService;
-        this.hostNameOrIpAddress = getHostOrIp(stroomPropertyService);
+        this.advertisedHostNameOrIpAddress = getHostOrIp(config);
 
-        this.servicePort = stroomPropertyService.getIntProperty(PROP_KEY_SERVICE_PORT)
+        this.advertisedPort = config.getAdvertisedPort()
                 .orElseGet(() -> getPort(config));
 
         health = HealthCheck.Result.unhealthy("Not yet initialised...");
         this.serviceDiscoveryManager.registerStartupListener(this::curatorStartupListener);
     }
 
-    private String getHostOrIp(final StroomPropertyService stroomPropertyService) {
-        String hostOrIp = stroomPropertyService.getProperty(PROP_KEY_SERVICE_HOST_OR_IP)
+    private String getHostOrIp(final Config config) {
+        String hostOrIp = config.getAdvertisedHostNameOrIP()
                 .orElseGet(this::getLocalHostnameOrAddress);
         return hostOrIp;
     }
@@ -117,8 +114,8 @@ public class ServiceDiscoveryRegistrar implements HasHealthCheck {
                     .serviceType(ServiceType.DYNAMIC) //==ephemeral zk nodes so instance will disappear if we lose zk conn
                     .uriSpec(uriSpec)
                     .name(registeredService.getVersionedServiceName(stroomPropertyService))
-                    .address(hostNameOrIpAddress)
-                    .port(servicePort)
+                    .address(advertisedHostNameOrIpAddress)
+                    .port(advertisedPort)
                     .build();
 
             LOGGER.info("Attempting to register '{}' with service discovery at {}",

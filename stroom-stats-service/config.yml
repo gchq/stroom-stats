@@ -42,6 +42,11 @@ database:
 
 
 jwtTokenSecret: ${STATS_JWT_SECRET:- CHANGE_ME}
+#If set registers this instance with service discovery using the specified address,
+#else it uses the local hostname or ip address
+advertisedHostNameOrIpAddress: ${STATS_ADVERTISED_HOST_OR_IP:- }
+#As above but for port
+advertisedPort: ${STATS_ADVERTISED_PORT:- }
 
 server:
     adminMinThreads: 1
@@ -128,11 +133,6 @@ defaultProperties:
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.second: 48
     stroom.stats.hbase.search.maxTimeIntervalsInPeriod: 200
 
-    #If set registers this instance with service discovery using the specified address,
-    #else it uses the local hostname or ip address
-    #stroom.stats.serviceDiscovery.servicesHostNameOrIpAddress:
-    #As above but for port
-    #stroom.stats.serviceDiscovery.servicesPort:
 
     #----------Service Discovery START ---------------
     #Stroom-Stats
