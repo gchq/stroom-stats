@@ -11,19 +11,21 @@ dependencies {
     //jaxb 'javax.xml.bind:jaxb-api:2.2.7'
 
     // The two dependencies below should work for RI versions of JAXB after 2.2.8
-    jaxb "org.glassfish.jaxb:jaxb-xjc:${versions.jaxb}"
-    jaxb "org.glassfish.jaxb:jaxb-runtime:${versions.jaxb}"
+    //jaxb "org.glassfish.jaxb:jaxb-xjc:${versions.jaxb}"
+    //jaxb "org.glassfish.jaxb:jaxb-runtime:${versions.jaxb}"
+    jaxb libs.jaxb_xjc
+    jaxb libs.jaxb_runtime
 }
 
 def xmlSchemas = [
     v3: 'https://raw.githubusercontent.com/gchq/stroom-content/statsSchemaV3/source/core-xml-schemas/stroomContent/XML%20Schemas/statistics/statistics%20v3.0.XMLSchema.data.xsd'
 ]
 
-def schemasDir = "schemas"
+def schemasDir = "${buildDir}/schemas"
 
 task downloadSchemas() {
     doLast {
-        logger.info("Creating dir----------------------------")
+        logger.info("Creating dir ${schemasDir} ----------------------------")
         new File(schemasDir).mkdirs()
 
         download {
@@ -102,7 +104,7 @@ tasks.xjc.dependsOn downloadSchemas
 jaxb() {
 
     //logger.info "${schemasDir}"
-    xsdDir = "schemas"
+    xsdDir = "${project.name}/build/schemas"
     xjc {
         generatePackage = "stroom.stats.schema.vX"
         args = [
