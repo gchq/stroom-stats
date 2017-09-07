@@ -169,11 +169,12 @@ urlDependencies {
             "https://github.com/gchq/stroom-expression/releases/download/$versions.stroomExpression/${urlLibs.stroomExpression}.jar")
 }
 
-project(':stroom-stats-api') {
+project(':stroom-stats-schema') {
+
     publishing {
         publications {
             mavenJava(MavenPublication) {
-                artifactId 'stroom-stats-api'
+                artifactId 'stroom-stats-schema'
                 from components.java
                 artifact sourcesJar
             }

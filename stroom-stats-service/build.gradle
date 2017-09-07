@@ -26,7 +26,7 @@ shadowJar {
 
 dependencies {
     //Project dependencies
-    compile project(':stroom-stats-api')
+    compile project(':stroom-stats-schema')
     compile project(':stroom-stats-hbase-client')
     compile project(':stroom-stats-util')
     compile project(':stroom-stats-model')
