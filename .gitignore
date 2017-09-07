@@ -4,7 +4,7 @@ build/
 classes/
 libs/
 */out/
-schema/
+/schema/
 
 # Ignore Gradle GUI config
 gradle-app.setting
