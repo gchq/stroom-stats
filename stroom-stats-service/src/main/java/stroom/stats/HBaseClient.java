@@ -52,7 +52,7 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.schema.Statistics;
+import stroom.stats.schema.v3.Statistics;
 import stroom.stats.service.config.Config;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.util.logging.LambdaLogger;

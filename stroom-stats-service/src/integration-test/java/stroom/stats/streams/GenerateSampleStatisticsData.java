@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.schema.Statistics;
+import stroom.stats.schema.v3.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.test.StroomStatsStoreEntityBuilder;

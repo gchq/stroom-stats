@@ -24,8 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.schema.Statistics;
-import stroom.stats.schema.TagType;
+import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v3.TagType;
 
 import java.util.stream.Collectors;
 

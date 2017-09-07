@@ -21,7 +21,7 @@ package stroom.stats.xml;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.schema.Statistics;
+import stroom.stats.schema.v3.Statistics;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;

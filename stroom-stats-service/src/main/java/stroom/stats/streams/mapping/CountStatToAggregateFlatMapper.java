@@ -24,7 +24,7 @@ import org.apache.kafka.streams.KeyValue;
 import stroom.stats.api.MultiPartIdentifier;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.schema.Statistics;
+import stroom.stats.schema.v3.Statistics;
 import stroom.stats.streams.StatKey;
 import stroom.stats.streams.StatisticWrapper;
 import stroom.stats.streams.aggregation.CountAggregate;

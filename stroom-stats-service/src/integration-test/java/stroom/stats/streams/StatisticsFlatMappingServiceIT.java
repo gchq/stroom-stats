@@ -63,7 +63,7 @@ import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.MockStroomPropertyService;
-import stroom.stats.schema.Statistics;
+import stroom.stats.schema.v3.Statistics;
 import stroom.stats.service.config.Config;
 import stroom.stats.service.config.ZookeeperConfig;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;

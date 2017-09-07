@@ -46,7 +46,7 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.schema.Statistics;
+import stroom.stats.schema.v3.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.QueryApiHelper;
 import stroom.stats.test.StroomStatsStoreEntityHelper;

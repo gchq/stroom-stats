@@ -8,7 +8,7 @@ import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import stroom.stats.api.StatisticType;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.schema.Statistics;
+import stroom.stats.schema.v3.Statistics;
 import stroom.stats.streams.FullEndToEndIT;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.streams.TopicNameFactory;

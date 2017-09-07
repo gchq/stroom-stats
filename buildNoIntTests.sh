@@ -1,2 +1,2 @@
 #!/bin/bash
-./gradlew clean downloadUrlDependencies build -x integrationTest shadowJar "$@"
+./gradlew clean downloadUrlDependencies build xjc -x integrationTest shadowJar "$@"

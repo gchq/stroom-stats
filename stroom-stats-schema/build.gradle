@@ -22,16 +22,32 @@ def xmlSchemas = [
 ]
 
 def schemasDir = "${buildDir}/schemas"
-def generatedDir = "srcgenerated"
+def generatedDir = "src-generated"
 
-sourceSets {
-    main {
-        java {
-            //we are only dealing with generated classes so make that clear by renaming the directory
-            srcDir generatedDir
-        }
+sourceSets.main.java.srcDir new File(projectDir, 'src-generated/main/java')
+idea {
+    module {
+        // Marks the already(!) added srcDir as "generated"
+        generatedSourceDirs += file('src-generated/main/java')
     }
 }
+
+clean {
+    delete 'src-generated/main/java/*'
+}
+
+//sourceSets {
+    //main {
+        //java {
+            ////we are only dealing with generated classes so make that clear by renaming the directory
+            //srcDir generatedDir
+        //}
+    //}
+
+    //generated{
+        //java.srcDir "${buildDir}/generated/src/java/"
+    //}
+//}
 
 task downloadSchemas() {
     doLast {
