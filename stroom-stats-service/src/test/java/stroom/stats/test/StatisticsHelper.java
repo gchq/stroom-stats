@@ -34,14 +34,14 @@ import java.util.List;
 
 public class StatisticsHelper {
 
-    public static Statistics.Statistic buildCountStatistic(String statName, ZonedDateTime time, long value, TagType... tagValues) {
-        Statistics.Statistic statistic = buildStatistic(statName, time, tagValues);
+    public static Statistics.Statistic buildCountStatistic(String key, String statName, ZonedDateTime time, long value, TagType... tagValues) {
+        Statistics.Statistic statistic = buildStatistic(key, statName, time, tagValues);
         statistic.setCount(value);
         return statistic;
     }
 
-    public static Statistics.Statistic buildValueStatistic(String statName, ZonedDateTime time, double value, TagType... tagValues) {
-        Statistics.Statistic statistic = buildStatistic(statName, time, tagValues);
+    public static Statistics.Statistic buildValueStatistic(String key, String statName, ZonedDateTime time, double value, TagType... tagValues) {
+        Statistics.Statistic statistic = buildStatistic(key, statName, time, tagValues);
         statistic.setValue(value);
         return statistic;
     }
@@ -82,9 +82,13 @@ public class StatisticsHelper {
         return tagType;
     }
 
-    private static Statistics.Statistic buildStatistic(String statName, ZonedDateTime time, TagType... tagValues){
-        Statistics.Statistic statistic = new ObjectFactory().createStatisticsStatistic();
-        statistic.setName(statName);
+    private static Statistics.Statistic buildStatistic(String key, String statName, ZonedDateTime time, TagType... tagValues){
+        ObjectFactory objectFactory = new ObjectFactory();
+        Statistics.Statistic statistic = objectFactory.createStatisticsStatistic();
+        Statistics.Statistic.Key keyObj = objectFactory.createStatisticsStatisticKey();
+        keyObj.setValue(key);
+        keyObj.setStatisticName(statName);
+        statistic.setKey(keyObj);
         Statistics.Statistic.Tags tagsObj = new Statistics.Statistic.Tags();
         tagsObj.getTag().addAll(new ArrayList(Arrays.asList(tagValues)));
         statistic.setTags(tagsObj);

@@ -20,6 +20,7 @@
 package stroom.stats.schema;
 
 import org.junit.Test;
+import stroom.stats.schema.v3.Statistics;
 import stroom.stats.xml.StatisticsMarshaller;
 
 import javax.xml.bind.JAXBContext;
@@ -73,6 +74,7 @@ public class SerialisationTest {
         InputStream inputStream = new FileInputStream(STATISTICS_FROM_STROOM_01);
         JAXBContext jaxbContext = JAXBContext.newInstance(Statistics.class);
         Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
+        unmarshaller.
         Statistics statistics = (Statistics) unmarshaller.unmarshal(inputStream);
         assertThat(statistics.getStatistic().size(), equalTo(99));
     }

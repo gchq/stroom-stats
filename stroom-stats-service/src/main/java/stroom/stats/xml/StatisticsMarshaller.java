@@ -29,6 +29,7 @@ import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.Optional;
 
 public class StatisticsMarshaller {
 
@@ -67,6 +68,7 @@ public class StatisticsMarshaller {
         try {
             Marshaller marshaller = jaxbContext.createMarshaller();
             StringWriter stringWriter = new StringWriter();
+            marshaller.setEventHandler();
             marshaller.marshal(statistics, stringWriter);
             return stringWriter.toString();
         } catch (JAXBException e) {
@@ -77,7 +79,12 @@ public class StatisticsMarshaller {
 
     private void logStatistics(Statistics statistics) {
         statistics.getStatistic().forEach(statistic ->
-                LOGGER.trace("Un-marshalling stat with name {}, count {} and value {}", statistic.getName(), statistic.getCount(), statistic.getValue())
+                LOGGER.trace("Un-marshalling stat with name {}, count {} and value {}",
+                        Optional.ofNullable(statistic.getKey())
+                                .map(Statistics.Statistic.Key::getStatisticName)
+                                .orElse("NO NAME SUPPLIED"),
+                        statistic.getCount(),
+                        statistic.getValue())
         );
     }
 

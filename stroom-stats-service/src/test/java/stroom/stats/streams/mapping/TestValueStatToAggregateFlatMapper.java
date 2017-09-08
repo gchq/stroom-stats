@@ -56,6 +56,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,6 +71,7 @@ public class TestValueStatToAggregateFlatMapper {
     private UniqueIdCache uniqueIdCache = new MockUniqueIdCache();
 
     private String statName = "MyStat";
+    private String statUuid = UUID.randomUUID().toString();
     private String tag1 = "tag1";
     private String tag2 = "tag2";
     String tag1val1 = tag1 + "val1";
@@ -101,7 +103,7 @@ public class TestValueStatToAggregateFlatMapper {
         StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.empty());
 
         //will throw a RTE as there is no StatConfig
-        valueStatToAggregateMapper.flatMap(statistic.getName(), statisticWrapper);
+        valueStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
     }
 
     @Test
@@ -110,7 +112,7 @@ public class TestValueStatToAggregateFlatMapper {
         Statistics.Statistic statistic = buildStatistic();
 
         StatisticConfiguration statisticConfiguration = new MockStatisticConfiguration()
-                .setName(statistic.getName())
+                .setName(statistic.getKey().getValue())
                 .setStatisticType(StatisticType.VALUE)
                 .setRollUpType(StatisticRollUpType.NONE)
                 .addFieldNames(tag1, tag2)
@@ -122,7 +124,7 @@ public class TestValueStatToAggregateFlatMapper {
         StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
 
         //will throw a RTE as there is no StatConfig
-        Iterable<KeyValue<StatKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statistic.getName(), statisticWrapper);
+        Iterable<KeyValue<StatKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
         List<KeyValue<StatKey, StatAggregate>> keyValues = (List<KeyValue<StatKey, StatAggregate>>) iterable;
 
         assertThat(keyValues).hasSize(1);
@@ -147,7 +149,7 @@ public class TestValueStatToAggregateFlatMapper {
         Statistics.Statistic statistic = buildStatistic();
 
         StatisticConfiguration statisticConfiguration = new MockStatisticConfiguration()
-                .setName(statistic.getName())
+                .setName(statistic.getKey().getValue())
                 .setStatisticType(StatisticType.VALUE)
                 .setRollUpType(StatisticRollUpType.ALL)
                 .addFieldNames(tag1, tag2)
@@ -160,7 +162,7 @@ public class TestValueStatToAggregateFlatMapper {
 
         //will throw a RTE as there is no StatConfig
         Instant start = Instant.now();
-        Iterable<KeyValue<StatKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statistic.getName(), statisticWrapper);
+        Iterable<KeyValue<StatKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
         Duration executionTime = Duration.between(start, Instant.now());
         LOGGER.debug("Execution time: {}ms", executionTime.toMillis());
 
@@ -199,7 +201,7 @@ public class TestValueStatToAggregateFlatMapper {
         RollUpBitMask mask2 = RollUpBitMask.fromTagPositions(Arrays.asList(0, 1));
 
         StatisticConfiguration statisticConfiguration = new MockStatisticConfiguration()
-                .setName(statistic.getName())
+                .setName(statistic.getKey().getValue())
                 .setStatisticType(StatisticType.VALUE)
                 .setRollUpType(StatisticRollUpType.CUSTOM)
                 .addCustomRollupMask(new MockCustomRollupMask(mask1.getTagPositionsAsList()))
@@ -214,7 +216,7 @@ public class TestValueStatToAggregateFlatMapper {
 
         //will throw a RTE as there is no StatConfig
         Instant start = Instant.now();
-        Iterable<KeyValue<StatKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statistic.getName(), statisticWrapper);
+        Iterable<KeyValue<StatKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
         Duration executionTime = Duration.between(start, Instant.now());
         LOGGER.debug("Execution time: {}ms", executionTime.toMillis());
 
@@ -249,7 +251,7 @@ public class TestValueStatToAggregateFlatMapper {
         Statistics.Statistic statistic = buildStatisticNoTags();
 
         StatisticConfiguration statisticConfiguration = new MockStatisticConfiguration()
-                .setName(statistic.getName())
+                .setName(statistic.getKey().getValue())
                 .setStatisticType(StatisticType.COUNT)
                 .setRollUpType(StatisticRollUpType.ALL)
                 .addFieldNames(tag1, tag2)
@@ -261,7 +263,7 @@ public class TestValueStatToAggregateFlatMapper {
         StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
 
         Instant start = Instant.now();
-        Iterable<KeyValue<StatKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statistic.getName(), statisticWrapper);
+        Iterable<KeyValue<StatKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
         Duration executionTime = Duration.between(start, Instant.now());
         LOGGER.debug("Execution time: {}ms", executionTime.toMillis());
 
@@ -305,7 +307,11 @@ public class TestValueStatToAggregateFlatMapper {
         //use system time as class under test has logic based on system time
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
-        Statistics.Statistic statistic = StatisticsHelper.buildValueStatistic(statName, time, 10.5,
+        Statistics.Statistic statistic = StatisticsHelper.buildValueStatistic(
+                statUuid,
+                statName,
+                time,
+                10.5,
                 StatisticsHelper.buildTagType(tag1, tag1val1),
                 StatisticsHelper.buildTagType(tag2, tag2val1)
         );
@@ -321,7 +327,11 @@ public class TestValueStatToAggregateFlatMapper {
         //use system time as class under test has logic based on system time
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
-        Statistics.Statistic statistic = StatisticsHelper.buildValueStatistic(statName, time, 10L);
+        Statistics.Statistic statistic = StatisticsHelper.buildValueStatistic(
+                statUuid,
+                statName,
+                time,
+                10L);
 
         StatisticsHelper.addIdentifier(statistic, id1part1, id1part2);
         StatisticsHelper.addIdentifier(statistic, id2part1, id2part2);

@@ -100,11 +100,11 @@ public class StatisticsFlatMappingStreamFactory {
         Serde<StatAggregate> statAggregateSerde = StatAggregateSerde.instance();
 
         KStreamBuilder builder = new KStreamBuilder();
-        //This is the input to all the processing, key is the statname, value is the stat XML
+        //This is the input to all the processing, key is the uuid of the stat, value is the stat XML
         KStream<String, String> inputStream = builder.stream(stringSerde, stringSerde, inputTopic);
 
-        //TODO currently the stat name is both the msg key and in the Statistic object.
-        //Should probably just be in the key
+        //currently the stat uuid is both the msg key and in the Statistic object.
+        //This does mean duplication but means the msg can exist without the key, without losing meaning
         KStream<String, StatisticWrapper>[] forkedStreams = inputStream
                 .filter((key, value) -> {
                     //like a peek function
@@ -203,7 +203,8 @@ public class StatisticsFlatMappingStreamFactory {
 
 
     private StatisticWrapper buildStatisticWrapper(final Statistics.Statistic statistic) {
-        Optional<StatisticConfiguration> optStatConfig = statisticConfigurationService.fetchStatisticConfigurationByName(statistic.getName());
+        Optional<StatisticConfiguration> optStatConfig =
+                statisticConfigurationService.fetchStatisticConfigurationByUuid(statistic.getKey().getValue());
 
         return new StatisticWrapper(statistic, optStatConfig);
     }

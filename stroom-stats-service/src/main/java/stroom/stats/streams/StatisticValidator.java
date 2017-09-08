@@ -27,6 +27,7 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.schema.v3.Statistics;
 import stroom.stats.schema.v3.TagType;
 
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class StatisticValidator {
@@ -37,16 +38,21 @@ public class StatisticValidator {
      * Make sure the event is correct for the statistic configuration
      */
 //    public static boolean isValidEvent(final String statName, final StatisticWrapper statisticWrapper) {
-    public static KeyValue<String, StatisticWrapper> validate(String statName, StatisticWrapper statisticWrapper) {
+    public static KeyValue<String, StatisticWrapper> validate(String msgKey, StatisticWrapper statisticWrapper) {
 
 
-        if (statName == null) {
-            return addErrorMsg(statName, statisticWrapper, "No statName in the message key");
+        if (msgKey == null) {
+            return addErrorMsg(msgKey, statisticWrapper, "No statName in the message key");
         }
         Statistics.Statistic statistic = statisticWrapper.getStatistic();
 
-        if (!statName.equals(statistic.getName())) {
-            return addErrorMsg(statName, statisticWrapper, String.format("Stat name in the message key %s doesn't match name in the message %s", statName, statistic.getName()));
+        String uuidFromWrapper = Optional.ofNullable(statistic.getKey())
+                .map(Statistics.Statistic.Key::getValue)
+                .orElse(null);
+        if (!msgKey.equals(uuidFromWrapper)) {
+            return addErrorMsg(msgKey, statisticWrapper,
+                    String.format("Stat uuid in the message key %s doesn't match uuid in the message %s",
+                            msgKey, uuidFromWrapper));
         }
 
         if (statisticWrapper.getOptionalStatisticConfiguration().isPresent()) {
@@ -54,34 +60,36 @@ public class StatisticValidator {
             StatisticConfiguration statisticConfiguration = statisticWrapper.getOptionalStatisticConfiguration().get();
 
             if (statisticConfiguration.getStatisticType().equals(StatisticType.COUNT) && statistic.getCount() == null) {
-                return addErrorMsg(statName, statisticWrapper, String.format("Statistic is of type COUNT but getCount is null"));
+                return addErrorMsg(msgKey, statisticWrapper, String.format("Statistic is of type COUNT but getCount is null"));
             }
             if (statisticConfiguration.getStatisticType().equals(StatisticType.VALUE) && statistic.getValue() == null) {
-                return addErrorMsg(statName, statisticWrapper, String.format("Statistic is of type VALUE but getValue is null"));
+                return addErrorMsg(msgKey, statisticWrapper, String.format("Statistic is of type VALUE but getValue is null"));
             }
 
             if (!doTagNamesMatch(statisticConfiguration, statistic)) {
-                return addErrorMsg(statName, statisticWrapper, String.format("The tag names in the event %s do not match those configured for the statistic %s",
-                        statistic.getTags().getTag().stream()
-                                .map(TagType::getName)
-                                .collect(Collectors.joining(",")),
-                        statisticConfiguration.getFieldNames().stream()
-                                .collect(Collectors.joining(","))));
+                return addErrorMsg(msgKey, statisticWrapper,
+                        String.format("The tag names in the event %s do not match those configured for the statistic %s",
+                                statistic.getTags().getTag().stream()
+                                        .map(TagType::getName)
+                                        .collect(Collectors.joining(",")),
+                                statisticConfiguration.getFieldNames().stream()
+                                        .collect(Collectors.joining(","))));
             }
         } else {
-            return addErrorMsg(statName, statisticWrapper, String.format("No statistic configuration exists for name %s", statName));
+            return addErrorMsg(msgKey, statisticWrapper,
+                    String.format("No statistic configuration exists for uuid %s", msgKey));
         }
         LOGGER.trace("Message is valid");
         //just re-wrap the existing objects in a new KeyValue
-        return new KeyValue<>(statName, statisticWrapper);
+        return new KeyValue<>(msgKey, statisticWrapper);
     }
 
-    public static KeyValue<String, StatisticWrapper> addErrorMsg(String statName, StatisticWrapper statisticWrapper, String message) {
-        return new KeyValue<>(statName, statisticWrapper.addErrorMessage(message));
+    public static KeyValue<String, StatisticWrapper> addErrorMsg(String msgKey, StatisticWrapper statisticWrapper, String message) {
+        return new KeyValue<>(msgKey, statisticWrapper.addErrorMessage(message));
     }
 
     private static boolean doTagNamesMatch(final StatisticConfiguration statisticConfiguration,
-                                    final Statistics.Statistic statistic) {
+                                           final Statistics.Statistic statistic) {
 
         //All the tags names in the stat must be in the stat config.  It is ok however for the stat config
         //to have tag names that are not in the stat, as these will just be treated as null
@@ -89,9 +97,9 @@ public class StatisticValidator {
             return true;
         } else {
             return statisticConfiguration.getFieldNames().containsAll(
-                            statistic.getTags().getTag().stream()
-                                    .map(TagType::getName)
-                                    .collect(Collectors.toList()));
+                    statistic.getTags().getTag().stream()
+                            .map(TagType::getName)
+                            .collect(Collectors.toList()));
         }
     }
 
