@@ -63,6 +63,7 @@ task downloadSchemas() {
 }
 
 tasks.xjc.dependsOn downloadSchemas
+tasks.compileJava.dependsOn xjc
 
 //task downloadXmlSchemas() {
     //doLast {
