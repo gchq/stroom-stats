@@ -403,8 +403,8 @@ public class EndToEndVolumeIT extends AbstractAppIT {
     }
 
     private static ProducerRecord<String, String> buildProducerRecord(String topic, Statistics statistics, StatisticsMarshaller statisticsMarshaller) {
-        String statName = statistics.getStatistic().get(0).getName();
-        return new ProducerRecord<>(topic, statName, statisticsMarshaller.marshallXml(statistics));
+        String statKey = statistics.getStatistic().get(0).getKey().getValue();
+        return new ProducerRecord<>(topic, statKey, statisticsMarshaller.marshallToXml(statistics));
     }
 
     /**

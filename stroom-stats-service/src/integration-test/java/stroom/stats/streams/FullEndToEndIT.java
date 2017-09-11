@@ -228,6 +228,6 @@ public class FullEndToEndIT extends AbstractAppIT {
 
     private static ProducerRecord<String, String> buildProducerRecord(String topic, Statistics statistics, StatisticsMarshaller statisticsMarshaller) {
         String statName = statistics.getStatistic().get(0).getName();
-        return new ProducerRecord<>(topic, statName, statisticsMarshaller.marshallXml(statistics));
+        return new ProducerRecord<>(topic, statName, statisticsMarshaller.marshallToXml(statistics));
     }
 }

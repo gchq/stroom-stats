@@ -118,7 +118,7 @@ public class GenerateSampleStatisticsData {
 
         //generate the stat events
         List<Statistics.Statistic> statisticList = new ArrayList<>(
-                buildEvents(statName, startTime, statisticType, iterationCount));
+                buildEvents(statisticConfiguration.getUuid(), statName, startTime, statisticType, iterationCount));
 
         //randomise the stats
         Collections.shuffle(statisticList, new Random());
@@ -137,7 +137,8 @@ public class GenerateSampleStatisticsData {
     }
 
 
-    private static Collection<Statistics.Statistic> buildEvents(final String statName,
+    private static Collection<Statistics.Statistic> buildEvents(final String uuid,
+                                                                final String statName,
                                                                 final ZonedDateTime initialEventTime,
                                                                 final StatisticType statisticType,
                                                                 final int iterationCount) {
@@ -157,6 +158,7 @@ public class GenerateSampleStatisticsData {
                         Statistics.Statistic statistic;
                         if (statisticType.equals(StatisticType.COUNT)) {
                             statistic = StatisticsHelper.buildCountStatistic(
+                                    uuid,
                                     statName,
                                     time,
                                     COUNT_STAT_VALUE,
@@ -169,6 +171,7 @@ public class GenerateSampleStatisticsData {
                             double val = VALUE_STAT_VALUE_MAP.get(colour);
 
                             statistic = StatisticsHelper.buildValueStatistic(
+                                    uuid,
                                     statName,
                                     time,
                                     val,

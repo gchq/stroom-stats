@@ -54,7 +54,7 @@ public class SerialisationTest {
     public void testDeserialisation() throws IOException, JAXBException {
 
         String xmlStr = new String(Files.readAllBytes(Paths.get(EXAMPLE_XML_01)), StandardCharsets.UTF_8);
-        Statistics statistics = statisticsMarshaller.unMarshallXml(xmlStr);
+        Statistics statistics = statisticsMarshaller.unMarshallFromXml(xmlStr);
 
         // Check the number of stats is right
         assertThat(statistics.getStatistic().size(), equalTo(3));
@@ -70,22 +70,16 @@ public class SerialisationTest {
 
 
     @Test
-    public void testPostStatisticsFromStroom_01() throws JAXBException, FileNotFoundException {
-        InputStream inputStream = new FileInputStream(STATISTICS_FROM_STROOM_01);
-        JAXBContext jaxbContext = JAXBContext.newInstance(Statistics.class);
-        Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
-        unmarshaller.
-        Statistics statistics = (Statistics) unmarshaller.unmarshal(inputStream);
+    public void testPostStatisticsFromStroom_01() throws JAXBException, IOException {
+        String fileString = new String(Files.readAllBytes(Paths.get(STATISTICS_FROM_STROOM_01)));
+        Statistics statistics = statisticsMarshaller.unMarshallFromXml(fileString);
         assertThat(statistics.getStatistic().size(), equalTo(99));
     }
 
     @Test
-    public void testPostStatisticsFromStroom_02() throws JAXBException, FileNotFoundException {
-        InputStream inputStream = new FileInputStream(STATISTICS_FROM_STROOM_02);
-        JAXBContext jaxbContext = JAXBContext.newInstance(Statistics.class);
-        Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
-        Statistics statistics = (Statistics) unmarshaller.unmarshal(inputStream);
+    public void testPostStatisticsFromStroom_02() throws JAXBException, IOException {
+        String fileString = new String(Files.readAllBytes(Paths.get(STATISTICS_FROM_STROOM_02)));
+        Statistics statistics = statisticsMarshaller.unMarshallFromXml(fileString);
         assertThat(statistics.getStatistic().size(), equalTo(99));
     }
-
 }

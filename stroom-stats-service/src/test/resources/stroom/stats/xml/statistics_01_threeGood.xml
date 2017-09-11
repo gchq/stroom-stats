@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright 2017 Crown Copyright
+  ~
+  ~ This file is part of Stroom-Stats.
+  ~
+  ~ Stroom-Stats is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ Stroom-Stats is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU General Public License
+  ~ along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
+  -->
+
+<statistics>
+    <!-- count stat with multiple identifiers contributing to the stat event -->
+    <statistic>
+        <key statisticName="ExampleCountStat">def3a909-f108-4008-bb55-c556b3d2ea89</key>
+        <time>2016-12-20T10:11:12.123Z</time>
+        <count>2</count>    
+        <tags>
+            <tag name="department" value="HR"/>
+            <tag name="user" value="jbloggs"/>
+        </tags>    
+        <identifiers>
+            <compoundIdentifier>
+                <longIdentifier name="streamId">1</longIdentifier>
+                <longIdentifier name="eventId">1</longIdentifier>
+            </compoundIdentifier>            
+            <compoundIdentifier>
+                <longIdentifier name="streamId">2</longIdentifier>
+                <longIdentifier name="eventId">1</longIdentifier>
+            </compoundIdentifier>            
+        </identifiers>    
+    </statistic>
+    <!-- count stat with an identifier made from a string part and a long part -->
+    <statistic>
+        <key statisticName="ExampleCountStat">def3a909-f108-4008-bb55-c556b3d2ea89</key>
+        <time>2016-12-20T11:11:12.123Z</time>
+        <count>1</count>    
+        <tags>
+            <tag name="department" value="IT"/>
+            <tag name="user" value="jdoe"/>
+        </tags>    
+        <identifiers>
+            <compoundIdentifier>
+                <stringIdentifier name="uuid">db49f0d1-a483-4011-a47e-3dbfb809cd28</stringIdentifier>
+                <longIdentifier name="seqNo">3</longIdentifier>
+            </compoundIdentifier>            
+        </identifiers>    
+    </statistic>
+    <!-- value stat with no identifiers -->
+    <statistic>
+        <key statisticName="ExampleValueStat">ce4e4345-0542-4ce3-8fa7-fdac594b5d1c</key>
+        <time>2016-12-20T11:11:12.123Z</time>
+        <value>99.9</value>    
+        <tags>
+            <tag name="rack" value="rack1"/>
+            <tag name="host" value="somedomain.somehost"/>
+        </tags>    
+    </statistic>
+</statistics>

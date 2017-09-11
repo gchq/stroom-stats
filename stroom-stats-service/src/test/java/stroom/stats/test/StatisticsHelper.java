@@ -27,17 +27,36 @@ import stroom.stats.schema.v3.TagType;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.GregorianCalendar;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class StatisticsHelper {
 
-    public static Statistics.Statistic buildCountStatistic(String key, String statName, ZonedDateTime time, long value, TagType... tagValues) {
+    //hold a map of uuids for each stat name to make it easier for test classes to reuse uuids
+    private static final Map<String, String> NAME_TO_UUID_MAP = new ConcurrentHashMap<>();
+
+    public static Statistics.Statistic buildCountStatistic(String statName,
+                                                           ZonedDateTime time,
+                                                           long value,
+                                                           TagType... tagValues) {
+        return buildCountStatistic(getUuidKey(statName), statName, time, value, tagValues);
+    }
+
+    public static Statistics.Statistic buildCountStatistic(String key,
+                                                           String statName,
+                                                           ZonedDateTime time,
+                                                           long value,
+                                                           TagType... tagValues) {
         Statistics.Statistic statistic = buildStatistic(key, statName, time, tagValues);
         statistic.setCount(value);
         return statistic;
+    }
+
+    public static Statistics.Statistic buildValueStatistic(String statName,
+                                                           ZonedDateTime time,
+                                                           double value,
+                                                           TagType... tagValues) {
+        return buildValueStatistic(getUuidKey(statName), statName, time, value, tagValues);
     }
 
     public static Statistics.Statistic buildValueStatistic(String key, String statName, ZonedDateTime time, double value, TagType... tagValues) {
@@ -82,7 +101,7 @@ public class StatisticsHelper {
         return tagType;
     }
 
-    private static Statistics.Statistic buildStatistic(String key, String statName, ZonedDateTime time, TagType... tagValues){
+    private static Statistics.Statistic buildStatistic(String key, String statName, ZonedDateTime time, TagType... tagValues) {
         ObjectFactory objectFactory = new ObjectFactory();
         Statistics.Statistic statistic = objectFactory.createStatisticsStatistic();
         Statistics.Statistic.Key keyObj = objectFactory.createStatisticsStatisticKey();
@@ -99,5 +118,10 @@ public class StatisticsHelper {
             throw new RuntimeException(String.format("Error converting time %s to a gregorian calendar", time), e);
         }
         return statistic;
+    }
+
+    public static String getUuidKey(final String statName) {
+        NAME_TO_UUID_MAP.computeIfAbsent(statName, k -> UUID.randomUUID().toString());
+        return NAME_TO_UUID_MAP.get(statName);
     }
 }

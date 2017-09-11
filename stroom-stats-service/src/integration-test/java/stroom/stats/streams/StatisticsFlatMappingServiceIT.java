@@ -1096,7 +1096,7 @@ public class StatisticsFlatMappingServiceIT {
 
     private ProducerRecord<String, String> buildProducerRecord(String topic, Statistics statistics) {
         String statName = statistics.getStatistic().get(0).getName();
-        return new ProducerRecord<>(topic, statName, statisticsMarshaller.marshallXml(statistics));
+        return new ProducerRecord<>(topic, statName, statisticsMarshaller.marshallToXml(statistics));
     }
 
     private static KafkaEmbedded buildEmbeddedKafka() {

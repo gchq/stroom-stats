@@ -111,7 +111,7 @@ public class StatisticsFlatMappingStreamFactory {
                     LOGGER.trace("Received {} : {}", key, value);
                     return true;
                 })
-                .mapValues(statisticsMarshaller::unMarshallXml)
+                .mapValues(statisticsMarshaller::unMarshallFromXml)
                 .flatMapValues(Statistics::getStatistic) //flatMap a batch of stats down to individual events, badly named jaxb objects
                 .mapValues(this::buildStatisticWrapper) //wrap the stat event with its stat config
                 .map(StatisticValidator::validate) //validate each one then branch off the bad ones
@@ -195,7 +195,7 @@ public class StatisticsFlatMappingStreamFactory {
     private String badStatisticWrapperToString(StatisticWrapper statisticWrapper) {
         Statistics statisticsObj = wrapStatisticWithStatistics(statisticWrapper.getStatistic());
         return new StringBuilder()
-                .append(statisticsMarshaller.marshallXml(statisticsObj))
+                .append(statisticsMarshaller.marshallToXml(statisticsObj))
                 //Append the error message to the bottom of the XML as an XML comment
                 .append("\n<!-- VALIDATION_ERROR - " + statisticWrapper.getValidationErrorMessage().get() + " -->")
                 .toString();

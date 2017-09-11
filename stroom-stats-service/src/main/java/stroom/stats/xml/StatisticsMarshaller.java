@@ -23,53 +23,98 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.schema.v3.Statistics;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
-import javax.xml.bind.Unmarshaller;
+import javax.inject.Singleton;
+import javax.xml.bind.*;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+/**
+ * Class to hold the JAXB Context for (un-)marshalling {@link Statistics} xml/objects
+ */
+@Singleton
 public class StatisticsMarshaller {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsMarshaller.class);
 
     private final JAXBContext jaxbContext;
-    private int countOfFailedDeserialisations = 0;
 
     public StatisticsMarshaller() {
         try {
             this.jaxbContext = JAXBContext.newInstance(Statistics.class);
         } catch (JAXBException e) {
-            throw new RuntimeException(String.format("Error creating new JAXBContext instance for %s", Statistics.class.getName()), e);
+            throw new RuntimeException(String.format(
+                    "Error creating new JAXBContext instance for %s",
+                    Statistics.class.getName()), e);
         }
     }
 
-    public Statistics unMarshallXml(String xmlStr) {
+    public Statistics unMarshallFromXml(String xmlStr) {
         try {
             Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
-            Statistics statistics =  (Statistics) unmarshaller.unmarshal(new StringReader(xmlStr));
+            List<ValidationEvent> validationEvents = new ArrayList<>();
+            unmarshaller.setEventHandler(event -> {
+                if (event.getSeverity() == ValidationEvent.ERROR ||
+                        event.getSeverity() == ValidationEvent.FATAL_ERROR) {
+                    validationEvents.add(event);
+                }
+                //let the un-marshalling proceed to find any more problems
+                return true;
+            });
+
+            Statistics statistics = (Statistics) unmarshaller.unmarshal(new StringReader(xmlStr));
             if (LOGGER.isTraceEnabled()) {
                 logStatistics(statistics);
+            }
+            if (!validationEvents.isEmpty()) {
+                String detail = validationEvents.stream()
+                        .map(validationEvent ->
+                                validationEvent.getMessage() +
+                                        " at line " +
+                                        validationEvent.getLocator().getLineNumber() +
+                                        " col " + validationEvent.getLocator().getColumnNumber()
+                        )
+                        .collect(Collectors.joining(","));
+                throw new RuntimeException("Errors encountered un-marshalling xml: " + detail);
             }
             return statistics;
         } catch (JAXBException e) {
             int trimIndex = xmlStr.length() < 50 ? xmlStr.length() : 49;
             LOGGER.error("Unable to deserialise a message (enable debug to log full message): {}...", xmlStr.substring(0, trimIndex));
             LOGGER.debug("Unable to deserialise a message {}", xmlStr);
-            countOfFailedDeserialisations++;
             LOGGER.error("Error un-marshalling message value");
             throw new RuntimeException(String.format("Error un-marshalling message value"), e);
         }
     }
 
-    public String marshallXml(Statistics statistics) {
+    public String marshallToXml(Statistics statistics) {
         try {
             Marshaller marshaller = jaxbContext.createMarshaller();
             StringWriter stringWriter = new StringWriter();
-            marshaller.setEventHandler();
+            List<ValidationEvent> validationEvents = new ArrayList<>();
+            marshaller.setEventHandler(event -> {
+                if (event.getSeverity() == ValidationEvent.ERROR ||
+                        event.getSeverity() == ValidationEvent.FATAL_ERROR) {
+                    validationEvents.add(event);
+                }
+                //let the un-marshalling proceed to find any more problems
+                return true;
+            });
             marshaller.marshal(statistics, stringWriter);
+            if (!validationEvents.isEmpty()) {
+                String detail = validationEvents.stream()
+                        .map(validationEvent ->
+                                validationEvent.getMessage() +
+                                        " at line " +
+                                        validationEvent.getLocator().getLineNumber() +
+                                        " col " + validationEvent.getLocator().getColumnNumber()
+                        )
+                        .collect(Collectors.joining(","));
+                throw new RuntimeException("Errors encountered marshalling xml: " + detail);
+            }
             return stringWriter.toString();
         } catch (JAXBException e) {
             LOGGER.error("Error marshalling message value");
@@ -87,5 +132,4 @@ public class StatisticsMarshaller {
                         statistic.getValue())
         );
     }
-
 }
