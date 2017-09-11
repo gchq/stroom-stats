@@ -1095,8 +1095,8 @@ public class StatisticsFlatMappingServiceIT {
 
 
     private ProducerRecord<String, String> buildProducerRecord(String topic, Statistics statistics) {
-        String statName = statistics.getStatistic().get(0).getName();
-        return new ProducerRecord<>(topic, statName, statisticsMarshaller.marshallToXml(statistics));
+        String statKey = statistics.getStatistic().get(0).getKey().getValue();
+        return new ProducerRecord<>(topic, statKey, statisticsMarshaller.marshallToXml(statistics));
     }
 
     private static KafkaEmbedded buildEmbeddedKafka() {
@@ -1183,8 +1183,9 @@ public class StatisticsFlatMappingServiceIT {
                 String tagValues = statistic.getTags().getTag().stream()
                         .map(tagValue -> tagValue.getName() + "|" + tagValue.getValue())
                         .collect(Collectors.joining(","));
-                LOGGER.trace("Stat: {} {} {} {} {}",
-                        statistic.getName(),
+                LOGGER.trace("Stat: {} {} {} {} {} {}",
+                        statistic.getKey().getValue(),
+                        statistic.getKey().getStatisticName(),
                         statistic.getTime(),
                         tagValues,
                         statistic.getValue(),

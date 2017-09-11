@@ -59,7 +59,11 @@ public class StatisticsHelper {
         return buildValueStatistic(getUuidKey(statName), statName, time, value, tagValues);
     }
 
-    public static Statistics.Statistic buildValueStatistic(String key, String statName, ZonedDateTime time, double value, TagType... tagValues) {
+    public static Statistics.Statistic buildValueStatistic(String key,
+                                                           String statName,
+                                                           ZonedDateTime time,
+                                                           double value,
+                                                           TagType... tagValues) {
         Statistics.Statistic statistic = buildStatistic(key, statName, time, tagValues);
         statistic.setValue(value);
         return statistic;

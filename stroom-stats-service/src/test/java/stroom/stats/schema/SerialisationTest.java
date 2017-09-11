@@ -19,6 +19,7 @@
 
 package stroom.stats.schema;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import stroom.stats.schema.v3.Statistics;
 import stroom.stats.xml.StatisticsMarshaller;
@@ -76,6 +77,7 @@ public class SerialisationTest {
         assertThat(statistics.getStatistic().size(), equalTo(99));
     }
 
+    @Ignore
     @Test
     public void testPostStatisticsFromStroom_02() throws JAXBException, IOException {
         String fileString = new String(Files.readAllBytes(Paths.get(STATISTICS_FROM_STROOM_02)));
