@@ -97,7 +97,7 @@ public class HBaseClient implements Managed {
     private final StatisticsService statisticsService;
     private final StatisticConfigurationService statisticConfigurationService;
     private final StroomPropertyService stroomPropertyService;
-    private Config config;
+    private final Config config;
 
     @Inject
     public HBaseClient(final StatisticsService statisticsService,
@@ -114,7 +114,9 @@ public class HBaseClient implements Managed {
      * Recursive method to populate the passed list with all enabled
      * {@link ExpressionTerm} nodes found in the tree.
      */
-    public static List<ExpressionTerm> findAllTermNodes(final ExpressionItem node, final List<ExpressionTerm> termsFound) {
+    public static List<ExpressionTerm> findAllTermNodes(
+            final ExpressionItem node,
+            final List<ExpressionTerm> termsFound) {
         Preconditions.checkNotNull(termsFound);
         // Don't go any further down this branch if this node is disabled.
         if (node.enabled()) {
@@ -131,13 +133,6 @@ public class HBaseClient implements Managed {
         }
         return termsFound;
     }
-
-    public void addStatistics(Statistics statistics) {
-        Preconditions.checkNotNull(statistics);
-
-        //TODO need a kafka producer to put these stats on a topic so they get processed via that route.
-    }
-
 
     public SearchResponse query(SearchRequest searchRequest) {
 
@@ -376,7 +371,10 @@ public class HBaseClient implements Managed {
                 Optional.of(validatePrecisionTerm(precisionTerm)));
 
         // if we have got here then we have a single BETWEEN date term, so parse it.
-        final Range<Long> range = extractRange(optDateTimeTerm.orElse(null), searchRequest.getDateTimeLocale(), nowEpochMilli);
+        final Range<Long> range = extractRange(
+                optDateTimeTerm.orElse(null),
+                searchRequest.getDateTimeLocale(),
+                nowEpochMilli);
 
         final List<ExpressionTerm> termNodesInFilter = new ArrayList<>();
 
@@ -433,7 +431,7 @@ public class HBaseClient implements Managed {
     /**
      * Identify the date term in the search criteria. Currently we must have
      * a zero or one date terms due to the way we have start/stop rowkeys
-     * It may be possible to instead scan with just the statName and mask prefix and
+     * It may be possible to instead scan with just the statUuid and mask prefix and
      * then add date handling logic into the custom filter, but this will likely be slower
      */
     private static void validateDateTerm(final ExpressionTerm dateTimeTerm) throws UnsupportedOperationException {

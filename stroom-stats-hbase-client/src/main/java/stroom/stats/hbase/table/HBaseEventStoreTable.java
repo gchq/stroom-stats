@@ -428,9 +428,9 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         LOGGER.debug(() -> String.format("Using time period: [%s] to [%s]", DateUtil.createNormalDateTimeString(period.getFrom()),
                 DateUtil.createNormalDateTimeString(period.getTo())));
 
-        String statName = statisticConfiguration.getName();
+        String statUuid = statisticConfiguration.getUuid();
 
-        final Scan scan = buildBasicScan(rollUpBitMask, period, statisticType, statName);
+        final Scan scan = buildBasicScan(rollUpBitMask, period, statisticType, statUuid);
 
         // Query the event store over the given range.
         // We may only want part of the row from the first row and last row

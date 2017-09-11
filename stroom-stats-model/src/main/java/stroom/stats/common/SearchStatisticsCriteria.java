@@ -32,20 +32,20 @@ import java.util.Set;
 public class SearchStatisticsCriteria {
 
     private final Period period;
-    private final String statisticName;
+    private final String statisticUuid;
     private final FilterTermsTree filterTermsTree;
     private final Set<String> rolledUpFieldNames;
     private final List<String> requiredDynamicFields;
     private final EventStoreTimeIntervalEnum interval;
 
     private SearchStatisticsCriteria(final Period period,
-                                     final String statisticName,
+                                     final String statisticUuid,
                                      final FilterTermsTree filterTermsTree,
                                      final Set<String> rolledUpFieldNames,
                                      final List<String> requiredDynamicFields,
                                      final EventStoreTimeIntervalEnum interval) {
         this.period = period;
-        this.statisticName = statisticName;
+        this.statisticUuid = statisticUuid;
         this.filterTermsTree = filterTermsTree;
         this.rolledUpFieldNames = rolledUpFieldNames;
         this.requiredDynamicFields = requiredDynamicFields;
@@ -56,8 +56,8 @@ public class SearchStatisticsCriteria {
         return period;
     }
 
-    public String getStatisticName() {
-        return statisticName;
+    public String getStatisticUuid() {
+        return statisticUuid;
     }
 
     public Optional<EventStoreTimeIntervalEnum> getInterval() {
@@ -90,30 +90,30 @@ public class SearchStatisticsCriteria {
     public String toString() {
         return "SearchStatisticsCriteria{" +
                 "period=" + period +
-                ", statisticName='" + statisticName + '\'' +
+                ", statisticUuid='" + statisticUuid + '\'' +
                 ", filterTermsTree=" + filterTermsTree +
                 ", rolledUpFieldNames=" + rolledUpFieldNames +
                 ", interval=" + interval +
                 '}';
     }
 
-    public static SearchStatisticsCriteriaBuilder builder(final Period period, final String statisticName) {
-        return new SearchStatisticsCriteriaBuilder(period, statisticName);
+    public static SearchStatisticsCriteriaBuilder builder(final Period period, final String statisticUuid) {
+        return new SearchStatisticsCriteriaBuilder(period, statisticUuid);
     }
 
     public static class SearchStatisticsCriteriaBuilder {
         private Period period;
-        private String statisticName;
+        private String statisticUuid;
         private FilterTermsTree filterTermsTree = FilterTermsTree.emptyTree();
         private Set<String> rolledUpFieldNames = Collections.emptySet();
         private List<String> requiredDynamicFields = Collections.emptyList();
         private EventStoreTimeIntervalEnum interval = null;
 
-        SearchStatisticsCriteriaBuilder(final Period period, final String statisticName) {
+        SearchStatisticsCriteriaBuilder(final Period period, final String statisticUuid) {
             Preconditions.checkNotNull(period);
-            Preconditions.checkNotNull(statisticName);
+            Preconditions.checkNotNull(statisticUuid);
             this.period = period;
-            this.statisticName = statisticName;
+            this.statisticUuid = statisticUuid;
         }
 
         public SearchStatisticsCriteriaBuilder setFilterTermsTree(final FilterTermsTree filterTermsTree) {
@@ -141,7 +141,7 @@ public class SearchStatisticsCriteria {
         }
 
         public SearchStatisticsCriteria build() {
-            return new SearchStatisticsCriteria(period, statisticName, filterTermsTree, rolledUpFieldNames, requiredDynamicFields, interval);
+            return new SearchStatisticsCriteria(period, statisticUuid, filterTermsTree, rolledUpFieldNames, requiredDynamicFields, interval);
         }
     }
 }
