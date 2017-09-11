@@ -53,8 +53,14 @@ public class TestStatisticsMarshaller {
 
         Statistics statistics2 = statisticsMarshaller.unMarshallFromXml(xml);
 
-        //TODO add in asserts
+        Assertions.assertThat(statistics.getStatistic())
+                .hasSameSizeAs(statistics2.getStatistic());
 
+        Assertions.assertThat(statistics.getStatistic().get(0).getKey().)
+
+        //TODO add in asserts
     }
+
+    private void assertValue(Statistics.Statistic statistic1, Statistics.Statistic statistic2, Function)
 
 }
