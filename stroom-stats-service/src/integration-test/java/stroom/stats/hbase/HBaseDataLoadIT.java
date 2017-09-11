@@ -51,12 +51,13 @@ import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.TagValue;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
 import stroom.stats.test.QueryApiHelper;
+import stroom.stats.test.StatisticsHelper;
 import stroom.stats.test.StroomStatsStoreEntityBuilder;
 import stroom.stats.test.StroomStatsStoreEntityHelper;
 import stroom.stats.util.DateUtil;
@@ -153,12 +154,14 @@ public class HBaseDataLoadIT extends AbstractAppIT {
     public void testCount() {
 
         StatisticType statisticType = StatisticType.COUNT;
-        Map<StatKey, StatAggregate> aggregatedEvents = new HashMap<>();
+        Map<StatEventKey, StatAggregate> aggregatedEvents = new HashMap<>();
 
         //Put time in the statName to allow us to re-run the test without an empty HBase
         String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString();
+        String statUuid = StatisticsHelper.getUuidKey(statNameStr);
 
         StatisticConfiguration statisticConfigurationEntity = new StroomStatsStoreEntityBuilder(
+                statUuid,
                 statNameStr,
                 statisticType,
                 interval,
@@ -174,7 +177,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         UID statName = uniqueIdCache.getOrCreateId(statNameStr);
         assertThat(statName).isNotNull();
 
-        StatKey statKey1 = new StatKey(statName,
+        StatEventKey statEventKey1 = new StatEventKey(statName,
                 ROLL_UP_BIT_MASK,
                 interval,
                 time1.toEpochMilli(),
@@ -185,9 +188,9 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         StatAggregate statAggregate1 = new CountAggregate(statValue1);
 
-        aggregatedEvents.put(statKey1, statAggregate1);
+        aggregatedEvents.put(statEventKey1, statAggregate1);
 
-        StatKey statKey2 = new StatKey(statName,
+        StatEventKey statEventKey2 = new StatEventKey(statName,
                 ROLL_UP_BIT_MASK,
                 interval,
                 time2.toEpochMilli(),
@@ -198,7 +201,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         StatAggregate statAggregate2 = new CountAggregate(statValue2);
 
-        aggregatedEvents.put(statKey2, statAggregate2);
+        aggregatedEvents.put(statEventKey2, statAggregate2);
 
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
 
@@ -276,12 +279,14 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         StatisticType statisticType = StatisticType.VALUE;
 
-        Map<StatKey, StatAggregate> aggregatedEvents = new HashMap<>();
+        Map<StatEventKey, StatAggregate> aggregatedEvents = new HashMap<>();
 
         //Put time in the statName to allow us to re-run the test without an empty HBase
         String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString();
+        String statUuid = StatisticsHelper.getUuidKey(statNameStr);
 
         StatisticConfiguration statisticConfiguration = new StroomStatsStoreEntityBuilder(
+                statUuid,
                 statNameStr,
                 statisticType,
                 interval,
@@ -297,7 +302,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         UID statName = uniqueIdCache.getOrCreateId(statNameStr);
         assertThat(statName).isNotNull();
 
-        StatKey statKey1 = new StatKey(statName,
+        StatEventKey statEventKey1 = new StatEventKey(statName,
                 ROLL_UP_BIT_MASK,
                 interval,
                 time1.toEpochMilli(),
@@ -308,9 +313,9 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         StatAggregate statAggregate1 = new ValueAggregate(statValue1);
 
-        aggregatedEvents.put(statKey1, statAggregate1);
+        aggregatedEvents.put(statEventKey1, statAggregate1);
 
-        StatKey statKey2 = new StatKey(statName,
+        StatEventKey statEventKey2 = new StatEventKey(statName,
                 ROLL_UP_BIT_MASK,
                 interval,
                 time2.toEpochMilli(),
@@ -321,7 +326,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         StatAggregate statAggregate2 = new ValueAggregate(statValue2);
 
-        aggregatedEvents.put(statKey2, statAggregate2);
+        aggregatedEvents.put(statEventKey2, statAggregate2);
 
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
 
@@ -565,10 +570,12 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         assertThat(times).containsExactlyInAnyOrder(timesTruncated.get(1), timesTruncated.get(2), timesTruncated.get(3));
     }
 
-    private StatisticConfiguration createStatConf(final String statNameStr,
-                                                        final StatisticType statisticType) {
+    private StatisticConfiguration createStatConf(final String statUuid,
+                                                  final String statNameStr,
+                                                  final StatisticType statisticType) {
 
         StatisticConfiguration statisticConfiguration = new StroomStatsStoreEntityBuilder(
+                statUuid,
                 statNameStr,
                 statisticType,
                 interval,
@@ -597,15 +604,16 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         Arrays.asList("A", "B", "C").forEach(postFix -> {
 
             String statNameStr = statNameBase + "-" + postFix;
-            StatisticConfiguration statisticConfiguration = createStatConf(statNameStr, statisticType);
+            String statUuidStr = StatisticsHelper.getUuidKey(statNameStr);
+            StatisticConfiguration statisticConfiguration = createStatConf(statUuidStr, statNameStr, statisticType);
             entities.add(statisticConfiguration);
 
-            UID statName = uniqueIdCache.getOrCreateId(statNameStr);
-            assertThat(statName).isNotNull();
+            UID statUuidUid = uniqueIdCache.getOrCreateId(statUuidStr);
+            assertThat(statUuidUid).isNotNull();
 
-            Map<StatKey, StatAggregate> aggregatedEvents = times.stream()
+            Map<StatEventKey, StatAggregate> aggregatedEvents = times.stream()
                     .flatMap(time -> {
-                        StatKey baseKey = new StatKey(statName,
+                        StatEventKey baseKey = new StatEventKey(statUuidUid,
                                 RollUpBitMask.ZERO_MASK,
                                 interval,
                                 time.toEpochMilli(),
@@ -614,10 +622,10 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
                         return rollUpBitMasks.stream()
                                 .map(newMask -> {
-                                    StatKey statKey = baseKey.cloneAndRollUpTags(newMask, rolledUpValue);
+                                    StatEventKey statEventKey = baseKey.cloneAndRollUpTags(newMask, rolledUpValue);
 
                                     StatAggregate statAggregate = new CountAggregate(100L);
-                                    return new Tuple2<>(statKey, statAggregate);
+                                    return new Tuple2<>(statEventKey, statAggregate);
                                 });
                     })
                     .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2, StatAggregate::aggregatePair));

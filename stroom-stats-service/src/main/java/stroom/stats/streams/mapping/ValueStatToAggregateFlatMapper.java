@@ -25,7 +25,7 @@ import stroom.stats.api.MultiPartIdentifier;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.v3.Statistics;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.StatisticWrapper;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
@@ -52,8 +52,8 @@ public class ValueStatToAggregateFlatMapper extends AbstractStatisticFlatMapper 
     }
 
     @Override
-    public Iterable<KeyValue<StatKey, StatAggregate>> flatMap(String statName, StatisticWrapper statisticWrapper) {
-        Preconditions.checkNotNull(statName);
+    public Iterable<KeyValue<StatEventKey, StatAggregate>> flatMap(String statUuid, StatisticWrapper statisticWrapper) {
+        Preconditions.checkNotNull(statUuid);
         Preconditions.checkNotNull(statisticWrapper);
 
         int maxEventIds = stroomPropertyService.getIntProperty(StatAggregate.PROP_KEY_MAX_AGGREGATED_EVENT_IDS, Integer.MAX_VALUE);
@@ -64,7 +64,7 @@ public class ValueStatToAggregateFlatMapper extends AbstractStatisticFlatMapper 
         //convert stat value
         ValueAggregate statAggregate = new ValueAggregate(eventIds, maxEventIds, statistic.getValue());
 
-        List<KeyValue<StatKey, StatAggregate>> keyValues = buildKeyValues(statName, statisticWrapper, statAggregate);
+        List<KeyValue<StatEventKey, StatAggregate>> keyValues = buildKeyValues(statUuid, statisticWrapper, statAggregate);
 
         LOGGER.trace(() -> String.format("Flat mapping event into %s events", keyValues.size()));
         return keyValues;

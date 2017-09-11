@@ -49,6 +49,7 @@ import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.v3.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.QueryApiHelper;
+import stroom.stats.test.StatisticsHelper;
 import stroom.stats.test.StroomStatsStoreEntityHelper;
 import stroom.stats.xml.StatisticsMarshaller;
 
@@ -326,9 +327,11 @@ public class EndToEndVolumeIT extends AbstractAppIT {
 
             String statNameStr = "VolumeTest-" + Instant.now().toString() + "-" + statisticType + "-" + SMALLEST_INTERVAL;
 
+            String statUuid = StatisticsHelper.getUuidKey(statNameStr);
 
 
             Tuple2<StatisticConfiguration, List<Statistics>> testData = GenerateSampleStatisticsData.generateData(
+                    statUuid,
                     statNameStr,
                     statisticType,
                     SMALLEST_INTERVAL,

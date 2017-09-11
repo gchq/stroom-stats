@@ -25,7 +25,7 @@ import stroom.stats.common.SearchStatisticsCriteria;
 import stroom.stats.common.StatisticDataSet;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.aggregation.StatAggregate;
 
 import java.util.List;
@@ -42,7 +42,7 @@ public interface StatisticsService {
      */
     void putAggregatedEvents(final StatisticType statisticType,
                              final EventStoreTimeIntervalEnum interval,
-                             final Map<StatKey, StatAggregate> aggregatedEvents);
+                             final Map<StatEventKey, StatAggregate> aggregatedEvents);
 
     //TODO if we take a SearchRequest then we probably ought to return a SearchResponse object and
     //do the work that is currentlt done in HBclient in here

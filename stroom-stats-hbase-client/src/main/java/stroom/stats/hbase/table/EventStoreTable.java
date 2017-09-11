@@ -29,7 +29,7 @@ import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.aggregation.StatAggregate;
 
 import java.util.Map;
@@ -45,7 +45,7 @@ public interface EventStoreTable extends GenericTable {
      *                         aggregated together
      */
     void addAggregatedEvents(final StatisticType statisticType,
-                             final Map<StatKey, StatAggregate> aggregatedEvents);
+                             final Map<StatEventKey, StatAggregate> aggregatedEvents);
 
 
     StatisticDataSet getStatisticsData(final UniqueIdCache uniqueIdCache,

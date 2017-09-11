@@ -19,18 +19,12 @@
 
 package stroom.stats.schema;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import stroom.stats.schema.v3.Statistics;
 import stroom.stats.xml.StatisticsMarshaller;
 
-import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
-import javax.xml.bind.Unmarshaller;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -43,7 +37,6 @@ public class SerialisationTest {
     private final String PACKAGE_NAME = "/stroom/stats/schema/";
     private final String EXAMPLE_XML_01 = RESOURCES_DIR + PACKAGE_NAME + "SerialisationTest_testDererialisation.xml";
     private final String STATISTICS_FROM_STROOM_01 = RESOURCES_DIR + PACKAGE_NAME + "StatisticsFromStroom_01.xml";
-    private final String STATISTICS_FROM_STROOM_02 = RESOURCES_DIR + PACKAGE_NAME + "StatisticsFromStroom_02.xml";
 
     private final StatisticsMarshaller statisticsMarshaller;
 
@@ -77,11 +70,4 @@ public class SerialisationTest {
         assertThat(statistics.getStatistic().size(), equalTo(99));
     }
 
-    @Ignore
-    @Test
-    public void testPostStatisticsFromStroom_02() throws JAXBException, IOException {
-        String fileString = new String(Files.readAllBytes(Paths.get(STATISTICS_FROM_STROOM_02)));
-        Statistics statistics = statisticsMarshaller.unMarshallFromXml(fileString);
-        assertThat(statistics.getStatistic().size(), equalTo(99));
-    }
 }

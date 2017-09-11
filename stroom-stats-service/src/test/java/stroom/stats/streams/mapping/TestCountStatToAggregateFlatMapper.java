@@ -40,7 +40,7 @@ import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.schema.v3.Statistics;
 import stroom.stats.schema.v3.TagType;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.StatisticWrapper;
 import stroom.stats.streams.TagValue;
 import stroom.stats.streams.aggregation.CountAggregate;
@@ -124,23 +124,23 @@ public class TestCountStatToAggregateFlatMapper {
         StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
 
         //will throw a RTE as there is no StatConfig
-        Iterable<KeyValue<StatKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
-        List<KeyValue<StatKey, StatAggregate>> keyValues = (List<KeyValue<StatKey, StatAggregate>>) iterable;
+        Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
+        List<KeyValue<StatEventKey, StatAggregate>> keyValues = (List<KeyValue<StatEventKey, StatAggregate>>) iterable;
 
         assertThat(keyValues).hasSize(1);
         assertOnKeyValue(keyValues.get(0), statistic, statisticConfiguration);
 
-        StatKey statKey = keyValues.get(0).key;
+        StatEventKey statEventKey = keyValues.get(0).key;
         //make sure the values match
-        assertThat(statKey.getTagValues().stream()
+        assertThat(statEventKey.getTagValues().stream()
                 .map(tagValue -> uniqueIdCache.getName(tagValue.getValue()))
                 .collect(Collectors.toList()))
                 .isEqualTo(statistic.getTags().getTag().stream()
                         .map(TagType::getValue)
                         .collect(Collectors.toList()));
-        assertThat(statKey.getInterval()).isEqualTo(statisticConfiguration.getPrecision());
+        assertThat(statEventKey.getInterval()).isEqualTo(statisticConfiguration.getPrecision());
 
-        assertThat(statKey.getRollupMask()).isEqualTo(RollUpBitMask.ZERO_MASK);
+        assertThat(statEventKey.getRollupMask()).isEqualTo(RollUpBitMask.ZERO_MASK);
     }
 
     @Test
@@ -161,11 +161,11 @@ public class TestCountStatToAggregateFlatMapper {
         StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
 
         Instant start = Instant.now();
-        Iterable<KeyValue<StatKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
+        Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
         Duration executionTime = Duration.between(start, Instant.now());
         LOGGER.debug("Execution time: {}ms", executionTime.toMillis());
 
-        List<KeyValue<StatKey, StatAggregate>> keyValues = (List<KeyValue<StatKey, StatAggregate>>) iterable;
+        List<KeyValue<StatEventKey, StatAggregate>> keyValues = (List<KeyValue<StatEventKey, StatAggregate>>) iterable;
 
         //2 tags so 4 rolled up events
         assertThat(keyValues).hasSize(4);
@@ -214,11 +214,11 @@ public class TestCountStatToAggregateFlatMapper {
 
         //will throw a RTE as there is no StatConfig
         Instant start = Instant.now();
-        Iterable<KeyValue<StatKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
+        Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
         Duration executionTime = Duration.between(start, Instant.now());
         LOGGER.debug("Execution time: {}ms", executionTime.toMillis());
 
-        List<KeyValue<StatKey, StatAggregate>> keyValues = (List<KeyValue<StatKey, StatAggregate>>) iterable;
+        List<KeyValue<StatEventKey, StatAggregate>> keyValues = (List<KeyValue<StatEventKey, StatAggregate>>) iterable;
 
         //2 custom masks and the zero mask will always be generated so expect 3 events in total
         assertThat(keyValues).hasSize(3);
@@ -261,30 +261,30 @@ public class TestCountStatToAggregateFlatMapper {
         StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
 
         Instant start = Instant.now();
-        Iterable<KeyValue<StatKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
+        Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
         Duration executionTime = Duration.between(start, Instant.now());
         LOGGER.debug("Execution time: {}ms", executionTime.toMillis());
 
-        List<KeyValue<StatKey, StatAggregate>> keyValues = (List<KeyValue<StatKey, StatAggregate>>) iterable;
+        List<KeyValue<StatEventKey, StatAggregate>> keyValues = (List<KeyValue<StatEventKey, StatAggregate>>) iterable;
 
         //no tags so nothing to rollup, thus just get the original event
         assertThat(keyValues).hasSize(1);
 
     }
 
-    private void assertOnKeyValue(KeyValue<StatKey, StatAggregate> keyValue, Statistics.Statistic statistic, StatisticConfiguration statisticConfiguration) {
-        StatKey statKey = keyValue.key;
+    private void assertOnKeyValue(KeyValue<StatEventKey, StatAggregate> keyValue, Statistics.Statistic statistic, StatisticConfiguration statisticConfiguration) {
+        StatEventKey statEventKey = keyValue.key;
         StatAggregate statAggregate = keyValue.value;
-        assertThat(statKey).isNotNull();
-        assertThat(statKey.getTagValues()).hasSize(statistic.getTags().getTag().size());
+        assertThat(statEventKey).isNotNull();
+        assertThat(statEventKey.getTagValues()).hasSize(statistic.getTags().getTag().size());
         //make sure the tags match
-        assertThat(statKey.getTagValues().stream()
+        assertThat(statEventKey.getTagValues().stream()
                 .map(tagValue -> uniqueIdCache.getName(tagValue.getTag()))
                 .collect(Collectors.toList()))
                 .isEqualTo(statistic.getTags().getTag().stream()
                         .map(TagType::getName)
                         .collect(Collectors.toList()));
-        assertThat(statKey.getInterval()).isEqualTo(statisticConfiguration.getPrecision());
+        assertThat(statEventKey.getInterval()).isEqualTo(statisticConfiguration.getPrecision());
 
         assertThat(statAggregate).isNotNull();
         assertThat(statAggregate).isExactlyInstanceOf(CountAggregate.class);

@@ -36,7 +36,7 @@ import stroom.stats.hbase.structure.TimeAgnosticRowKey;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.util.DateUtil;
 
 import java.util.Collections;
@@ -67,31 +67,31 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
     }
 
     @Override
-    public CellQualifier buildCellQualifier(final StatKey statKey) {
-        Preconditions.checkNotNull(statKey);
+    public CellQualifier buildCellQualifier(final StatEventKey statEventKey) {
+        Preconditions.checkNotNull(statEventKey);
 
-        long timeMs = statKey.getTimeMs();
+        long timeMs = statEventKey.getTimeMs();
 
         final ColumnQualifier columnQualifier = buildColumnQualifier(timeMs);
 
         //timeMs is already rounded to the column interval
-        return new CellQualifier(buildRowKey(statKey), columnQualifier, timeMs);
+        return new CellQualifier(buildRowKey(statEventKey), columnQualifier, timeMs);
     }
 
     @Override
-    public RowKey buildRowKey(StatKey statKey) {
-        Preconditions.checkNotNull(statKey);
+    public RowKey buildRowKey(StatEventKey statEventKey) {
+        Preconditions.checkNotNull(statEventKey);
 
-        long timeMs = statKey.getTimeMs();
+        long timeMs = statEventKey.getTimeMs();
 
         final byte[] partialTimestamp = buildPartialTimestamp(timeMs);
-        final byte[] rollupBitMask = statKey.getRollupMask().asBytes();
-        List<RowKeyTagValue> rowKeyTagValues = statKey.getTagValues().stream()
+        final byte[] rollupBitMask = statEventKey.getRollupMask().asBytes();
+        List<RowKeyTagValue> rowKeyTagValues = statEventKey.getTagValues().stream()
                 .map(tagValue -> new RowKeyTagValue(tagValue.getTag(), tagValue.getValue()))
                 .collect(Collectors.toList());
 
         TimeAgnosticRowKey timeAgnosticRowKey = new TimeAgnosticRowKey(
-                statKey.getStatName(),
+                statEventKey.getStatUuid(),
                 rollupBitMask,
                 rowKeyTagValues);
 

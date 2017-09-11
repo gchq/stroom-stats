@@ -36,7 +36,7 @@ import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.util.DateUtil;
 import stroom.stats.util.logging.LambdaLogger;
@@ -198,7 +198,7 @@ public class EventStore {
      * Puts a batch of aggregated events into the store
      */
     public void putAggregatedEvents(final StatisticType statisticType,
-                                    final Map<StatKey, StatAggregate> aggregatedEvents) {
+                                    final Map<StatEventKey, StatAggregate> aggregatedEvents) {
 
         eventStoreTable.addAggregatedEvents(statisticType, aggregatedEvents);
     }

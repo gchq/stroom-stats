@@ -33,10 +33,10 @@ public class StatisticsAggregationRebalanceListener implements ConsumerRebalance
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatisticsAggregationRebalanceListener.class);
 
     private final StatisticsAggregationProcessor statisticsAggregationProcessor;
-    private final KafkaConsumer<StatKey, StatAggregate> kafkaConsumer;
+    private final KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer;
 
     public StatisticsAggregationRebalanceListener(final StatisticsAggregationProcessor statisticsAggregationProcessor,
-                                                  final KafkaConsumer<StatKey, StatAggregate> kafkaConsumer) {
+                                                  final KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer) {
 
         this.statisticsAggregationProcessor = statisticsAggregationProcessor;
         this.kafkaConsumer = kafkaConsumer;

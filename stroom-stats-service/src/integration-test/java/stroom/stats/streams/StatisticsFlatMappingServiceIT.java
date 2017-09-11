@@ -71,7 +71,7 @@ import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
-import stroom.stats.streams.serde.StatKeySerde;
+import stroom.stats.streams.serde.StatEventKeySerde;
 import stroom.stats.test.KafkaEmbededUtils;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.xml.StatisticsMarshaller;
@@ -136,7 +136,7 @@ public class StatisticsFlatMappingServiceIT {
     private final AtomicBoolean areConsumersEnabled = new AtomicBoolean(false);
     private final AtomicInteger activeConsumerThreads = new AtomicInteger(0);
 
-//    private List<Tuple3<StatisticType, EventStoreTimeIntervalEnum, Map<StatKey, StatAggregate>>> statServiceArguments = new ArrayList<>();
+//    private List<Tuple3<StatisticType, EventStoreTimeIntervalEnum, Map<StatEventKey, StatAggregate>>> statServiceArguments = new ArrayList<>();
 
     @Rule
     public TestRule watcher = new TestWatcher() {
@@ -233,7 +233,7 @@ public class StatisticsFlatMappingServiceIT {
 
 //        startAllTopicsConsumer(consumerProps);
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         //2 input msgs, each one is rolled up to 4 perms so expect 8
@@ -258,7 +258,7 @@ public class StatisticsFlatMappingServiceIT {
 
         String topicName = topicToMsgsMap.keySet().stream().findFirst().get();
         assertThat(topicName).isEqualTo(TopicNameFactory.getIntervalTopicName(STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval));
-        List<ConsumerRecord<StatKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
+        List<ConsumerRecord<StatEventKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
         assertThat(messages).hasSize(expectedGoodMsgCount);
 
         //no bad events
@@ -310,7 +310,7 @@ public class StatisticsFlatMappingServiceIT {
 
 //        startAllTopicsConsumer(consumerProps);
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         //2 input msgs, each one is rolled up to 4 perms so expect 8
@@ -334,7 +334,7 @@ public class StatisticsFlatMappingServiceIT {
         assertThat(topicToMsgsMap).hasSize(1);
         String topicName = topicToMsgsMap.keySet().stream().findFirst().get();
         assertThat(topicName).isEqualTo(TopicNameFactory.getIntervalTopicName(STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval));
-        List<ConsumerRecord<StatKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
+        List<ConsumerRecord<StatEventKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
         messages.stream()
                 .map(ConsumerRecord::toString)
                 .forEach(LOGGER::debug);
@@ -362,7 +362,7 @@ public class StatisticsFlatMappingServiceIT {
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         //8 input msgs, each one is rolled up to 4 perms so expect 32 in total
@@ -434,7 +434,7 @@ public class StatisticsFlatMappingServiceIT {
 
         topicToMsgsMap.entrySet().forEach(entry -> assertThat(entry.getValue()).hasSize(expectedPermsPerMsg));
         topicToMsgsMap.entrySet().forEach(entry -> {
-            UID statNameUid = entry.getValue().stream().findFirst().get().key().getStatName();
+            UID statNameUid = entry.getValue().stream().findFirst().get().key().getStatUuid();
             String statName = uniqueIdCache.getName(statNameUid);
             String topicName = entry.getKey();
             assertThat(statName).isEqualTo(topicName);
@@ -488,7 +488,7 @@ public class StatisticsFlatMappingServiceIT {
 
 //        startAllTopicsConsumer(consumerProps);
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         //1 good input msgs, each one is rolled up to 4 perms so expect 4
@@ -521,7 +521,7 @@ public class StatisticsFlatMappingServiceIT {
         assertThat(topicToMsgsMap).hasSize(1);
         String topicName = topicToMsgsMap.keySet().stream().findFirst().get();
         assertThat(topicName).isEqualTo(TopicNameFactory.getIntervalTopicName(STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval));
-        List<ConsumerRecord<StatKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
+        List<ConsumerRecord<StatEventKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
         assertThat(messages).hasSize(expectedGoodMsgCount);
 
         //no bad events
@@ -580,7 +580,7 @@ public class StatisticsFlatMappingServiceIT {
 
 //        startAllTopicsConsumer(consumerProps);
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         //1 good input msg, each one is rolled up to 4 perms so expect 4
@@ -597,7 +597,7 @@ public class StatisticsFlatMappingServiceIT {
         assertThat(topicToMsgsMap).hasSize(1);
         String topicName = topicToMsgsMap.keySet().stream().findFirst().get();
         assertThat(topicName).isEqualTo(TopicNameFactory.getIntervalTopicName(STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval));
-        List<ConsumerRecord<StatKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
+        List<ConsumerRecord<StatEventKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
         assertThat(messages).hasSize(expectedGoodMsgCount);
 
         //no bad events
@@ -668,7 +668,7 @@ public class StatisticsFlatMappingServiceIT {
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         //3 good input msg, each one is rolled up to 4 perms so expect 12, one input msg ignored
@@ -765,7 +765,7 @@ public class StatisticsFlatMappingServiceIT {
                         //Give each source event a different time to aid debugging
 //                        ZonedDateTime time = ZonedDateTime.ofInstant(Instant.ofEpochMilli(counter), ZoneOffset.UTC);
 
-                        //each event within a statname/interval/type combo has a time two days apart to ensure no aggregation
+                        //each event within a statUuid/interval/type combo has a time two days apart to ensure no aggregation
                         ZonedDateTime time = ZonedDateTime.ofInstant(baseInstant, ZoneOffset.UTC).plusDays(i * 2);
                         Statistics statistics;
                         if (statisticType.equals(StatisticType.COUNT)) {
@@ -801,7 +801,7 @@ public class StatisticsFlatMappingServiceIT {
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         int expectedTopicsPerStatType = intervals.length;
@@ -929,7 +929,7 @@ public class StatisticsFlatMappingServiceIT {
     private CountDownLatch startIntervalTopicsConsumer(final StatisticType statisticType,
                                                        final Map<String, Object> consumerProps,
                                                        final int expectedMsgCount,
-                                                       final ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap,
+                                                       final ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap,
                                                        final boolean isEachMsgLogged,
                                                        final int pollIntervalMs) {
 
@@ -943,12 +943,12 @@ public class StatisticsFlatMappingServiceIT {
 
         final CountDownLatch latch = new CountDownLatch(expectedMsgCount);
         final Serde<StatAggregate> stagAggSerde = StatAggregateSerde.instance();
-        final Serde<StatKey> statKeySerde = StatKeySerde.instance();
+        final Serde<StatEventKey> statKeySerde = StatEventKeySerde.instance();
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
             Thread.currentThread().setName("int-csmr-" + statisticType + "-thrd");
             activeConsumerThreads.incrementAndGet();
-            KafkaConsumer<StatKey, StatAggregate> kafkaConsumer = new KafkaConsumer<>(consumerPropsLocal,
+            KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer = new KafkaConsumer<>(consumerPropsLocal,
                     statKeySerde.deserializer(),
                     stagAggSerde.deserializer());
 
@@ -962,17 +962,17 @@ public class StatisticsFlatMappingServiceIT {
             try {
                 while (areConsumersEnabled.get()) {
                     try {
-                        ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(pollIntervalMs);
+                        ConsumerRecords<StatEventKey, StatAggregate> records = kafkaConsumer.poll(pollIntervalMs);
                         if (records.count() > 0) {
 //                            recCounter.addAndGet(records.count());
                             LOGGER.trace("{} consumed {} good records, cumulative count {}", statisticType, records.count(), recCounter.get());
-                            for (ConsumerRecord<StatKey, StatAggregate> record : records) {
+                            for (ConsumerRecord<StatEventKey, StatAggregate> record : records) {
                                 try {
                                     if (isEachMsgLogged) {
                                         LOGGER.trace("IntervalTopicsConsumer - topic = {}, partition = {}, offset = {}, key = {}, value = {}",
                                                 record.topic(), record.partition(), record.offset(), record.key(), record.value());
                                         if (LOGGER.isTraceEnabled()) {
-                                            StatKeyUtils.logStatKey(uniqueIdCache, record.key());
+                                            StatEventKeyUtils.logStatKey(uniqueIdCache, record.key());
                                         }
                                     }
                                     topicToMsgsMap.computeIfAbsent(record.topic(), k -> new ArrayList<>()).add(record);

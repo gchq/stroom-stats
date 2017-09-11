@@ -37,18 +37,18 @@ import java.util.List;
  * A representation of the key portion of a statistic event. The Stat name and all
  * tags and values are held as UIDs to speed serialization and deserialization in kafka.
  * An instance can self serialize to a byte[]. The elements of the byte[] are:
- * <statName>[rollUp][interval][truncTime]<t1><v1>...<tN><vN>
+ * <statUuid>[rollUp][interval][truncTime]<t1><v1>...<tN><vN>
  * Where each <...> is a UID
  *
- * The underlying UIDs are built on top of existing byte[]s. These byte[]s should not be mutated as StatKey is treated
+ * The underlying UIDs are built on top of existing byte[]s. These byte[]s should not be mutated as StatEventKey is treated
  * as effectively immutable and caches its hashcode
  *
- * The time element in a {@link StatKey} will ALWAYS be truncated down to the nearest {@link EventStoreTimeIntervalEnum}.
+ * The time element in a {@link StatEventKey} will ALWAYS be truncated down to the nearest {@link EventStoreTimeIntervalEnum}.
  * This truncation will happen in the public constructors and in certain clone operations
  */
-public class StatKey implements Comparable<StatKey> {
+public class StatEventKey implements Comparable<StatEventKey> {
 
-    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatKey.class);
+    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatEventKey.class);
 
     //Define all the array lengths and offsets for the various elements of the full stat key byte[]
     static int UID_ARRAY_LENGTH = UID.UID_ARRAY_LENGTH;
@@ -64,15 +64,15 @@ public class StatKey implements Comparable<StatKey> {
     static int TAG_VALUE_PAIR_LENGTH = UID_ARRAY_LENGTH * 2;
     static int TAG_VALUE_PAIRS_OFFSET = TIME_PART_OFFSET + TIME_PART_LENGTH;
 
-    public static final Comparator<StatKey> COMPARATOR = Comparator
-            .comparing(StatKey::getStatName)
-            .thenComparing(StatKey::getInterval)
-            .thenComparing(StatKey::getRollupMask)
-            .thenComparingLong(StatKey::getTimeMs)
-            .thenComparing(StatKey::getTagValues, TagValue.TAG_VALUES_COMPARATOR);
+    public static final Comparator<StatEventKey> COMPARATOR = Comparator
+            .comparing(StatEventKey::getStatUuid)
+            .thenComparing(StatEventKey::getInterval)
+            .thenComparing(StatEventKey::getRollupMask)
+            .thenComparingLong(StatEventKey::getTimeMs)
+            .thenComparing(StatEventKey::getTagValues, TagValue.TAG_VALUES_COMPARATOR);
 
 
-    private final UID statName;
+    private final UID statUuid;
     private final RollUpBitMask rollupMask;
     private EventStoreTimeIntervalEnum interval;
     private long timeMs;
@@ -86,19 +86,19 @@ public class StatKey implements Comparable<StatKey> {
         DONT_TRUNCATE
     }
 
-    private StatKey(final UID statName,
-                   final RollUpBitMask rollupMask,
-                   final EventStoreTimeIntervalEnum interval,
-                   final long timeMs,
-                   final List<TagValue> tagValues,
-                   final TimeTruncation timeTruncation) {
+    private StatEventKey(final UID statUuid,
+                         final RollUpBitMask rollupMask,
+                         final EventStoreTimeIntervalEnum interval,
+                         final long timeMs,
+                         final List<TagValue> tagValues,
+                         final TimeTruncation timeTruncation) {
 
-        Preconditions.checkNotNull(statName);
+        Preconditions.checkNotNull(statUuid);
         Preconditions.checkNotNull(rollupMask);
         Preconditions.checkNotNull(interval);
         Preconditions.checkNotNull(tagValues);
 
-        this.statName = statName;
+        this.statUuid = statUuid;
         this.rollupMask = rollupMask;
         this.interval = interval;
         this.tagValues = tagValues;
@@ -116,29 +116,29 @@ public class StatKey implements Comparable<StatKey> {
         this.hashCode = buildHashCode();
     }
 
-    public StatKey(final UID statName,
-                   final RollUpBitMask rollupMask,
-                   final EventStoreTimeIntervalEnum interval,
-                   final long timeMs,
-                   final List<TagValue> tagValues) {
+    public StatEventKey(final UID statUuid,
+                        final RollUpBitMask rollupMask,
+                        final EventStoreTimeIntervalEnum interval,
+                        final long timeMs,
+                        final List<TagValue> tagValues) {
 
         //public constructor so ensure the time is truncated to the time interval
-        this(statName, rollupMask, interval, timeMs, tagValues, TimeTruncation.TRUNCATE);
+        this(statUuid, rollupMask, interval, timeMs, tagValues, TimeTruncation.TRUNCATE);
     }
 
 
-    public StatKey(final UID statName,
-                   final RollUpBitMask rollupMask,
-                   final EventStoreTimeIntervalEnum interval,
-                   final long timeMs,
-                   final TagValue... tagValues) {
+    public StatEventKey(final UID statUuid,
+                        final RollUpBitMask rollupMask,
+                        final EventStoreTimeIntervalEnum interval,
+                        final long timeMs,
+                        final TagValue... tagValues) {
 
         //public constructor so ensure the time is truncated to the time interval
-       this(statName, rollupMask, interval, timeMs, Arrays.asList(tagValues), TimeTruncation.TRUNCATE);
+       this(statUuid, rollupMask, interval, timeMs, Arrays.asList(tagValues), TimeTruncation.TRUNCATE);
     }
 
     /**
-     * Spawns a new {@link StatKey} based on the values of this but with some of
+     * Spawns a new {@link StatEventKey} based on the values of this but with some of
      * the tag values rolled up and a new {@link RollUpBitMask}. The new tag values
      * are defined by the new RollUpBitMask.
      *
@@ -148,7 +148,7 @@ public class StatKey implements Comparable<StatKey> {
      * Care should be taken to only call this on an instance that has no tags rolled up
      * else the roll up behaviour will be cumulative rather than absolute.
      */
-    public StatKey cloneAndRollUpTags(final RollUpBitMask newRollUpBitMask, final UID rolledUpValue) {
+    public StatEventKey cloneAndRollUpTags(final RollUpBitMask newRollUpBitMask, final UID rolledUpValue) {
         Preconditions.checkNotNull(newRollUpBitMask);
         Preconditions.checkNotNull(rolledUpValue);
         int tagCount = tagValues.size();
@@ -165,23 +165,23 @@ public class StatKey implements Comparable<StatKey> {
             }
         }
         //time of the new key is unchanged from this so don't truncate
-        return new StatKey(statName, newRollUpBitMask, interval, timeMs, newTagValues, TimeTruncation.DONT_TRUNCATE);
+        return new StatEventKey(statUuid, newRollUpBitMask, interval, timeMs, newTagValues, TimeTruncation.DONT_TRUNCATE);
     }
 
     /**
      * Shallow copy of this except the interval is changed for the next biggest. Will throw a {@link RuntimeException}
      * if it is already the biggest.
      */
-    public StatKey cloneAndChangeInterval(EventStoreTimeIntervalEnum newInterval) {
+    public StatEventKey cloneAndChangeInterval(EventStoreTimeIntervalEnum newInterval) {
         Preconditions.checkNotNull(newInterval);
         //truncate the time in the new statKey down to the new interval
-        return new StatKey(statName, rollupMask, newInterval, timeMs, tagValues, TimeTruncation.TRUNCATE);
+        return new StatEventKey(statUuid, rollupMask, newInterval, timeMs, tagValues, TimeTruncation.TRUNCATE);
     }
 
     public byte[] getBytes() {
         int length = STATIC_PART_LENGTH + (tagValues.size() * TAG_VALUE_PAIR_LENGTH);
         ByteBuffer byteBuffer = ByteBuffer.allocate(length);
-        byteBuffer.put(statName.getUidBytes());
+        byteBuffer.put(statUuid.getUidBytes());
         byteBuffer.put(rollupMask.asBytes());
         byteBuffer.put(interval.getByteVal());
         byteBuffer.put(Bytes.toBytes(timeMs));
@@ -189,7 +189,7 @@ public class StatKey implements Comparable<StatKey> {
         return byteBuffer.array();
     }
 
-    public static StatKey fromBytes(final byte[] bytes) {
+    public static StatEventKey fromBytes(final byte[] bytes) {
         UID statName = UID.from(bytes, STAT_NAME_PART_OFFSET);
         RollUpBitMask rollUpBitMask = RollUpBitMask.fromBytes(bytes, ROLLUP_MASK_PART_OFFSET);
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.fromBytes(bytes, INTERVAL_PART_OFFSET);
@@ -198,17 +198,17 @@ public class StatKey implements Comparable<StatKey> {
 
         try {
             //de-serializing so leave time as in its byte form
-            StatKey statKey = new StatKey(statName, rollUpBitMask, interval, timeMs, tagValues, TimeTruncation.DONT_TRUNCATE);
-            LOGGER.trace(() -> String.format("De-serializing bytes %s to StatKey %s", ByteArrayUtils.byteArrayToHex(bytes), statKey));
-            return statKey;
+            StatEventKey statEventKey = new StatEventKey(statName, rollUpBitMask, interval, timeMs, tagValues, TimeTruncation.DONT_TRUNCATE);
+            LOGGER.trace(() -> String.format("De-serializing bytes %s to StatEventKey %s", ByteArrayUtils.byteArrayToHex(bytes), statEventKey));
+            return statEventKey;
         } catch (Exception e) {
-            LOGGER.error("Error de-serializing a StatKey from bytes {}", ByteArrayUtils.byteArrayToHex(bytes));
+            LOGGER.error("Error de-serializing a StatEventKey from bytes {}", ByteArrayUtils.byteArrayToHex(bytes));
             throw e;
         }
     }
 
-    public UID getStatName() {
-        return statName;
+    public UID getStatUuid() {
+        return statUuid;
     }
 
     public RollUpBitMask getRollupMask() {
@@ -250,13 +250,13 @@ public class StatKey implements Comparable<StatKey> {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        final StatKey statKey = (StatKey) o;
+        final StatEventKey statEventKey = (StatEventKey) o;
 
-        if (timeMs != statKey.timeMs) return false;
-        if (!statName.equals(statKey.statName)) return false;
-        if (!rollupMask.equals(statKey.rollupMask)) return false;
-        if (interval != statKey.interval) return false;
-        return tagValues.equals(statKey.tagValues);
+        if (timeMs != statEventKey.timeMs) return false;
+        if (!statUuid.equals(statEventKey.statUuid)) return false;
+        if (!rollupMask.equals(statEventKey.rollupMask)) return false;
+        if (interval != statEventKey.interval) return false;
+        return tagValues.equals(statEventKey.tagValues);
     }
 
     @Override
@@ -264,7 +264,7 @@ public class StatKey implements Comparable<StatKey> {
         return hashCode;
     }
     public int buildHashCode() {
-        int result = statName.hashCode();
+        int result = statUuid.hashCode();
         result = 31 * result + rollupMask.hashCode();
         result = 31 * result + interval.hashCode();
         result = 31 * result + Long.hashCode(timeMs);
@@ -274,8 +274,8 @@ public class StatKey implements Comparable<StatKey> {
 
     @Override
     public String toString() {
-        return "StatKey{" +
-                "statName=" + statName +
+        return "StatEventKey{" +
+                "statUuid=" + statUuid +
                 ", rollupMask=" + rollupMask +
                 ", interval=" + interval +
                 ", timeMs=" + timeMs +
@@ -284,7 +284,7 @@ public class StatKey implements Comparable<StatKey> {
     }
 
     @Override
-    public int compareTo(final StatKey that) {
+    public int compareTo(final StatEventKey that) {
         return COMPARATOR.compare(this, that);
     }
 

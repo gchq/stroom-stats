@@ -70,7 +70,7 @@ import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.hbase.util.bytes.ByteArrayUtils;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
@@ -102,7 +102,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(HBaseEventStoreTable.class);
 
-//    private Map<StatKey, StatAggregate> putEventsMap = new HashMap<>();
+//    private Map<StatEventKey, StatAggregate> putEventsMap = new HashMap<>();
 
     /**
      * Private constructor
@@ -152,7 +152,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
     @Override
     public void addAggregatedEvents(final StatisticType statisticType,
-                                    final Map<StatKey, StatAggregate> aggregatedEvents) {
+                                    final Map<StatEventKey, StatAggregate> aggregatedEvents) {
 
 //        LOGGER.ifDebugIsEnabled(() -> {
 //            LOGGER.debug("putEventsMap key count: {}", putEventsMap.size());
@@ -193,7 +193,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         putCounterMap.get(statisticType).add(aggregatedEvents.size());
     }
 
-    private void putAggregatedEventsCount(final Map<StatKey, StatAggregate> aggregatedEvents) {
+    private void putAggregatedEventsCount(final Map<StatEventKey, StatAggregate> aggregatedEvents) {
 
         LOGGER.trace(() -> String.format("putAggregatedEventsCount called with size %s", aggregatedEvents.size()));
 
@@ -215,7 +215,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         addMultipleCounts(rowData);
     }
 
-    private void putAggregatedEventsValue(final Map<StatKey, StatAggregate> aggregatedEvents) {
+    private void putAggregatedEventsValue(final Map<StatEventKey, StatAggregate> aggregatedEvents) {
 
         LOGGER.trace(() -> String.format("putAggregatedEventsValue called with size %s", aggregatedEvents.size()));
         //TODO ValueCellValue and ValueAggregate are essentially the same thing. Should probably keep Value Aggregate
@@ -524,18 +524,18 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     private Scan buildBasicScan(final RollUpBitMask rollUpBitMask,
                                 final Period period,
                                 final StatisticType statisticType,
-                                final String statName) {
+                                final String statUuid) {
 
         final Scan scan = new Scan();
 
         final Optional<RowKey> optStartRowKey = Optional.ofNullable(period.getFrom())
                 .map(fromMsInc ->
-                        rowKeyBuilder.buildStartKey(statName, rollUpBitMask, fromMsInc));
+                        rowKeyBuilder.buildStartKey(statUuid, rollUpBitMask, fromMsInc));
 
         // we want to work from an inclusive time as we are working in row intervals
         final Optional<RowKey> optEndRowKeyExclusive = Optional.ofNullable(period.getToInclusive())
                 .map(toMsInc ->
-                        rowKeyBuilder.buildEndKey(statName, rollUpBitMask, toMsInc));
+                        rowKeyBuilder.buildEndKey(statUuid, rollUpBitMask, toMsInc));
 
         if (LOGGER.isDebugEnabled()) {
             logStartStopKeys(optStartRowKey, optEndRowKeyExclusive);
@@ -553,17 +553,17 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
             //need an exclusive end key but the simplest thing is to build an end key from the last possible
             //partial timestamp of the row key. While this isn't actually an exclusive stop key we
             //will never get close to the last partial timestamp in this system's lifetime.
-            byte[] bStopKey = rowKeyBuilder.buildEndKeyBytes(statName, rollUpBitMask);
+            byte[] bStopKey = rowKeyBuilder.buildEndKeyBytes(statUuid, rollUpBitMask);
             scan.setStopRow(bStopKey);
 
         } else if (!period.hasFrom() && period.hasTo()) {
             // ----> To
-            byte[] bStartKey = rowKeyBuilder.buildStartKeyBytes(statName, rollUpBitMask);
+            byte[] bStartKey = rowKeyBuilder.buildStartKeyBytes(statUuid, rollUpBitMask);
             scan.setStartRow(bStartKey);
             optEndRowKeyExclusive.map(RowKey::asByteArray).ifPresent(scan::setStopRow);
         } else {
             //No time bounds at all so set a row prefix
-            scan.setRowPrefixFilter(rowKeyBuilder.buildStartKeyBytes(statName, rollUpBitMask));
+            scan.setRowPrefixFilter(rowKeyBuilder.buildStartKeyBytes(statUuid, rollUpBitMask));
         }
 
         scan.setMaxVersions(1); //we should only be storing 1 version but setting anyway
@@ -603,14 +603,14 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                                       final RollUpBitMask rollUpBitMask,
                                       final Period period) {
         boolean isFound = false;
-        final String statName = statisticConfiguration.getName();
+        final String statUuid = statisticConfiguration.getUuid();
 
-        final UID statNameUid = uniqueIdCache.getUniqueIdOrDefault(statName);
+        final UID statUuidUid = uniqueIdCache.getUniqueIdOrDefault(statUuid);
 
-        Scan scan = buildBasicScan(rollUpBitMask, period, statisticConfiguration.getStatisticType(), statName);
+        Scan scan = buildBasicScan(rollUpBitMask, period, statisticConfiguration.getStatisticType(), statUuid);
 
         // filter on rows with a key starting with the UID of our stat name
-        final Filter prefixFilter = new PrefixFilter(statNameUid.getUidBytes());
+        final Filter prefixFilter = new PrefixFilter(statUuidUid.getUidBytes());
         // filter on the first row found
         final Filter pageFilter = new PageFilter(1);
         final Filter keyOnlyFilter = new KeyOnlyFilter();

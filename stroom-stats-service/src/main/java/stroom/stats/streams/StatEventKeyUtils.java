@@ -25,28 +25,29 @@ import stroom.stats.hbase.uid.UniqueIdCache;
 
 import java.util.stream.Collectors;
 
-public class StatKeyUtils {
+public class StatEventKeyUtils {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(StatKeyUtils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(StatEventKeyUtils.class);
 
-    public static void logStatKey(final UniqueIdCache uniqueIdCache, final StatKey statKey) {
+    public static void logStatKey(final UniqueIdCache uniqueIdCache, final StatEventKey statEventKey) {
 
-        String statName = getStatName(uniqueIdCache, statKey);
-        String tagValues = getTagValues(uniqueIdCache, statKey, ",", "|");
+        String statUuid = getStatUuid(uniqueIdCache, statEventKey);
+        String tagValues = getTagValues(uniqueIdCache, statEventKey, ",", "|");
 
-        LOGGER.debug("StatKey - {}, {}, {}, {}", statName, statKey.getRollupMask(), statKey.getInterval(), tagValues);
+        LOGGER.debug("StatEventKey - {}, {}, {}, {}",
+                statUuid, statEventKey.getRollupMask(), statEventKey.getInterval(), tagValues);
     }
 
-    public static String getStatName(final UniqueIdCache uniqueIdCache, final StatKey statKey) {
-        return uniqueIdCache.getName(statKey.getStatName());
+    public static String getStatUuid(final UniqueIdCache uniqueIdCache, final StatEventKey statEventKey) {
+        return uniqueIdCache.getName(statEventKey.getStatUuid());
     }
 
     public static String getTagValues(final UniqueIdCache uniqueIdCache,
-                                      final StatKey statKey,
+                                      final StatEventKey statEventKey,
                                       final String tagValueDelimiter,
                                       final String pairDelimiter) {
 
-        return statKey.getTagValues().stream()
+        return statEventKey.getTagValues().stream()
                 .map(tagValue ->
                         uniqueIdCache.getName(tagValue.getTag()) + pairDelimiter +
                                 uniqueIdCache.getName(tagValue.getValue()

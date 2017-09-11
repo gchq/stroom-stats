@@ -41,18 +41,18 @@ import stroom.stats.api.StatisticsService;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
 import stroom.stats.hbase.uid.UID;
-import stroom.stats.partitions.StatKeyPartitioner;
+import stroom.stats.partitions.StatEventKeyPartitioner;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.StatisticsAggregationProcessor;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.streams.TopicNameFactory;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
-import stroom.stats.streams.serde.StatKeySerde;
+import stroom.stats.streams.serde.StatEventKeySerde;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -88,7 +88,7 @@ public class StatisticsAggregationServiceIT {
     private StatisticsService mockStatisticsService;
 
     @Captor
-    private ArgumentCaptor<Map<StatKey, StatAggregate>> aggregatesMapCaptor;
+    private ArgumentCaptor<Map<StatEventKey, StatAggregate>> aggregatesMapCaptor;
 
     @Captor
     private ArgumentCaptor<StatisticType> statTypeCaptor;
@@ -122,7 +122,7 @@ public class StatisticsAggregationServiceIT {
         UID statNameUid = mockUniqueIdCache.getOrCreateId(statName);
         ZonedDateTime baseTime = ZonedDateTime.now(ZoneOffset.UTC);
 
-        final KafkaProducer<StatKey, StatAggregate> kafkaProducer = buildKafkaProducer(mockStroomPropertyService);
+        final KafkaProducer<StatEventKey, StatAggregate> kafkaProducer = buildKafkaProducer(mockStroomPropertyService);
 
         int iterations = 50_000;
 
@@ -221,7 +221,7 @@ public class StatisticsAggregationServiceIT {
 
         return aggregatesMapCaptor.getAllValues().stream()
                 .flatMap(map -> map.entrySet().stream().map(entry -> new KeyValue<>(entry.getKey(), entry.getValue())))
-                .filter(kv -> kv.key.getStatName().equals(statNameUid))
+                .filter(kv -> kv.key.getStatUuid().equals(statNameUid))
                 .mapToLong(kv -> ((CountAggregate) kv.value).getAggregatedCount())
                 .sum();
     }
@@ -230,7 +230,7 @@ public class StatisticsAggregationServiceIT {
         mockStroomPropertyService.setProperty(StatisticsAggregationService.PROP_KEY_THREADS_PER_INTERVAL_AND_TYPE, 4);
         mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 1_000);
         mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000);
-        //because the mockUniqueIdCache is not persistent we will always get ID 0001 for the statname regardless of what
+        //because the mockUniqueIdCache is not persistent we will always get ID 0001 for the statUuid regardless of what
         //it is.  Therefore we need to set a unique groupId for the consumer inside the processor so it doesn't get
         //msgs from kafka from a previous run
         mockStroomPropertyService.setProperty(StatisticsAggregationProcessor.PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX,
@@ -241,7 +241,7 @@ public class StatisticsAggregationServiceIT {
         mockStroomPropertyService.setProperty(StatisticsIngestService.PROP_KEY_KAFKA_AUTO_OFFSET_RESET, "latest");
     }
 
-    private static KafkaProducer<StatKey, StatAggregate> buildKafkaProducer(StroomPropertyService stroomPropertyService) {
+    private static KafkaProducer<StatEventKey, StatAggregate> buildKafkaProducer(StroomPropertyService stroomPropertyService) {
 
         Map<String, Object> producerProps = new HashMap<>();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
@@ -251,21 +251,21 @@ public class StatisticsAggregationServiceIT {
         producerProps.put(ProducerConfig.LINGER_MS_CONFIG, 10);
         producerProps.put(ProducerConfig.BATCH_SIZE_CONFIG, 100);
         producerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 5_000_000);
-        producerProps.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, StatKeyPartitioner.class);
+        producerProps.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, StatEventKeyPartitioner.class);
 
-        Serde<StatKey> statKeySerde = StatKeySerde.instance();
+        Serde<StatEventKey> statKeySerde = StatEventKeySerde.instance();
         Serde<StatAggregate> statAggregateSerde = StatAggregateSerde.instance();
 
         return new KafkaProducer<>(producerProps, statKeySerde.serializer(), statAggregateSerde.serializer());
     }
 
-    private ProducerRecord<StatKey, StatAggregate> buildProducerRecord(
+    private ProducerRecord<StatEventKey, StatAggregate> buildProducerRecord(
             String topic,
             UID statNameUid,
             ZonedDateTime time) {
 
-        StatKey statKey = new StatKey(statNameUid, RollUpBitMask.ZERO_MASK, WORKING_INTERVAL, time.toInstant().toEpochMilli());
+        StatEventKey statEventKey = new StatEventKey(statNameUid, RollUpBitMask.ZERO_MASK, WORKING_INTERVAL, time.toInstant().toEpochMilli());
         StatAggregate statAggregate = new CountAggregate(1L);
-        return new ProducerRecord<>(topic, statKey, statAggregate);
+        return new ProducerRecord<>(topic, statEventKey, statAggregate);
     }
 }

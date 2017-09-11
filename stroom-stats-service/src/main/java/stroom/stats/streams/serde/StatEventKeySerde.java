@@ -20,17 +20,17 @@
 package stroom.stats.streams.serde;
 
 import org.apache.kafka.common.serialization.Serde;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 
-public class StatKeySerde {
+public class StatEventKeySerde {
 
-    private StatKeySerde() {
+    private StatEventKeySerde() {
     }
 
-    public static Serde<StatKey> instance() {
-        Serde<StatKey> statKeySerde = SerdeUtils.buildBasicSerde(
+    public static Serde<StatEventKey> instance() {
+        Serde<StatEventKey> statKeySerde = SerdeUtils.buildBasicSerde(
                 (topic, obj) -> obj.getBytes(),
-                (topic, bytes) -> StatKey.fromBytes(bytes)
+                (topic, bytes) -> StatEventKey.fromBytes(bytes)
         );
         return statKeySerde;
     }

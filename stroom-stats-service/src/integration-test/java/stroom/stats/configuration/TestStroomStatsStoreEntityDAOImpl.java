@@ -30,6 +30,7 @@ import stroom.stats.AbstractAppIT;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.test.StatisticsHelper;
 import stroom.stats.test.StroomStatsStoreEntityBuilder;
 import stroom.stats.test.StroomStatsStoreEntityHelper;
 
@@ -138,10 +139,14 @@ public class TestStroomStatsStoreEntityDAOImpl extends AbstractAppIT {
 
     private StatisticConfiguration createStatisticConfigurationEntity(String prefix) {
 
+        String statName = prefix + Instant.now().toString();
+        String statUuid = StatisticsHelper.getUuidKey(statName);
         return StroomStatsStoreEntityHelper.addStatConfig(
                 sessionFactory,
                 marshaller,
-                new StroomStatsStoreEntityBuilder(prefix + Instant.now().toString(),
+                new StroomStatsStoreEntityBuilder(
+                        statUuid,
+                        statName,
                         StatisticType.COUNT,
                         EventStoreTimeIntervalEnum.SECOND,
                         StatisticRollUpType.ALL).build()

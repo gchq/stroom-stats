@@ -33,7 +33,7 @@ import stroom.stats.schema.v3.CompoundIdentifierType;
 import stroom.stats.schema.v3.Statistics;
 import stroom.stats.schema.v3.TagType;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.StatisticWrapper;
 import stroom.stats.streams.TagValue;
 import stroom.stats.streams.aggregation.StatAggregate;
@@ -55,7 +55,7 @@ public abstract class AbstractStatisticFlatMapper {
     private final StroomPropertyService stroomPropertyService;
     private final UID rolledUpValue;
 
-//    private Map<StatKey, StatAggregate> putEventsMap = new HashMap<>();
+//    private Map<StatEventKey, StatAggregate> putEventsMap = new HashMap<>();
 
     public AbstractStatisticFlatMapper(final UniqueIdCache uniqueIdCache,
                                        final StroomPropertyService stroomPropertyService) {
@@ -67,7 +67,7 @@ public abstract class AbstractStatisticFlatMapper {
     }
 
 
-    public abstract Iterable<KeyValue<StatKey, StatAggregate>> flatMap(String statName, StatisticWrapper statisticWrapper);
+    public abstract Iterable<KeyValue<StatEventKey, StatAggregate>> flatMap(String statUuid, StatisticWrapper statisticWrapper);
 
     private TagValue buildTagValue(String tag, Optional<String> value) {
 
@@ -146,15 +146,15 @@ public abstract class AbstractStatisticFlatMapper {
         return currentInterval.orElseGet(() -> EventStoreTimeIntervalHelper.getLargestInterval());
     }
 
-    protected KeyValue<StatKey, StatAggregate> buildKeyValue(final String statName,
-                                                             final StatisticWrapper statisticWrapper,
-                                                             final StatAggregate statAggregate) {
+    protected KeyValue<StatEventKey, StatAggregate> buildKeyValue(final String statUuid,
+                                                                  final StatisticWrapper statisticWrapper,
+                                                                  final StatAggregate statAggregate) {
 
         //The stat will have been validated by this point so the get will succeed
         StatisticConfiguration statisticConfiguration = statisticWrapper.getOptionalStatisticConfiguration().get();
         Statistics.Statistic statistic = statisticWrapper.getStatistic();
 
-        UID statNameUid = uniqueIdCache.getOrCreateId(statName);
+        UID statUuidUid = uniqueIdCache.getOrCreateId(statUuid);
 
         //convert rollupmask
         RollUpBitMask rollupMask = RollUpBitMask.ZERO_MASK;
@@ -175,7 +175,7 @@ public abstract class AbstractStatisticFlatMapper {
         if (statistic.getTags() != null) {
             List<TagType> tagTypes = statistic.getTags().getTag();
             //TODO may want to build a cache of statconf to a tuple3 of (statNameUID, List<TagValues>, ESTIE)
-            //to speed the construction of the StatKey, though would still need to spawn a new list for the tagValues
+            //to speed the construction of the StatEventKey, though would still need to spawn a new list for the tagValues
             tagValues = statisticConfiguration.getFieldNames().stream()
                     .map(tag -> {
                         Optional<String> optValue = tagTypes.stream()
@@ -190,29 +190,29 @@ public abstract class AbstractStatisticFlatMapper {
             tagValues = Collections.emptyList();
         }
 
-        StatKey statKey = new StatKey(statNameUid, rollupMask, interval, timeMs, tagValues);
+        StatEventKey statEventKey = new StatEventKey(statUuidUid, rollupMask, interval, timeMs, tagValues);
 
-        return new KeyValue<>(statKey, statAggregate);
+        return new KeyValue<>(statEventKey, statAggregate);
     }
 
     /**
      * FlatMap a single stat event into 1-* {@link KeyValue}(s) by generating all configured rollup permutations, e.g.
-     * statName: MyStat tags|values: System|systemX,Environment|OPS
+     * statUuid: 180b843a-... tags|values: System|systemX,Environment|OPS
      * becomes
-     * statName: MyStat tags: System|systemX,Environment|OPS
-     * statName: MyStat tags: System|systemX,Environment|*
-     * statName: MyStat tags: System|*,Environment|OPS
-     * statName: MyStat tags: System|*,Environment|*
+     * statUuid: 180b843a-... tags: System|systemX,Environment|OPS
+     * statUuid: 180b843a-... tags: System|systemX,Environment|*
+     * statUuid: 180b843a-... tags: System|*,Environment|OPS
+     * statUuid: 180b843a-... tags: System|*,Environment|*
      * <p>
      * Assuming those rollup perms were configured in the StatisticConfiguration object
      * <p>
      * This flat mapping relies on having access to the statistic configuration for this statName
      */
-    protected List<KeyValue<StatKey, StatAggregate>> buildKeyValues(final String statName,
-                                                                    final StatisticWrapper statisticWrapper,
-                                                                    final StatAggregate statAggregate) {
+    protected List<KeyValue<StatEventKey, StatAggregate>> buildKeyValues(final String statUuid,
+                                                                         final StatisticWrapper statisticWrapper,
+                                                                         final StatAggregate statAggregate) {
 
-        KeyValue<StatKey, StatAggregate> baseKeyValue = buildKeyValue(statName, statisticWrapper, statAggregate);
+        KeyValue<StatEventKey, StatAggregate> baseKeyValue = buildKeyValue(statUuid, statisticWrapper, statAggregate);
 
         Statistics.Statistic statistic = statisticWrapper.getStatistic();
         StatisticConfiguration statisticConfiguration = statisticWrapper.getOptionalStatisticConfiguration()
@@ -250,11 +250,11 @@ public abstract class AbstractStatisticFlatMapper {
             //have in the baseKeyValue) and from that make a new KeyValue with the same statAggregate value
             //Each spawned KeyValue should mostly be references back to the base one so the memory and processing
             //cost should be lower than using deep copies
-            List<KeyValue<StatKey, StatAggregate>> keyValuePerms = rollUpBitMasks.stream()
+            List<KeyValue<StatEventKey, StatAggregate>> keyValuePerms = rollUpBitMasks.stream()
                     .filter(rollUpBitMask -> !rollUpBitMask.equals(RollUpBitMask.ZERO_MASK))
                     .map(rollUpBitMask -> {
-                        StatKey newStatKey = baseKeyValue.key.cloneAndRollUpTags(rollUpBitMask, rolledUpValue);
-                        return new KeyValue<>(newStatKey, statAggregate);
+                        StatEventKey newStatEventKey = baseKeyValue.key.cloneAndRollUpTags(rollUpBitMask, rolledUpValue);
+                        return new KeyValue<>(newStatEventKey, statAggregate);
                     })
                     .collect(Collectors.toList());
 
