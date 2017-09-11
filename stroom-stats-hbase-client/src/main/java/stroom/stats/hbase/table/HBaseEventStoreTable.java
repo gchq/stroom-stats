@@ -418,14 +418,20 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                                               final RollUpBitMask rollUpBitMask,
                                               final SearchStatisticsCriteria criteria) {
 
-        LOGGER.debug(() -> String.format("getStatisticsData called, store: %s, statName: %s, type: %s, mask: %s, criteria: %s",
-                timeInterval, statisticConfiguration.getName(), statisticConfiguration.getStatisticType(), rollUpBitMask, criteria));
+        LOGGER.debug(() -> String.format("getStatisticsData called, store: %s, statUuid: %s, statName: %s, type: %s, mask: %s, criteria: %s",
+                timeInterval,
+                statisticConfiguration.getUuid(),
+                statisticConfiguration.getName(),
+                statisticConfiguration.getStatisticType(),
+                rollUpBitMask,
+                criteria));
 
         final Period period = criteria.getPeriod();
 
         final StatisticType statisticType = statisticConfiguration.getStatisticType();
 
-        LOGGER.debug(() -> String.format("Using time period: [%s] to [%s]", DateUtil.createNormalDateTimeString(period.getFrom()),
+        LOGGER.debug(() -> String.format("Using time period: [%s] to [%s]",
+                DateUtil.createNormalDateTimeString(period.getFrom()),
                 DateUtil.createNormalDateTimeString(period.getTo())));
 
         String statUuid = statisticConfiguration.getUuid();
@@ -445,7 +451,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         final ResultScanner scanner = getScanner(tableInterface, scan);
 
         // object to hold all the data returned
-        final StatisticDataSet statisticDataSet = new StatisticDataSet(statName, statisticType);
+        final StatisticDataSet statisticDataSet = new StatisticDataSet(statUuid, statisticType);
 
         try {
             final long periodFrom = period.getFromOrElse(0L);
@@ -490,7 +496,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
                         final StatisticDataPointAdapter adapter = statisticDataPointAdapterFactory.getAdapter(statisticType);
                         final StatisticDataPoint dataPoint = adapter.convertCell(
-                                statName,
+                                statUuid,
                                 fullTimestamp,
                                 timeInterval,
                                 tags,
@@ -580,7 +586,8 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     }
 
 
-    private void logStartStopKeys(final Optional<RowKey> optStartRowKey, final Optional<RowKey> optEndRowKeyExclusive) {
+    private void logStartStopKeys(final Optional<RowKey> optStartRowKey,
+                                  final Optional<RowKey> optEndRowKeyExclusive) {
         LOGGER.debug("optStartRowKey: " + optStartRowKey
                 .map(rowKeyBuilder::toPlainTextString)
                 .orElse("Empty"));

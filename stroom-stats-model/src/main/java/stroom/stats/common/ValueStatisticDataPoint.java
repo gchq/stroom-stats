@@ -87,8 +87,8 @@ public class ValueStatisticDataPoint implements StatisticDataPoint {
     }
 
     @Override
-    public String getStatisticName() {
-        return delegate.getStatisticName();
+    public String getStatisticUuid() {
+        return delegate.getStatisticUuid();
     }
 
     @Override
