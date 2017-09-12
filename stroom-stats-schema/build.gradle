@@ -3,16 +3,7 @@ plugins {
     id "de.undercouch.download" version "3.2.0"
 }
 
-//apply plugin: 'com.github.jacobono.jaxb'
-
 dependencies { 
-    //jaxb 'com.sun.xml.bind:jaxb-xjc:2.2.7-b41'
-    //jaxb 'com.sun.xml.bind:jaxb-impl:2.2.7-b41'
-    //jaxb 'javax.xml.bind:jaxb-api:2.2.7'
-
-    // The two dependencies below should work for RI versions of JAXB after 2.2.8
-    //jaxb "org.glassfish.jaxb:jaxb-xjc:${versions.jaxb}"
-    //jaxb "org.glassfish.jaxb:jaxb-runtime:${versions.jaxb}"
     jaxb libs.jaxb_xjc
     jaxb libs.jaxb_runtime
 }
@@ -33,38 +24,24 @@ idea {
 }
 
 clean {
-    delete 'src-generated/main/java/*'
+    delete 'src-generated'
 }
-
-//sourceSets {
-    //main {
-        //java {
-            ////we are only dealing with generated classes so make that clear by renaming the directory
-            //srcDir generatedDir
-        //}
-    //}
-
-    //generated{
-        //java.srcDir "${buildDir}/generated/src/java/"
-    //}
-//}
 
 task downloadSchemas() {
     doLast {
-        logger.info("Creating dir ${schemasDir} ----------------------------")
         new File(schemasDir).mkdirs()
 
         download {
-            src  'https://raw.githubusercontent.com/gchq/stroom-content/statsSchemaV3/source/core-xml-schemas/stroomContent/XML%20Schemas/statistics/statistics%20v3.0.XMLSchema.data.xsd'
+            src xmlSchemas.v3
             dest new File("${schemasDir}")
             overwrite true
         }
     }
 }
 
-tasks.xjc.dependsOn downloadSchemas
-tasks.compileJava.dependsOn xjc
 
+//TODO code below was an attempt to download multiple schemas but this relies on being able to
+//configure and run the jaxb plugin twice
 //task downloadXmlSchemas() {
     //doLast {
         ////ensure dir exists
@@ -82,10 +59,8 @@ tasks.compileJava.dependsOn xjc
     //}
 //}
 
-//task buildAllJaxbArtefacts() {
-//}
-
-
+//TODO code below was an attempt to get the jaxb plugin to generate code for multiple schemas
+//not worth completing until we have multiple schemas to process
 //task createJaxbTasks() {
     ////configure a task for each schema we need to process
     //xmlSchemas.each { ver, url -> 
@@ -126,11 +101,9 @@ tasks.compileJava.dependsOn xjc
     //}
 //}
 
-//tasks.compileJava.dependsOn buildAllJaxbArtefacts
 
+//configuration for the jaxb plugin
 jaxb() {
-
-    //logger.info "${schemasDir}"
     xsdDir = "${project.name}/build/schemas"
     xjc {
         destinationDir = "${generatedDir}/main/java"
@@ -139,3 +112,6 @@ jaxb() {
         ]
     }
 }
+
+tasks.xjc.dependsOn downloadSchemas
+tasks.compileJava.dependsOn xjc
