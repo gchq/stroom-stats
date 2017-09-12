@@ -42,7 +42,7 @@ public class StatisticValidator {
 
 
         if (msgKey == null) {
-            return addErrorMsg(msgKey, statisticWrapper, "No statName in the message key");
+            return addErrorMsg(msgKey, statisticWrapper, "No statUuid in the message key");
         }
         Statistics.Statistic statistic = statisticWrapper.getStatistic();
 
@@ -53,6 +53,10 @@ public class StatisticValidator {
             return addErrorMsg(msgKey, statisticWrapper,
                     String.format("Stat uuid in the message key %s doesn't match uuid in the message %s",
                             msgKey, uuidFromWrapper));
+        }
+
+        if (statistic.getTime() == null) {
+            return addErrorMsg(msgKey, statisticWrapper, String.format("Statistic is missing a time value"));
         }
 
         if (statisticWrapper.getOptionalStatisticConfiguration().isPresent()) {

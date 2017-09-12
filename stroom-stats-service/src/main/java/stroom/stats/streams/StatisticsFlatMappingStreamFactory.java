@@ -40,7 +40,7 @@ import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatEventKeySerde;
 import stroom.stats.util.logging.LambdaLogger;
-import stroom.stats.xml.StatisticsMarshaller;
+import stroom.stats.schema.v3.StatisticsMarshaller;
 
 import javax.inject.Inject;
 import java.util.Arrays;
@@ -105,6 +105,8 @@ public class StatisticsFlatMappingStreamFactory {
 
         //currently the stat uuid is both the msg key and in the Statistic object.
         //This does mean duplication but means the msg can exist without the key, without losing meaning
+        //TODO In future if we have msgs conforming to different versions of the schema then we may have to inspect the
+        //namespace in the msg and use the appropriate unMarshaller for that version
         KStream<String, StatisticWrapper>[] forkedStreams = inputStream
                 .filter((key, value) -> {
                     //like a peek function
@@ -203,10 +205,16 @@ public class StatisticsFlatMappingStreamFactory {
 
 
     private StatisticWrapper buildStatisticWrapper(final Statistics.Statistic statistic) {
-        Optional<StatisticConfiguration> optStatConfig =
-                statisticConfigurationService.fetchStatisticConfigurationByUuid(statistic.getKey().getValue());
+        Statistics.Statistic.Key key = statistic.getKey();
+        if (key != null && key.getValue() != null) {
+            Optional<StatisticConfiguration> optStatConfig =
+                    statisticConfigurationService.fetchStatisticConfigurationByUuid(key.getValue());
 
-        return new StatisticWrapper(statistic, optStatConfig);
+            return new StatisticWrapper(statistic, optStatConfig);
+        } else {
+            LOGGER.warn("Statistic with no UUID");
+            return new StatisticWrapper(statistic, Optional.empty());
+        }
     }
 
 

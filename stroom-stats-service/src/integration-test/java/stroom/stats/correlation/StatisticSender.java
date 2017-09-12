@@ -13,7 +13,7 @@ import stroom.stats.streams.FullEndToEndIT;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.streams.TopicNameFactory;
 import stroom.stats.util.logging.LambdaLogger;
-import stroom.stats.xml.StatisticsMarshaller;
+import stroom.stats.schema.v3.StatisticsMarshaller;
 
 import java.util.Arrays;
 import java.util.HashMap;

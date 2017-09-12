@@ -21,7 +21,7 @@ package stroom.stats.schema;
 
 import org.junit.Test;
 import stroom.stats.schema.v3.Statistics;
-import stroom.stats.xml.StatisticsMarshaller;
+import stroom.stats.schema.v3.StatisticsMarshaller;
 
 import javax.xml.bind.JAXBException;
 import java.io.IOException;

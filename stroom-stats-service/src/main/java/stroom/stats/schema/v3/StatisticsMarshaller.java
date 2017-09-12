@@ -17,14 +17,17 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.xml;
+package stroom.stats.schema.v3;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.schema.v3.Statistics;
 
 import javax.inject.Singleton;
-import javax.xml.bind.*;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
+import javax.xml.bind.ValidationEvent;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -70,14 +73,7 @@ public class StatisticsMarshaller {
                 logStatistics(statistics);
             }
             if (!validationEvents.isEmpty()) {
-                String detail = validationEvents.stream()
-                        .map(validationEvent ->
-                                validationEvent.getMessage() +
-                                        " at line " +
-                                        validationEvent.getLocator().getLineNumber() +
-                                        " col " + validationEvent.getLocator().getColumnNumber()
-                        )
-                        .collect(Collectors.joining(","));
+                String detail = validationEventsToString(validationEvents);
                 throw new RuntimeException("Errors encountered un-marshalling xml: " + detail);
             }
             return statistics;
@@ -105,14 +101,7 @@ public class StatisticsMarshaller {
             });
             marshaller.marshal(statistics, stringWriter);
             if (!validationEvents.isEmpty()) {
-                String detail = validationEvents.stream()
-                        .map(validationEvent ->
-                                validationEvent.getMessage() +
-                                        " at line " +
-                                        validationEvent.getLocator().getLineNumber() +
-                                        " col " + validationEvent.getLocator().getColumnNumber()
-                        )
-                        .collect(Collectors.joining(","));
+                String detail = validationEventsToString(validationEvents);
                 throw new RuntimeException("Errors encountered marshalling xml: " + detail);
             }
             return stringWriter.toString();
@@ -120,6 +109,18 @@ public class StatisticsMarshaller {
             LOGGER.error("Error marshalling message value");
             throw new RuntimeException(String.format("Error marshalling message value"), e);
         }
+    }
+
+    private static String validationEventToString(final ValidationEvent validationEvent) {
+        return validationEvent.getMessage() +
+                " at line " +
+                validationEvent.getLocator().getLineNumber() +
+                " col " + validationEvent.getLocator().getColumnNumber();
+    }
+    private static String validationEventsToString(final List<ValidationEvent> validationEvents) {
+        return validationEvents.stream()
+                .map(StatisticsMarshaller::validationEventToString)
+                .collect(Collectors.joining(","));
     }
 
     private void logStatistics(Statistics statistics) {

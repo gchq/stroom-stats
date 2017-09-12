@@ -18,10 +18,10 @@
   ~ along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
   -->
 
-<statistics>
+<statistics xmlns="statistics:3">
     <!-- count stat with multiple identifiers contributing to the stat event -->
     <statistic>
-        <key statisticUuid="ExampleCountStat">def3a909-f108-4008-bb55-c556b3d2ea89</key>
+        <key statisticName="ExampleCountStat">def3a909-f108-4008-bb55-c556b3d2ea89</key>
         <time>2016-12-20T10:11:12.123Z</time>
         <count>2</count>    
         <tags>
@@ -41,7 +41,7 @@
     </statistic>
     <!-- count stat with an identifier made from a string part and a long part -->
     <statistic>
-        <key statisticUuid="ExampleCountStat">def3a909-f108-4008-bb55-c556b3d2ea89</key>
+        <key statisticName="ExampleCountStat">def3a909-f108-4008-bb55-c556b3d2ea89</key>
         <time>2016-12-20T11:11:12.123Z</time>
         <count>1</count>    
         <tags>
@@ -57,7 +57,7 @@
     </statistic>
     <!-- value stat with no identifiers -->
     <statistic>
-        <key statisticUuid="ExampleValueStat">ce4e4345-0542-4ce3-8fa7-fdac594b5d1c</key>
+        <key statisticName="ExampleValueStat">ce4e4345-0542-4ce3-8fa7-fdac594b5d1c</key>
         <time>2016-12-20T11:11:12.123Z</time>
         <value>99.9</value>    
         <tags>

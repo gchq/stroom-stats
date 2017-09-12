@@ -74,7 +74,7 @@ import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatEventKeySerde;
 import stroom.stats.test.KafkaEmbededUtils;
 import stroom.stats.test.StatisticsHelper;
-import stroom.stats.xml.StatisticsMarshaller;
+import stroom.stats.schema.v3.StatisticsMarshaller;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.DatatypeConfigurationException;

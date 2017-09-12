@@ -40,7 +40,7 @@ import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.StroomStatsStoreEntityHelper;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.util.logging.LambdaLogger;
-import stroom.stats.xml.StatisticsMarshaller;
+import stroom.stats.schema.v3.StatisticsMarshaller;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;

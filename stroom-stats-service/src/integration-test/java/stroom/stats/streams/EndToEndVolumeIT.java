@@ -51,7 +51,7 @@ import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.QueryApiHelper;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.test.StroomStatsStoreEntityHelper;
-import stroom.stats.xml.StatisticsMarshaller;
+import stroom.stats.schema.v3.StatisticsMarshaller;
 
 import javax.annotation.Nullable;
 import java.time.Instant;

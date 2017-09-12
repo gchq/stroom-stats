@@ -20,7 +20,7 @@
 
 <statistics xmlns="statistics:3" >
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:00.000Z</time>
         <count>1</count>
         <tags>
@@ -33,7 +33,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:00.000Z</time>
         <count>1</count>
         <tags>
@@ -46,7 +46,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:00.000Z</time>
         <count>1</count>
         <tags>
@@ -59,7 +59,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:00.000Z</time>
         <count>1</count>
         <tags>
@@ -72,7 +72,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:00.000Z</time>
         <count>1</count>
         <tags>
@@ -85,7 +85,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:00.000Z</time>
         <count>1</count>
         <tags>
@@ -98,7 +98,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:00.000Z</time>
         <count>1</count>
         <tags>
@@ -111,7 +111,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:00.000Z</time>
         <count>1</count>
         <tags>
@@ -124,7 +124,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:00.000Z</time>
         <count>1</count>
         <tags>
@@ -137,7 +137,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:00.000Z</time>
         <count>1</count>
         <tags>
@@ -150,7 +150,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:00.000Z</time>
         <count>1</count>
         <tags>
@@ -163,7 +163,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:00.000Z</time>
         <count>1</count>
         <tags>
@@ -176,7 +176,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:05.000Z</time>
         <count>1</count>
         <tags>
@@ -189,7 +189,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:05.000Z</time>
         <count>1</count>
         <tags>
@@ -202,7 +202,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:05.000Z</time>
         <count>1</count>
         <tags>
@@ -215,7 +215,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:05.000Z</time>
         <count>1</count>
         <tags>
@@ -228,7 +228,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:05.000Z</time>
         <count>1</count>
         <tags>
@@ -241,7 +241,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:05.000Z</time>
         <count>1</count>
         <tags>
@@ -254,7 +254,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:05.000Z</time>
         <count>1</count>
         <tags>
@@ -267,7 +267,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:05.000Z</time>
         <count>1</count>
         <tags>
@@ -280,7 +280,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:05.000Z</time>
         <count>1</count>
         <tags>
@@ -293,7 +293,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:05.000Z</time>
         <count>1</count>
         <tags>
@@ -306,7 +306,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:05.000Z</time>
         <count>1</count>
         <tags>
@@ -319,7 +319,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:05.000Z</time>
         <count>1</count>
         <tags>
@@ -332,7 +332,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:10.000Z</time>
         <count>1</count>
         <tags>
@@ -345,7 +345,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:10.000Z</time>
         <count>1</count>
         <tags>
@@ -358,7 +358,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:10.000Z</time>
         <count>1</count>
         <tags>
@@ -371,7 +371,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:10.000Z</time>
         <count>1</count>
         <tags>
@@ -384,7 +384,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:10.000Z</time>
         <count>1</count>
         <tags>
@@ -397,7 +397,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:10.000Z</time>
         <count>1</count>
         <tags>
@@ -410,7 +410,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:10.000Z</time>
         <count>1</count>
         <tags>
@@ -423,7 +423,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:10.000Z</time>
         <count>1</count>
         <tags>
@@ -436,7 +436,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:10.000Z</time>
         <count>1</count>
         <tags>
@@ -449,7 +449,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:10.000Z</time>
         <count>1</count>
         <tags>
@@ -462,7 +462,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:10.000Z</time>
         <count>1</count>
         <tags>
@@ -475,7 +475,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:10.000Z</time>
         <count>1</count>
         <tags>
@@ -488,7 +488,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:15.000Z</time>
         <count>1</count>
         <tags>
@@ -501,7 +501,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:15.000Z</time>
         <count>1</count>
         <tags>
@@ -514,7 +514,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:15.000Z</time>
         <count>1</count>
         <tags>
@@ -527,7 +527,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:15.000Z</time>
         <count>1</count>
         <tags>
@@ -540,7 +540,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:15.000Z</time>
         <count>1</count>
         <tags>
@@ -553,7 +553,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:15.000Z</time>
         <count>1</count>
         <tags>
@@ -566,7 +566,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:15.000Z</time>
         <count>1</count>
         <tags>
@@ -579,7 +579,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:15.000Z</time>
         <count>1</count>
         <tags>
@@ -592,7 +592,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:15.000Z</time>
         <count>1</count>
         <tags>
@@ -605,7 +605,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:15.000Z</time>
         <count>1</count>
         <tags>
@@ -618,7 +618,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:15.000Z</time>
         <count>1</count>
         <tags>
@@ -631,7 +631,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:15.000Z</time>
         <count>1</count>
         <tags>
@@ -644,7 +644,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:20.000Z</time>
         <count>1</count>
         <tags>
@@ -657,7 +657,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:20.000Z</time>
         <count>1</count>
         <tags>
@@ -670,7 +670,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:20.000Z</time>
         <count>1</count>
         <tags>
@@ -683,7 +683,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:20.000Z</time>
         <count>1</count>
         <tags>
@@ -696,7 +696,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:20.000Z</time>
         <count>1</count>
         <tags>
@@ -709,7 +709,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:20.000Z</time>
         <count>1</count>
         <tags>
@@ -722,7 +722,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:20.000Z</time>
         <count>1</count>
         <tags>
@@ -735,7 +735,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:20.000Z</time>
         <count>1</count>
         <tags>
@@ -748,7 +748,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:20.000Z</time>
         <count>1</count>
         <tags>
@@ -761,7 +761,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:20.000Z</time>
         <count>1</count>
         <tags>
@@ -774,7 +774,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:20.000Z</time>
         <count>1</count>
         <tags>
@@ -787,7 +787,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:20.000Z</time>
         <count>1</count>
         <tags>
@@ -800,7 +800,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:25.000Z</time>
         <count>1</count>
         <tags>
@@ -813,7 +813,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:25.000Z</time>
         <count>1</count>
         <tags>
@@ -826,7 +826,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:25.000Z</time>
         <count>1</count>
         <tags>
@@ -839,7 +839,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:25.000Z</time>
         <count>1</count>
         <tags>
@@ -852,7 +852,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:25.000Z</time>
         <count>1</count>
         <tags>
@@ -865,7 +865,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:25.000Z</time>
         <count>1</count>
         <tags>
@@ -878,7 +878,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:25.000Z</time>
         <count>1</count>
         <tags>
@@ -891,7 +891,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:25.000Z</time>
         <count>1</count>
         <tags>
@@ -904,7 +904,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:25.000Z</time>
         <count>1</count>
         <tags>
@@ -917,7 +917,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:25.000Z</time>
         <count>1</count>
         <tags>
@@ -930,7 +930,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:25.000Z</time>
         <count>1</count>
         <tags>
@@ -943,7 +943,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:25.000Z</time>
         <count>1</count>
         <tags>
@@ -956,7 +956,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:30.000Z</time>
         <count>1</count>
         <tags>
@@ -969,7 +969,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:30.000Z</time>
         <count>1</count>
         <tags>
@@ -982,7 +982,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:30.000Z</time>
         <count>1</count>
         <tags>
@@ -995,7 +995,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT5">2cca60a2-c64c-4fde-a580-2e4c05f7f162</key>
+        <key statisticName="STAT5">2cca60a2-c64c-4fde-a580-2e4c05f7f162</key>
         <time>2017-01-10T00:00:30.000Z</time>
         <count>1</count>
         <tags>
@@ -1008,7 +1008,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:30.000Z</time>
         <count>1</count>
         <tags>
@@ -1021,7 +1021,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:30.000Z</time>
         <count>1</count>
         <tags>
@@ -1034,7 +1034,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:30.000Z</time>
         <count>1</count>
         <tags>
@@ -1047,7 +1047,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:30.000Z</time>
         <count>1</count>
         <tags>
@@ -1060,7 +1060,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:30.000Z</time>
         <count>1</count>
         <tags>
@@ -1073,7 +1073,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:30.000Z</time>
         <count>1</count>
         <tags>
@@ -1086,7 +1086,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:30.000Z</time>
         <count>1</count>
         <tags>
@@ -1099,7 +1099,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:30.000Z</time>
         <count>1</count>
         <tags>
@@ -1112,7 +1112,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:35.000Z</time>
         <count>1</count>
         <tags>
@@ -1125,7 +1125,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:35.000Z</time>
         <count>1</count>
         <tags>
@@ -1138,7 +1138,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:35.000Z</time>
         <count>1</count>
         <tags>
@@ -1151,7 +1151,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:35.000Z</time>
         <count>1</count>
         <tags>
@@ -1164,7 +1164,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:35.000Z</time>
         <count>1</count>
         <tags>
@@ -1177,7 +1177,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:35.000Z</time>
         <count>1</count>
         <tags>
@@ -1190,7 +1190,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:35.000Z</time>
         <count>1</count>
         <tags>
@@ -1203,7 +1203,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:35.000Z</time>
         <count>1</count>
         <tags>
@@ -1216,7 +1216,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:35.000Z</time>
         <count>1</count>
         <tags>
@@ -1229,7 +1229,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT3">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:35.000Z</time>
         <count>1</count>
         <tags>
@@ -1242,7 +1242,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:35.000Z</time>
         <count>1</count>
         <tags>
@@ -1255,7 +1255,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
+        <key statisticName="STAT4">8fdd65b1-9610-4311-885c-4ee11d8b0704</key>
         <time>2017-01-10T00:00:35.000Z</time>
         <count>1</count>
         <tags>
@@ -1268,7 +1268,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT5">2cca60a2-c64c-4fde-a580-2e4c05f7f162</key>
+        <key statisticName="STAT5">2cca60a2-c64c-4fde-a580-2e4c05f7f162</key>
         <time>2017-01-10T00:00:40.000Z</time>
         <count>1</count>
         <tags>
@@ -1281,7 +1281,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
+        <key statisticName="STAT2">219a8c14-05f4-4362-a676-0c6fb847d4c8</key>
         <time>2017-01-10T00:00:40.000Z</time>
         <count>1</count>
         <tags>
@@ -1294,7 +1294,7 @@
         </identifiers>
     </statistic>
     <statistic>
-        <key statisticUuid="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
+        <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:40.000Z</time>
         <count>1</count>
         <tags>

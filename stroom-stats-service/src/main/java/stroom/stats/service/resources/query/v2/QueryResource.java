@@ -21,7 +21,6 @@ package stroom.stats.service.resources.query.v2;
 
 import com.codahale.metrics.annotation.Timed;
 import com.codahale.metrics.health.HealthCheck;
-import io.dropwizard.auth.Auth;
 import io.dropwizard.hibernate.UnitOfWork;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientResponse;
@@ -102,11 +101,11 @@ public class QueryResource implements HasHealthCheck {
     @Produces(MediaType.APPLICATION_JSON)
     @Path(DATA_SOURCE_ENDPOINT)
     @Timed
-    public Response getDataSource(@Auth User user, @Valid final DocRef docRef) {
-//        public Response getDataSource(@Valid final DocRef docRef) {
+//    public Response getDataSource(@Auth User user, @Valid final DocRef docRef) {
+        public Response getDataSource(@Valid final DocRef docRef) {
 
-        return performWithAuthorisation(user,
-//        return performWithAuthorisation(null,
+//        return performWithAuthorisation(user,
+        return performWithAuthorisation(null,
                 docRef,
                 () -> dataSourceService.getDatasource(docRef)
                         .map(dataSource -> Response.ok(dataSource).build())
@@ -119,8 +118,8 @@ public class QueryResource implements HasHealthCheck {
     @Produces({MediaType.APPLICATION_JSON})
     @Timed
     @UnitOfWork
-    public Response search(@Auth User user, @Valid SearchRequest searchRequest){
-//    public Response search(@Valid SearchRequest searchRequest){
+//    public Response search(@Auth User user, @Valid SearchRequest searchRequest){
+    public Response search(@Valid SearchRequest searchRequest){
         LOGGER.debug("Received search request");
 
 //        return performWithAuthorisation(user,
@@ -184,7 +183,7 @@ public class QueryResource implements HasHealthCheck {
     private boolean checkPermissions(String authorisationUrl, User user, DocRef statisticRef){
         Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
 
-//        if (user != null) {
+        if (user != null) {
             AuthorisationRequest authorisationRequest = new AuthorisationRequest(statisticRef, "USE");
             Response response = client
                     .target(authorisationUrl)
@@ -194,9 +193,9 @@ public class QueryResource implements HasHealthCheck {
 
             boolean isAuthorised = response.getStatus() == 200;
             return isAuthorised;
-//        } else {
-//            return true;
-//        }
+        } else {
+            return true;
+        }
     }
 
 
