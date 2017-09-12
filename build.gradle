@@ -7,7 +7,7 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath group: 'gchq', name: 'urlDependencyPlugin', version: 'v0.1'
+        classpath group: 'gchq', name: 'urlDependencyPlugin', version: 'v0.2.0'
         classpath group: 'ca.cutterslade.gradle', name: 'gradle-dependency-analyze', version: '1.1.0'
     }
 }
