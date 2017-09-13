@@ -155,9 +155,9 @@ public class FullEndToEndIT extends AbstractAppIT {
                 TagType tagTypeSystem = StatisticsHelper.buildTagType(TAG_SYSTEM, valuePair._2());
                 Statistics.Statistic statistic;
                 if (statisticType.equals(StatisticType.COUNT)) {
-                    statistic = StatisticsHelper.buildCountStatistic(statName, time, 10L, tagTypeEnv, tagTypeSystem);
+                    statistic = StatisticsHelper.buildCountStatistic(stat.getUuid(), statName, time, 10L, tagTypeEnv, tagTypeSystem);
                 } else {
-                    statistic = StatisticsHelper.buildValueStatistic(statName, time, 0.5, tagTypeEnv, tagTypeSystem);
+                    statistic = StatisticsHelper.buildValueStatistic(stat.getUuid(), statName, time, 0.5, tagTypeEnv, tagTypeSystem);
                 }
 
                 statList.add(statistic);

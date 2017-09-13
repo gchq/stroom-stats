@@ -119,6 +119,12 @@ public class StatisticsFlatMappingServiceIT {
     private static final Map<StatisticType, String> BAD_TOPICS_MAP = new HashMap<>();
     private static final Map<StatisticType, List<String>> ROLLUP_TOPICS_MAP = new HashMap<>();
 
+    private static final String GOOD_STAT_NAME = "MyStat";
+    private static final String GOOD_STAT_UUID = StatisticsHelper.getUuidKey(GOOD_STAT_NAME);
+
+    private static final String TAG_1 = "tag1";
+    private static final String TAG_2 = "tag2";
+
     private final StatisticsMarshaller statisticsMarshaller;
 
     private static final List<String> topics = new ArrayList<>();
@@ -199,29 +205,26 @@ public class StatisticsFlatMappingServiceIT {
 
         StatisticType statisticType = StatisticType.COUNT;
         String topic = INPUT_TOPICS_MAP.get(statisticType);
-        String statName = "MyStat";
-
-        String tag1 = "tag1";
-        String tag2 = "tag2";
 
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.SECOND;
 
         addStatConfig(module.getMockStatisticConfigurationService(),
-                statName,
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
                 statisticType,
-                Arrays.asList(tag1, tag2),
+                Arrays.asList(TAG_1, TAG_2),
                 interval);
 
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
-                StatisticsHelper.buildCountStatistic(statName, time, 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time, 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
-                StatisticsHelper.buildCountStatistic(statName, time.plusDays(2), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time.plusDays(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
         );
 
@@ -274,29 +277,26 @@ public class StatisticsFlatMappingServiceIT {
 
         StatisticType statisticType = StatisticType.VALUE;
         String topic = INPUT_TOPICS_MAP.get(statisticType);
-        String statName = "MyStat";
-
-        String tag1 = "tag1";
-        String tag2 = "tag2";
 
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.SECOND;
 
         addStatConfig(module.getMockStatisticConfigurationService(),
-                statName,
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
                 statisticType,
-                Arrays.asList(tag1, tag2),
+                Arrays.asList(TAG_1, TAG_2),
                 interval);
 
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
-                StatisticsHelper.buildValueStatistic(statName, time, 1.5,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildValueStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time, 1.5,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
-                StatisticsHelper.buildValueStatistic(statName, time.plusHours(2), 1.5,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildValueStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time.plusHours(2), 1.5,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
         );
         dumpStatistics(statistics);
@@ -373,8 +373,20 @@ public class StatisticsFlatMappingServiceIT {
         int expectedGoodMsgCountPerStatType = expectedTopicsPerStatType * expectedPermsPerMsg;
         int expectedBadMsgCount = 0;
 
-        CountDownLatch countIntervalTopicsLatch = startIntervalTopicsConsumer(StatisticType.COUNT, consumerProps, expectedGoodMsgCountPerStatType, topicToMsgsMap, true, 100);
-        CountDownLatch valueIntervalTopicsLatch = startIntervalTopicsConsumer(StatisticType.VALUE, consumerProps, expectedGoodMsgCountPerStatType, topicToMsgsMap, true, 100);
+        CountDownLatch countIntervalTopicsLatch = startIntervalTopicsConsumer(
+                StatisticType.COUNT,
+                consumerProps,
+                expectedGoodMsgCountPerStatType,
+                topicToMsgsMap,
+                true,
+                100);
+        CountDownLatch valueIntervalTopicsLatch = startIntervalTopicsConsumer(
+                StatisticType.VALUE,
+                consumerProps,
+                expectedGoodMsgCountPerStatType,
+                topicToMsgsMap,
+                true,
+                100);
         CountDownLatch badTopicsLatch = startBadEventsConsumer(consumerProps, expectedBadMsgCount, badEvents);
         startInputEventsConsumer(consumerProps);
 
@@ -384,12 +396,18 @@ public class StatisticsFlatMappingServiceIT {
             String inputTopic = INPUT_TOPICS_MAP.get(statisticType);
 
             for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
-                String statName = TopicNameFactory.getIntervalTopicName(STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval);
+                //stat name == topic name
+                String statName = TopicNameFactory.getIntervalTopicName(
+                        STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX,
+                        statisticType,
+                        interval);
+                String statUuid = StatisticsHelper.getUuidKey(statName);
 
                 String tag1 = TopicNameFactory.getIntervalTopicName("tag1", statisticType, interval);
                 String tag2 = TopicNameFactory.getIntervalTopicName("tag2", statisticType, interval);
 
                 addStatConfig(module.getMockStatisticConfigurationService(),
+                        statUuid,
                         statName,
                         statisticType,
                         Arrays.asList(tag1, tag2),
@@ -398,14 +416,14 @@ public class StatisticsFlatMappingServiceIT {
                 Statistics statistics;
                 if (statisticType.equals(StatisticType.COUNT)) {
                     statistics = StatisticsHelper.buildStatistics(
-                            StatisticsHelper.buildCountStatistic(statName, time, 1L,
+                            StatisticsHelper.buildCountStatistic(statUuid, statName, time, 1L,
                                     StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
                                     StatisticsHelper.buildTagType(tag2, tag2 + "val1")
                             )
                     );
                 } else {
                     statistics = StatisticsHelper.buildStatistics(
-                            StatisticsHelper.buildValueStatistic(statName, time, 1.5,
+                            StatisticsHelper.buildValueStatistic(statUuid, statName, time, 1.5,
                                     StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
                                     StatisticsHelper.buildTagType(tag2, tag2 + "val1")
                             )
@@ -433,9 +451,16 @@ public class StatisticsFlatMappingServiceIT {
         });
 
         topicToMsgsMap.entrySet().forEach(entry -> assertThat(entry.getValue()).hasSize(expectedPermsPerMsg));
+        //make sure the messages have gone to the correct topic by comparing their statName to the topic name
         topicToMsgsMap.entrySet().forEach(entry -> {
-            UID statNameUid = entry.getValue().stream().findFirst().get().key().getStatUuid();
-            String statName = uniqueIdCache.getName(statNameUid);
+            UID statUuidUid = entry.getValue().stream()
+                    .findFirst()
+                    .get()
+                    .key()
+                    .getStatUuid();
+            String statUuid = uniqueIdCache.getName(statUuidUid);
+            String statName = StatisticsHelper.getStatName(statUuid);
+
             String topicName = entry.getKey();
             assertThat(statName).isEqualTo(topicName);
         });
@@ -453,32 +478,31 @@ public class StatisticsFlatMappingServiceIT {
 
         StatisticType statisticType = StatisticType.COUNT;
         String topic = INPUT_TOPICS_MAP.get(statisticType);
-        String statName = "MyStat";
         String badStatName = "badStatName";
+        String badStatUuid = StatisticsHelper.getUuidKey("badStatName");
 
-        String tag1 = "tag1";
-        String tag2 = "tag2";
 
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.MINUTE;
 
         addStatConfig(module.getMockStatisticConfigurationService(),
-                statName,
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
                 statisticType,
-                Arrays.asList(tag1, tag2),
+                Arrays.asList(TAG_1, TAG_2),
                 interval);
 
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
                 //the good
-                StatisticsHelper.buildCountStatistic(statName, time, 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time, 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //the bad
-                StatisticsHelper.buildCountStatistic(badStatName, time.plusHours(2), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(badStatUuid, badStatName, time.plusHours(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
         );
 
@@ -546,28 +570,26 @@ public class StatisticsFlatMappingServiceIT {
 
         StatisticType statisticType = StatisticType.COUNT;
         String topic = INPUT_TOPICS_MAP.get(statisticType);
-        String statName = "MyStat";
 
-        String tag1 = "tag1";
-        String tag2 = "tag2";
 
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.DAY;
 
         addStatConfig(module.getMockStatisticConfigurationService(),
-                statName,
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
                 statisticType,
-                Arrays.asList(tag1, tag2),
+                Arrays.asList(TAG_1, TAG_2),
                 interval);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
-                StatisticsHelper.buildCountStatistic(statName, timeNow, 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow, 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //Event time is 2 years ago so will be outside all purge retention thresholds
-                StatisticsHelper.buildCountStatistic(statName, timeNow.minusYears(2), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusYears(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
         );
 
@@ -617,7 +639,10 @@ public class StatisticsFlatMappingServiceIT {
         module = initStreamProcessing();
 
         Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
-        KafkaProducer<String, String> producer = new KafkaProducer<>(senderProps, Serdes.String().serializer(), Serdes.String().serializer());
+        KafkaProducer<String, String> producer = new KafkaProducer<>(
+                senderProps,
+                Serdes.String().serializer(),
+                Serdes.String().serializer());
 
         for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
             //one row key interval (see EventStoreTimeIntervalEnum for details) of retention
@@ -628,39 +653,36 @@ public class StatisticsFlatMappingServiceIT {
 
         StatisticType statisticType = StatisticType.COUNT;
         String topic = INPUT_TOPICS_MAP.get(statisticType);
-        String statName = "MyStat";
-
-        String tag1 = "tag1";
-        String tag2 = "tag2";
 
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.SECOND;
 
         addStatConfig(module.getMockStatisticConfigurationService(),
-                statName,
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
                 statisticType,
-                Arrays.asList(tag1, tag2),
+                Arrays.asList(TAG_1, TAG_2),
                 interval);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
                 //bump up to MIN interval
-                StatisticsHelper.buildCountStatistic(statName, timeNow.minusHours(2), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusHours(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //bumped up to HOUR interval
-                StatisticsHelper.buildCountStatistic(statName, timeNow.minusDays(2), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusDays(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //bumped up to DAY interval
-                StatisticsHelper.buildCountStatistic(statName, timeNow.minusWeeks(8), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusWeeks(8), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //ignored
-                StatisticsHelper.buildCountStatistic(statName, timeNow.minusYears(2), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusYears(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
         );
 
@@ -674,7 +696,13 @@ public class StatisticsFlatMappingServiceIT {
         //3 good input msg, each one is rolled up to 4 perms so expect 12, one input msg ignored
         int expectedGoodMsgCount = 3 * 4;
         int expectedBadMsgCount = 0;
-        CountDownLatch intervalTopicsLatch = startIntervalTopicsConsumer(StatisticType.COUNT, consumerProps, expectedGoodMsgCount, topicToMsgsMap, true, 100);
+        CountDownLatch intervalTopicsLatch = startIntervalTopicsConsumer(
+                StatisticType.COUNT,
+                consumerProps,
+                expectedGoodMsgCount,
+                topicToMsgsMap,
+                true,
+                100);
         CountDownLatch badTopicsLatch = startBadEventsConsumer(consumerProps, expectedBadMsgCount, badEvents);
 //        startAllTopicsConsumer(consumerProps);
 
@@ -749,11 +777,13 @@ public class StatisticsFlatMappingServiceIT {
 
                 for (int statNum : IntStream.rangeClosed(1, statNameCnt).toArray()) {
                     String statName = TopicNameFactory.getIntervalTopicName("MyStat-" + statNum, statisticType, interval);
+                    String statUuid = StatisticsHelper.getUuidKey(statName);
 
                     String tag1 = "tag1-" + statName;
                     String tag2 = "tag2-" + statName;
 
                     addStatConfig(module.getMockStatisticConfigurationService(),
+                            statUuid,
                             statName,
                             statisticType,
                             Arrays.asList(tag1, tag2),
@@ -770,14 +800,14 @@ public class StatisticsFlatMappingServiceIT {
                         Statistics statistics;
                         if (statisticType.equals(StatisticType.COUNT)) {
                             statistics = StatisticsHelper.buildStatistics(
-                                    StatisticsHelper.buildCountStatistic(statName, time, 1,
+                                    StatisticsHelper.buildCountStatistic(statUuid, statName, time, 1,
                                             StatisticsHelper.buildTagType(tag1, tag1 + "val" + random.nextInt(3)),
                                             StatisticsHelper.buildTagType(tag2, tag2 + "val" + random.nextInt(3))
                                     )
                             );
                         } else {
                             statistics = StatisticsHelper.buildStatistics(
-                                    StatisticsHelper.buildValueStatistic(statName, time, 1.0,
+                                    StatisticsHelper.buildValueStatistic(statUuid, statName, time, 1.0,
                                             StatisticsHelper.buildTagType(tag1, tag1 + "val" + random.nextInt(3)),
                                             StatisticsHelper.buildTagType(tag2, tag2 + "val" + random.nextInt(3))
                                     )
@@ -1072,18 +1102,21 @@ public class StatisticsFlatMappingServiceIT {
     }
 
     private void addStatConfig(MockStatisticConfigurationService mockStatisticConfigurationService,
+                               String statUuid,
                                String statName,
                                StatisticType statisticType,
                                List<String> fieldNames,
                                EventStoreTimeIntervalEnum precision) {
         MockStatisticConfiguration statConfig = new MockStatisticConfiguration()
+                .setUuid(statUuid)
                 .setName(statName)
                 .setStatisticType(statisticType)
                 .setRollUpType(StatisticRollUpType.ALL)
                 .addFieldNames(fieldNames)
                 .setPrecision(precision);
 
-        LOGGER.debug("Adding StatConfig: {} {} {} {} {}",
+        LOGGER.debug("Adding StatConfig: {} {} {} {} {} {}",
+                statConfig.getUuid(),
                 statConfig.getName(),
                 statConfig.getStatisticType(),
                 statConfig.getRollUpType(),

@@ -34,13 +34,7 @@ public class StatisticsHelper {
 
     //hold a map of uuids for each stat name to make it easier for test classes to reuse uuids
     private static final Map<String, String> NAME_TO_UUID_MAP = new ConcurrentHashMap<>();
-
-    public static Statistics.Statistic buildCountStatistic(String statName,
-                                                           ZonedDateTime time,
-                                                           long value,
-                                                           TagType... tagValues) {
-        return buildCountStatistic(getUuidKey(statName), statName, time, value, tagValues);
-    }
+    private static final Map<String, String> UUID_TO_NAME_MAP = new ConcurrentHashMap<>();
 
     public static Statistics.Statistic buildCountStatistic(String key,
                                                            String statName,
@@ -50,13 +44,6 @@ public class StatisticsHelper {
         Statistics.Statistic statistic = buildStatistic(key, statName, time, tagValues);
         statistic.setCount(value);
         return statistic;
-    }
-
-    public static Statistics.Statistic buildValueStatistic(String statName,
-                                                           ZonedDateTime time,
-                                                           double value,
-                                                           TagType... tagValues) {
-        return buildValueStatistic(getUuidKey(statName), statName, time, value, tagValues);
     }
 
     public static Statistics.Statistic buildValueStatistic(String key,
@@ -124,8 +111,22 @@ public class StatisticsHelper {
         return statistic;
     }
 
+    /**
+     * @return The UUID corresponding to the passed name if it already exists in the in memory map
+     * else it returns a new UUID and stores it for future use.
+     */
     public static String getUuidKey(final String statName) {
-        NAME_TO_UUID_MAP.computeIfAbsent(statName, k -> UUID.randomUUID().toString());
+        NAME_TO_UUID_MAP.computeIfAbsent(statName, k -> {
+            String statUuid = UUID.randomUUID().toString();
+            UUID_TO_NAME_MAP.put(statUuid, statName);
+            return statUuid;
+        });
         return NAME_TO_UUID_MAP.get(statName);
+    }
+
+    public static String getStatName(final String statUuid) {
+        return Optional.ofNullable(UUID_TO_NAME_MAP.get(statUuid))
+                .orElseThrow(() ->
+                        new RuntimeException(String.format("Attempt to get a statName for an unknown UUID %s", statUuid)));
     }
 }
