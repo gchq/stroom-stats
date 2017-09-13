@@ -9,7 +9,7 @@ dependencies {
 }
 
 def xmlSchemas = [
-    v3: 'https://raw.githubusercontent.com/gchq/stroom-content/statsSchemaV3/source/core-xml-schemas/stroomContent/XML%20Schemas/statistics/statistics%20v3.0.XMLSchema.data.xsd'
+    v3: 'https://raw.githubusercontent.com/gchq/stroom-content/core-xml-schemas-v1.1/source/core-xml-schemas/stroomContent/XML%20Schemas/statistics/statistics%20v3.0.0.XMLSchema.data.xsd'
 ]
 
 def schemasDir = "${buildDir}/schemas"
