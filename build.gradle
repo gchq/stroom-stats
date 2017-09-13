@@ -46,7 +46,9 @@ ext.versions = [
 
     //same version for both stroom-query-api and stroom-query-common
     stroomQuery: 'v2.0.0-alpha.3',
-    stroomExpression: 'v1.0.0'
+    stroomExpression: 'v1.0.0',
+    swagger: '1.5.16',
+    zzzDummyzzz: 'Here to make sorting easier'
 ]
 
 //lib names for urlDependenciesPlugin
@@ -120,8 +122,10 @@ ext.libs = [
     saxon: "net.sf.saxon:Saxon-HE:9.6.0-6",
     slf4j_api: "org.slf4j:slf4j-api:$versions.slf4j",
     spring_kafka_test: "org.springframework.kafka:spring-kafka-test:$versions.spring_kafka_test", //instead of spring_kafka_test could use 'org.apache.kafka:kafka-streams-examples'
+    swagger_annotations: "io.swagger:swagger-annotations:$versions.swagger",
     xml_apis: "xml-apis:xml-apis:1.0.b2",
     zookeeper: "org.apache.zookeeper:zookeeper:3.4.5",
+    zzzDummyzzz: 'Here to make sorting easier'
 ] 
 
 subprojects {

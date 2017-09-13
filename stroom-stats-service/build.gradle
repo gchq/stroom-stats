@@ -82,6 +82,8 @@ dependencies {
     compile libs.logback_classic
     compile libs.objenesis //used for Kryo strategies
     compile libs.slf4j_api
+    permitUnusedDeclared libs.swagger_annotations //Needed for query api urlLib
+    compile libs.swagger_annotations
     compile libs.xml_apis
     compile libs.zookeeper
 
