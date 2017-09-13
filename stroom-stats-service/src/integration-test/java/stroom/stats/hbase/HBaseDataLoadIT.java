@@ -158,10 +158,10 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         //Put time in the statName to allow us to re-run the test without an empty HBase
         String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString();
-        String statUuid = StatisticsHelper.getUuidKey(statNameStr);
+        String statUuidStr = StatisticsHelper.getUuidKey(statNameStr);
 
         StatisticConfiguration statisticConfigurationEntity = new StroomStatsStoreEntityBuilder(
-                statUuid,
+                statUuidStr,
                 statNameStr,
                 statisticType,
                 interval,
@@ -174,10 +174,10 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 stroomStatsStoreEntityMarshaller,
                 statisticConfigurationEntity);
 
-        UID statName = uniqueIdCache.getOrCreateId(statNameStr);
-        assertThat(statName).isNotNull();
+        UID statUuidUid = uniqueIdCache.getOrCreateId(statUuidStr);
+        assertThat(statUuidUid).isNotNull();
 
-        StatEventKey statEventKey1 = new StatEventKey(statName,
+        StatEventKey statEventKey1 = new StatEventKey(statUuidUid,
                 ROLL_UP_BIT_MASK,
                 interval,
                 time1.toEpochMilli(),
@@ -190,7 +190,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         aggregatedEvents.put(statEventKey1, statAggregate1);
 
-        StatEventKey statEventKey2 = new StatEventKey(statName,
+        StatEventKey statEventKey2 = new StatEventKey(statUuidUid,
                 ROLL_UP_BIT_MASK,
                 interval,
                 time2.toEpochMilli(),
@@ -205,15 +205,15 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
 
-        SearchStatisticsCriteria criteriaAllData = buildSearchStatisticsCriteria(statNameStr,
+        SearchStatisticsCriteria criteriaAllData = buildSearchStatisticsCriteria(statUuidStr,
                 statisticConfigurationEntity);
 
-        SearchStatisticsCriteria criteriaSpecificRow = buildSearchStatisticsCriteria(statNameStr,
+        SearchStatisticsCriteria criteriaSpecificRow = buildSearchStatisticsCriteria(statUuidStr,
                 statisticConfigurationEntity,
                 tag1Term,
                 tag2Term);
 
-        SearchStatisticsCriteria criteriaNoDataFound = buildSearchStatisticsCriteria(statNameStr,
+        SearchStatisticsCriteria criteriaNoDataFound = buildSearchStatisticsCriteria(statUuidStr,
                 statisticConfigurationEntity,
                 tag1Term,
                 tag2TermNotFound);
@@ -256,12 +256,12 @@ public class HBaseDataLoadIT extends AbstractAppIT {
         runCriteria(statisticsService, criteriaNoDataFound, statisticConfigurationEntity, 0);
     }
 
-    private SearchStatisticsCriteria buildSearchStatisticsCriteria(String statNameStr,
+    private SearchStatisticsCriteria buildSearchStatisticsCriteria(String statUuidStr,
                                                                    StatisticConfiguration statisticConfiguration,
                                                                    FilterTermsTree.Node... childNodes) {
 
         SearchStatisticsCriteria.SearchStatisticsCriteriaBuilder builder = SearchStatisticsCriteria
-                .builder(new Period(), statNameStr)
+                .builder(new Period(), statUuidStr)
                 .setInterval(interval)
                 .setRequiredDynamicFields(statisticConfiguration.getFieldNames());
         if (childNodes != null && childNodes.length > 0) {
@@ -283,10 +283,10 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         //Put time in the statName to allow us to re-run the test without an empty HBase
         String statNameStr = this.getClass().getName() + "-test-" + Instant.now().toString();
-        String statUuid = StatisticsHelper.getUuidKey(statNameStr);
+        String statUuidStr = StatisticsHelper.getUuidKey(statNameStr);
 
         StatisticConfiguration statisticConfiguration = new StroomStatsStoreEntityBuilder(
-                statUuid,
+                statUuidStr,
                 statNameStr,
                 statisticType,
                 interval,
@@ -299,10 +299,10 @@ public class HBaseDataLoadIT extends AbstractAppIT {
                 stroomStatsStoreEntityMarshaller,
                 statisticConfiguration);
 
-        UID statName = uniqueIdCache.getOrCreateId(statNameStr);
-        assertThat(statName).isNotNull();
+        UID statUuidUid = uniqueIdCache.getOrCreateId(statUuidStr);
+        assertThat(statUuidStr).isNotNull();
 
-        StatEventKey statEventKey1 = new StatEventKey(statName,
+        StatEventKey statEventKey1 = new StatEventKey(statUuidUid,
                 ROLL_UP_BIT_MASK,
                 interval,
                 time1.toEpochMilli(),
@@ -315,7 +315,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         aggregatedEvents.put(statEventKey1, statAggregate1);
 
-        StatEventKey statEventKey2 = new StatEventKey(statName,
+        StatEventKey statEventKey2 = new StatEventKey(statUuidUid,
                 ROLL_UP_BIT_MASK,
                 interval,
                 time2.toEpochMilli(),
@@ -330,15 +330,15 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         statisticsService.putAggregatedEvents(statisticType, interval, aggregatedEvents);
 
-        SearchStatisticsCriteria criteriaAllData = buildSearchStatisticsCriteria(statNameStr,
+        SearchStatisticsCriteria criteriaAllData = buildSearchStatisticsCriteria(statUuidStr,
                 statisticConfiguration);
 
-        SearchStatisticsCriteria criteriaSpecificRow = buildSearchStatisticsCriteria(statNameStr,
+        SearchStatisticsCriteria criteriaSpecificRow = buildSearchStatisticsCriteria(statUuidStr,
                 statisticConfiguration,
                 tag1Term,
                 tag2Term);
 
-        SearchStatisticsCriteria criteriaNoDataFound = buildSearchStatisticsCriteria(statNameStr,
+        SearchStatisticsCriteria criteriaNoDataFound = buildSearchStatisticsCriteria(statUuidStr,
                 statisticConfiguration,
                 tag1Term,
                 tag2TermNotFound);
