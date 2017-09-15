@@ -470,6 +470,68 @@ public class StatisticsFlatMappingServiceIT {
     }
 
     @Test
+    public void test_cantUnmarshall() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
+        module = initStreamProcessing();
+
+        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
+        KafkaProducer<String, String> producer = new KafkaProducer<>(senderProps, Serdes.String().serializer(), Serdes.String().serializer());
+
+        StatisticType statisticType = StatisticType.COUNT;
+        String topic = INPUT_TOPICS_MAP.get(statisticType);
+
+        EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.MINUTE;
+
+        addStatConfig(module.getMockStatisticConfigurationService(),
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
+                statisticType,
+                Arrays.asList(TAG_1, TAG_2),
+                interval);
+
+        ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
+
+        Statistics statistics = StatisticsHelper.buildStatistics(
+                //the good, at this point
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time, 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
+                )
+        );
+
+
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        consumerProps.put("auto.offset.reset", "earliest");
+
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        Map<String, List<String>> badEvents = new HashMap<>();
+
+        int expectedBadMsgCount = 1;
+
+        CountDownLatch badTopicsLatch = startBadEventsConsumer(consumerProps, expectedBadMsgCount, badEvents);
+
+
+        LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), topic);
+        String statKey = statistics.getStatistic().get(0).getKey().getValue();
+        //corrupt the xml by renaming one of the element names
+        String msgValue = statisticsMarshaller.marshallToXml(statistics)
+                .replaceAll("key", "badElementName");
+        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, statKey, msgValue);
+        producer.send(producerRecord).get();
+        producer.close();
+
+        //Wait for the expected numbers of messages to arrive or timeout if not
+        assertThat(badTopicsLatch.await(30, TimeUnit.SECONDS)).isTrue();
+
+        assertThat(badEvents)
+                .hasSize(expectedBadMsgCount);
+        assertThat(badEvents.values().stream().findFirst().get())
+                .hasSize(expectedBadMsgCount);
+        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get())
+                .contains(GOOD_STAT_NAME);
+        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get())
+                .contains(StatisticsFlatMappingStreamFactory.UNMARSHALLING_ERROR_TEXT);
+    }
+    @Test
     public void test_oneGoodOneBad() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
         module = initStreamProcessing();
 
@@ -549,9 +611,14 @@ public class StatisticsFlatMappingServiceIT {
         assertThat(messages).hasSize(expectedGoodMsgCount);
 
         //no bad events
-        assertThat(badEvents).hasSize(expectedBadMsgCount);
-        assertThat(badEvents.values().stream().findFirst().get()).hasSize(expectedBadMsgCount);
-        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get()).contains(badStatName);
+        assertThat(badEvents)
+                .hasSize(expectedBadMsgCount);
+        assertThat(badEvents.values().stream().findFirst().get())
+                .hasSize(expectedBadMsgCount);
+        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get())
+                .contains(badStatName);
+        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get())
+                .contains(StatisticsFlatMappingStreamFactory.VALIDATION_ERROR_TEXT);
     }
 
     @Test

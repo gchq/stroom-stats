@@ -47,9 +47,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class StatisticsFlatMappingStreamFactory {
+
+    public static final String VALIDATION_ERROR_TEXT = "VALIDATION_ERROR";
+    public static final String UNMARSHALLING_ERROR_TEXT = "UNMARSHALLING_ERROR";
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatisticsFlatMappingStreamFactory.class);
 
@@ -228,23 +232,34 @@ public class StatisticsFlatMappingStreamFactory {
         return statistics;
     }
 
-    private String badStatisticWrapperToString(StatisticWrapper statisticWrapper) {
+    private String badStatisticWrapperToString(final StatisticWrapper statisticWrapper) {
         Statistics statisticsObj = wrapStatisticWithStatistics(statisticWrapper.getStatistic());
-        return new StringBuilder()
-                .append(statisticsMarshaller.marshallToXml(statisticsObj))
-                //Append the error message to the bottom of the XML as an XML comment
-                .append("\n<!-- VALIDATION_ERROR - " + statisticWrapper.getValidationErrorMessage().get() + " -->")
-                .toString();
+        return appendError(
+                statisticsMarshaller.marshallToXml(statisticsObj),
+                VALIDATION_ERROR_TEXT,
+                () -> statisticWrapper.getValidationErrorMessage().get());
     }
 
-    private String badStatisticWrapperToString(UnmarshalledXmlWrapper unmarshalledXmlWrapper) {
-        return new StringBuilder()
-                .append(unmarshalledXmlWrapper.getMessageValue())
-                //Append the error message to the bottom of the XML as an XML comment
-                .append("\n<!-- UNMARSHALLING_ERROR - " + unmarshalledXmlWrapper.getThrowable().getMessage() + " -->")
-                .toString();
+    private String badStatisticWrapperToString(final UnmarshalledXmlWrapper unmarshalledXmlWrapper) {
+        return appendError(
+                unmarshalledXmlWrapper.getMessageValue(),
+                UNMARSHALLING_ERROR_TEXT,
+                () -> unmarshalledXmlWrapper.getThrowable().getMessage());
     }
 
+    private String appendError(final String rawXmlValue,
+                               final String errorCode,
+                               final Supplier<String> errorMsgSupplier) {
+        return new StringBuilder()
+                .append(rawXmlValue)
+                //Append the error message to the bottom of the XML as an XML comment
+                .append("\n<!-- ")
+                .append(errorCode)
+                .append(" - ")
+                .append(errorMsgSupplier.get())
+                .append(" -->")
+                .toString();
+    }
 
     private StatisticWrapper buildStatisticWrapper(final Statistics.Statistic statistic) {
         Statistics.Statistic.Key key = statistic.getKey();
