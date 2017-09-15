@@ -53,7 +53,7 @@ public class TestStatisticValidator {
         StatisticWrapper statisticWrapper = buildBasicStatWrapper();
 
         //wrapper has different uuid to msg key
-        statisticWrapper.getStatistic().getKey().setValue(UUID.randomUUID().toString());
+        statisticWrapper.getStatistic().getKey().setValue("different uuid");
 
         assertThat(StatisticValidator.validate(statUuid, statisticWrapper).value.isValid())
                 .isFalse();
@@ -110,6 +110,7 @@ public class TestStatisticValidator {
         );
 
         MockStatisticConfiguration statConfig = new MockStatisticConfiguration()
+                .setUuid(statUuid)
                 .setName(statName)
                 .setStatisticType(statisticType)
                 .setRollUpType(StatisticRollUpType.ALL)
