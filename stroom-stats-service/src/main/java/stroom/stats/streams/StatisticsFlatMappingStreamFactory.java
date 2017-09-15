@@ -121,6 +121,7 @@ public class StatisticsFlatMappingStreamFactory {
         KStream<String, UnmarshalledXmlWrapper>[] unmarshallingForks = inputStream
                 .filter((key, value) -> {
                     //like a peek function
+                    //use with caution as the messages could be very frequent and large
                     LOGGER.trace("Received {} : {}", key, value);
                     return true;
                 })
