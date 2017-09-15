@@ -21,7 +21,7 @@ jar {
 shadowJar {
     // A transformer to merges files in META-INF/services
     mergeServiceFiles()
-    archiveName "stroom-stats-all-${version}.jar"
+    archiveName "stroom-stats-${version}-all.jar"
 }
 
 dependencies {
@@ -30,7 +30,6 @@ dependencies {
     compile project(':stroom-stats-hbase-client')
     compile project(':stroom-stats-util')
     compile project(':stroom-stats-model')
-
 
     // TODO: add HBase-client dependency here, be sure to include the 'all' classifier
     //compile 'stroom:stats:1.0-SNAPSHOT:all'
