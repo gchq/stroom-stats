@@ -61,7 +61,9 @@ public abstract class AbstractAppIT {
         clientConfiguration.setConnectionRequestTimeout(io.dropwizard.util.Duration.seconds(10));
         clientConfiguration.setConnectionTimeout(io.dropwizard.util.Duration.seconds(10));
         clientConfiguration.setTimeout(Duration.seconds(10));
-        client = new JerseyClientBuilder(RULE.getEnvironment()).using(clientConfiguration).build("test client");
+        client = new JerseyClientBuilder(RULE.getEnvironment())
+                .using(clientConfiguration)
+                .build("test client");
         APPLICATION_PORT = RULE.getLocalPort();
         ADMIN_PORT = RULE.getAdminPort();
 
@@ -69,7 +71,7 @@ public abstract class AbstractAppIT {
         QUERY_SEARCH_URL = String.format("http://localhost:%d" +
                 ResourcePaths.ROOT_PATH +
                 ResourcePaths.STROOM_STATS +
-                ResourcePaths.V1 +
+                ResourcePaths.V2 +
                 QueryResource.SEARCH_ENDPOINT, APPLICATION_PORT);
 
         BASE_TASKS_URL = String.format("http://localhost:%d/tasks/", ADMIN_PORT);

@@ -7,7 +7,7 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath group: 'gchq', name: 'urlDependencyPlugin', version: 'v0.1'
+        classpath group: 'gchq', name: 'urlDependencyPlugin', version: 'v0.2.0'
         classpath group: 'ca.cutterslade.gradle', name: 'gradle-dependency-analyze', version: '1.1.0'
     }
 }
@@ -16,7 +16,7 @@ apply plugin: 'gchq.urldependencies'
 apply plugin: 'idea'
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '3.5'
+    gradleVersion = '4.1'
 }
 
 ext.libsDir = "libs"
@@ -35,6 +35,7 @@ ext.versions = [
     //curator 2.12 depends on guava but shades the majority of it so should work with newer guava versions
     curator: '2.12.0',
 
+    jaxb: '2.2.10',
     jersey: '2.25.1',
 
     //0.10.2.0 is available but seems to have issues with spring_kafka_test
@@ -45,7 +46,9 @@ ext.versions = [
 
     //same version for both stroom-query-api and stroom-query-common
     stroomQuery: 'v2.0.0-alpha.3',
-    stroomExpression: 'v1.0.0'
+    stroomExpression: 'v1.0.0',
+    swagger: '1.5.16',
+    zzzDummyzzz: 'Here to make sorting easier'
 ]
 
 //lib names for urlDependenciesPlugin
@@ -96,6 +99,11 @@ ext.libs = [
     javax_inject: "javax.inject:javax.inject:1",
     javax_validation_api: "javax.validation:validation-api:1.1.0.Final",
     javax_ws_rs_api: "javax.ws.rs:javax.ws.rs-api:2.0.1",
+    jaxb_xjc: "org.glassfish.jaxb:jaxb-xjc:${versions.jaxb}",
+    jaxb_runtime: "org.glassfish.jaxb:jaxb-runtime:${versions.jaxb}",
+    //jaxb_api: "javax.xml.bind:jaxb-api:${versions.jaxb}",
+    //jaxb_impl: "com.sun.xml.bind:jaxb-impl:${versions.jaxb}-b41",
+    //jaxb_xjc: "com.sun.xml.bind:jaxb-xjc:${versions.jaxb}-b41",
     jcl_over_slf4j: "org.slf4j:jcl-over-slf4j:$versions.slf4j",
     jersey_server: "org.glassfish.jersey.core:jersey-server:$versions.jersey",
     jersey_client: "org.glassfish.jersey.core:jersey-client:$versions.jersey",
@@ -114,8 +122,10 @@ ext.libs = [
     saxon: "net.sf.saxon:Saxon-HE:9.6.0-6",
     slf4j_api: "org.slf4j:slf4j-api:$versions.slf4j",
     spring_kafka_test: "org.springframework.kafka:spring-kafka-test:$versions.spring_kafka_test", //instead of spring_kafka_test could use 'org.apache.kafka:kafka-streams-examples'
+    swagger_annotations: "io.swagger:swagger-annotations:$versions.swagger",
     xml_apis: "xml-apis:xml-apis:1.0.b2",
     zookeeper: "org.apache.zookeeper:zookeeper:3.4.5",
+    zzzDummyzzz: 'Here to make sorting easier'
 ] 
 
 subprojects {
@@ -162,14 +172,13 @@ urlDependencies {
             "https://github.com/gchq/stroom-expression/releases/download/$versions.stroomExpression/${urlLibs.stroomExpression}.jar")
 }
 
-project(':stroom-stats-api') {
-    publishing {
-        publications {
-            mavenJava(MavenPublication) {
-                artifactId 'stroom-stats-api'
-                from components.java
-                artifact sourcesJar
-            }
+project(':stroom-stats-schema') {
+
+    publishing.publications {
+        mavenJava(MavenPublication) {
+            //artifactId 'stroom-stats-schema'
+            from components.java
+            //artifact sourcesJar
         }
     }
 
@@ -177,24 +186,13 @@ project(':stroom-stats-api') {
         testArtifacts
         sourceArtifacts
     }
-    task testJar(type: Jar) {
-        baseName = "${project.name}-test"
-        from sourceSets.test.output
-    }
     task sourcesJar(type: Jar) {
         baseName = "${project.name}-source"
         from sourceSets.main.allSource
     }
     artifacts {
-        testArtifacts testJar
         sourceArtifacts sourcesJar
     }
-
-    task packageTests(type: Jar) {
-        from sourceSets.test.output
-        classifier = 'tests'
-    }
-    artifacts.archives packageTests
 
     task packageSources(type: Jar) {
         classifier = 'sources'

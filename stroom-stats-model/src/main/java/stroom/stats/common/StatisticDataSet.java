@@ -21,6 +21,7 @@
 
 package stroom.stats.common;
 
+import com.google.common.base.Preconditions;
 import stroom.stats.api.StatisticType;
 
 import java.util.ArrayList;
@@ -30,41 +31,40 @@ import java.util.stream.Stream;
 
 
 public class StatisticDataSet implements Iterable<StatisticDataPoint> {
-    private final String statisticName;
+    private final String statisticUuid;
     private final StatisticType statisticType;
     private final List<StatisticDataPoint> statisticDataPoints;
 
-    public StatisticDataSet(final String statisticName, final StatisticType statisticType) {
-        this.statisticName = statisticName;
+    public StatisticDataSet(final String statisticUuid, final StatisticType statisticType) {
+        this.statisticUuid = statisticUuid;
         this.statisticType = statisticType;
         this.statisticDataPoints = new ArrayList<>();
     }
 
-    public StatisticDataSet(final String statisticName, final StatisticType statisticType,
+    public StatisticDataSet(final String statisticUuid,
+                            final StatisticType statisticType,
                             final List<StatisticDataPoint> statisticDataPoints) {
-        for (StatisticDataPoint dataPoint : statisticDataPoints) {
-            if (!statisticType.equals(dataPoint.getStatisticType())) {
-                throw new RuntimeException(
-                        "Attempting to create a StatisticDataSet with StatisticDataPoints of an incompatible StatisticType");
-            }
+        if (Preconditions.checkNotNull(statisticDataPoints).stream()
+                .anyMatch(point -> !statisticType.equals(point.getStatisticType()))) {
+            throw new RuntimeException(
+                    "Attempting to create a StatisticDataSet with StatisticDataPoints of an incompatible StatisticType");
         }
 
-        this.statisticName = statisticName;
+        this.statisticUuid = statisticUuid;
         this.statisticType = statisticType;
         this.statisticDataPoints = statisticDataPoints;
     }
 
     public StatisticDataSet addDataPoint(StatisticDataPoint dataPoint) {
-        if (!statisticType.equals(dataPoint.getStatisticType())) {
-            throw new RuntimeException("Attempting to add a StatisticDataPoint of an incompatible StatisticType");
-        }
+        Preconditions.checkArgument(statisticType.equals(dataPoint.getStatisticType()),
+                "Attempting to add a StatisticDataPoint of an incompatible StatisticType");
 
         this.statisticDataPoints.add(dataPoint);
         return this;
     }
 
-    public String getStatisticName() {
-        return statisticName;
+    public String getStatisticUuid() {
+        return statisticUuid;
     }
 
     public StatisticType getStatisticType() {
@@ -102,7 +102,7 @@ public class StatisticDataSet implements Iterable<StatisticDataPoint> {
         int result = 1;
 
         result = prime * result + ((statisticDataPoints == null) ? 0 : statisticDataPoints.hashCode());
-        result = prime * result + ((statisticName == null) ? 0 : statisticName.hashCode());
+        result = prime * result + ((statisticUuid == null) ? 0 : statisticUuid.hashCode());
         return result;
     }
 
@@ -120,17 +120,17 @@ public class StatisticDataSet implements Iterable<StatisticDataPoint> {
                 return false;
         } else if (!statisticDataPoints.equals(other.statisticDataPoints))
             return false;
-        if (statisticName == null) {
-            if (other.statisticName != null)
+        if (statisticUuid == null) {
+            if (other.statisticUuid != null)
                 return false;
-        } else if (!statisticName.equals(other.statisticName))
+        } else if (!statisticUuid.equals(other.statisticUuid))
             return false;
         return true;
     }
 
     @Override
     public String toString() {
-        return "StatisticDataSet [statisticName=" + statisticName + ", statisticType=" + statisticType
+        return "StatisticDataSet [statisticUuid=" + statisticUuid + ", statisticType=" + statisticType
                 + ", statisticDataPoints size=" + statisticDataPoints.size() + "]";
     }
 

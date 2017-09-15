@@ -32,7 +32,7 @@ import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.TagValue;
 import stroom.stats.streams.aggregation.StatAggregate;
 
@@ -47,8 +47,8 @@ import java.util.List;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.IntStream;
 
-public class TestStatKeyPartitioner {
-    private static final Logger LOGGER = LoggerFactory.getLogger(TestStatKeyPartitioner.class);
+public class TestStatEventKeyPartitioner {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestStatEventKeyPartitioner.class);
 
     private Node node0 = new Node(0, "localhost", 99);
     private Node node1 = new Node(1, "localhost", 100);
@@ -90,7 +90,7 @@ public class TestStatKeyPartitioner {
 
     @Test
     public void testStreamPartitoner_samePartitionForSameKeyFields() throws Exception {
-        StatKey statKey1a = new StatKey(
+        StatEventKey statEventKey1A = new StatEventKey(
                 mockUniqueIdCache.getOrCreateId(statName1),
                 RollUpBitMask.ZERO_MASK,
                 EventStoreTimeIntervalEnum.SECOND,
@@ -99,7 +99,7 @@ public class TestStatKeyPartitioner {
                 new TagValue(mockUniqueIdCache.getOrCreateId(tag2), mockUniqueIdCache.getOrCreateId(tag2value1)));
 
         //different time but will be truncated to the same SECOND bucket
-        StatKey statKey1b = new StatKey(
+        StatEventKey statEventKey1B = new StatEventKey(
                 mockUniqueIdCache.getOrCreateId(statName1),
                 RollUpBitMask.ZERO_MASK,
                 EventStoreTimeIntervalEnum.SECOND,
@@ -109,15 +109,15 @@ public class TestStatKeyPartitioner {
 
         int numPartitions = 100;
 
-        int statKey1aPartition = getStreamsPartition(statKey1a, numPartitions);
-        int statKey1bPartition = getStreamsPartition(statKey1b, numPartitions);
+        int statKey1aPartition = getStreamsPartition(statEventKey1A, numPartitions);
+        int statKey1bPartition = getStreamsPartition(statEventKey1B, numPartitions);
 
         Assertions.assertThat(statKey1aPartition).isEqualTo(statKey1bPartition);
     }
 
     @Test
     public void testStreamPartitoner_singlePartition() throws Exception {
-        StatKey statKey1 = new StatKey(
+        StatEventKey statEventKey1 = new StatEventKey(
                 mockUniqueIdCache.getOrCreateId(statName1),
                 RollUpBitMask.ZERO_MASK,
                 EventStoreTimeIntervalEnum.SECOND,
@@ -126,7 +126,7 @@ public class TestStatKeyPartitioner {
                 new TagValue(mockUniqueIdCache.getOrCreateId(tag2), mockUniqueIdCache.getOrCreateId(tag2value1)));
 
         //most fields different but onyl one partition available
-        StatKey statKey2 = new StatKey(
+        StatEventKey statEventKey2 = new StatEventKey(
                 mockUniqueIdCache.getOrCreateId(statName2),
                 RollUpBitMask.fromShort((short) 2),
                 EventStoreTimeIntervalEnum.DAY,
@@ -136,8 +136,8 @@ public class TestStatKeyPartitioner {
 
         int numPartitions = 1;
 
-        int statKey1Partition = getStreamsPartition(statKey1, numPartitions);
-        int statKey2Partition = getStreamsPartition(statKey2, numPartitions);
+        int statKey1Partition = getStreamsPartition(statEventKey1, numPartitions);
+        int statKey2Partition = getStreamsPartition(statEventKey2, numPartitions);
 
         Assertions.assertThat(statKey1Partition).isEqualTo(statKey2Partition);
         Assertions.assertThat(statKey1Partition).isEqualTo(0);
@@ -145,7 +145,7 @@ public class TestStatKeyPartitioner {
 
     @Test
     public void testProducerPartitioner_sameKeyFields() throws Exception {
-        StatKey statKey1a = new StatKey(
+        StatEventKey statEventKey1A = new StatEventKey(
                 mockUniqueIdCache.getOrCreateId(statName1),
                 RollUpBitMask.ZERO_MASK,
                 EventStoreTimeIntervalEnum.SECOND,
@@ -154,7 +154,7 @@ public class TestStatKeyPartitioner {
                 new TagValue(mockUniqueIdCache.getOrCreateId(tag2), mockUniqueIdCache.getOrCreateId(tag2value1)));
 
         //different time and interval
-        StatKey statKey1b = new StatKey(
+        StatEventKey statEventKey1B = new StatEventKey(
                 mockUniqueIdCache.getOrCreateId(statName1),
                 RollUpBitMask.ZERO_MASK,
                 EventStoreTimeIntervalEnum.SECOND,
@@ -164,8 +164,8 @@ public class TestStatKeyPartitioner {
 
         int numPartitions = 100;
 
-        int statKey1aPartition = getProducerPartition(statKey1a, numPartitions);
-        int statKey1bPartition = getProducerPartition(statKey1b, numPartitions);
+        int statKey1aPartition = getProducerPartition(statEventKey1A, numPartitions);
+        int statKey1bPartition = getProducerPartition(statEventKey1B, numPartitions);
 
         Assertions.assertThat(statKey1aPartition).isEqualTo(statKey1bPartition);
     }
@@ -185,7 +185,7 @@ public class TestStatKeyPartitioner {
         RollUpBitMask.getRollUpBitMasks(12).parallelStream().forEach(rollUpBitMask -> {
             Arrays.stream(EventStoreTimeIntervalEnum.values()).forEach(interval -> {
                 IntStream.rangeClosed(1, 5).forEachOrdered(i -> {
-                    StatKey statKey = new StatKey(
+                    StatEventKey statEventKey = new StatEventKey(
                             mockUniqueIdCache.getOrCreateId("stat-" + i),
                             rollUpBitMask,
                             interval,
@@ -194,11 +194,11 @@ public class TestStatKeyPartitioner {
                             new TagValue(mockUniqueIdCache.getOrCreateId(tag2), mockUniqueIdCache.getOrCreateId("tag2value" + i)));
                     counter.increment();
 
-                    int partition = getStreamsPartition(statKey, numPartitions);
+                    int partition = getStreamsPartition(statEventKey, numPartitions);
 
-                    StatKey statKey2 = StatKey.fromBytes(statKey.getBytes());
+                    StatEventKey statEventKey2 = StatEventKey.fromBytes(statEventKey.getBytes());
 
-                    int partition2 = getStreamsPartition(statKey2, numPartitions);
+                    int partition2 = getStreamsPartition(statEventKey2, numPartitions);
 
                     //Stat keys are identical so should have same partition
                     //Also useful test of rebuilding a statkey from bytes
@@ -235,18 +235,18 @@ public class TestStatKeyPartitioner {
 
         LongAdder counter = new LongAdder();
         IntStream.rangeClosed(1, 50_000).forEachOrdered(i -> {
-            StatKey statKey = new StatKey(
+            StatEventKey statEventKey = new StatEventKey(
                     statNameUid,
                     RollUpBitMask.ZERO_MASK,
                     EventStoreTimeIntervalEnum.DAY,
                     baseTime.plus(i, ChronoUnit.HOURS).toEpochMilli());
             counter.increment();
 
-            int partition = getStreamsPartition(statKey, numPartitions);
+            int partition = getStreamsPartition(statEventKey, numPartitions);
 
-            StatKey statKey2 = StatKey.fromBytes(statKey.getBytes());
+            StatEventKey statEventKey2 = StatEventKey.fromBytes(statEventKey.getBytes());
 
-            int partition2 = getStreamsPartition(statKey2, numPartitions);
+            int partition2 = getStreamsPartition(statEventKey2, numPartitions);
 
             //Stat keys are identical so should have same partition
             //Also useful test of rebuilding a statkey from bytes
@@ -265,17 +265,17 @@ public class TestStatKeyPartitioner {
 
     }
 
-    private int getProducerPartition(StatKey statKey, int numPartitions) {
-        Partitioner partitioner = new StatKeyPartitioner();
-        int partition = partitioner.partition(topic, statKey, statKey.getBytes(), null, null, cluster);
+    private int getProducerPartition(StatEventKey statEventKey, int numPartitions) {
+        Partitioner partitioner = new StatEventKeyPartitioner();
+        int partition = partitioner.partition(topic, statEventKey, statEventKey.getBytes(), null, null, cluster);
         Assertions.assertThat(partition).isNotNegative();
         Assertions.assertThat(partition).isLessThan(numPartitions);
         return partition;
     }
 
-    private int getStreamsPartition(StatKey statKey, int numPartitions) {
-        StreamPartitioner<StatKey, StatAggregate> partitioner = new StatKeyPartitioner();
-        int partition = partitioner.partition(statKey, null, numPartitions);
+    private int getStreamsPartition(StatEventKey statEventKey, int numPartitions) {
+        StreamPartitioner<StatEventKey, StatAggregate> partitioner = new StatEventKeyPartitioner();
+        int partition = partitioner.partition(statEventKey, null, numPartitions);
         Assertions.assertThat(partition).isNotNegative();
         Assertions.assertThat(partition).isLessThan(numPartitions);
         return partition;

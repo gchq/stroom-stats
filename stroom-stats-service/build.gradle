@@ -21,16 +21,15 @@ jar {
 shadowJar {
     // A transformer to merges files in META-INF/services
     mergeServiceFiles()
-    archiveName "stroom-stats-all-${version}.jar"
+    archiveName "stroom-stats-${version}-all.jar"
 }
 
 dependencies {
     //Project dependencies
-    compile project(':stroom-stats-api')
+    compile project(':stroom-stats-schema')
     compile project(':stroom-stats-hbase-client')
     compile project(':stroom-stats-util')
     compile project(':stroom-stats-model')
-
 
     // TODO: add HBase-client dependency here, be sure to include the 'all' classifier
     //compile 'stroom:stats:1.0-SNAPSHOT:all'
@@ -82,6 +81,8 @@ dependencies {
     compile libs.logback_classic
     compile libs.objenesis //used for Kryo strategies
     compile libs.slf4j_api
+    permitUnusedDeclared libs.swagger_annotations //Needed for query api urlLib
+    compile libs.swagger_annotations
     compile libs.xml_apis
     compile libs.zookeeper
 

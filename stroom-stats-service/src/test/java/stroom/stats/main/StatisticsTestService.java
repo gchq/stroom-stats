@@ -189,7 +189,7 @@ public final class StatisticsTestService {
     }
 
     private void dumpStatisticsData(final StatisticDataSet statisticDataSet) {
-        LOGGER.info("Dumping data for statistic: " + statisticDataSet.getStatisticName());
+        LOGGER.info("Dumping data for statistic: " + statisticDataSet.getStatisticUuid());
 
         final List<String> records = new ArrayList<>();
 

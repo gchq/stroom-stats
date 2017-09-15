@@ -4,6 +4,10 @@ build/
 classes/
 libs/
 */out/
+/schema/
+
+# Ignore the jaxb/xjc generated code
+*/src-generated/
 
 # Ignore Gradle GUI config
 gradle-app.setting

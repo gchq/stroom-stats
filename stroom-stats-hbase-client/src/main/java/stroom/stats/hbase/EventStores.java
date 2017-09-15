@@ -31,7 +31,7 @@ import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.util.logging.LambdaLogger;
 
@@ -115,7 +115,7 @@ public class EventStores {
      */
     public void putAggregatedEvents(final StatisticType statisticType,
                                     final EventStoreTimeIntervalEnum interval,
-                                    final Map<StatKey, StatAggregate> aggregatedEvents) {
+                                    final Map<StatEventKey, StatAggregate> aggregatedEvents) {
 
         eventStoreMap.get(interval)
                 .putAggregatedEvents(statisticType, aggregatedEvents);
@@ -266,7 +266,7 @@ public class EventStores {
                 throw new IllegalStateException("Don't have an eventStore for time interval: " + interval.get());
             }
 
-            // see if the statname exists in this store
+            // see if the statistic configuration exists in this store
             if (store.doesStatisticExist(uidCache, statisticConfiguration)) {
                 finestStore = store;
                 break;

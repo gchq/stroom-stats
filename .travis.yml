@@ -46,7 +46,7 @@ deploy:
   file: 
     - stroom-stats-service/build/libs/*-all.jar
     - stroom-stats-hbase-filter/build/libs/*-all.jar
-    - stroom-stats-api/build/libs/*.jar
+    - stroom-stats-schema/build/libs/*.jar
   skip_cleanup: true
   on:
     tags: true

@@ -39,7 +39,7 @@ import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.util.DateUtil;
 
@@ -500,7 +500,7 @@ public class TestEventStore {
         }
 
         @Override
-        public void addAggregatedEvents(final StatisticType statisticType, final Map<StatKey, StatAggregate> aggregatedEvents) {
+        public void addAggregatedEvents(final StatisticType statisticType, final Map<StatEventKey, StatAggregate> aggregatedEvents) {
             throw new UnsupportedOperationException("Not used by this mock");
         }
 

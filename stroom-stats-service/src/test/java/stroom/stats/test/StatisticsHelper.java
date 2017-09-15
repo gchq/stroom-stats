@@ -19,29 +19,39 @@
 
 package stroom.stats.test;
 
-import stroom.stats.schema.CompoundIdentifierType;
-import stroom.stats.schema.ObjectFactory;
-import stroom.stats.schema.Statistics;
-import stroom.stats.schema.TagType;
+import stroom.stats.schema.v3.CompoundIdentifierType;
+import stroom.stats.schema.v3.ObjectFactory;
+import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v3.TagType;
 
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.GregorianCalendar;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class StatisticsHelper {
 
-    public static Statistics.Statistic buildCountStatistic(String statName, ZonedDateTime time, long value, TagType... tagValues) {
-        Statistics.Statistic statistic = buildStatistic(statName, time, tagValues);
+    //hold a map of uuids for each stat name to make it easier for test classes to reuse uuids
+    private static final Map<String, String> NAME_TO_UUID_MAP = new ConcurrentHashMap<>();
+    private static final Map<String, String> UUID_TO_NAME_MAP = new ConcurrentHashMap<>();
+
+    public static Statistics.Statistic buildCountStatistic(String key,
+                                                           String statName,
+                                                           ZonedDateTime time,
+                                                           long value,
+                                                           TagType... tagValues) {
+        Statistics.Statistic statistic = buildStatistic(key, statName, time, tagValues);
         statistic.setCount(value);
         return statistic;
     }
 
-    public static Statistics.Statistic buildValueStatistic(String statName, ZonedDateTime time, double value, TagType... tagValues) {
-        Statistics.Statistic statistic = buildStatistic(statName, time, tagValues);
+    public static Statistics.Statistic buildValueStatistic(String key,
+                                                           String statName,
+                                                           ZonedDateTime time,
+                                                           double value,
+                                                           TagType... tagValues) {
+        Statistics.Statistic statistic = buildStatistic(key, statName, time, tagValues);
         statistic.setValue(value);
         return statistic;
     }
@@ -82,9 +92,13 @@ public class StatisticsHelper {
         return tagType;
     }
 
-    private static Statistics.Statistic buildStatistic(String statName, ZonedDateTime time, TagType... tagValues){
-        Statistics.Statistic statistic = new ObjectFactory().createStatisticsStatistic();
-        statistic.setName(statName);
+    private static Statistics.Statistic buildStatistic(String key, String statName, ZonedDateTime time, TagType... tagValues) {
+        ObjectFactory objectFactory = new ObjectFactory();
+        Statistics.Statistic statistic = objectFactory.createStatisticsStatistic();
+        Statistics.Statistic.Key keyObj = objectFactory.createStatisticsStatisticKey();
+        keyObj.setValue(key);
+        keyObj.setStatisticName(statName);
+        statistic.setKey(keyObj);
         Statistics.Statistic.Tags tagsObj = new Statistics.Statistic.Tags();
         tagsObj.getTag().addAll(new ArrayList(Arrays.asList(tagValues)));
         statistic.setTags(tagsObj);
@@ -95,5 +109,24 @@ public class StatisticsHelper {
             throw new RuntimeException(String.format("Error converting time %s to a gregorian calendar", time), e);
         }
         return statistic;
+    }
+
+    /**
+     * @return The UUID corresponding to the passed name if it already exists in the in memory map
+     * else it returns a new UUID and stores it for future use.
+     */
+    public static String getUuidKey(final String statName) {
+        NAME_TO_UUID_MAP.computeIfAbsent(statName, k -> {
+            String statUuid = UUID.randomUUID().toString();
+            UUID_TO_NAME_MAP.put(statUuid, statName);
+            return statUuid;
+        });
+        return NAME_TO_UUID_MAP.get(statName);
+    }
+
+    public static String getStatName(final String statUuid) {
+        return Optional.ofNullable(UUID_TO_NAME_MAP.get(statUuid))
+                .orElseThrow(() ->
+                        new RuntimeException(String.format("Attempt to get a statName for an unknown UUID %s", statUuid)));
     }
 }

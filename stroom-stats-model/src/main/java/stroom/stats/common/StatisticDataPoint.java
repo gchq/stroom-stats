@@ -30,9 +30,9 @@ public interface StatisticDataPoint {
 
 
     /**
-     * @return The name of the statistic that this datapoint belongs to
+     * @return The UUID string of the statistic that this datapoint belongs to
      */
-    String getStatisticName();
+    String getStatisticUuid();
 
     /**
      * @return The time in ms since epoch that the statistic event(s) bucket started

@@ -26,7 +26,7 @@ import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.hbase.structure.CellQualifier;
 import stroom.stats.hbase.structure.ColumnQualifier;
 import stroom.stats.hbase.structure.RowKey;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 
 import java.util.List;
 import java.util.Map;
@@ -60,13 +60,13 @@ public class CachedRowKeyBuilder implements RowKeyBuilder {
     }
 
     @Override
-    public CellQualifier buildCellQualifier(StatKey statKey) {
-        return rowKeyBuilder.buildCellQualifier(statKey);
+    public CellQualifier buildCellQualifier(StatEventKey statEventKey) {
+        return rowKeyBuilder.buildCellQualifier(statEventKey);
     }
 
     @Override
-    public RowKey buildRowKey(StatKey statKey) {
-        return rowKeyBuilder.buildRowKey(statKey);
+    public RowKey buildRowKey(StatEventKey statEventKey) {
+        return rowKeyBuilder.buildRowKey(statEventKey);
     }
 
     @Override
