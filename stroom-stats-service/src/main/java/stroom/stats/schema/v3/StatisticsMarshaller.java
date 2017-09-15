@@ -77,7 +77,7 @@ public class StatisticsMarshaller {
                 throw new RuntimeException("Errors encountered un-marshalling xml: " + detail);
             }
             return statistics;
-        } catch (JAXBException e) {
+        } catch (Exception e) {
             int trimIndex = xmlStr.length() < 50 ? xmlStr.length() : 49;
             LOGGER.error("Unable to deserialise a message (enable debug to log full message): {}...", xmlStr.substring(0, trimIndex));
             LOGGER.debug("Unable to deserialise a message {}", xmlStr);

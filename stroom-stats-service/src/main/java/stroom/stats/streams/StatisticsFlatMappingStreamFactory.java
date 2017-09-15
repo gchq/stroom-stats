@@ -58,12 +58,23 @@ public class StatisticsFlatMappingStreamFactory {
     private interface InterValToPredicateMapper extends Function<IntervalTopicPair, Predicate<StatEventKey, StatAggregate>> {
     }
 
+
+    //Defined to avoid 'generic array creation' compiler warnings
+    private interface UnmarshalledXmlWrapperPredicate extends Predicate<String, UnmarshalledXmlWrapper> {
+    }
+
+    //define the predicates for forking a topic into valid and invalid events based on the validity of an UnmarshalledXmlWrapper
+    private static UnmarshalledXmlWrapperPredicate[] VALID_INVALID_XML_WRAPPER_BRANCHING_PREDICATES = new UnmarshalledXmlWrapperPredicate[]{
+            (String key, UnmarshalledXmlWrapper value) -> value.isValid(),
+            StatisticsFlatMappingStreamFactory::catchAllPredicate
+    };
+
     //Defined to avoid 'generic array creation' compiler warnings
     private interface StatisticWrapperPredicate extends Predicate<String, StatisticWrapper> {
     }
 
-    //define the predicates for forking a topic into valid and invalid events
-    private static StatisticWrapperPredicate[] VALID_INVALID_BRANCHING_PREDICATES = new StatisticWrapperPredicate[]{
+    //define the predicates for forking a topic into valid and invalid events based on the validity of a statisticWrapper
+    private static StatisticWrapperPredicate[] VALID_INVALID_STAT_WRAPPER_BRANCHING_PREDICATES = new StatisticWrapperPredicate[]{
             (String key, StatisticWrapper value) -> value.isValid(),
             StatisticsFlatMappingStreamFactory::catchAllPredicate
     };
@@ -107,24 +118,37 @@ public class StatisticsFlatMappingStreamFactory {
         //This does mean duplication but means the msg can exist without the key, without losing meaning
         //TODO In future if we have msgs conforming to different versions of the schema then we may have to inspect the
         //namespace in the msg and use the appropriate unMarshaller for that version
-        KStream<String, StatisticWrapper>[] forkedStreams = inputStream
+        KStream<String, UnmarshalledXmlWrapper>[] unmarshallingForks = inputStream
                 .filter((key, value) -> {
                     //like a peek function
                     LOGGER.trace("Received {} : {}", key, value);
                     return true;
                 })
-                .mapValues(statisticsMarshaller::unMarshallFromXml)
-                .flatMapValues(Statistics::getStatistic) //flatMap a batch of stats down to individual events, badly named jaxb objects
-                .mapValues(this::buildStatisticWrapper) //wrap the stat event with its stat config
-                .map(StatisticValidator::validate) //validate each one then branch off the bad ones
-                .branch(VALID_INVALID_BRANCHING_PREDICATES); //fork stream on valid/invalid state of the statisticWrapper
+                .mapValues(this::unmarshallXml) //attempt to unmarshal the xml string to classes
+                .branch(VALID_INVALID_XML_WRAPPER_BRANCHING_PREDICATES); //split out the ones that failed unmarshalling
 
-        KStream<String, StatisticWrapper> validEvents = forkedStreams[0];
-        KStream<String, StatisticWrapper> invalidEvents = forkedStreams[1];
+        KStream<String, UnmarshalledXmlWrapper> validUnmarshalledXml = unmarshallingForks[0];
+        KStream<String, UnmarshalledXmlWrapper> invalidUnmarshalledXml = unmarshallingForks[1];
 
         //Send the bad events out to a bad topic as the original xml with the error message attached to the
         // bottom of the XML, albeit as individual events rather than batches
-        invalidEvents
+        invalidUnmarshalledXml
+                .mapValues(this::badStatisticWrapperToString)
+                .to(stringSerde, stringSerde, badEventTopic);
+
+        KStream<String, StatisticWrapper>[] statWrapperForks = validUnmarshalledXml
+                .flatMapValues(unmarshalledXmlWrapper ->
+                        unmarshalledXmlWrapper.getStatistics().getStatistic()) //flatMap a batch of stats down to individual events, badly named jaxb objects
+                .mapValues(this::buildStatisticWrapper) //wrap the stat event with its stat config
+                .map(StatisticValidator::validate) //validate each one then branch off the bad ones
+                .branch(VALID_INVALID_STAT_WRAPPER_BRANCHING_PREDICATES); //fork stream on valid/invalid state of the statisticWrapper
+
+        KStream<String, StatisticWrapper> validStatWrappers = statWrapperForks[0];
+        KStream<String, StatisticWrapper> invalidStatWrappers = statWrapperForks[1];
+
+        //Send the bad events out to a bad topic as the original xml with the error message attached to the
+        // bottom of the XML, albeit as individual events rather than batches
+        invalidStatWrappers
                 .mapValues(this::badStatisticWrapperToString)
                 .to(stringSerde, stringSerde, badEventTopic);
 
@@ -140,7 +164,7 @@ public class StatisticsFlatMappingStreamFactory {
         // purge otherwise. Flatmap each statistic event to a set of statKey/statAggregate pairs,
         //one for each roll up permutation. Then branch the stream into multiple streams, one stream per interval
         //i.e. events with hour granularity go to hour stream (and ultimately topic)
-        KStream<StatEventKey, StatAggregate>[] intervalStreams = validEvents
+        KStream<StatEventKey, StatAggregate>[] intervalStreams = validStatWrappers
                 .filter(this::isInsideLargestPurgeRetention) //ignore too old events
                 .flatMap(statisticMapper::flatMap) //map to StatEventKey/StatAggregate pair
                 .branch(intervalPredicates);
@@ -162,6 +186,15 @@ public class StatisticsFlatMappingStreamFactory {
         }
 
         return new KafkaStreams(builder, streamsConfig);
+    }
+
+    private UnmarshalledXmlWrapper unmarshallXml(final String messageValue) {
+        try {
+            Statistics statistics = statisticsMarshaller.unMarshallFromXml(messageValue);
+            return UnmarshalledXmlWrapper.wrapValidMessage(statistics);
+        } catch (Exception e) {
+            return UnmarshalledXmlWrapper.wrapInvalidMessage(messageValue, e);
+        }
     }
 
     private List<IntervalTopicPair> getIntervalTopicPairs(final String intervalTopicPrefix) {
@@ -200,6 +233,14 @@ public class StatisticsFlatMappingStreamFactory {
                 .append(statisticsMarshaller.marshallToXml(statisticsObj))
                 //Append the error message to the bottom of the XML as an XML comment
                 .append("\n<!-- VALIDATION_ERROR - " + statisticWrapper.getValidationErrorMessage().get() + " -->")
+                .toString();
+    }
+
+    private String badStatisticWrapperToString(UnmarshalledXmlWrapper unmarshalledXmlWrapper) {
+        return new StringBuilder()
+                .append(unmarshalledXmlWrapper.getMessageValue())
+                //Append the error message to the bottom of the XML as an XML comment
+                .append("\n<!-- UNMARSHALLING_ERROR - " + unmarshalledXmlWrapper.getThrowable().getMessage() + " -->")
                 .toString();
     }
 
@@ -248,8 +289,8 @@ public class StatisticsFlatMappingStreamFactory {
      * A catchall predicate for allowing everything through, used for clarity
      */
     private static boolean catchAllPredicate(
-            @SuppressWarnings("unused") final String statName,
-            @SuppressWarnings("unused") final StatisticWrapper statisticWrapper) {
+            @SuppressWarnings("unused") final Object key,
+            @SuppressWarnings("unused") final Object value) {
         return true;
     }
 
