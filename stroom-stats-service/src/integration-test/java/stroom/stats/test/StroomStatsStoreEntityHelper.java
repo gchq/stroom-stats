@@ -32,8 +32,10 @@ public class StroomStatsStoreEntityHelper {
             final String... fields){
 
         String statNameStr = tag + Instant.now().toString() + "-" + statisticType + "-" + interval;
+        String statUuidStr = StatisticsHelper.getUuidKey(statNameStr);
         LOGGER.info("Creating stat name : {}", statNameStr);
         StatisticConfiguration statisticConfiguration = new StroomStatsStoreEntityBuilder(
+                statUuidStr,
                 statNameStr,
                 statisticType,
                 interval,

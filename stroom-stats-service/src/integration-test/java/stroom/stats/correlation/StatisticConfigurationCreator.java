@@ -15,11 +15,14 @@ public class StatisticConfigurationCreator {
 
     public static String create(
             Injector injector,
+            String statUuid,
             String statName,
             StatisticType statisticType,
             EventStoreTimeIntervalEnum interval,
             String... fields){
+
         StatisticConfiguration statisticConfigurationEntity = new StroomStatsStoreEntityBuilder(
+                statUuid,
                 statName,
                 statisticType,
                 interval,

@@ -20,15 +20,11 @@
 package stroom.stats.schema;
 
 import org.junit.Test;
-import stroom.stats.xml.StatisticsMarshaller;
+import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v3.StatisticsMarshaller;
 
-import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
-import javax.xml.bind.Unmarshaller;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -41,7 +37,6 @@ public class SerialisationTest {
     private final String PACKAGE_NAME = "/stroom/stats/schema/";
     private final String EXAMPLE_XML_01 = RESOURCES_DIR + PACKAGE_NAME + "SerialisationTest_testDererialisation.xml";
     private final String STATISTICS_FROM_STROOM_01 = RESOURCES_DIR + PACKAGE_NAME + "StatisticsFromStroom_01.xml";
-    private final String STATISTICS_FROM_STROOM_02 = RESOURCES_DIR + PACKAGE_NAME + "StatisticsFromStroom_02.xml";
 
     private final StatisticsMarshaller statisticsMarshaller;
 
@@ -53,7 +48,7 @@ public class SerialisationTest {
     public void testDeserialisation() throws IOException, JAXBException {
 
         String xmlStr = new String(Files.readAllBytes(Paths.get(EXAMPLE_XML_01)), StandardCharsets.UTF_8);
-        Statistics statistics = statisticsMarshaller.unMarshallXml(xmlStr);
+        Statistics statistics = statisticsMarshaller.unMarshallFromXml(xmlStr);
 
         // Check the number of stats is right
         assertThat(statistics.getStatistic().size(), equalTo(3));
@@ -69,20 +64,9 @@ public class SerialisationTest {
 
 
     @Test
-    public void testPostStatisticsFromStroom_01() throws JAXBException, FileNotFoundException {
-        InputStream inputStream = new FileInputStream(STATISTICS_FROM_STROOM_01);
-        JAXBContext jaxbContext = JAXBContext.newInstance(Statistics.class);
-        Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
-        Statistics statistics = (Statistics) unmarshaller.unmarshal(inputStream);
-        assertThat(statistics.getStatistic().size(), equalTo(99));
-    }
-
-    @Test
-    public void testPostStatisticsFromStroom_02() throws JAXBException, FileNotFoundException {
-        InputStream inputStream = new FileInputStream(STATISTICS_FROM_STROOM_02);
-        JAXBContext jaxbContext = JAXBContext.newInstance(Statistics.class);
-        Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
-        Statistics statistics = (Statistics) unmarshaller.unmarshal(inputStream);
+    public void testPostStatisticsFromStroom_01() throws JAXBException, IOException {
+        String fileString = new String(Files.readAllBytes(Paths.get(STATISTICS_FROM_STROOM_01)));
+        Statistics statistics = statisticsMarshaller.unMarshallFromXml(fileString);
         assertThat(statistics.getStatistic().size(), equalTo(99));
     }
 

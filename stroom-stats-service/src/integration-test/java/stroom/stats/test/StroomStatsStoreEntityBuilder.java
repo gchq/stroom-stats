@@ -39,7 +39,8 @@ public class StroomStatsStoreEntityBuilder {
     private final StroomStatsStoreEntity stroomStatsStoreEntity;
     private final StroomStatsStoreEntityData stroomStatsStoreEntityData;
 
-    public StroomStatsStoreEntityBuilder(final String statName,
+    public StroomStatsStoreEntityBuilder(final String statUuid,
+                                         final String statName,
                                          final StatisticType statisticType,
                                          final EventStoreTimeIntervalEnum interval,
                                          final StatisticRollUpType statisticRollUpType) {
@@ -49,11 +50,11 @@ public class StroomStatsStoreEntityBuilder {
         Preconditions.checkNotNull(statisticRollUpType);
 
         stroomStatsStoreEntity = new StroomStatsStoreEntity();
+        stroomStatsStoreEntity.setUuid(statUuid);
         stroomStatsStoreEntity.setName(statName);
         stroomStatsStoreEntity.setStatisticType(statisticType);
         stroomStatsStoreEntity.setPrecision(interval);
         stroomStatsStoreEntity.setRollUpType(statisticRollUpType);
-        stroomStatsStoreEntity.setUuid(UUID.randomUUID().toString());
 
         //Use the same folder for all entities
         Folder folder = Folder.create(null, "RootFolder");

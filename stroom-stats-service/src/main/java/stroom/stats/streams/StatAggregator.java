@@ -34,7 +34,7 @@ class StatAggregator {
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatAggregator.class);
 
-    private Map<StatKey, StatAggregate> buffer;
+    private Map<StatEventKey, StatAggregate> buffer;
     private final int minSize;
     private final Instant expiryTime;
     private final EventStoreTimeIntervalEnum aggregationInterval;
@@ -58,25 +58,25 @@ class StatAggregator {
 
     /**
      * Add a single key/aggregate pair into the aggregator. The aggregate will be aggregated
-     * with any existing aggregates for that {@link StatKey}
+     * with any existing aggregates for that {@link StatEventKey}
      */
-    public void add(final StatKey statKey, final StatAggregate statAggregate) {
+    public void add(final StatEventKey statEventKey, final StatAggregate statAggregate) {
 
-        Preconditions.checkNotNull(statKey);
+        Preconditions.checkNotNull(statEventKey);
         Preconditions.checkNotNull(statAggregate);
-        Preconditions.checkArgument(statKey.getInterval().equals(aggregationInterval),
-                "statKey %s doesn't match aggregator interval %s", statKey, aggregationInterval);
+        Preconditions.checkArgument(statEventKey.getInterval().equals(aggregationInterval),
+                "statEventKey %s doesn't match aggregator interval %s", statEventKey, aggregationInterval);
 
-        LOGGER.trace("Adding statKey {} and statAggregate {} to aggregator {}", statKey, statAggregate, aggregationInterval);
+        LOGGER.trace("Adding statEventKey {} and statAggregate {} to aggregator {}", statEventKey, statAggregate, aggregationInterval);
 
-        //The passed StatKey will already have its time truncated to the interval of this aggregator
+        //The passed StatEventKey will already have its time truncated to the interval of this aggregator
         //so we don't need to do anything to it.
 
         inputCount++;
 
         //aggregate the passed aggregate and key into the existing aggregates
         buffer.merge(
-                statKey,
+                statEventKey,
                 statAggregate,
                 StatAggregate::aggregatePair);
 //                (existingAgg, newAgg) -> existingAgg.aggregate(newAgg));
@@ -121,7 +121,7 @@ class StatAggregator {
         return aggregationInterval;
     }
 
-    public Map<StatKey, StatAggregate> getAggregates() {
+    public Map<StatEventKey, StatAggregate> getAggregates() {
         LOGGER.trace(() -> String.format("getAggregates called, return %s events", buffer.size()));
 
         return buffer;

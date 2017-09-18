@@ -46,11 +46,12 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.schema.Statistics;
+import stroom.stats.schema.v3.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.QueryApiHelper;
+import stroom.stats.test.StatisticsHelper;
 import stroom.stats.test.StroomStatsStoreEntityHelper;
-import stroom.stats.xml.StatisticsMarshaller;
+import stroom.stats.schema.v3.StatisticsMarshaller;
 
 import javax.annotation.Nullable;
 import java.time.Instant;
@@ -326,9 +327,11 @@ public class EndToEndVolumeIT extends AbstractAppIT {
 
             String statNameStr = "VolumeTest-" + Instant.now().toString() + "-" + statisticType + "-" + SMALLEST_INTERVAL;
 
+            String statUuid = StatisticsHelper.getUuidKey(statNameStr);
 
 
             Tuple2<StatisticConfiguration, List<Statistics>> testData = GenerateSampleStatisticsData.generateData(
+                    statUuid,
                     statNameStr,
                     statisticType,
                     SMALLEST_INTERVAL,
@@ -403,8 +406,8 @@ public class EndToEndVolumeIT extends AbstractAppIT {
     }
 
     private static ProducerRecord<String, String> buildProducerRecord(String topic, Statistics statistics, StatisticsMarshaller statisticsMarshaller) {
-        String statName = statistics.getStatistic().get(0).getName();
-        return new ProducerRecord<>(topic, statName, statisticsMarshaller.marshallXml(statistics));
+        String statKey = statistics.getStatistic().get(0).getKey().getValue();
+        return new ProducerRecord<>(topic, statKey, statisticsMarshaller.marshallToXml(statistics));
     }
 
     /**

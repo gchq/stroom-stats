@@ -18,14 +18,14 @@
  */
 
 rootProject.name = 'stroom-stats'
-include 'stroom-stats-service'
+include 'stroom-services-discovery'
 include 'stroom-stats-hbase-client'
 include 'stroom-stats-hbase-filter'
+include 'stroom-stats-inttest'
 include 'stroom-stats-mocks'
 include 'stroom-stats-model'
-include 'stroom-stats-util'
+include 'stroom-stats-schema'
+include 'stroom-stats-service'
 include 'stroom-stats-tasking'
-include 'stroom-stats-api'
-include 'stroom-stats-inttest'
-include 'stroom-services-discovery'
+include 'stroom-stats-util'
 

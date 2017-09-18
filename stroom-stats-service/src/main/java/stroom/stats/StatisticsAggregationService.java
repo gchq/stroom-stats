@@ -29,15 +29,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
-import stroom.stats.partitions.StatKeyPartitioner;
+import stroom.stats.partitions.StatEventKeyPartitioner;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.StatisticsAggregationProcessor;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
-import stroom.stats.streams.serde.StatKeySerde;
+import stroom.stats.streams.serde.StatEventKeySerde;
 import stroom.stats.util.HasRunState;
 import stroom.stats.util.Startable;
 import stroom.stats.util.Stoppable;
@@ -75,7 +75,7 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
 
     //producer is thread safe so hold a single instance and share it with all processors
     //this assumes all processor instances have the same producer config
-    private volatile KafkaProducer<StatKey, StatAggregate> kafkaProducer;
+    private volatile KafkaProducer<StatEventKey, StatAggregate> kafkaProducer;
     private volatile ExecutorService executorService;
 
     private HasRunState.RunState runState = HasRunState.RunState.STOPPED;
@@ -194,12 +194,12 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
         return executorService;
     }
 
-    private KafkaProducer<StatKey, StatAggregate> buildProducer() {
+    private KafkaProducer<StatEventKey, StatAggregate> buildProducer() {
 
         //Configure the producers
         Map<String, Object> producerProps = getProducerProps();
 
-        Serde<StatKey> statKeySerde = StatKeySerde.instance();
+        Serde<StatEventKey> statKeySerde = StatEventKeySerde.instance();
         Serde<StatAggregate> statAggregateSerde = StatAggregateSerde.instance();
 
         return new KafkaProducer<>(producerProps, statKeySerde.serializer(), statAggregateSerde.serializer());
@@ -217,7 +217,7 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
                         StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000));
         producerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 50_000_000);
         //use a custom partitioner to benefit from the already cached hashcode in the statkey
-        producerProps.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, StatKeyPartitioner.class);
+        producerProps.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, StatEventKeyPartitioner.class);
         return producerProps;
     }
 

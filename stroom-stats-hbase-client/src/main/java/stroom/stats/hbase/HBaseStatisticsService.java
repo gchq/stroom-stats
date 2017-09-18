@@ -29,7 +29,7 @@ import stroom.stats.common.StatisticDataSet;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.util.logging.LambdaLogger;
 
@@ -84,7 +84,7 @@ public class HBaseStatisticsService implements StatisticsService {
     @Override
     public void putAggregatedEvents(final StatisticType statisticType,
                                     final EventStoreTimeIntervalEnum interval,
-                                    final Map<StatKey, StatAggregate> aggregatedEvents) {
+                                    final Map<StatEventKey, StatAggregate> aggregatedEvents) {
 
         eventStores.putAggregatedEvents(statisticType, interval, aggregatedEvents);
     }

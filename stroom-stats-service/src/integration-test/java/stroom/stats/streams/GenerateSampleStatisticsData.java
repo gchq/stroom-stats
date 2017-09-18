@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.schema.Statistics;
+import stroom.stats.schema.v3.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.test.StroomStatsStoreEntityBuilder;
@@ -92,6 +92,7 @@ public class GenerateSampleStatisticsData {
     }
 
     public static Tuple2<StatisticConfiguration, List<Statistics>> generateData(
+            String statUuid,
             String statName,
             StatisticType statisticType,
             EventStoreTimeIntervalEnum smallestInterval,
@@ -109,6 +110,7 @@ public class GenerateSampleStatisticsData {
 
         //build the stat config for the stats we are about to generate
         StatisticConfiguration statisticConfiguration = new StroomStatsStoreEntityBuilder(
+                statUuid,
                 statName,
                 statisticType,
                 smallestInterval,
@@ -118,7 +120,7 @@ public class GenerateSampleStatisticsData {
 
         //generate the stat events
         List<Statistics.Statistic> statisticList = new ArrayList<>(
-                buildEvents(statName, startTime, statisticType, iterationCount));
+                buildEvents(statUuid, statName, startTime, statisticType, iterationCount));
 
         //randomise the stats
         Collections.shuffle(statisticList, new Random());
@@ -137,7 +139,8 @@ public class GenerateSampleStatisticsData {
     }
 
 
-    private static Collection<Statistics.Statistic> buildEvents(final String statName,
+    private static Collection<Statistics.Statistic> buildEvents(final String uuid,
+                                                                final String statName,
                                                                 final ZonedDateTime initialEventTime,
                                                                 final StatisticType statisticType,
                                                                 final int iterationCount) {
@@ -157,6 +160,7 @@ public class GenerateSampleStatisticsData {
                         Statistics.Statistic statistic;
                         if (statisticType.equals(StatisticType.COUNT)) {
                             statistic = StatisticsHelper.buildCountStatistic(
+                                    uuid,
                                     statName,
                                     time,
                                     COUNT_STAT_VALUE,
@@ -169,6 +173,7 @@ public class GenerateSampleStatisticsData {
                             double val = VALUE_STAT_VALUE_MAP.get(colour);
 
                             statistic = StatisticsHelper.buildValueStatistic(
+                                    uuid,
                                     statName,
                                     time,
                                     val,

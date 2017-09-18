@@ -23,7 +23,7 @@ import org.junit.Test;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.MockStatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.schema.Statistics;
+import stroom.stats.schema.v3.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.StatisticsHelper;
 
@@ -32,28 +32,31 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TestStatisticValidator {
-    String statName = "MyStat";
+    String statUuid = UUID.randomUUID().toString();
 
     @Test
     public void isValidEvent_valid() throws Exception {
 
         StatisticWrapper statisticWrapper = buildBasicStatWrapper();
 
-        assertThat(StatisticValidator.validate(statName, statisticWrapper).value.isValid()).isTrue();
+        assertThat(StatisticValidator.validate(statUuid, statisticWrapper).value.isValid()).isTrue();
     }
 
     @Test
-    public void isValidEvent_invalid_nameMismatch() throws Exception {
+    public void isValidEvent_invalid_uuidMismatch() throws Exception {
 
         StatisticWrapper statisticWrapper = buildBasicStatWrapper();
 
-        statisticWrapper.getStatistic().setName("OtherStatName");
+        //wrapper has different uuid to msg key
+        statisticWrapper.getStatistic().getKey().setValue("different uuid");
 
-        assertThat(StatisticValidator.validate(statName, statisticWrapper).value.isValid()).isFalse();
+        assertThat(StatisticValidator.validate(statUuid, statisticWrapper).value.isValid())
+                .isFalse();
     }
 
     @Test
@@ -64,7 +67,7 @@ public class TestStatisticValidator {
         statisticWrapper.getStatistic().setValue(123.456);
         statisticWrapper.getStatistic().setCount(null);
 
-        assertThat(StatisticValidator.validate(statName, statisticWrapper).value.isValid()).isFalse();
+        assertThat(StatisticValidator.validate(statUuid, statisticWrapper).value.isValid()).isFalse();
     }
 
     @Test
@@ -74,7 +77,7 @@ public class TestStatisticValidator {
 
         ((MockStatisticConfiguration) statisticWrapper.getOptionalStatisticConfiguration().get()).setStatisticType(StatisticType.VALUE);
 
-        assertThat(StatisticValidator.validate(statName, statisticWrapper).value.isValid()).isFalse();
+        assertThat(StatisticValidator.validate(statUuid, statisticWrapper).value.isValid()).isFalse();
     }
 
     @Test
@@ -84,7 +87,7 @@ public class TestStatisticValidator {
 
         statisticWrapper = new StatisticWrapper(statisticWrapper.getStatistic(), Optional.empty());
 
-        assertThat(StatisticValidator.validate(statName, statisticWrapper).value.isValid()).isFalse();
+        assertThat(StatisticValidator.validate(statUuid, statisticWrapper).value.isValid()).isFalse();
     }
 
     private StatisticWrapper buildBasicStatWrapper() throws DatatypeConfigurationException {
@@ -96,12 +99,18 @@ public class TestStatisticValidator {
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.MINUTE;
         StatisticType statisticType = StatisticType.COUNT;
 
-        Statistics.Statistic statistic = StatisticsHelper.buildCountStatistic(statName, time, 1L,
+        String statName = "MyStat";
+        Statistics.Statistic statistic = StatisticsHelper.buildCountStatistic(
+                statUuid,
+                statName,
+                time,
+                1L,
                 StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
                 StatisticsHelper.buildTagType(tag2, tag2 + "val1")
         );
 
         MockStatisticConfiguration statConfig = new MockStatisticConfiguration()
+                .setUuid(statUuid)
                 .setName(statName)
                 .setStatisticType(statisticType)
                 .setRollUpType(StatisticRollUpType.ALL)

@@ -26,22 +26,22 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.streams.processor.StreamPartitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.stats.streams.StatKey;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.aggregation.StatAggregate;
 
 import java.util.List;
 import java.util.Map;
 
 /**
- * Custom partitioner of a {@link StatKey} instance for use with both a Kafka Producer and a Kafka Streams application
+ * Custom partitioner of a {@link StatEventKey} instance for use with both a Kafka Producer and a Kafka Streams application
  */
-public class StatKeyPartitioner implements Partitioner, StreamPartitioner<StatKey, StatAggregate> {
+public class StatEventKeyPartitioner implements Partitioner, StreamPartitioner<StatEventKey, StatAggregate> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(StatKeyPartitioner.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(StatEventKeyPartitioner.class);
 
-    private static final StatKeyPartitioner INSTANCE = new StatKeyPartitioner();
+    private static final StatEventKeyPartitioner INSTANCE = new StatEventKeyPartitioner();
 
-    public static StatKeyPartitioner instance() {
+    public static StatEventKeyPartitioner instance() {
         //Stateless so hold a common instance for all to use
         return INSTANCE;
     }
@@ -56,37 +56,37 @@ public class StatKeyPartitioner implements Partitioner, StreamPartitioner<StatKe
 
     @Override
     public int partition(final String topic, final Object key, final byte[] keyBytes, final Object value, final byte[] valueBytes, final Cluster cluster) {
-        StatKey statKey = (StatKey) Preconditions.checkNotNull(key);
+        StatEventKey statEventKey = (StatEventKey) Preconditions.checkNotNull(key);
         List<PartitionInfo> partitions = cluster.partitionsForTopic(topic);
         int numPartitions = partitions.size();
 
-        int partition = partition(statKey, numPartitions);
+        int partition = partition(statEventKey, numPartitions);
         LOGGER.trace("partition called for topic {}, key {}, numPartitions {}, returning {}", topic, key, numPartitions, partition);
 
         return partition;
     }
 
     @Override
-    public Integer partition(final StatKey key, final StatAggregate value, final int numPartitions) {
+    public Integer partition(final StatEventKey key, final StatAggregate value, final int numPartitions) {
         int partition = partition(key, numPartitions);
         LOGGER.trace("partition called for key {}, numPartitions {}, returning {}", key, numPartitions, partition);
 
         return partition;
     }
 
-    private static int partition(StatKey statKey, final int numPartitions) {
+    private static int partition(StatEventKey statEventKey, final int numPartitions) {
         //the time portion of stat key has already been truncated to its interval so
         //keys that are valid for aggregation together will have the same hascode
 
-        //As the hashcode has been cached on the StatKey we can just use that rather than recomputing one.
+        //As the hashcode has been cached on the StatEventKey we can just use that rather than recomputing one.
         //Need to ensure it is non-negative though
-        int positiveHashCode = statKey.hashCode() & 0x7fffffff;
+        int positiveHashCode = statEventKey.hashCode() & 0x7fffffff;
 
         return positiveHashCode % numPartitions;
     }
 
-//    private static int partition(StatKey statKey, final int numPartitions) {
-//        UID statNameUid = statKey.getStatName();
+//    private static int partition(StatEventKey statKey, final int numPartitions) {
+//        UID statNameUid = statKey.getStatUuid();
 //        Hasher hasher = Hashing.murmur3_32().newHasher()
 //                .putBytes(statNameUid.getBackingArray(), statNameUid.getOffset(), UID.UID_ARRAY_LENGTH)
 //                .putBytes(statKey.getRollupMask().asBytes());

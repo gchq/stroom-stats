@@ -63,7 +63,7 @@ import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.MockStroomPropertyService;
-import stroom.stats.schema.Statistics;
+import stroom.stats.schema.v3.Statistics;
 import stroom.stats.service.config.Config;
 import stroom.stats.service.config.ZookeeperConfig;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -71,10 +71,10 @@ import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
-import stroom.stats.streams.serde.StatKeySerde;
+import stroom.stats.streams.serde.StatEventKeySerde;
 import stroom.stats.test.KafkaEmbededUtils;
 import stroom.stats.test.StatisticsHelper;
-import stroom.stats.xml.StatisticsMarshaller;
+import stroom.stats.schema.v3.StatisticsMarshaller;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.DatatypeConfigurationException;
@@ -119,6 +119,12 @@ public class StatisticsFlatMappingServiceIT {
     private static final Map<StatisticType, String> BAD_TOPICS_MAP = new HashMap<>();
     private static final Map<StatisticType, List<String>> ROLLUP_TOPICS_MAP = new HashMap<>();
 
+    private static final String GOOD_STAT_NAME = "MyStat";
+    private static final String GOOD_STAT_UUID = StatisticsHelper.getUuidKey(GOOD_STAT_NAME);
+
+    private static final String TAG_1 = "tag1";
+    private static final String TAG_2 = "tag2";
+
     private final StatisticsMarshaller statisticsMarshaller;
 
     private static final List<String> topics = new ArrayList<>();
@@ -136,7 +142,7 @@ public class StatisticsFlatMappingServiceIT {
     private final AtomicBoolean areConsumersEnabled = new AtomicBoolean(false);
     private final AtomicInteger activeConsumerThreads = new AtomicInteger(0);
 
-//    private List<Tuple3<StatisticType, EventStoreTimeIntervalEnum, Map<StatKey, StatAggregate>>> statServiceArguments = new ArrayList<>();
+//    private List<Tuple3<StatisticType, EventStoreTimeIntervalEnum, Map<StatEventKey, StatAggregate>>> statServiceArguments = new ArrayList<>();
 
     @Rule
     public TestRule watcher = new TestWatcher() {
@@ -199,29 +205,26 @@ public class StatisticsFlatMappingServiceIT {
 
         StatisticType statisticType = StatisticType.COUNT;
         String topic = INPUT_TOPICS_MAP.get(statisticType);
-        String statName = "MyStat";
-
-        String tag1 = "tag1";
-        String tag2 = "tag2";
 
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.SECOND;
 
         addStatConfig(module.getMockStatisticConfigurationService(),
-                statName,
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
                 statisticType,
-                Arrays.asList(tag1, tag2),
+                Arrays.asList(TAG_1, TAG_2),
                 interval);
 
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
-                StatisticsHelper.buildCountStatistic(statName, time, 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time, 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
-                StatisticsHelper.buildCountStatistic(statName, time.plusDays(2), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time.plusDays(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
         );
 
@@ -233,7 +236,7 @@ public class StatisticsFlatMappingServiceIT {
 
 //        startAllTopicsConsumer(consumerProps);
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         //2 input msgs, each one is rolled up to 4 perms so expect 8
@@ -258,7 +261,7 @@ public class StatisticsFlatMappingServiceIT {
 
         String topicName = topicToMsgsMap.keySet().stream().findFirst().get();
         assertThat(topicName).isEqualTo(TopicNameFactory.getIntervalTopicName(STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval));
-        List<ConsumerRecord<StatKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
+        List<ConsumerRecord<StatEventKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
         assertThat(messages).hasSize(expectedGoodMsgCount);
 
         //no bad events
@@ -274,29 +277,26 @@ public class StatisticsFlatMappingServiceIT {
 
         StatisticType statisticType = StatisticType.VALUE;
         String topic = INPUT_TOPICS_MAP.get(statisticType);
-        String statName = "MyStat";
-
-        String tag1 = "tag1";
-        String tag2 = "tag2";
 
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.SECOND;
 
         addStatConfig(module.getMockStatisticConfigurationService(),
-                statName,
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
                 statisticType,
-                Arrays.asList(tag1, tag2),
+                Arrays.asList(TAG_1, TAG_2),
                 interval);
 
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
-                StatisticsHelper.buildValueStatistic(statName, time, 1.5,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildValueStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time, 1.5,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
-                StatisticsHelper.buildValueStatistic(statName, time.plusHours(2), 1.5,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildValueStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time.plusHours(2), 1.5,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
         );
         dumpStatistics(statistics);
@@ -310,7 +310,7 @@ public class StatisticsFlatMappingServiceIT {
 
 //        startAllTopicsConsumer(consumerProps);
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         //2 input msgs, each one is rolled up to 4 perms so expect 8
@@ -334,7 +334,7 @@ public class StatisticsFlatMappingServiceIT {
         assertThat(topicToMsgsMap).hasSize(1);
         String topicName = topicToMsgsMap.keySet().stream().findFirst().get();
         assertThat(topicName).isEqualTo(TopicNameFactory.getIntervalTopicName(STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval));
-        List<ConsumerRecord<StatKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
+        List<ConsumerRecord<StatEventKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
         messages.stream()
                 .map(ConsumerRecord::toString)
                 .forEach(LOGGER::debug);
@@ -362,7 +362,7 @@ public class StatisticsFlatMappingServiceIT {
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         //8 input msgs, each one is rolled up to 4 perms so expect 32 in total
@@ -373,8 +373,20 @@ public class StatisticsFlatMappingServiceIT {
         int expectedGoodMsgCountPerStatType = expectedTopicsPerStatType * expectedPermsPerMsg;
         int expectedBadMsgCount = 0;
 
-        CountDownLatch countIntervalTopicsLatch = startIntervalTopicsConsumer(StatisticType.COUNT, consumerProps, expectedGoodMsgCountPerStatType, topicToMsgsMap, true, 100);
-        CountDownLatch valueIntervalTopicsLatch = startIntervalTopicsConsumer(StatisticType.VALUE, consumerProps, expectedGoodMsgCountPerStatType, topicToMsgsMap, true, 100);
+        CountDownLatch countIntervalTopicsLatch = startIntervalTopicsConsumer(
+                StatisticType.COUNT,
+                consumerProps,
+                expectedGoodMsgCountPerStatType,
+                topicToMsgsMap,
+                true,
+                100);
+        CountDownLatch valueIntervalTopicsLatch = startIntervalTopicsConsumer(
+                StatisticType.VALUE,
+                consumerProps,
+                expectedGoodMsgCountPerStatType,
+                topicToMsgsMap,
+                true,
+                100);
         CountDownLatch badTopicsLatch = startBadEventsConsumer(consumerProps, expectedBadMsgCount, badEvents);
         startInputEventsConsumer(consumerProps);
 
@@ -384,12 +396,18 @@ public class StatisticsFlatMappingServiceIT {
             String inputTopic = INPUT_TOPICS_MAP.get(statisticType);
 
             for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
-                String statName = TopicNameFactory.getIntervalTopicName(STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval);
+                //stat name == topic name
+                String statName = TopicNameFactory.getIntervalTopicName(
+                        STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX,
+                        statisticType,
+                        interval);
+                String statUuid = StatisticsHelper.getUuidKey(statName);
 
                 String tag1 = TopicNameFactory.getIntervalTopicName("tag1", statisticType, interval);
                 String tag2 = TopicNameFactory.getIntervalTopicName("tag2", statisticType, interval);
 
                 addStatConfig(module.getMockStatisticConfigurationService(),
+                        statUuid,
                         statName,
                         statisticType,
                         Arrays.asList(tag1, tag2),
@@ -398,14 +416,14 @@ public class StatisticsFlatMappingServiceIT {
                 Statistics statistics;
                 if (statisticType.equals(StatisticType.COUNT)) {
                     statistics = StatisticsHelper.buildStatistics(
-                            StatisticsHelper.buildCountStatistic(statName, time, 1L,
+                            StatisticsHelper.buildCountStatistic(statUuid, statName, time, 1L,
                                     StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
                                     StatisticsHelper.buildTagType(tag2, tag2 + "val1")
                             )
                     );
                 } else {
                     statistics = StatisticsHelper.buildStatistics(
-                            StatisticsHelper.buildValueStatistic(statName, time, 1.5,
+                            StatisticsHelper.buildValueStatistic(statUuid, statName, time, 1.5,
                                     StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
                                     StatisticsHelper.buildTagType(tag2, tag2 + "val1")
                             )
@@ -433,9 +451,16 @@ public class StatisticsFlatMappingServiceIT {
         });
 
         topicToMsgsMap.entrySet().forEach(entry -> assertThat(entry.getValue()).hasSize(expectedPermsPerMsg));
+        //make sure the messages have gone to the correct topic by comparing their statName to the topic name
         topicToMsgsMap.entrySet().forEach(entry -> {
-            UID statNameUid = entry.getValue().stream().findFirst().get().key().getStatName();
-            String statName = uniqueIdCache.getName(statNameUid);
+            UID statUuidUid = entry.getValue().stream()
+                    .findFirst()
+                    .get()
+                    .key()
+                    .getStatUuid();
+            String statUuid = uniqueIdCache.getName(statUuidUid);
+            String statName = StatisticsHelper.getStatName(statUuid);
+
             String topicName = entry.getKey();
             assertThat(statName).isEqualTo(topicName);
         });
@@ -445,6 +470,68 @@ public class StatisticsFlatMappingServiceIT {
     }
 
     @Test
+    public void test_cantUnmarshall() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
+        module = initStreamProcessing();
+
+        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
+        KafkaProducer<String, String> producer = new KafkaProducer<>(senderProps, Serdes.String().serializer(), Serdes.String().serializer());
+
+        StatisticType statisticType = StatisticType.COUNT;
+        String topic = INPUT_TOPICS_MAP.get(statisticType);
+
+        EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.MINUTE;
+
+        addStatConfig(module.getMockStatisticConfigurationService(),
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
+                statisticType,
+                Arrays.asList(TAG_1, TAG_2),
+                interval);
+
+        ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
+
+        Statistics statistics = StatisticsHelper.buildStatistics(
+                //the good, at this point
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time, 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
+                )
+        );
+
+
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        consumerProps.put("auto.offset.reset", "earliest");
+
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        Map<String, List<String>> badEvents = new HashMap<>();
+
+        int expectedBadMsgCount = 1;
+
+        CountDownLatch badTopicsLatch = startBadEventsConsumer(consumerProps, expectedBadMsgCount, badEvents);
+
+
+        LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), topic);
+        String statKey = statistics.getStatistic().get(0).getKey().getValue();
+        //corrupt the xml by renaming one of the element names
+        String msgValue = statisticsMarshaller.marshallToXml(statistics)
+                .replaceAll("key", "badElementName");
+        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, statKey, msgValue);
+        producer.send(producerRecord).get();
+        producer.close();
+
+        //Wait for the expected numbers of messages to arrive or timeout if not
+        assertThat(badTopicsLatch.await(30, TimeUnit.SECONDS)).isTrue();
+
+        assertThat(badEvents)
+                .hasSize(expectedBadMsgCount);
+        assertThat(badEvents.values().stream().findFirst().get())
+                .hasSize(expectedBadMsgCount);
+        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get())
+                .contains(GOOD_STAT_NAME);
+        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get())
+                .contains(StatisticsFlatMappingStreamFactory.UNMARSHALLING_ERROR_TEXT);
+    }
+    @Test
     public void test_oneGoodOneBad() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
         module = initStreamProcessing();
 
@@ -453,32 +540,31 @@ public class StatisticsFlatMappingServiceIT {
 
         StatisticType statisticType = StatisticType.COUNT;
         String topic = INPUT_TOPICS_MAP.get(statisticType);
-        String statName = "MyStat";
         String badStatName = "badStatName";
+        String badStatUuid = StatisticsHelper.getUuidKey("badStatName");
 
-        String tag1 = "tag1";
-        String tag2 = "tag2";
 
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.MINUTE;
 
         addStatConfig(module.getMockStatisticConfigurationService(),
-                statName,
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
                 statisticType,
-                Arrays.asList(tag1, tag2),
+                Arrays.asList(TAG_1, TAG_2),
                 interval);
 
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
                 //the good
-                StatisticsHelper.buildCountStatistic(statName, time, 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time, 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //the bad
-                StatisticsHelper.buildCountStatistic(badStatName, time.plusHours(2), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(badStatUuid, badStatName, time.plusHours(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
         );
 
@@ -488,7 +574,7 @@ public class StatisticsFlatMappingServiceIT {
 
 //        startAllTopicsConsumer(consumerProps);
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         //1 good input msgs, each one is rolled up to 4 perms so expect 4
@@ -521,13 +607,18 @@ public class StatisticsFlatMappingServiceIT {
         assertThat(topicToMsgsMap).hasSize(1);
         String topicName = topicToMsgsMap.keySet().stream().findFirst().get();
         assertThat(topicName).isEqualTo(TopicNameFactory.getIntervalTopicName(STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval));
-        List<ConsumerRecord<StatKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
+        List<ConsumerRecord<StatEventKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
         assertThat(messages).hasSize(expectedGoodMsgCount);
 
         //no bad events
-        assertThat(badEvents).hasSize(expectedBadMsgCount);
-        assertThat(badEvents.values().stream().findFirst().get()).hasSize(expectedBadMsgCount);
-        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get()).contains(badStatName);
+        assertThat(badEvents)
+                .hasSize(expectedBadMsgCount);
+        assertThat(badEvents.values().stream().findFirst().get())
+                .hasSize(expectedBadMsgCount);
+        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get())
+                .contains(badStatName);
+        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get())
+                .contains(StatisticsFlatMappingStreamFactory.VALIDATION_ERROR_TEXT);
     }
 
     @Test
@@ -546,28 +637,26 @@ public class StatisticsFlatMappingServiceIT {
 
         StatisticType statisticType = StatisticType.COUNT;
         String topic = INPUT_TOPICS_MAP.get(statisticType);
-        String statName = "MyStat";
 
-        String tag1 = "tag1";
-        String tag2 = "tag2";
 
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.DAY;
 
         addStatConfig(module.getMockStatisticConfigurationService(),
-                statName,
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
                 statisticType,
-                Arrays.asList(tag1, tag2),
+                Arrays.asList(TAG_1, TAG_2),
                 interval);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
-                StatisticsHelper.buildCountStatistic(statName, timeNow, 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow, 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //Event time is 2 years ago so will be outside all purge retention thresholds
-                StatisticsHelper.buildCountStatistic(statName, timeNow.minusYears(2), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusYears(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
         );
 
@@ -580,7 +669,7 @@ public class StatisticsFlatMappingServiceIT {
 
 //        startAllTopicsConsumer(consumerProps);
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         //1 good input msg, each one is rolled up to 4 perms so expect 4
@@ -597,7 +686,7 @@ public class StatisticsFlatMappingServiceIT {
         assertThat(topicToMsgsMap).hasSize(1);
         String topicName = topicToMsgsMap.keySet().stream().findFirst().get();
         assertThat(topicName).isEqualTo(TopicNameFactory.getIntervalTopicName(STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType, interval));
-        List<ConsumerRecord<StatKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
+        List<ConsumerRecord<StatEventKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
         assertThat(messages).hasSize(expectedGoodMsgCount);
 
         //no bad events
@@ -617,7 +706,10 @@ public class StatisticsFlatMappingServiceIT {
         module = initStreamProcessing();
 
         Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
-        KafkaProducer<String, String> producer = new KafkaProducer<>(senderProps, Serdes.String().serializer(), Serdes.String().serializer());
+        KafkaProducer<String, String> producer = new KafkaProducer<>(
+                senderProps,
+                Serdes.String().serializer(),
+                Serdes.String().serializer());
 
         for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
             //one row key interval (see EventStoreTimeIntervalEnum for details) of retention
@@ -628,39 +720,36 @@ public class StatisticsFlatMappingServiceIT {
 
         StatisticType statisticType = StatisticType.COUNT;
         String topic = INPUT_TOPICS_MAP.get(statisticType);
-        String statName = "MyStat";
-
-        String tag1 = "tag1";
-        String tag2 = "tag2";
 
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.SECOND;
 
         addStatConfig(module.getMockStatisticConfigurationService(),
-                statName,
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
                 statisticType,
-                Arrays.asList(tag1, tag2),
+                Arrays.asList(TAG_1, TAG_2),
                 interval);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
                 //bump up to MIN interval
-                StatisticsHelper.buildCountStatistic(statName, timeNow.minusHours(2), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusHours(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //bumped up to HOUR interval
-                StatisticsHelper.buildCountStatistic(statName, timeNow.minusDays(2), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusDays(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //bumped up to DAY interval
-                StatisticsHelper.buildCountStatistic(statName, timeNow.minusWeeks(8), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusWeeks(8), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //ignored
-                StatisticsHelper.buildCountStatistic(statName, timeNow.minusYears(2), 1L,
-                        StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
-                        StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusYears(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
         );
 
@@ -668,13 +757,19 @@ public class StatisticsFlatMappingServiceIT {
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         //3 good input msg, each one is rolled up to 4 perms so expect 12, one input msg ignored
         int expectedGoodMsgCount = 3 * 4;
         int expectedBadMsgCount = 0;
-        CountDownLatch intervalTopicsLatch = startIntervalTopicsConsumer(StatisticType.COUNT, consumerProps, expectedGoodMsgCount, topicToMsgsMap, true, 100);
+        CountDownLatch intervalTopicsLatch = startIntervalTopicsConsumer(
+                StatisticType.COUNT,
+                consumerProps,
+                expectedGoodMsgCount,
+                topicToMsgsMap,
+                true,
+                100);
         CountDownLatch badTopicsLatch = startBadEventsConsumer(consumerProps, expectedBadMsgCount, badEvents);
 //        startAllTopicsConsumer(consumerProps);
 
@@ -749,11 +844,13 @@ public class StatisticsFlatMappingServiceIT {
 
                 for (int statNum : IntStream.rangeClosed(1, statNameCnt).toArray()) {
                     String statName = TopicNameFactory.getIntervalTopicName("MyStat-" + statNum, statisticType, interval);
+                    String statUuid = StatisticsHelper.getUuidKey(statName);
 
                     String tag1 = "tag1-" + statName;
                     String tag2 = "tag2-" + statName;
 
                     addStatConfig(module.getMockStatisticConfigurationService(),
+                            statUuid,
                             statName,
                             statisticType,
                             Arrays.asList(tag1, tag2),
@@ -765,19 +862,19 @@ public class StatisticsFlatMappingServiceIT {
                         //Give each source event a different time to aid debugging
 //                        ZonedDateTime time = ZonedDateTime.ofInstant(Instant.ofEpochMilli(counter), ZoneOffset.UTC);
 
-                        //each event within a statname/interval/type combo has a time two days apart to ensure no aggregation
+                        //each event within a statUuid/interval/type combo has a time two days apart to ensure no aggregation
                         ZonedDateTime time = ZonedDateTime.ofInstant(baseInstant, ZoneOffset.UTC).plusDays(i * 2);
                         Statistics statistics;
                         if (statisticType.equals(StatisticType.COUNT)) {
                             statistics = StatisticsHelper.buildStatistics(
-                                    StatisticsHelper.buildCountStatistic(statName, time, 1,
+                                    StatisticsHelper.buildCountStatistic(statUuid, statName, time, 1,
                                             StatisticsHelper.buildTagType(tag1, tag1 + "val" + random.nextInt(3)),
                                             StatisticsHelper.buildTagType(tag2, tag2 + "val" + random.nextInt(3))
                                     )
                             );
                         } else {
                             statistics = StatisticsHelper.buildStatistics(
-                                    StatisticsHelper.buildValueStatistic(statName, time, 1.0,
+                                    StatisticsHelper.buildValueStatistic(statUuid, statName, time, 1.0,
                                             StatisticsHelper.buildTagType(tag1, tag1 + "val" + random.nextInt(3)),
                                             StatisticsHelper.buildTagType(tag2, tag2 + "val" + random.nextInt(3))
                                     )
@@ -801,7 +898,7 @@ public class StatisticsFlatMappingServiceIT {
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
         Map<String, List<String>> badEvents = new HashMap<>();
 
         int expectedTopicsPerStatType = intervals.length;
@@ -929,7 +1026,7 @@ public class StatisticsFlatMappingServiceIT {
     private CountDownLatch startIntervalTopicsConsumer(final StatisticType statisticType,
                                                        final Map<String, Object> consumerProps,
                                                        final int expectedMsgCount,
-                                                       final ConcurrentMap<String, List<ConsumerRecord<StatKey, StatAggregate>>> topicToMsgsMap,
+                                                       final ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap,
                                                        final boolean isEachMsgLogged,
                                                        final int pollIntervalMs) {
 
@@ -943,12 +1040,12 @@ public class StatisticsFlatMappingServiceIT {
 
         final CountDownLatch latch = new CountDownLatch(expectedMsgCount);
         final Serde<StatAggregate> stagAggSerde = StatAggregateSerde.instance();
-        final Serde<StatKey> statKeySerde = StatKeySerde.instance();
+        final Serde<StatEventKey> statKeySerde = StatEventKeySerde.instance();
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
             Thread.currentThread().setName("int-csmr-" + statisticType + "-thrd");
             activeConsumerThreads.incrementAndGet();
-            KafkaConsumer<StatKey, StatAggregate> kafkaConsumer = new KafkaConsumer<>(consumerPropsLocal,
+            KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer = new KafkaConsumer<>(consumerPropsLocal,
                     statKeySerde.deserializer(),
                     stagAggSerde.deserializer());
 
@@ -962,17 +1059,17 @@ public class StatisticsFlatMappingServiceIT {
             try {
                 while (areConsumersEnabled.get()) {
                     try {
-                        ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(pollIntervalMs);
+                        ConsumerRecords<StatEventKey, StatAggregate> records = kafkaConsumer.poll(pollIntervalMs);
                         if (records.count() > 0) {
 //                            recCounter.addAndGet(records.count());
                             LOGGER.trace("{} consumed {} good records, cumulative count {}", statisticType, records.count(), recCounter.get());
-                            for (ConsumerRecord<StatKey, StatAggregate> record : records) {
+                            for (ConsumerRecord<StatEventKey, StatAggregate> record : records) {
                                 try {
                                     if (isEachMsgLogged) {
                                         LOGGER.trace("IntervalTopicsConsumer - topic = {}, partition = {}, offset = {}, key = {}, value = {}",
                                                 record.topic(), record.partition(), record.offset(), record.key(), record.value());
                                         if (LOGGER.isTraceEnabled()) {
-                                            StatKeyUtils.logStatKey(uniqueIdCache, record.key());
+                                            StatEventKeyUtils.logStatKey(uniqueIdCache, record.key());
                                         }
                                     }
                                     topicToMsgsMap.computeIfAbsent(record.topic(), k -> new ArrayList<>()).add(record);
@@ -1072,18 +1169,21 @@ public class StatisticsFlatMappingServiceIT {
     }
 
     private void addStatConfig(MockStatisticConfigurationService mockStatisticConfigurationService,
+                               String statUuid,
                                String statName,
                                StatisticType statisticType,
                                List<String> fieldNames,
                                EventStoreTimeIntervalEnum precision) {
         MockStatisticConfiguration statConfig = new MockStatisticConfiguration()
+                .setUuid(statUuid)
                 .setName(statName)
                 .setStatisticType(statisticType)
                 .setRollUpType(StatisticRollUpType.ALL)
                 .addFieldNames(fieldNames)
                 .setPrecision(precision);
 
-        LOGGER.debug("Adding StatConfig: {} {} {} {} {}",
+        LOGGER.debug("Adding StatConfig: {} {} {} {} {} {}",
+                statConfig.getUuid(),
                 statConfig.getName(),
                 statConfig.getStatisticType(),
                 statConfig.getRollUpType(),
@@ -1095,8 +1195,8 @@ public class StatisticsFlatMappingServiceIT {
 
 
     private ProducerRecord<String, String> buildProducerRecord(String topic, Statistics statistics) {
-        String statName = statistics.getStatistic().get(0).getName();
-        return new ProducerRecord<>(topic, statName, statisticsMarshaller.marshallXml(statistics));
+        String statKey = statistics.getStatistic().get(0).getKey().getValue();
+        return new ProducerRecord<>(topic, statKey, statisticsMarshaller.marshallToXml(statistics));
     }
 
     private static KafkaEmbedded buildEmbeddedKafka() {
@@ -1183,8 +1283,9 @@ public class StatisticsFlatMappingServiceIT {
                 String tagValues = statistic.getTags().getTag().stream()
                         .map(tagValue -> tagValue.getName() + "|" + tagValue.getValue())
                         .collect(Collectors.joining(","));
-                LOGGER.trace("Stat: {} {} {} {} {}",
-                        statistic.getName(),
+                LOGGER.trace("Stat: {} {} {} {} {} {}",
+                        statistic.getKey().getValue(),
+                        statistic.getKey().getStatisticName(),
                         statistic.getTime(),
                         tagValues,
                         statistic.getValue(),

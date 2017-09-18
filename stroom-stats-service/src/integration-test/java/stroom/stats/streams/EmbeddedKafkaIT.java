@@ -366,8 +366,8 @@ public class EmbeddedKafkaIT {
             try {
                 while (true) {
                     ConsumerRecords<byte[], byte[]> records = kafkaConsumer.poll(100);
-//                    ConsumerRecords<StatKey, StatAggregate> records = kafkaConsumer.poll(100);
-//                    for (ConsumerRecord<StatKey, StatAggregate> record : records) {
+//                    ConsumerRecords<StatEventKey, StatAggregate> records = kafkaConsumer.poll(100);
+//                    for (ConsumerRecord<StatEventKey, StatAggregate> record : records) {
                     for (ConsumerRecord<byte[], byte[]> record : records) {
                         LOGGER.info("consuming from topic = {}, partition = {}, offset = {}, key = {}, value = {}",
                                 record.topic(), record.partition(), record.offset(), record.key(), record.value());

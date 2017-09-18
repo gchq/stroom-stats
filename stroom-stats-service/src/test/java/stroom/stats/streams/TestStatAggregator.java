@@ -25,7 +25,7 @@ import org.junit.Test;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
-import stroom.stats.test.StatKeyHelper;
+import stroom.stats.test.StatEventKeyHelper;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -46,14 +46,14 @@ public class TestStatAggregator {
         int loopSize = 10;
         IntStream.rangeClosed(1,loopSize).forEach(i -> {
             LocalDateTime time = baseTime.plusSeconds(i);
-            StatKey statKey = StatKeyHelper.buildStatKey(time, aggregationInterval);
+            StatEventKey statEventKey = StatEventKeyHelper.buildStatKey(time, aggregationInterval);
             StatAggregate statAggregate = new CountAggregate(statValue);
-            statAggregator.add(statKey, statAggregate);
+            statAggregator.add(statEventKey, statAggregate);
         });
 
         Assertions.assertThat(statAggregator.size()).isEqualTo(1);
 
-        Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.getAggregates();
+        Map<StatEventKey, StatAggregate> aggregatedEvents = statAggregator.getAggregates();
 
         Assertions.assertThat(aggregatedEvents).hasSize(1);
 
@@ -76,31 +76,31 @@ public class TestStatAggregator {
         int loopSize = 10;
         IntStream.rangeClosed(1,loopSize).forEach(i -> {
             LocalDateTime time1 = baseTime1.plusSeconds(i);
-            StatKey statKey1 = StatKeyHelper.buildStatKey(time1, aggregationInterval);
+            StatEventKey statEventKey1 = StatEventKeyHelper.buildStatKey(time1, aggregationInterval);
             StatAggregate statAggregate1 = new CountAggregate(statValue1);
-            statAggregator.add(statKey1, statAggregate1);
+            statAggregator.add(statEventKey1, statAggregate1);
 
             LocalDateTime time2 = baseTime2.plusSeconds(i);
-            StatKey statKey2 = StatKeyHelper.buildStatKey(time2, aggregationInterval);
+            StatEventKey statEventKey2 = StatEventKeyHelper.buildStatKey(time2, aggregationInterval);
             StatAggregate statAggregate2 = new CountAggregate(statValue2);
-            statAggregator.add(statKey2, statAggregate2);
+            statAggregator.add(statEventKey2, statAggregate2);
         });
 
         Assertions.assertThat(statAggregator.size()).isEqualTo(2);
 
-        Map<StatKey, StatAggregate> aggregatedEvents = statAggregator.getAggregates();
-        List<Tuple2<StatKey, StatAggregate>> pairs = aggregatedEvents.entrySet().stream()
+        Map<StatEventKey, StatAggregate> aggregatedEvents = statAggregator.getAggregates();
+        List<Tuple2<StatEventKey, StatAggregate>> pairs = aggregatedEvents.entrySet().stream()
                 .map(entry -> new Tuple2<>(entry.getKey(), entry.getValue()))
                 .collect(Collectors.toList());
 
         Assertions.assertThat(aggregatedEvents).hasSize(2);
 
-        Tuple2<StatKey, StatAggregate> expectedEvent1 = new Tuple2<>(
-                StatKeyHelper.buildStatKey(baseTime1, aggregationInterval),
+        Tuple2<StatEventKey, StatAggregate> expectedEvent1 = new Tuple2<>(
+                StatEventKeyHelper.buildStatKey(baseTime1, aggregationInterval),
                 new CountAggregate(statValue1 * loopSize));
 
-        Tuple2<StatKey, StatAggregate> expectedEvent2 = new Tuple2<>(
-                StatKeyHelper.buildStatKey(baseTime2, aggregationInterval),
+        Tuple2<StatEventKey, StatAggregate> expectedEvent2 = new Tuple2<>(
+                StatEventKeyHelper.buildStatKey(baseTime2, aggregationInterval),
                 new CountAggregate(statValue2 * loopSize));
 
         Assertions.assertThat(pairs).containsExactlyInAnyOrder(expectedEvent1, expectedEvent2);

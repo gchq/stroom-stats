@@ -37,7 +37,7 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
 
     static {
         FIELD_VALUE_FUNCTION_MAP = ImmutableMap.<String, Function<StatisticDataPoint, String>>builder()
-                .put(StatisticConfiguration.FIELD_NAME_STATISTIC, StatisticDataPoint::getStatisticName)
+                .put(StatisticConfiguration.FIELD_NAME_STATISTIC, StatisticDataPoint::getStatisticUuid)
                 .put(StatisticConfiguration.FIELD_NAME_DATE_TIME, dataPoint -> Long.toString(dataPoint.getTimeMs()))
                 .put(StatisticConfiguration.FIELD_NAME_PRECISION, StatisticDataPoint::getPrecision)
                 .put(StatisticConfiguration.FIELD_NAME_PRECISION_MS, dataPoint -> Long.toString(dataPoint.getPrecisionMs()))
@@ -67,7 +67,7 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
         this.tagToValueMap = Collections.unmodifiableMap(tempMap);
     }
 
-    public String getStatisticName() {
+    public String getStatisticUuid() {
         return statisticName;
     }
 

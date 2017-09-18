@@ -21,7 +21,7 @@ package stroom.stats.streams;
 
 import com.google.common.base.Preconditions;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.schema.Statistics;
+import stroom.stats.schema.v3.Statistics;
 
 import java.util.Optional;
 
@@ -29,7 +29,7 @@ import java.util.Optional;
  * Simple wrapper class to hold both the statistic and its statisticConfiguration if it has one.
  * NOT designed to be serializable
  */
-public class StatisticWrapper {
+public class StatisticWrapper implements HasValidity {
 
     private final Statistics.Statistic statistic;
     private final Optional<StatisticConfiguration> optStatConfig;
@@ -70,6 +70,7 @@ public class StatisticWrapper {
         return new StatisticWrapper(statistic, optStatConfig, timeMs, Optional.of(errorMessage));
     }
 
+    @Override
     public boolean isValid() {
         return !validationErrorMessage.isPresent();
     }

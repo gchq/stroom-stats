@@ -1,5 +1,3 @@
-
-
 /*
  * Copyright 2017 Crown Copyright
  *
@@ -19,8 +17,21 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.hbase.uid;
+package stroom.stats.streams.serde;
 
-public interface UniqueIdConstants {
+import org.apache.kafka.common.serialization.Serde;
+import stroom.stats.streams.StatEventKey;
 
+public class StatEventKeySerde {
+
+    private StatEventKeySerde() {
+    }
+
+    public static Serde<StatEventKey> instance() {
+        Serde<StatEventKey> statKeySerde = SerdeUtils.buildBasicSerde(
+                (topic, obj) -> obj.getBytes(),
+                (topic, bytes) -> StatEventKey.fromBytes(bytes)
+        );
+        return statKeySerde;
+    }
 }

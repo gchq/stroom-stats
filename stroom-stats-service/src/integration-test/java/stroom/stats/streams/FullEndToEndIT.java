@@ -34,13 +34,13 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.schema.Statistics;
-import stroom.stats.schema.TagType;
+import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v3.TagType;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.StroomStatsStoreEntityHelper;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.util.logging.LambdaLogger;
-import stroom.stats.xml.StatisticsMarshaller;
+import stroom.stats.schema.v3.StatisticsMarshaller;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -155,9 +155,9 @@ public class FullEndToEndIT extends AbstractAppIT {
                 TagType tagTypeSystem = StatisticsHelper.buildTagType(TAG_SYSTEM, valuePair._2());
                 Statistics.Statistic statistic;
                 if (statisticType.equals(StatisticType.COUNT)) {
-                    statistic = StatisticsHelper.buildCountStatistic(statName, time, 10L, tagTypeEnv, tagTypeSystem);
+                    statistic = StatisticsHelper.buildCountStatistic(stat.getUuid(), statName, time, 10L, tagTypeEnv, tagTypeSystem);
                 } else {
-                    statistic = StatisticsHelper.buildValueStatistic(statName, time, 0.5, tagTypeEnv, tagTypeSystem);
+                    statistic = StatisticsHelper.buildValueStatistic(stat.getUuid(), statName, time, 0.5, tagTypeEnv, tagTypeSystem);
                 }
 
                 statList.add(statistic);
@@ -192,7 +192,11 @@ public class FullEndToEndIT extends AbstractAppIT {
                             ProducerRecord<String, String> producerRecord = buildProducerRecord(entry.getKey(), statistics, statisticsMarshaller);
 
                             statistics.getStatistic().forEach(statistic ->
-                                    LOGGER.trace("Sending stat with name {}, count {} and value {}", statistic.getName(), statistic.getCount(), statistic.getValue())
+                                    LOGGER.trace("Sending stat with uuid {}, name {}, count {} and value {}",
+                                            statistic.getKey().getValue(),
+                                            statistic.getKey().getStatisticName(),
+                                            statistic.getCount(),
+                                            statistic.getValue())
                             );
 
                             LOGGER.trace(() -> String.format("Sending %s stat events to topic %s", statistics.getStatistic().size(), entry.getKey()));
@@ -227,7 +231,7 @@ public class FullEndToEndIT extends AbstractAppIT {
     }
 
     private static ProducerRecord<String, String> buildProducerRecord(String topic, Statistics statistics, StatisticsMarshaller statisticsMarshaller) {
-        String statName = statistics.getStatistic().get(0).getName();
-        return new ProducerRecord<>(topic, statName, statisticsMarshaller.marshallXml(statistics));
+        String statKey = statistics.getStatistic().get(0).getKey().getValue();
+        return new ProducerRecord<>(topic, statKey, statisticsMarshaller.marshallToXml(statistics));
     }
 }

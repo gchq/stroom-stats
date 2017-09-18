@@ -24,8 +24,8 @@ import org.apache.kafka.streams.KeyValue;
 import stroom.stats.api.MultiPartIdentifier;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.schema.Statistics;
-import stroom.stats.streams.StatKey;
+import stroom.stats.schema.v3.Statistics;
+import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.StatisticWrapper;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
@@ -52,13 +52,13 @@ public class CountStatToAggregateFlatMapper extends AbstractStatisticFlatMapper 
     }
 
     /**
-     * Convert the Statistic object into a StatKey and a StatAggregate pair. The StatKey is a byte array representation of
-     * the parts that make up the statistic key, i.e. name, tavValues. The StatAggregate is just a container for the stat value
+     * Convert the Statistic object into a StatEventKey and a StatAggregate pair. The StatEventKey is a byte array representation of
+     * the parts that make up the statistic key, i.e. name, tagValues. The StatAggregate is just a container for the stat value
      * ready for downstream aggregation
      */
     @Override
-    public Iterable<KeyValue<StatKey, StatAggregate>> flatMap(String statName, StatisticWrapper statisticWrapper) {
-        Preconditions.checkNotNull(statName);
+    public Iterable<KeyValue<StatEventKey, StatAggregate>> flatMap(String statUuid, StatisticWrapper statisticWrapper) {
+        Preconditions.checkNotNull(statUuid);
         Preconditions.checkNotNull(statisticWrapper);
 
         int maxEventIds = stroomPropertyService.getIntProperty(StatAggregate.PROP_KEY_MAX_AGGREGATED_EVENT_IDS, Integer.MAX_VALUE);
@@ -68,7 +68,7 @@ public class CountStatToAggregateFlatMapper extends AbstractStatisticFlatMapper 
 
         //convert stat value
         StatAggregate statAggregate = new CountAggregate(eventIds, maxEventIds, statistic.getCount());
-        List<KeyValue<StatKey, StatAggregate>> keyValues = buildKeyValues(statName, statisticWrapper, statAggregate);
+        List<KeyValue<StatEventKey, StatAggregate>> keyValues = buildKeyValues(statUuid, statisticWrapper, statAggregate);
 
         LOGGER.trace(() -> String.format("Flat mapping event into %s events", keyValues.size()));
         return keyValues;
