@@ -23,7 +23,7 @@ import org.junit.Test;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.MockStatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v4.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.StatisticsHelper;
 

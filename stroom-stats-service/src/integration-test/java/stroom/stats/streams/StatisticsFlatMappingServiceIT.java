@@ -63,7 +63,7 @@ import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.MockStroomPropertyService;
-import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v4.Statistics;
 import stroom.stats.service.config.Config;
 import stroom.stats.service.config.ZookeeperConfig;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -74,7 +74,7 @@ import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatEventKeySerde;
 import stroom.stats.test.KafkaEmbededUtils;
 import stroom.stats.test.StatisticsHelper;
-import stroom.stats.schema.v3.StatisticsMarshaller;
+import stroom.stats.schema.v4.StatisticsMarshaller;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.DatatypeConfigurationException;

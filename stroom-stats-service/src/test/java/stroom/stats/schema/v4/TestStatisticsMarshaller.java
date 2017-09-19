@@ -1,4 +1,4 @@
-package stroom.stats.schema.v3;
+package stroom.stats.schema.v4;
 
 import org.assertj.core.api.Assertions;
 import org.junit.Test;

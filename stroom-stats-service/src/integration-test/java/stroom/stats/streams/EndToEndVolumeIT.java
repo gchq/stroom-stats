@@ -46,12 +46,12 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v4.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.QueryApiHelper;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.test.StroomStatsStoreEntityHelper;
-import stroom.stats.schema.v3.StatisticsMarshaller;
+import stroom.stats.schema.v4.StatisticsMarshaller;
 
 import javax.annotation.Nullable;
 import java.time.Instant;

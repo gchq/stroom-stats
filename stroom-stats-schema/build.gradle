@@ -9,7 +9,7 @@ dependencies {
 }
 
 def xmlSchemas = [
-    v3: 'https://raw.githubusercontent.com/gchq/stroom-content/core-xml-schemas-v1.1/source/core-xml-schemas/stroomContent/XML%20Schemas/statistics/statistics%20v3.0.0.XMLSchema.data.xsd'
+    v4: 'https://raw.githubusercontent.com/gchq/stroom-content/core-xml-schemas-v2.0/source/core-xml-schemas/stroomContent/XML%20Schemas/statistics/statistics%20v4.0.0.XMLSchema.data.xsd'
 ]
 
 def schemasDir = "${buildDir}/schemas"
@@ -32,7 +32,7 @@ task downloadSchemas() {
         new File(schemasDir).mkdirs()
 
         download {
-            src xmlSchemas.v3
+            src xmlSchemas.v4
             dest new File("${schemasDir}")
             overwrite true
         }
@@ -107,7 +107,7 @@ jaxb() {
     xsdDir = "${project.name}/build/schemas"
     xjc {
         destinationDir = "${generatedDir}/main/java"
-        generatePackage = "stroom.stats.schema.v3"
+        generatePackage = "stroom.stats.schema.v4"
         args = [
         ]
     }

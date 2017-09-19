@@ -19,10 +19,10 @@
 
 package stroom.stats.test;
 
-import stroom.stats.schema.v3.CompoundIdentifierType;
-import stroom.stats.schema.v3.ObjectFactory;
-import stroom.stats.schema.v3.Statistics;
-import stroom.stats.schema.v3.TagType;
+import stroom.stats.schema.v4.CompoundIdentifierType;
+import stroom.stats.schema.v4.ObjectFactory;
+import stroom.stats.schema.v4.Statistics;
+import stroom.stats.schema.v4.TagType;
 
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;

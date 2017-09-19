@@ -18,7 +18,7 @@
   ~ along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
   -->
 
-<statistics xmlns="statistics:3" >
+<statistics xmlns="statistics:4" >
     <statistic>
         <key statisticName="STAT1">2c83a3e8-554c-49a0-85fb-526546bc4309</key>
         <time>2017-01-10T00:00:00.000Z</time>

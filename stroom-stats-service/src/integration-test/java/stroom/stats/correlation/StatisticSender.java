@@ -8,12 +8,12 @@ import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import stroom.stats.api.StatisticType;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v4.Statistics;
 import stroom.stats.streams.FullEndToEndIT;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.streams.TopicNameFactory;
 import stroom.stats.util.logging.LambdaLogger;
-import stroom.stats.schema.v3.StatisticsMarshaller;
+import stroom.stats.schema.v4.StatisticsMarshaller;
 
 import java.util.Arrays;
 import java.util.HashMap;

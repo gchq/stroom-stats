@@ -32,15 +32,15 @@ import stroom.stats.hbase.EventStoreTimeIntervalHelper;
 import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.partitions.StatEventKeyPartitioner;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.schema.v3.ObjectFactory;
-import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v4.ObjectFactory;
+import stroom.stats.schema.v4.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatEventKeySerde;
 import stroom.stats.util.logging.LambdaLogger;
-import stroom.stats.schema.v3.StatisticsMarshaller;
+import stroom.stats.schema.v4.StatisticsMarshaller;
 
 import javax.inject.Inject;
 import java.util.Arrays;
@@ -144,7 +144,7 @@ public class StatisticsFlatMappingStreamFactory {
         KStream<String, StatisticWrapper>[] statWrapperForks = validUnmarshalledXml
                 .flatMapValues(unmarshalledXmlWrapper ->
                         unmarshalledXmlWrapper.getStatistics().getStatistic()) //flatMap a batch of stats down to individual events, badly named jaxb objects
-                .mapValues(this::buildStatisticWrapper) //wrap the stat event with its stat config
+                .map(this::buildStatisticWrapper) //wrap the stat event with its stat config
                 .map(StatisticValidator::validate) //validate each one then branch off the bad ones
                 .branch(VALID_INVALID_STAT_WRAPPER_BRANCHING_PREDICATES); //fork stream on valid/invalid state of the statisticWrapper
 
@@ -261,11 +261,10 @@ public class StatisticsFlatMappingStreamFactory {
                 .toString();
     }
 
-    private StatisticWrapper buildStatisticWrapper(final Statistics.Statistic statistic) {
-        Statistics.Statistic.Key key = statistic.getKey();
-        if (key != null && key.getValue() != null) {
+    private StatisticWrapper buildStatisticWrapper(final String key, final Statistics.Statistic statistic) {
+        if (key != null) {
             Optional<StatisticConfiguration> optStatConfig =
-                    statisticConfigurationService.fetchStatisticConfigurationByUuid(key.getValue());
+                    statisticConfigurationService.fetchStatisticConfigurationByUuid(key);
 
             return new StatisticWrapper(statistic, optStatConfig);
         } else {

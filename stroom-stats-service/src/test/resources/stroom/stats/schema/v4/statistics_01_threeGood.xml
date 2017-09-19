@@ -18,7 +18,7 @@
   ~ along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
   -->
 
-<statistics xmlns="statistics:3">
+<statistics xmlns="statistics:4">
     <!-- count stat with multiple identifiers contributing to the stat event -->
     <statistic>
         <key statisticName="ExampleCountStat">def3a909-f108-4008-bb55-c556b3d2ea89</key>

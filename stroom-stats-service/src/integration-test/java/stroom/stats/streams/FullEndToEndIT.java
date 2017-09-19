@@ -34,13 +34,13 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.schema.v3.Statistics;
-import stroom.stats.schema.v3.TagType;
+import stroom.stats.schema.v4.Statistics;
+import stroom.stats.schema.v4.TagType;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.StroomStatsStoreEntityHelper;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.util.logging.LambdaLogger;
-import stroom.stats.schema.v3.StatisticsMarshaller;
+import stroom.stats.schema.v4.StatisticsMarshaller;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
