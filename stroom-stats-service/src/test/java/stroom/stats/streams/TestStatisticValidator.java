@@ -48,18 +48,6 @@ public class TestStatisticValidator {
     }
 
     @Test
-    public void isValidEvent_invalid_uuidMismatch() throws Exception {
-
-        StatisticWrapper statisticWrapper = buildBasicStatWrapper();
-
-        //wrapper has different uuid to msg key
-        statisticWrapper.getStatistic().getKey().setValue("different uuid");
-
-        assertThat(StatisticValidator.validate(statUuid, statisticWrapper).value.isValid())
-                .isFalse();
-    }
-
-    @Test
     public void isValidEvent_invalid_typeMismatch1() throws Exception {
 
         StatisticWrapper statisticWrapper = buildBasicStatWrapper();
@@ -101,8 +89,6 @@ public class TestStatisticValidator {
 
         String statName = "MyStat";
         Statistics.Statistic statistic = StatisticsHelper.buildCountStatistic(
-                statUuid,
-                statName,
                 time,
                 1L,
                 StatisticsHelper.buildTagType(tag1, tag1 + "val1"),

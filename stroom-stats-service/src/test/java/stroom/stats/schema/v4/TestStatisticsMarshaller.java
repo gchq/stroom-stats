@@ -14,7 +14,7 @@ import java.util.function.Function;
 
 public class TestStatisticsMarshaller {
     private final String RESOURCES_DIR = "src/test/resources";
-    private final String PACKAGE_NAME = "/stroom/stats/schema/v3/";
+    private final String PACKAGE_NAME = "/stroom/stats/schema/v4/";
     private final String EXAMPLE_XML_01 = RESOURCES_DIR + PACKAGE_NAME + "statistics_01_threeGood.xml";
 
     private final StatisticsMarshaller statisticsMarshaller;
@@ -40,8 +40,6 @@ public class TestStatisticsMarshaller {
 
         Statistics.Statistic statistic1 = statistics.getStatistic().get(0);
 
-        Assertions.assertThat(statistic1.getKey().getValue()).isEqualTo("def3a909-f108-4008-bb55-c556b3d2ea89");
-        Assertions.assertThat(statistic1.getKey().getStatisticName()).isEqualTo("ExampleCountStat");
         Assertions.assertThat(statistic1.getCount()).isEqualTo(2);
         Assertions.assertThat(statistic1.getTime().toString()).isEqualTo("2016-12-20T10:11:12.123Z");
         Assertions.assertThat(statistic1.getTags().getTag()).hasSize(2);
@@ -55,8 +53,6 @@ public class TestStatisticsMarshaller {
     public void testMarshllUnmarshallToXml() throws Exception {
 
         Statistics.Statistic statistic = StatisticsHelper.buildCountStatistic(
-                statUuid,
-                statName,
                 time,
                 10L,
                 StatisticsHelper.buildTagType(tag1, tag1val1),
@@ -75,8 +71,6 @@ public class TestStatisticsMarshaller {
             Statistics.Statistic statistic1 = statistics1.getStatistic().get(i);
             Statistics.Statistic statistic2 = statistics2.getStatistic().get(i);
 
-            assertValue(statistic1, statistic2, stat -> stat.getKey().getValue());
-            assertValue(statistic1, statistic2, stat -> stat.getKey().getStatisticName());
             assertValue(statistic1, statistic2, stat -> Long.toString(stat.getCount()));
             if (statistic1.getValue() != null) {
                 assertValue(statistic1, statistic2, stat -> Double.toString(stat.getValue()));

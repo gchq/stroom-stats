@@ -103,7 +103,7 @@ public class TestValueStatToAggregateFlatMapper {
         StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.empty());
 
         //will throw a RTE as there is no StatConfig
-        valueStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
+        valueStatToAggregateMapper.flatMap("unknownUuid", statisticWrapper);
     }
 
     @Test
@@ -112,7 +112,8 @@ public class TestValueStatToAggregateFlatMapper {
         Statistics.Statistic statistic = buildStatistic();
 
         StatisticConfiguration statisticConfiguration = new MockStatisticConfiguration()
-                .setName(statistic.getKey().getValue())
+                .setUuid(statUuid)
+                .setName(statName)
                 .setStatisticType(StatisticType.VALUE)
                 .setRollUpType(StatisticRollUpType.NONE)
                 .addFieldNames(tag1, tag2)
@@ -123,8 +124,7 @@ public class TestValueStatToAggregateFlatMapper {
 
         StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
 
-        //will throw a RTE as there is no StatConfig
-        Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
+        Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statUuid, statisticWrapper);
         List<KeyValue<StatEventKey, StatAggregate>> keyValues = (List<KeyValue<StatEventKey, StatAggregate>>) iterable;
 
         assertThat(keyValues).hasSize(1);
@@ -149,7 +149,8 @@ public class TestValueStatToAggregateFlatMapper {
         Statistics.Statistic statistic = buildStatistic();
 
         StatisticConfiguration statisticConfiguration = new MockStatisticConfiguration()
-                .setName(statistic.getKey().getValue())
+                .setUuid(statUuid)
+                .setName(statName)
                 .setStatisticType(StatisticType.VALUE)
                 .setRollUpType(StatisticRollUpType.ALL)
                 .addFieldNames(tag1, tag2)
@@ -160,9 +161,8 @@ public class TestValueStatToAggregateFlatMapper {
 
         StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
 
-        //will throw a RTE as there is no StatConfig
         Instant start = Instant.now();
-        Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
+        Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statUuid, statisticWrapper);
         Duration executionTime = Duration.between(start, Instant.now());
         LOGGER.debug("Execution time: {}ms", executionTime.toMillis());
 
@@ -201,7 +201,8 @@ public class TestValueStatToAggregateFlatMapper {
         RollUpBitMask mask2 = RollUpBitMask.fromTagPositions(Arrays.asList(0, 1));
 
         StatisticConfiguration statisticConfiguration = new MockStatisticConfiguration()
-                .setName(statistic.getKey().getValue())
+                .setUuid(statUuid)
+                .setName(statName)
                 .setStatisticType(StatisticType.VALUE)
                 .setRollUpType(StatisticRollUpType.CUSTOM)
                 .addCustomRollupMask(new MockCustomRollupMask(mask1.getTagPositionsAsList()))
@@ -214,9 +215,8 @@ public class TestValueStatToAggregateFlatMapper {
 
         StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
 
-        //will throw a RTE as there is no StatConfig
         Instant start = Instant.now();
-        Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
+        Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statUuid, statisticWrapper);
         Duration executionTime = Duration.between(start, Instant.now());
         LOGGER.debug("Execution time: {}ms", executionTime.toMillis());
 
@@ -251,7 +251,8 @@ public class TestValueStatToAggregateFlatMapper {
         Statistics.Statistic statistic = buildStatisticNoTags();
 
         StatisticConfiguration statisticConfiguration = new MockStatisticConfiguration()
-                .setName(statistic.getKey().getValue())
+                .setUuid(statUuid)
+                .setName(statName)
                 .setStatisticType(StatisticType.COUNT)
                 .setRollUpType(StatisticRollUpType.ALL)
                 .addFieldNames(tag1, tag2)
@@ -263,7 +264,7 @@ public class TestValueStatToAggregateFlatMapper {
         StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
 
         Instant start = Instant.now();
-        Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statistic.getKey().getValue(), statisticWrapper);
+        Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statUuid, statisticWrapper);
         Duration executionTime = Duration.between(start, Instant.now());
         LOGGER.debug("Execution time: {}ms", executionTime.toMillis());
 
@@ -308,8 +309,6 @@ public class TestValueStatToAggregateFlatMapper {
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
         Statistics.Statistic statistic = StatisticsHelper.buildValueStatistic(
-                statUuid,
-                statName,
                 time,
                 10.5,
                 StatisticsHelper.buildTagType(tag1, tag1val1),
@@ -327,11 +326,7 @@ public class TestValueStatToAggregateFlatMapper {
         //use system time as class under test has logic based on system time
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
-        Statistics.Statistic statistic = StatisticsHelper.buildValueStatistic(
-                statUuid,
-                statName,
-                time,
-                10L);
+        Statistics.Statistic statistic = StatisticsHelper.buildValueStatistic(time, 10L);
 
         StatisticsHelper.addIdentifier(statistic, id1part1, id1part2);
         StatisticsHelper.addIdentifier(statistic, id2part1, id2part2);

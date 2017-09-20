@@ -349,6 +349,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
             testEvents.parallelStream().forEach(statisticsObj -> {
                 ProducerRecord<String, String> producerRecord = buildProducerRecord(
                         inputTopic,
+                        statUuid,
                         statisticsObj,
                         injector.getInstance(StatisticsMarshaller.class));
 
@@ -405,9 +406,11 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         return kafkaProducer;
     }
 
-    private static ProducerRecord<String, String> buildProducerRecord(String topic, Statistics statistics, StatisticsMarshaller statisticsMarshaller) {
-        String statKey = statistics.getStatistic().get(0).getKey().getValue();
-        return new ProducerRecord<>(topic, statKey, statisticsMarshaller.marshallToXml(statistics));
+    private static ProducerRecord<String, String> buildProducerRecord(final String topic,
+                                                                      final String key,
+                                                                      final Statistics statistics,
+                                                                      final StatisticsMarshaller statisticsMarshaller) {
+        return new ProducerRecord<>(topic, key, statisticsMarshaller.marshallToXml(statistics));
     }
 
     /**

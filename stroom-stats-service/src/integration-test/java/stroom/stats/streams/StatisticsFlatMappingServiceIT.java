@@ -218,11 +218,11 @@ public class StatisticsFlatMappingServiceIT {
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
-                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time, 1L,
+                StatisticsHelper.buildCountStatistic(time, 1L,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
-                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time.plusDays(2), 1L,
+                StatisticsHelper.buildCountStatistic(time.plusDays(2), 1L,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
@@ -249,7 +249,7 @@ public class StatisticsFlatMappingServiceIT {
 //        ThreadUtil.sleepAtLeastIgnoreInterrupts(1_000);
 
         LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), topic);
-        producer.send(buildProducerRecord(topic, statistics)).get();
+        producer.send(buildProducerRecord(topic, GOOD_STAT_UUID, statistics)).get();
         producer.close();
 
         //Wait for the expected numbers of messages to arrive or timeout if not
@@ -290,11 +290,11 @@ public class StatisticsFlatMappingServiceIT {
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
-                StatisticsHelper.buildValueStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time, 1.5,
+                StatisticsHelper.buildValueStatistic(time, 1.5,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
-                StatisticsHelper.buildValueStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time.plusHours(2), 1.5,
+                StatisticsHelper.buildValueStatistic(time.plusHours(2), 1.5,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
@@ -323,7 +323,7 @@ public class StatisticsFlatMappingServiceIT {
 //        ThreadUtil.sleepAtLeastIgnoreInterrupts(1_000);
 
         LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), topic);
-        producer.send(buildProducerRecord(topic, statistics)).get();
+        producer.send(buildProducerRecord(topic, GOOD_STAT_UUID, statistics)).get();
         producer.close();
 
         //Wait for the expected numbers of messages to arrive or timeout if not
@@ -416,14 +416,14 @@ public class StatisticsFlatMappingServiceIT {
                 Statistics statistics;
                 if (statisticType.equals(StatisticType.COUNT)) {
                     statistics = StatisticsHelper.buildStatistics(
-                            StatisticsHelper.buildCountStatistic(statUuid, statName, time, 1L,
+                            StatisticsHelper.buildCountStatistic(time, 1L,
                                     StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
                                     StatisticsHelper.buildTagType(tag2, tag2 + "val1")
                             )
                     );
                 } else {
                     statistics = StatisticsHelper.buildStatistics(
-                            StatisticsHelper.buildValueStatistic(statUuid, statName, time, 1.5,
+                            StatisticsHelper.buildValueStatistic(time, 1.5,
                                     StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
                                     StatisticsHelper.buildTagType(tag2, tag2 + "val1")
                             )
@@ -431,7 +431,7 @@ public class StatisticsFlatMappingServiceIT {
                 }
                 dumpStatistics(statistics);
                 LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), inputTopic);
-                producer.send(buildProducerRecord(inputTopic, statistics)).get();
+                producer.send(buildProducerRecord(inputTopic, statUuid, statistics)).get();
             }
         }
         producer.close();
@@ -492,7 +492,7 @@ public class StatisticsFlatMappingServiceIT {
 
         Statistics statistics = StatisticsHelper.buildStatistics(
                 //the good, at this point
-                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time, 1L,
+                StatisticsHelper.buildCountStatistic(time, 1L,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
@@ -511,7 +511,7 @@ public class StatisticsFlatMappingServiceIT {
 
 
         LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), topic);
-        String statKey = statistics.getStatistic().get(0).getKey().getValue();
+        String statKey = GOOD_STAT_UUID;
         //corrupt the xml by renaming one of the element names
         String msgValue = statisticsMarshaller.marshallToXml(statistics)
                 .replaceAll("key", "badElementName");
@@ -555,18 +555,19 @@ public class StatisticsFlatMappingServiceIT {
 
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
-        Statistics statistics = StatisticsHelper.buildStatistics(
+        Statistics statisticsGood = StatisticsHelper.buildStatistics(
                 //the good
-                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, time, 1L,
+                StatisticsHelper.buildCountStatistic(time, 1L,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
-                ),
+        ));
+
+        Statistics statisticsBad = StatisticsHelper.buildStatistics(
                 //the bad
-                StatisticsHelper.buildCountStatistic(badStatUuid, badStatName, time.plusHours(2), 1L,
+                StatisticsHelper.buildCountStatistic(time.plusHours(2), 1L,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
-                )
-        );
+        ));
 
 
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
@@ -595,8 +596,8 @@ public class StatisticsFlatMappingServiceIT {
         //give the consumers and streams enough time to spin up
 //        ThreadUtil.sleepAtLeastIgnoreInterrupts(1_000);
 
-        LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), topic);
-        producer.send(buildProducerRecord(topic, statistics)).get();
+        producer.send(buildProducerRecord(topic, GOOD_STAT_UUID, statisticsGood)).get();
+        producer.send(buildProducerRecord(topic, badStatUuid, statisticsBad)).get();
         producer.close();
 
         //Wait for the expected numbers of messages to arrive or timeout if not
@@ -649,19 +650,19 @@ public class StatisticsFlatMappingServiceIT {
                 interval);
 
         Statistics statistics = StatisticsHelper.buildStatistics(
-                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow, 1L,
+                StatisticsHelper.buildCountStatistic(timeNow, 1L,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //Event time is 2 years ago so will be outside all purge retention thresholds
-                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusYears(2), 1L,
+                StatisticsHelper.buildCountStatistic(timeNow.minusYears(2), 1L,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
         );
 
         LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), topic);
-        producer.send(buildProducerRecord(topic, statistics)).get();
+        producer.send(buildProducerRecord(topic, GOOD_STAT_UUID, statistics)).get();
         producer.close();
 
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
@@ -732,22 +733,22 @@ public class StatisticsFlatMappingServiceIT {
 
         Statistics statistics = StatisticsHelper.buildStatistics(
                 //bump up to MIN interval
-                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusHours(2), 1L,
+                StatisticsHelper.buildCountStatistic(timeNow.minusHours(2), 1L,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //bumped up to HOUR interval
-                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusDays(2), 1L,
+                StatisticsHelper.buildCountStatistic(timeNow.minusDays(2), 1L,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //bumped up to DAY interval
-                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusWeeks(8), 1L,
+                StatisticsHelper.buildCountStatistic(timeNow.minusWeeks(8), 1L,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 ),
                 //ignored
-                StatisticsHelper.buildCountStatistic(GOOD_STAT_UUID, GOOD_STAT_NAME, timeNow.minusYears(2), 1L,
+                StatisticsHelper.buildCountStatistic(timeNow.minusYears(2), 1L,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
                 )
@@ -777,7 +778,7 @@ public class StatisticsFlatMappingServiceIT {
         ThreadUtil.sleepAtLeastIgnoreInterrupts(1_000);
 
         LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), topic);
-        producer.send(buildProducerRecord(topic, statistics)).get();
+        producer.send(buildProducerRecord(topic, GOOD_STAT_UUID, statistics)).get();
 
         SoftAssertions.assertSoftly(softly -> {
             try {
@@ -867,21 +868,21 @@ public class StatisticsFlatMappingServiceIT {
                         Statistics statistics;
                         if (statisticType.equals(StatisticType.COUNT)) {
                             statistics = StatisticsHelper.buildStatistics(
-                                    StatisticsHelper.buildCountStatistic(statUuid, statName, time, 1,
+                                    StatisticsHelper.buildCountStatistic(time, 1,
                                             StatisticsHelper.buildTagType(tag1, tag1 + "val" + random.nextInt(3)),
                                             StatisticsHelper.buildTagType(tag2, tag2 + "val" + random.nextInt(3))
                                     )
                             );
                         } else {
                             statistics = StatisticsHelper.buildStatistics(
-                                    StatisticsHelper.buildValueStatistic(statUuid, statName, time, 1.0,
+                                    StatisticsHelper.buildValueStatistic(time, 1.0,
                                             StatisticsHelper.buildTagType(tag1, tag1 + "val" + random.nextInt(3)),
                                             StatisticsHelper.buildTagType(tag2, tag2 + "val" + random.nextInt(3))
                                     )
                             );
                         }
                         dumpStatistics(statistics);
-                        producerRecords.add(buildProducerRecord(inputTopic, statistics));
+                        producerRecords.add(buildProducerRecord(inputTopic, statUuid, statistics));
                         counter++;
                         cnt++;
                     }
@@ -1194,9 +1195,10 @@ public class StatisticsFlatMappingServiceIT {
     }
 
 
-    private ProducerRecord<String, String> buildProducerRecord(String topic, Statistics statistics) {
-        String statKey = statistics.getStatistic().get(0).getKey().getValue();
-        return new ProducerRecord<>(topic, statKey, statisticsMarshaller.marshallToXml(statistics));
+    private ProducerRecord<String, String> buildProducerRecord(final String topic,
+                                                               final String key,
+                                                               final Statistics statistics) {
+        return new ProducerRecord<>(topic, key, statisticsMarshaller.marshallToXml(statistics));
     }
 
     private static KafkaEmbedded buildEmbeddedKafka() {
@@ -1283,9 +1285,7 @@ public class StatisticsFlatMappingServiceIT {
                 String tagValues = statistic.getTags().getTag().stream()
                         .map(tagValue -> tagValue.getName() + "|" + tagValue.getValue())
                         .collect(Collectors.joining(","));
-                LOGGER.trace("Stat: {} {} {} {} {} {}",
-                        statistic.getKey().getValue(),
-                        statistic.getKey().getStatisticName(),
+                LOGGER.trace("Stat: {} {} {} {}",
                         statistic.getTime(),
                         tagValues,
                         statistic.getValue(),

@@ -1,27 +1,9 @@
-/*
- * Copyright 2017 Crown Copyright
- *
- * This file is part of Stroom-Stats.
- *
- * Stroom-Stats is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Stroom-Stats is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package stroom.stats.streams;
 
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KStreamBuilder;
@@ -261,16 +243,18 @@ public class StatisticsFlatMappingStreamFactory {
                 .toString();
     }
 
-    private StatisticWrapper buildStatisticWrapper(final String key, final Statistics.Statistic statistic) {
+    private KeyValue<String, StatisticWrapper> buildStatisticWrapper(final String key, final Statistics.Statistic statistic) {
+        StatisticWrapper wrapper;
         if (key != null) {
             Optional<StatisticConfiguration> optStatConfig =
                     statisticConfigurationService.fetchStatisticConfigurationByUuid(key);
 
-            return new StatisticWrapper(statistic, optStatConfig);
+            wrapper = new StatisticWrapper(statistic, optStatConfig);
         } else {
             LOGGER.warn("Statistic with no UUID");
-            return new StatisticWrapper(statistic, Optional.empty());
+            wrapper = new StatisticWrapper(statistic, Optional.empty());
         }
+        return new KeyValue<>(key, wrapper);
     }
 
 

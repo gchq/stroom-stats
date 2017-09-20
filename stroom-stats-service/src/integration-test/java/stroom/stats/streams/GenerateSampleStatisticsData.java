@@ -120,7 +120,7 @@ public class GenerateSampleStatisticsData {
 
         //generate the stat events
         List<Statistics.Statistic> statisticList = new ArrayList<>(
-                buildEvents(statUuid, statName, startTime, statisticType, iterationCount));
+                buildEvents(startTime, statisticType, iterationCount));
 
         //randomise the stats
         Collections.shuffle(statisticList, new Random());
@@ -139,9 +139,7 @@ public class GenerateSampleStatisticsData {
     }
 
 
-    private static Collection<Statistics.Statistic> buildEvents(final String uuid,
-                                                                final String statName,
-                                                                final ZonedDateTime initialEventTime,
+    private static Collection<Statistics.Statistic> buildEvents(final ZonedDateTime initialEventTime,
                                                                 final StatisticType statisticType,
                                                                 final int iterationCount) {
         final ZonedDateTime eventTime = initialEventTime;
@@ -160,8 +158,6 @@ public class GenerateSampleStatisticsData {
                         Statistics.Statistic statistic;
                         if (statisticType.equals(StatisticType.COUNT)) {
                             statistic = StatisticsHelper.buildCountStatistic(
-                                    uuid,
-                                    statName,
                                     time,
                                     COUNT_STAT_VALUE,
                                     StatisticsHelper.buildTagType(TAG_USER, user),
@@ -173,8 +169,6 @@ public class GenerateSampleStatisticsData {
                             double val = VALUE_STAT_VALUE_MAP.get(colour);
 
                             statistic = StatisticsHelper.buildValueStatistic(
-                                    uuid,
-                                    statName,
                                     time,
                                     val,
                                     StatisticsHelper.buildTagType(TAG_USER, user),

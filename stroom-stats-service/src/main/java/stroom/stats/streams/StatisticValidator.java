@@ -27,7 +27,6 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.schema.v4.Statistics;
 import stroom.stats.schema.v4.TagType;
 
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class StatisticValidator {
@@ -45,15 +44,6 @@ public class StatisticValidator {
             return addErrorMsg(msgKey, statisticWrapper, "No statUuid in the message key");
         }
         Statistics.Statistic statistic = statisticWrapper.getStatistic();
-
-        String uuidFromWrapper = Optional.ofNullable(statistic.getKey())
-                .map(Statistics.Statistic.Key::getValue)
-                .orElse(null);
-        if (!msgKey.equals(uuidFromWrapper)) {
-            return addErrorMsg(msgKey, statisticWrapper,
-                    String.format("Stat uuid in the message key %s doesn't match uuid in the message %s",
-                            msgKey, uuidFromWrapper));
-        }
 
         if (statistic.getTime() == null) {
             return addErrorMsg(msgKey, statisticWrapper, String.format("Statistic is missing a time value"));
