@@ -16,15 +16,16 @@ import stroom.stats.partitions.StatEventKeyPartitioner;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.v4.ObjectFactory;
 import stroom.stats.schema.v4.Statistics;
+import stroom.stats.schema.v4.StatisticsMarshaller;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatEventKeySerde;
 import stroom.stats.util.logging.LambdaLogger;
-import stroom.stats.schema.v4.StatisticsMarshaller;
 
 import javax.inject.Inject;
+import javax.xml.bind.UnmarshalException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -226,7 +227,26 @@ public class StatisticsFlatMappingStreamFactory {
         return appendError(
                 unmarshalledXmlWrapper.getMessageValue(),
                 UNMARSHALLING_ERROR_TEXT,
-                () -> unmarshalledXmlWrapper.getThrowable().getMessage());
+                () -> {
+                    Throwable e = unmarshalledXmlWrapper.getThrowable();
+                    if (e.getCause() != null && e.getCause() instanceof UnmarshalException) {
+                        Throwable linkedException = ((UnmarshalException) e.getCause()).getLinkedException();
+                        return String.format("%s - %s - %s",
+                                e.getCause().getClass().getName(),
+                                linkedException.getMessage(),
+                                Optional.ofNullable(linkedException.getCause())
+                                        .map(Throwable::getMessage)
+                                        .orElse("?"));
+                    } else if (e.getCause() != null){
+                        return String.format("%s - %s",
+                                e.getCause().getClass().getName(),
+                                e.getCause().getMessage());
+                    } else {
+                        return String.format("%s - %s",
+                                e.getClass().getName(),
+                                e.getMessage());
+                    }
+                });
     }
 
     private String appendError(final String rawXmlValue,

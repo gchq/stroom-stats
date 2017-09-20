@@ -26,6 +26,7 @@ import javax.inject.Singleton;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
+import javax.xml.bind.UnmarshalException;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.bind.ValidationEvent;
 import java.io.StringReader;
@@ -77,9 +78,17 @@ public class StatisticsMarshaller {
             }
             return statistics;
         } catch (Exception e) {
-            int trimIndex = xmlStr.length() < 50 ? xmlStr.length() : 49;
-            LOGGER.error("Unable to deserialise a message (enable debug to log full message): {}...", xmlStr.substring(0, trimIndex));
-            LOGGER.debug("Unable to deserialise a message {}", xmlStr);
+            String exceptionMsg = e.getMessage();
+            if (exceptionMsg == null && e instanceof UnmarshalException) {
+                UnmarshalException unmarshalException = (UnmarshalException) e;
+                exceptionMsg = unmarshalException.getLinkedException().getMessage();
+            }
+            int truncatedLength = 200;
+            int trimIndex = xmlStr.length() < truncatedLength ? xmlStr.length() : truncatedLength - 1;
+            LOGGER.error("Unable to deserialise a message due to [{}] (enable debug to log full message): \n{}...",
+                    exceptionMsg,
+                    xmlStr.substring(0, trimIndex));
+            LOGGER.debug("Unable to deserialise a message\n{}", xmlStr);
             LOGGER.error("Error un-marshalling message value");
             throw new RuntimeException(String.format("Error un-marshalling message value"), e);
         }
