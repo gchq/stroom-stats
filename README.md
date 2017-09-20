@@ -20,6 +20,17 @@ Stroom-Stats is currently work in progress and not in a usable state. More detai
 ## Running
 The `run` task in `build.gradle` looks for `config_dev.yml`. Requires dockers containers to be running (see below)
 
+### Changing the logging level
+The logging level can be changed at runtime by executing something similar to this (assuming you have HTTPie installed)
+
+```bash
+http -f POST http://localhost:8087/tasks/log-level logger=stroom.stats.StatisticsStore level=DEBUG
+```
+
+where `8087` is the admin port.
+
+Active logging levels can be viewed on the health check page [http://localhost:8087/healthcheck](http://localhost:8087/healthcheck) (where 8087 is the admin port) under the `stroom.stats.logging.LogLevelInspector` section.
+
 ## Required Docker containers
 
 To run integration tests or to run stroom-stats you will need docker containers for stroom, mysql (x2), zookeeper, hbase and kafka.
