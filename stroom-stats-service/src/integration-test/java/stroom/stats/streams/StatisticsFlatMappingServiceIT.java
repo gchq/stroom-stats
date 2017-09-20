@@ -64,6 +64,7 @@ import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.schema.v4.Statistics;
+import stroom.stats.schema.v4.StatisticsMarshaller;
 import stroom.stats.service.config.Config;
 import stroom.stats.service.config.ZookeeperConfig;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -72,9 +73,9 @@ import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatEventKeySerde;
+import stroom.stats.test.BadStatMessage;
 import stroom.stats.test.KafkaEmbededUtils;
 import stroom.stats.test.StatisticsHelper;
-import stroom.stats.schema.v4.StatisticsMarshaller;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.DatatypeConfigurationException;
@@ -237,7 +238,7 @@ public class StatisticsFlatMappingServiceIT {
 //        startAllTopicsConsumer(consumerProps);
 
         ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
-        Map<String, List<String>> badEvents = new HashMap<>();
+        List<BadStatMessage> badEvents = new ArrayList<>();
 
         //2 input msgs, each one is rolled up to 4 perms so expect 8
         int expectedGoodMsgCount = 2 * 4;
@@ -311,7 +312,7 @@ public class StatisticsFlatMappingServiceIT {
 //        startAllTopicsConsumer(consumerProps);
 
         ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
-        Map<String, List<String>> badEvents = new HashMap<>();
+        List<BadStatMessage> badEvents = new ArrayList<>();
 
         //2 input msgs, each one is rolled up to 4 perms so expect 8
         int expectedGoodMsgCount = 8;
@@ -363,7 +364,7 @@ public class StatisticsFlatMappingServiceIT {
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
-        Map<String, List<String>> badEvents = new HashMap<>();
+        List<BadStatMessage> badEvents = new ArrayList<>();
 
         //8 input msgs, each one is rolled up to 4 perms so expect 32 in total
         int expectedTopicsPerStatType = 4;
@@ -503,7 +504,7 @@ public class StatisticsFlatMappingServiceIT {
         consumerProps.put("auto.offset.reset", "earliest");
 
         ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
-        Map<String, List<String>> badEvents = new HashMap<>();
+        List<BadStatMessage> badEvents = new ArrayList<>();
 
         int expectedBadMsgCount = 1;
 
@@ -514,7 +515,7 @@ public class StatisticsFlatMappingServiceIT {
         String statKey = GOOD_STAT_UUID;
         //corrupt the xml by renaming one of the element names
         String msgValue = statisticsMarshaller.marshallToXml(statistics)
-                .replaceAll("key", "badElementName");
+                .replaceAll("statistic", "badElementName");
         ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, statKey, msgValue);
         producer.send(producerRecord).get();
         producer.close();
@@ -524,13 +525,16 @@ public class StatisticsFlatMappingServiceIT {
 
         assertThat(badEvents)
                 .hasSize(expectedBadMsgCount);
-        assertThat(badEvents.values().stream().findFirst().get())
-                .hasSize(expectedBadMsgCount);
-        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get())
-                .contains(GOOD_STAT_NAME);
-        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get())
+        assertThat(
+                badEvents.stream()
+                        .map(BadStatMessage::getKey)
+                        .distinct()
+                        .collect(Collectors.toList()))
+                .containsExactly(GOOD_STAT_UUID);
+        assertThat(badEvents.get(0).getValue())
                 .contains(StatisticsFlatMappingStreamFactory.UNMARSHALLING_ERROR_TEXT);
     }
+
     @Test
     public void test_oneGoodOneBad() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
         module = initStreamProcessing();
@@ -560,14 +564,14 @@ public class StatisticsFlatMappingServiceIT {
                 StatisticsHelper.buildCountStatistic(time, 1L,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
-        ));
+                ));
 
         Statistics statisticsBad = StatisticsHelper.buildStatistics(
                 //the bad
                 StatisticsHelper.buildCountStatistic(time.plusHours(2), 1L,
                         StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
                         StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
-        ));
+                ));
 
 
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
@@ -576,7 +580,7 @@ public class StatisticsFlatMappingServiceIT {
 //        startAllTopicsConsumer(consumerProps);
 
         ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
-        Map<String, List<String>> badEvents = new HashMap<>();
+        List<BadStatMessage> badEvents = new ArrayList<>();
 
         //1 good input msgs, each one is rolled up to 4 perms so expect 4
         int expectedGoodMsgCount = 4;
@@ -611,14 +615,14 @@ public class StatisticsFlatMappingServiceIT {
         List<ConsumerRecord<StatEventKey, StatAggregate>> messages = topicToMsgsMap.values().stream().findFirst().get();
         assertThat(messages).hasSize(expectedGoodMsgCount);
 
-        //no bad events
         assertThat(badEvents)
                 .hasSize(expectedBadMsgCount);
-        assertThat(badEvents.values().stream().findFirst().get())
-                .hasSize(expectedBadMsgCount);
-        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get())
-                .contains(badStatName);
-        assertThat(badEvents.values().stream().findFirst().get().stream().findFirst().get())
+        assertThat(
+                badEvents.stream()
+                        .map(BadStatMessage::getKey)
+                        .collect(Collectors.toList()))
+                .containsExactly(badStatUuid);
+        assertThat(badEvents.get(0).getValue())
                 .contains(StatisticsFlatMappingStreamFactory.VALIDATION_ERROR_TEXT);
     }
 
@@ -671,7 +675,7 @@ public class StatisticsFlatMappingServiceIT {
 //        startAllTopicsConsumer(consumerProps);
 
         ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
-        Map<String, List<String>> badEvents = new HashMap<>();
+        List<BadStatMessage> badEvents = new ArrayList<>();
 
         //1 good input msg, each one is rolled up to 4 perms so expect 4
         int expectedGoodMsgCount = 4;
@@ -759,7 +763,7 @@ public class StatisticsFlatMappingServiceIT {
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
-        Map<String, List<String>> badEvents = new HashMap<>();
+        List<BadStatMessage> badEvents = new ArrayList<>();
 
         //3 good input msg, each one is rolled up to 4 perms so expect 12, one input msg ignored
         int expectedGoodMsgCount = 3 * 4;
@@ -900,7 +904,7 @@ public class StatisticsFlatMappingServiceIT {
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
-        Map<String, List<String>> badEvents = new HashMap<>();
+        List<BadStatMessage> badEvents = new ArrayList<>();
 
         int expectedTopicsPerStatType = intervals.length;
         int expectedTopicCount = types.length * expectedTopicsPerStatType;
@@ -1104,7 +1108,7 @@ public class StatisticsFlatMappingServiceIT {
      * A {@link CountDownLatch} is returned to allow the caller to wait for the expected number of messages
      */
     private CountDownLatch startBadEventsConsumer(final Map<String, Object> consumerProps, final int expectedMsgCount,
-                                                  Map<String, List<String>> messages) {
+                                                  List<BadStatMessage> badMessages) {
 
         final CountDownLatch latch = new CountDownLatch(expectedMsgCount);
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -1125,7 +1129,7 @@ public class StatisticsFlatMappingServiceIT {
                         for (ConsumerRecord<String, String> record : records) {
                             LOGGER.warn("Bad events Consumer - topic = {}, partition = {}, offset = {}, key = {}, value = {}",
                                     record.topic(), record.partition(), record.offset(), record.key(), record.value());
-                            messages.computeIfAbsent(record.topic(), k -> new ArrayList<>()).add(record.value());
+                            badMessages.add(new BadStatMessage(record.topic(), record.key(), record.value()));
                             latch.countDown();
                         }
                         if (latch.getCount() == 0) {
