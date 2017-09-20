@@ -20,8 +20,8 @@ import stroom.query.api.v2.TableSettingsBuilder;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.schema.v3.ObjectFactory;
-import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v4.ObjectFactory;
+import stroom.stats.schema.v4.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.QueryApiHelper;
 import stroom.stats.test.StatisticsHelper;
@@ -58,7 +58,8 @@ public class QueryResource_simpleQueries_IT extends AbstractAppIT {
         String statName = "UsersEnteringTheBuilding-" + now.toString() + "-" + statisticType + "-" + interval;
         String statUuid = StatisticsHelper.getUuidKey(statName);
         String statisticConfigurationUuid = StatisticConfigurationCreator.create(injector, statUuid, statName, statisticType, interval, USER_TAG, DOOR_TAG);
-        StatisticSender.sendStatistics(injector, getStats(statUuid, statName, now), statisticType);
+        Statistics statistics = getStats(statUuid, statName, now);
+        StatisticSender.sendStatistics(injector, statUuid, statistics, statisticType);
 
         // Given 2 - get queries ready
         SearchRequest searchRequestForYesterday = getUsersDoorsRequest(statisticConfigurationUuid, getDateRangeFor(now.minusDays(1)));
@@ -146,21 +147,20 @@ public class QueryResource_simpleQueries_IT extends AbstractAppIT {
                                                                      ZonedDateTime now) {
         return Arrays.asList(
                 StatisticsHelper.buildCountStatistic(
-                        statUuid,
-                        statName, now.minusDays(1), 1,
+                        now.minusDays(1),
+                        1,
                         StatisticsHelper.buildTagType(USER_TAG, "user1"),
                         StatisticsHelper.buildTagType(DOOR_TAG, "door1")),
 
                 StatisticsHelper.buildCountStatistic(
-                        statUuid,
-                        statName, now.minusDays(1), 1,
+                        now.minusDays(1),
+                        1,
                         StatisticsHelper.buildTagType(USER_TAG, "user2"),
                         StatisticsHelper.buildTagType(DOOR_TAG, "door1")),
 
 
                 StatisticsHelper.buildCountStatistic(
-                        statUuid,
-                        statName, now.minusDays(1), 1,
+                        now.minusDays(1), 1,
                         StatisticsHelper.buildTagType(USER_TAG, "user3"),
                         StatisticsHelper.buildTagType(DOOR_TAG, "door1"))
         );
@@ -171,14 +171,12 @@ public class QueryResource_simpleQueries_IT extends AbstractAppIT {
                                                                  ZonedDateTime now) {
         return Arrays.asList(
                 StatisticsHelper.buildCountStatistic(
-                        statUuid,
-                        statName, now, 1,
+                        now, 1,
                         StatisticsHelper.buildTagType(USER_TAG, "user1"),
                         StatisticsHelper.buildTagType(DOOR_TAG, "door1")),
 
                 StatisticsHelper.buildCountStatistic(
-                        statUuid,
-                        statName, now, 1,
+                        now, 1,
                         StatisticsHelper.buildTagType(USER_TAG, "user2"),
                         StatisticsHelper.buildTagType(DOOR_TAG, "door1"))
         );

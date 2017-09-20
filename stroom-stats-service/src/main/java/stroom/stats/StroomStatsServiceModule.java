@@ -42,7 +42,7 @@ import stroom.stats.service.ServiceDiscovererImpl;
 import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.config.Config;
 import stroom.stats.streams.StatisticsIngestService;
-import stroom.stats.schema.v3.StatisticsMarshaller;
+import stroom.stats.schema.v4.StatisticsMarshaller;
 
 public class StroomStatsServiceModule extends AbstractModule {
 

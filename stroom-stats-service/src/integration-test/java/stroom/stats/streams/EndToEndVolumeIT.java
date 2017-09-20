@@ -46,12 +46,12 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v4.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.QueryApiHelper;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.test.StroomStatsStoreEntityHelper;
-import stroom.stats.schema.v3.StatisticsMarshaller;
+import stroom.stats.schema.v4.StatisticsMarshaller;
 
 import javax.annotation.Nullable;
 import java.time.Instant;
@@ -349,6 +349,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
             testEvents.parallelStream().forEach(statisticsObj -> {
                 ProducerRecord<String, String> producerRecord = buildProducerRecord(
                         inputTopic,
+                        statUuid,
                         statisticsObj,
                         injector.getInstance(StatisticsMarshaller.class));
 
@@ -405,9 +406,11 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         return kafkaProducer;
     }
 
-    private static ProducerRecord<String, String> buildProducerRecord(String topic, Statistics statistics, StatisticsMarshaller statisticsMarshaller) {
-        String statKey = statistics.getStatistic().get(0).getKey().getValue();
-        return new ProducerRecord<>(topic, statKey, statisticsMarshaller.marshallToXml(statistics));
+    private static ProducerRecord<String, String> buildProducerRecord(final String topic,
+                                                                      final String key,
+                                                                      final Statistics statistics,
+                                                                      final StatisticsMarshaller statisticsMarshaller) {
+        return new ProducerRecord<>(topic, key, statisticsMarshaller.marshallToXml(statistics));
     }
 
     /**

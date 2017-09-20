@@ -23,7 +23,7 @@ import org.junit.Test;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.MockStatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v4.Statistics;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.StatisticsHelper;
 
@@ -45,18 +45,6 @@ public class TestStatisticValidator {
         StatisticWrapper statisticWrapper = buildBasicStatWrapper();
 
         assertThat(StatisticValidator.validate(statUuid, statisticWrapper).value.isValid()).isTrue();
-    }
-
-    @Test
-    public void isValidEvent_invalid_uuidMismatch() throws Exception {
-
-        StatisticWrapper statisticWrapper = buildBasicStatWrapper();
-
-        //wrapper has different uuid to msg key
-        statisticWrapper.getStatistic().getKey().setValue("different uuid");
-
-        assertThat(StatisticValidator.validate(statUuid, statisticWrapper).value.isValid())
-                .isFalse();
     }
 
     @Test
@@ -101,8 +89,6 @@ public class TestStatisticValidator {
 
         String statName = "MyStat";
         Statistics.Statistic statistic = StatisticsHelper.buildCountStatistic(
-                statUuid,
-                statName,
                 time,
                 1L,
                 StatisticsHelper.buildTagType(tag1, tag1 + "val1"),

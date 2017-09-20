@@ -17,7 +17,7 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.schema.v3;
+package stroom.stats.schema.v4;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +32,6 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -125,10 +124,8 @@ public class StatisticsMarshaller {
 
     private void logStatistics(Statistics statistics) {
         statistics.getStatistic().forEach(statistic ->
-                LOGGER.trace("Un-marshalling stat with name {}, count {} and value {}",
-                        Optional.ofNullable(statistic.getKey())
-                                .map(Statistics.Statistic.Key::getStatisticName)
-                                .orElse("NO NAME SUPPLIED"),
+                LOGGER.trace("Un-marshalling stat with time {}, count {} and value {}",
+                        statistic.getTime().toString(),
                         statistic.getCount(),
                         statistic.getValue())
         );
