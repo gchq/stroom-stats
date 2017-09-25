@@ -1,7 +1,7 @@
 package stroom.stats.streams;
 
 import com.google.common.base.Preconditions;
-import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v4.Statistics;
 
 /**
  * Wrapper class to hold the results of unmarshalling an XML string. It will either contain a valid unmarshalled object

@@ -19,10 +19,10 @@
 
 package stroom.stats.test;
 
-import stroom.stats.schema.v3.CompoundIdentifierType;
-import stroom.stats.schema.v3.ObjectFactory;
-import stroom.stats.schema.v3.Statistics;
-import stroom.stats.schema.v3.TagType;
+import stroom.stats.schema.v4.CompoundIdentifierType;
+import stroom.stats.schema.v4.ObjectFactory;
+import stroom.stats.schema.v4.Statistics;
+import stroom.stats.schema.v4.TagType;
 
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
@@ -36,22 +36,18 @@ public class StatisticsHelper {
     private static final Map<String, String> NAME_TO_UUID_MAP = new ConcurrentHashMap<>();
     private static final Map<String, String> UUID_TO_NAME_MAP = new ConcurrentHashMap<>();
 
-    public static Statistics.Statistic buildCountStatistic(String key,
-                                                           String statName,
-                                                           ZonedDateTime time,
+    public static Statistics.Statistic buildCountStatistic(ZonedDateTime time,
                                                            long value,
                                                            TagType... tagValues) {
-        Statistics.Statistic statistic = buildStatistic(key, statName, time, tagValues);
+        Statistics.Statistic statistic = buildStatistic(time, tagValues);
         statistic.setCount(value);
         return statistic;
     }
 
-    public static Statistics.Statistic buildValueStatistic(String key,
-                                                           String statName,
-                                                           ZonedDateTime time,
+    public static Statistics.Statistic buildValueStatistic(ZonedDateTime time,
                                                            double value,
                                                            TagType... tagValues) {
-        Statistics.Statistic statistic = buildStatistic(key, statName, time, tagValues);
+        Statistics.Statistic statistic = buildStatistic(time, tagValues);
         statistic.setValue(value);
         return statistic;
     }
@@ -92,15 +88,11 @@ public class StatisticsHelper {
         return tagType;
     }
 
-    private static Statistics.Statistic buildStatistic(String key, String statName, ZonedDateTime time, TagType... tagValues) {
+    private static Statistics.Statistic buildStatistic(ZonedDateTime time, TagType... tagValues) {
         ObjectFactory objectFactory = new ObjectFactory();
         Statistics.Statistic statistic = objectFactory.createStatisticsStatistic();
-        Statistics.Statistic.Key keyObj = objectFactory.createStatisticsStatisticKey();
-        keyObj.setValue(key);
-        keyObj.setStatisticName(statName);
-        statistic.setKey(keyObj);
         Statistics.Statistic.Tags tagsObj = new Statistics.Statistic.Tags();
-        tagsObj.getTag().addAll(new ArrayList(Arrays.asList(tagValues)));
+        tagsObj.getTag().addAll(Arrays.asList(tagValues));
         statistic.setTags(tagsObj);
         GregorianCalendar gregorianCalendar = GregorianCalendar.from(time);
         try {

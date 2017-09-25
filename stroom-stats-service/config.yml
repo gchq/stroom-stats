@@ -66,7 +66,7 @@ logging:
     level: WARN
     loggers:
         org.hibernate.SQL: WARN
-        stroom.stats: ${STATS_LOGGING_LEVEL:- DBEUG}
+        stroom.stats: ${STATS_LOGGING_LEVEL:- INFO}
         io.dropwizard: ${STATS_LOGGING_LEVEL_DROPWIZARD:- INFO}
 #        stroom.stats.streams.StatisticsAggregationProcessor: TRACE
 #        stroom.stats.streams.FullEndToEndIT: TRACE

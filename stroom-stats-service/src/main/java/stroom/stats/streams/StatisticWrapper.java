@@ -21,7 +21,7 @@ package stroom.stats.streams;
 
 import com.google.common.base.Preconditions;
 import stroom.stats.configuration.StatisticConfiguration;
-import stroom.stats.schema.v3.Statistics;
+import stroom.stats.schema.v4.Statistics;
 
 import java.util.Optional;
 

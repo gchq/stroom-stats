@@ -34,13 +34,14 @@ import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.schema.v3.Statistics;
-import stroom.stats.schema.v3.TagType;
+import stroom.stats.schema.v4.Statistics;
+import stroom.stats.schema.v4.TagType;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.test.StatMessage;
 import stroom.stats.test.StroomStatsStoreEntityHelper;
 import stroom.stats.test.StatisticsHelper;
 import stroom.stats.util.logging.LambdaLogger;
-import stroom.stats.schema.v3.StatisticsMarshaller;
+import stroom.stats.schema.v4.StatisticsMarshaller;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -76,7 +77,7 @@ public class FullEndToEndIT extends AbstractAppIT {
                 injector.getInstance(StroomStatsStoreEntityMarshaller.class));
 
 
-        Map<String, List<Statistics>> statistics = createDummyStatistics(
+        List<StatMessage> statistics = createDummyStatistics(
                 statisticConfigurations,
                 stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX),
                 startTime);
@@ -114,7 +115,7 @@ public class FullEndToEndIT extends AbstractAppIT {
         return stats;
     }
 
-    private static Map<String, List<Statistics>> createDummyStatistics(
+    private static List<StatMessage> createDummyStatistics(
             final List<StatisticConfiguration> statisticConfigurations,
             final String topicPrefix,
             final ZonedDateTime startTime) {
@@ -132,14 +133,14 @@ public class FullEndToEndIT extends AbstractAppIT {
         final int TIME_DELTA_MS = 250;
         final long MAX_ITERATIONS = 8;
 
-        Map<String, List<Statistics>> topicToStatistics = new HashMap<>();
         final AtomicLong counter = new AtomicLong(0);
         List<Statistics.Statistic> statList = new ArrayList<>();
+        List<StatMessage> statMessages = new ArrayList<>();
 
-        statisticConfigurations.forEach(stat -> {
-            String statName = stat.getName();
-            StatisticType statisticType = stat.getStatisticType();
-            EventStoreTimeIntervalEnum interval = stat.getPrecision();
+        statisticConfigurations.forEach(statConf -> {
+            String statUuid = statConf.getUuid();
+            StatisticType statisticType = statConf.getStatisticType();
+            EventStoreTimeIntervalEnum interval = statConf.getPrecision();
 
             LOGGER.info("Processing {} - {}", statisticType, interval);
 
@@ -155,9 +156,9 @@ public class FullEndToEndIT extends AbstractAppIT {
                 TagType tagTypeSystem = StatisticsHelper.buildTagType(TAG_SYSTEM, valuePair._2());
                 Statistics.Statistic statistic;
                 if (statisticType.equals(StatisticType.COUNT)) {
-                    statistic = StatisticsHelper.buildCountStatistic(stat.getUuid(), statName, time, 10L, tagTypeEnv, tagTypeSystem);
+                    statistic = StatisticsHelper.buildCountStatistic(time, 10L, tagTypeEnv, tagTypeSystem);
                 } else {
-                    statistic = StatisticsHelper.buildValueStatistic(stat.getUuid(), statName, time, 0.5, tagTypeEnv, tagTypeSystem);
+                    statistic = StatisticsHelper.buildValueStatistic(time, 0.5, tagTypeEnv, tagTypeSystem);
                 }
 
                 statList.add(statistic);
@@ -165,12 +166,7 @@ public class FullEndToEndIT extends AbstractAppIT {
                 if (counter.get() != 0 && (counter.get() % STATS_IN_BATCH == 0 || counter.get() == (MAX_ITERATIONS - 1))) {
                     Statistics statistics = StatisticsHelper.buildStatistics(statList.toArray(new Statistics.Statistic[statList.size()]));
                     statList.clear();
-                    if(topicToStatistics.containsKey(topic)) {
-                        topicToStatistics.get(topic).add(statistics);
-                    }
-                    else{
-                        topicToStatistics.put(topic, Arrays.asList(statistics));
-                    }
+                    statMessages.add(new StatMessage(topic, statConf.getUuid(), statistics));
                 }
                 counter.incrementAndGet();
             }
@@ -179,36 +175,40 @@ public class FullEndToEndIT extends AbstractAppIT {
             counter.set(0);
         });
 
-        return topicToStatistics;
+        return statMessages;
     }
 
     private static void sendDummyStatistics(
-            KafkaProducer<String, String> kafkaProducer,
-            Map<String, List<Statistics>> statisticTypeToStatistics,
-            StatisticsMarshaller statisticsMarshaller){
-        statisticTypeToStatistics.entrySet().stream().forEach(
-                entry ->entry.getValue().forEach(
-                        statistics -> {
-                            ProducerRecord<String, String> producerRecord = buildProducerRecord(entry.getKey(), statistics, statisticsMarshaller);
+            final KafkaProducer<String, String> kafkaProducer,
+            final List<StatMessage> statMessages,
+            final StatisticsMarshaller statisticsMarshaller){
 
-                            statistics.getStatistic().forEach(statistic ->
-                                    LOGGER.trace("Sending stat with uuid {}, name {}, count {} and value {}",
-                                            statistic.getKey().getValue(),
-                                            statistic.getKey().getStatisticName(),
-                                            statistic.getCount(),
-                                            statistic.getValue())
-                            );
+        statMessages.forEach(statMessage -> {
+            ProducerRecord<String, String> producerRecord = buildProducerRecord(
+                    statMessage.getTopic(),
+                    statMessage.getKey(),
+                    statMessage.getStatistics(),
+                    statisticsMarshaller);
 
-                            LOGGER.trace(() -> String.format("Sending %s stat events to topic %s", statistics.getStatistic().size(), entry.getKey()));
-                            try {
-                                kafkaProducer.send(producerRecord).get();
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                                throw  new RuntimeException("Interrupted", e);
-                            } catch (ExecutionException e) {
-                                throw  new RuntimeException("Error sending record to Kafka", e);
-                            }
-                        }));
+            statMessage.getStatistics().getStatistic().forEach(statistic ->
+                    LOGGER.trace("Sending stat with uuid {} count {} and value {}",
+                            statMessage.getKey(),
+                            statistic.getCount(),
+                            statistic.getValue())
+            );
+
+            LOGGER.trace(() -> String.format("Sending %s stat events to topic %s",
+                    statMessage.getStatistics().getStatistic().size(), statMessage.getTopic()));
+            try {
+                kafkaProducer.send(producerRecord).get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw  new RuntimeException("Interrupted", e);
+            } catch (ExecutionException e) {
+                throw  new RuntimeException("Error sending record to Kafka", e);
+            }
+
+        });
 
         kafkaProducer.flush();
         kafkaProducer.close();
@@ -230,8 +230,10 @@ public class FullEndToEndIT extends AbstractAppIT {
         return kafkaProducer;
     }
 
-    private static ProducerRecord<String, String> buildProducerRecord(String topic, Statistics statistics, StatisticsMarshaller statisticsMarshaller) {
-        String statKey = statistics.getStatistic().get(0).getKey().getValue();
-        return new ProducerRecord<>(topic, statKey, statisticsMarshaller.marshallToXml(statistics));
+    private static ProducerRecord<String, String> buildProducerRecord(final String topic,
+                                                                      final String key,
+                                                                      final Statistics statistics,
+                                                                      final StatisticsMarshaller statisticsMarshaller) {
+        return new ProducerRecord<>(topic, key, statisticsMarshaller.marshallToXml(statistics));
     }
 }

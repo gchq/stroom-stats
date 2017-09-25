@@ -20,8 +20,8 @@
 package stroom.stats.schema;
 
 import org.junit.Test;
-import stroom.stats.schema.v3.Statistics;
-import stroom.stats.schema.v3.StatisticsMarshaller;
+import stroom.stats.schema.v4.Statistics;
+import stroom.stats.schema.v4.StatisticsMarshaller;
 
 import javax.xml.bind.JAXBException;
 import java.io.IOException;

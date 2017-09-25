@@ -17,7 +17,7 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.schema.v3;
+package stroom.stats.schema.v4;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,13 +26,13 @@ import javax.inject.Singleton;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
+import javax.xml.bind.UnmarshalException;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.bind.ValidationEvent;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -78,9 +78,17 @@ public class StatisticsMarshaller {
             }
             return statistics;
         } catch (Exception e) {
-            int trimIndex = xmlStr.length() < 50 ? xmlStr.length() : 49;
-            LOGGER.error("Unable to deserialise a message (enable debug to log full message): {}...", xmlStr.substring(0, trimIndex));
-            LOGGER.debug("Unable to deserialise a message {}", xmlStr);
+            String exceptionMsg = e.getMessage();
+            if (exceptionMsg == null && e instanceof UnmarshalException) {
+                UnmarshalException unmarshalException = (UnmarshalException) e;
+                exceptionMsg = unmarshalException.getLinkedException().getMessage();
+            }
+            int truncatedLength = 200;
+            int trimIndex = xmlStr.length() < truncatedLength ? xmlStr.length() : truncatedLength - 1;
+            LOGGER.error("Unable to deserialise a message due to [{}] (enable debug to log full message): \n{}...",
+                    exceptionMsg,
+                    xmlStr.substring(0, trimIndex));
+            LOGGER.debug("Unable to deserialise a message\n{}", xmlStr);
             LOGGER.error("Error un-marshalling message value");
             throw new RuntimeException(String.format("Error un-marshalling message value"), e);
         }
@@ -125,10 +133,8 @@ public class StatisticsMarshaller {
 
     private void logStatistics(Statistics statistics) {
         statistics.getStatistic().forEach(statistic ->
-                LOGGER.trace("Un-marshalling stat with name {}, count {} and value {}",
-                        Optional.ofNullable(statistic.getKey())
-                                .map(Statistics.Statistic.Key::getStatisticName)
-                                .orElse("NO NAME SUPPLIED"),
+                LOGGER.trace("Un-marshalling stat with time {}, count {} and value {}",
+                        statistic.getTime().toString(),
                         statistic.getCount(),
                         statistic.getValue())
         );
