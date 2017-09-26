@@ -96,6 +96,7 @@ ext.libs = [
     jackson_annotations: "com.fasterxml.jackson.core:jackson-annotations:2.7.8",
     javaslang: 'io.javaslang:javaslang:2.0.5',
     javassist: "org.javassist:javassist:3.20.0-GA",
+    javax_annotation: "javax.annotation:javax.annotation-api:1.2",
     javax_inject: "javax.inject:javax.inject:1",
     javax_validation_api: "javax.validation:validation-api:1.1.0.Final",
     javax_ws_rs_api: "javax.ws.rs:javax.ws.rs-api:2.0.1",

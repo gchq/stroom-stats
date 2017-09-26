@@ -20,11 +20,18 @@
 package stroom.stats;
 
 import jersey.repackaged.com.google.common.base.Throwables;
+import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.client.ClientResponse;
 import org.glassfish.jersey.internal.util.Base64;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
 import org.jose4j.keys.HmacKey;
 import org.jose4j.lang.JoseException;
+
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.Response;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.jose4j.jws.AlgorithmIdentifiers.HMAC_SHA256;
@@ -36,6 +43,21 @@ public class AuthorizationHelper {
 
     public static String getHeaderWithValidCredentials()  {
         return "Bearer " + getToken(VALID_JWT_TOKEN_SECRET);
+    }
+
+    public static String login(){
+        Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
+        Response response = client
+            .target("http://localhost/authenticationService/v1/login")
+            .request()
+            .post(Entity.json(new Credentials("admin", "admin")));
+
+        String token = response.readEntity(String.class);
+        return token;
+    }
+
+    public static String getRawToken(){
+        return getToken(VALID_JWT_TOKEN_SECRET);
     }
 
     public static String getHeaderWithInvalidCredentials()  {

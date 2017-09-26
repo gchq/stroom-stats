@@ -46,7 +46,6 @@ dependencies {
     compile libs.curator_recipies
     compile libs.curator_service_discovery
     compile libs.dropwizard_auth
-    compile libs.dropwizard_auth_jwt
     compile libs.dropwizard_core
     compile libs.dropwizard_jetty
     compile libs.dropwizard_jersey
@@ -69,12 +68,12 @@ dependencies {
     compile libs.jackson_annotations
     compile libs.javaslang
     compile libs.javassist
+    compile libs.javax_annotation
     compile libs.javax_inject
     compile libs.javax_validation_api
     compile libs.javax_ws_rs_api
     compile libs.jersey_server
     compile libs.jersey_client
-    compile libs.jose4j
     compile libs.kafka_clients
     compile libs.kafka_streams
     compile libs.kryo
@@ -100,7 +99,9 @@ dependencies {
     testCompile libs.fastClasspathScanner
     testCompile libs.dropwizard_testing
     testCompile libs.spring_kafka_test
-    
+    testCompile libs.jose4j
+    testCompile libs.dropwizard_auth_jwt
+
     //TODO gradle-dependency-analyze doesn't understand about integrationTest so says these libs are unused
     permitTestUnusedDeclared libs.dropwizard_testing
     permitTestUnusedDeclared libs.spring_kafka_test

@@ -21,23 +21,40 @@ package stroom.stats.service.auth;
 
 import io.dropwizard.auth.AuthenticationException;
 import io.dropwizard.auth.Authenticator;
-import org.jose4j.jwt.MalformedClaimException;
-import org.jose4j.jwt.consumer.JwtContext;
+import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.client.ClientResponse;
+import stroom.stats.service.config.Config;
 
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.core.Response;
 import java.util.Optional;
 
-public class UserAuthenticator implements Authenticator<JwtContext, User> {
+public class UserAuthenticator implements Authenticator<String, User> {
+
+    private Config config;
+
+    public UserAuthenticator(Config config) {
+        this.config = config;
+    }
 
     @Override
-    public Optional<User> authenticate(JwtContext context) throws AuthenticationException {
-        //TODO: If we want to check anything else about the user we need to do it here.
-        try {
-            return Optional.of(new User(
-                    context.getJwtClaims().getSubject(),
-                    context.getJwt()));
+    public Optional<User> authenticate(String securityToken) throws AuthenticationException {
+        Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
+        Response response = client
+            .target(this.config.getAuthenticationServiceUrl() + "/verify/" + securityToken)
+            .request()
+            .get();
+
+        if(response.getStatus() == Response.Status.UNAUTHORIZED.getStatusCode()){
+            throw new AuthenticationException("Token verification failed: unauthorised.");
         }
-        catch (MalformedClaimException e) {
-            return Optional.empty();
+        else if (response.getStatus() != Response.Status.OK.getStatusCode()){
+            throw new AuthenticationException("Token verification failed: server response is " + response.getStatus());
         }
+
+        String userEmail = response.readEntity(String.class);
+        User user = new User(userEmail, securityToken);
+        return Optional.of(user);
     }
 }

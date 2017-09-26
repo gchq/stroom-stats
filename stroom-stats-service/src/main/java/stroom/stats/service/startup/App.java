@@ -108,7 +108,8 @@ public class App extends Application<Config> {
         environment.jersey().register(new QueryResource(
                 injector.getInstance(HBaseClient.class),
                 injector.getInstance(DataSourceService.class),
-                injector.getInstance(ServiceDiscoverer.class)));
+                injector.getInstance(ServiceDiscoverer.class),
+                config));
     }
 
     private void registerTasks(final Environment environment) {

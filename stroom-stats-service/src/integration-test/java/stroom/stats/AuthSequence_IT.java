@@ -20,52 +20,43 @@
 package stroom.stats;
 
 import com.google.inject.Injector;
-import org.glassfish.jersey.client.ClientConfig;
-import org.glassfish.jersey.client.ClientResponse;
 import org.hibernate.SessionFactory;
-import org.junit.Ignore;
 import org.junit.Test;
-import stroom.query.api.v2.DateTimeFormat;
 import stroom.query.api.v2.DocRef;
 import stroom.query.api.v2.ExpressionOperator;
 import stroom.query.api.v2.ExpressionTerm;
-import stroom.query.api.v2.Field;
-import stroom.query.api.v2.Filter;
-import stroom.query.api.v2.Format;
-import stroom.query.api.v2.NumberFormat;
+import stroom.query.api.v2.FieldBuilder;
 import stroom.query.api.v2.Query;
 import stroom.query.api.v2.QueryKey;
 import stroom.query.api.v2.ResultRequest;
 import stroom.query.api.v2.SearchRequest;
-import stroom.query.api.v2.Sort;
 import stroom.query.api.v2.TableSettings;
-import stroom.query.api.v2.TimeZone;
+import stroom.query.api.v2.TableSettingsBuilder;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.test.StroomStatsStoreEntityHelper;
 
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
-import static stroom.query.api.v2.ExpressionTerm.Condition;
-import static stroom.stats.HttpAsserts.assertAccepted;
+import static stroom.stats.HttpAsserts.assertOk;
 
-
-//TODO fix SearchRequest
-@Ignore("SearchRequest is invalid")
 public class AuthSequence_IT extends AbstractAppIT {
 
     private Injector injector = getApp().getInjector();
 
     private final static String TAG_ENV = "environment";
     private final static String TAG_SYSTEM = "system";
+    private static final String USER_TAG = "user";
+    private static final String DOOR_TAG = "door";
 
     private String statisticConfigurationUuid;
 
@@ -83,13 +74,13 @@ public class AuthSequence_IT extends AbstractAppIT {
                 injector.getInstance(StroomStatsStoreEntityMarshaller.class));
         statisticConfigurationUuid = uuids.get(0);
 
-        String jwtToken = loginToStroomAsAdmin();
+        String securityToken = AuthorizationHelper.login();
 
         Response response = req()
-                .body(this::getSearchRequest)
-                .jwtToken(jwtToken)
+                .body(() -> getUsersDoorsRequest(statisticConfigurationUuid, getDateRangeFor(ZonedDateTime.now())))
+                .jwtToken(securityToken)
                 .getStats();
-        assertAccepted(response);
+        assertOk(response);
     }
 
     private static List<StatisticConfiguration> createDummyStatisticConfigurations(){
@@ -101,66 +92,45 @@ public class AuthSequence_IT extends AbstractAppIT {
         return stats;
     }
 
-    private String loginToStroomAsAdmin(){
-        Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
-        Response response = client
-                .target("http://localhost:8080/api/authentication/getToken")
-                .request()
-                .header("Authorization", AuthorizationHelper.getHeaderWithValidBasicAuthCredentials())
-                .get();
-        String jwtToken = response.readEntity(String.class);
-        return jwtToken;
-    }
-
-    private SearchRequest getSearchRequest() {
-        DocRef docRef = new DocRef("docRefType", statisticConfigurationUuid, "docRefName");
+    private static SearchRequest getUsersDoorsRequest(String statisticConfigurationUuid, String timeConstraint) {
 
         ExpressionOperator expressionOperator = new ExpressionOperator(
-                true,
-                ExpressionOperator.Op.AND,
-                new ExpressionTerm("field1", Condition.EQUALS, "value1"),
-                new ExpressionTerm("field2", Condition.BETWEEN, "value2"),
-                new ExpressionTerm(StatisticConfiguration.FIELD_NAME_DATE_TIME, Condition.BETWEEN, "2017-01-01T00:00:00.000Z,2017-01-31T00:00:00.000Z")
+            true,
+            ExpressionOperator.Op.AND,
+            new ExpressionTerm(StatisticConfiguration.FIELD_NAME_PRECISION,
+                ExpressionTerm.Condition.EQUALS,
+                EventStoreTimeIntervalEnum.DAY.longName()),
+            new ExpressionTerm("door", ExpressionTerm.Condition.EQUALS, "door1"),
+            new ExpressionTerm(
+                StatisticConfiguration.FIELD_NAME_DATE_TIME,
+                ExpressionTerm.Condition.BETWEEN,
+                timeConstraint)
         );
 
-        Format format = new Format(
-                Format.Type.DATE_TIME,
-                new NumberFormat(1, false),
-                new DateTimeFormat("yyyy-MM-dd'T'HH:mm:ss", TimeZone.fromOffset(0, 0)));
+        TableSettings tableSettings = new TableSettingsBuilder()
+            .fields(Arrays.asList(
+                new FieldBuilder().name(USER_TAG).expression("${" + USER_TAG + "}").build(),
+                new FieldBuilder().name(DOOR_TAG).expression("${" + DOOR_TAG + "}").build()))
+            . build();
 
-        TableSettings tableSettings = new TableSettings(
-                "someQueryId",
-                Arrays.asList(
-                        new Field(
-                                "name1",
-                                "expression1",
-                                new Sort(1, Sort.SortDirection.ASCENDING),
-                                new Filter("include1", "exclude1"),
-                                format,
-                                1),
-                        new Field(
-                                "name2",
-                                "expression2",
-                                new Sort(2, Sort.SortDirection.DESCENDING),
-                                new Filter("include2", "exclude2"),
-                                format,
-                                2)),
-                false,
-                new DocRef("docRefType2", "docRefUuid2", "docRefName2"),
-                Arrays.asList(1, 2),
-                false
-        );
-
-        ResultRequest resultRequest = new ResultRequest("componentId", tableSettings);
-        Query query = new Query(docRef, expressionOperator);
+        ResultRequest resultRequest = new ResultRequest("mainResult", tableSettings);
+        Query query = new Query(
+            new DocRef(StatisticConfiguration.ENTITY_TYPE, statisticConfigurationUuid, statisticConfigurationUuid),
+            expressionOperator);
 
         SearchRequest searchRequest = new SearchRequest(
-                new QueryKey("queryKeyUuid"),
-                query,
-                Arrays.asList(resultRequest),
-                "en-gb",
-                false);
+            new QueryKey(UUID.randomUUID().toString()),
+            query,
+            Arrays.asList(resultRequest),
+            "en-gb",
+            false);
 
         return searchRequest;
+    }
+
+    private static String getDateRangeFor(ZonedDateTime dateTime){
+        String day = dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String range= String.format("%sT00:00:00.000Z,%sT23:59:59.000Z", day, day);
+        return range;
     }
 }

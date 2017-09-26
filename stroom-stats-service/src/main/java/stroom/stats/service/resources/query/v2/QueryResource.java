@@ -21,6 +21,7 @@ package stroom.stats.service.resources.query.v2;
 
 import com.codahale.metrics.annotation.Timed;
 import com.codahale.metrics.health.HealthCheck;
+import io.dropwizard.auth.Auth;
 import io.dropwizard.hibernate.UnitOfWork;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientResponse;
@@ -72,10 +73,12 @@ public class QueryResource implements HasHealthCheck {
     @Inject
     public QueryResource(final HBaseClient hBaseClient,
                          final DataSourceService dataSourceService,
-                         final ServiceDiscoverer serviceDiscoverer) {
+                         final ServiceDiscoverer serviceDiscoverer,
+                         final Config config) {
         this.hBaseClient = hBaseClient;
         this.dataSourceService = dataSourceService;
         this.serviceDiscoverer = serviceDiscoverer;
+        this.config = config;
     }
 
     @GET
@@ -118,12 +121,10 @@ public class QueryResource implements HasHealthCheck {
     @Produces({MediaType.APPLICATION_JSON})
     @Timed
     @UnitOfWork
-//    public Response search(@Auth User user, @Valid SearchRequest searchRequest){
-    public Response search(@Valid SearchRequest searchRequest){
+    public Response search(@Auth User user, @Valid SearchRequest searchRequest){
         LOGGER.debug("Received search request");
 
-//        return performWithAuthorisation(user,
-        return performWithAuthorisation(null,
+        return performWithAuthorisation(user,
                 searchRequest.getQuery().getDataSource(),
                 () -> Response.ok(hBaseClient.query(searchRequest)).build());
     }
@@ -170,7 +171,6 @@ public class QueryResource implements HasHealthCheck {
 
     private boolean checkPermissions(String authorisationUrl, User user, DocRef statisticRef){
         Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
-
         if (user != null) {
             AuthorisationRequest authorisationRequest = new AuthorisationRequest(statisticRef, "USE");
             Response response = client

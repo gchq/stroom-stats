@@ -26,16 +26,11 @@ import io.dropwizard.db.DataSourceFactory;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
-import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 
 public class Config extends Configuration implements JobConfiguration {
-
-    @NotNull
-    @Valid
-    private String jwtTokenSecret;
 
     @Valid
     private Optional<String> advertisedHostNameOrIp;
@@ -63,12 +58,13 @@ public class Config extends Configuration implements JobConfiguration {
     @JsonProperty
     private String authorisationServiceUrl;
 
+    @NotNull
+    @Valid
+    @JsonProperty
+    private String authenticationServiceUrl;
+
     public DataSourceFactory getDataSourceFactory() {
         return database;
-    }
-
-    public byte[] getJwtTokenSecret() {
-        return jwtTokenSecret.getBytes(Charset.defaultCharset());
     }
 
     public Optional<String> getAdvertisedHostNameOrIp() {
@@ -87,11 +83,14 @@ public class Config extends Configuration implements JobConfiguration {
         return defaultProperties;
     }
 
+    public String getAuthenticationServiceUrl() {
+        return authenticationServiceUrl;
+    }
+
     @Override
     public String toString() {
         return "Config{" +
-                "jwtTokenSecret='" + jwtTokenSecret + '\'' +
-                ", advertisedHostNameOrIpAddress='" + advertisedHostNameOrIp + '\'' +
+                "advertisedHostNameOrIpAddress='" + advertisedHostNameOrIp + '\'' +
                 ", advertisedPort='" + advertisedPort + '\'' +
                 ", zookeeperConfig=" + zookeeperConfig +
                 ", defaultProperties=" + defaultProperties +
