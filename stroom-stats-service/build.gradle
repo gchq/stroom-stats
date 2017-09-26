@@ -27,6 +27,7 @@ shadowJar {
 dependencies {
     //Project dependencies
     compile project(':stroom-stats-schema')
+    permitUnusedDeclared project(':stroom-stats-schema') //not clear why it thinks this is unused
     compile project(':stroom-stats-hbase-client')
     compile project(':stroom-stats-util')
     compile project(':stroom-stats-model')
@@ -99,8 +100,6 @@ dependencies {
     testCompile libs.fastClasspathScanner
     testCompile libs.dropwizard_testing
     testCompile libs.spring_kafka_test
-    testCompile libs.jose4j
-    testCompile libs.dropwizard_auth_jwt
 
     //TODO gradle-dependency-analyze doesn't understand about integrationTest so says these libs are unused
     permitTestUnusedDeclared libs.dropwizard_testing
