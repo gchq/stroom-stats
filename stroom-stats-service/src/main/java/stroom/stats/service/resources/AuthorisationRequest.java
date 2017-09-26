@@ -7,18 +7,18 @@ public class AuthorisationRequest {
     @JsonProperty
     private DocRef docRef;
     @JsonProperty
-    private String permissions;
+    private String permission;
 
-    public AuthorisationRequest(DocRef docRef, String permissions){
+    public AuthorisationRequest(DocRef docRef, String permission){
         this.docRef = docRef;
-        this.permissions = permissions;
+        this.permission = permission;
     }
 
     public DocRef getDocRef() {
         return docRef;
     }
 
-    public String getPermissions() {
-        return permissions;
+    public String getPermission() {
+        return permission;
     }
 }
