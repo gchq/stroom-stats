@@ -18,7 +18,7 @@ FROM openjdk:8-alpine
 
 WORKDIR /usr/stroom-stats
 
-ADD ./stroom-stats-service/build/libs/stroom-stats-all*.jar ./stroom-stats-all.jar
+ADD ./stroom-stats-service/build/libs/stroom-stats-*-all.jar ./stroom-stats-all.jar
 ADD ./stroom-stats-service/config.yml ./config.yml
 
 # If we're using a VPN we'll need to set the proxies
