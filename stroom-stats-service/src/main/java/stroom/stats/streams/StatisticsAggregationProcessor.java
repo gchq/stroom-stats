@@ -591,11 +591,11 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         statusMap.put("bufferInputCount",
                 statAggregator == null
                         ? "-"
-                        : Integer.toString(statAggregator.getInputCount()));
+                        : String.format("%,d", statAggregator.getInputCount()));
         statusMap.put("size",
                 statAggregator == null
                         ? "-"
-                        : Integer.toString(statAggregator.size()));
+                        : String.format("%,d", statAggregator.size()));
         statusMap.put("aggregation-compression-savings %",
                 statAggregator == null
                         ? "-"
@@ -608,7 +608,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                 statAggregator == null
                         ? "-"
                         : Integer.toString(assignedPartitions.size()));
-        statusMap.put("messageCounter", Long.toString(msgCounter.sum()));
+        statusMap.put("messageCounter", String.format("%,d", msgCounter.sum()));
 
         return statusMap;
     }
