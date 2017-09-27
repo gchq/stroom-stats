@@ -24,7 +24,6 @@ import stroom.stats.api.MultiPartIdentifier;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.hbase.EventStoreTimeIntervalHelper;
 import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
@@ -136,14 +135,14 @@ public abstract class AbstractStatisticFlatMapper {
                 break;
             }
             //current interval no good so try the next biggest
-            currentInterval = EventStoreTimeIntervalHelper.getNextBiggest(currentInterval.get());
+            currentInterval = EventStoreTimeIntervalEnum.getNextBiggest(currentInterval.get());
 
         } while (currentInterval.isPresent());
 
         //if the interval is not present it means we were inside the purge retention earlier in the processing and
         //have just fallen out of it.  This is very unlikely to happen, so just assign the largest interval and
         //let it go through knowing it will get purged shortly.
-        return currentInterval.orElseGet(() -> EventStoreTimeIntervalHelper.getLargestInterval());
+        return currentInterval.orElseGet(() -> EventStoreTimeIntervalEnum.getLargestInterval());
     }
 
     protected KeyValue<StatEventKey, StatAggregate> buildKeyValue(final String statUuid,

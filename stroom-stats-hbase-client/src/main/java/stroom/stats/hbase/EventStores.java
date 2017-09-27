@@ -168,7 +168,7 @@ public class EventStores {
         // that. To support queries with no date term we will always return the largest store as a last resort
         //irrespective of the purge retention
         while (bestFitStore.isTimeInsidePurgeRetention(effectivePeriod.getFrom()) == false) {
-            EventStore nextBiggestStore = eventStoreMap.get(EventStoreTimeIntervalHelper.getNextBiggest(bestFitStore.getTimeInterval()));
+            EventStore nextBiggestStore = eventStoreMap.get(EventStoreTimeIntervalEnum.getNextBiggest(bestFitStore.getTimeInterval()));
 
             if (nextBiggestStore == null) {
                 // there is no next biggest so no point continuing
@@ -272,7 +272,7 @@ public class EventStores {
                 break;
             }
 
-            interval = EventStoreTimeIntervalHelper.getNextBiggest(interval.get());
+            interval = EventStoreTimeIntervalEnum.getNextBiggest(interval.get());
         } while (interval.isPresent());
 
         return finestStore;

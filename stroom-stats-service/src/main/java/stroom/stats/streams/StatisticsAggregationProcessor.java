@@ -32,7 +32,6 @@ import org.apache.kafka.common.serialization.Serde;
 import stroom.stats.StatisticsProcessor;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
-import stroom.stats.hbase.EventStoreTimeIntervalHelper;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -172,7 +171,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         inputTopic = TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, aggregationInterval);
         groupId = stroomPropertyService.getPropertyOrThrow(PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX) +
                 "-" + inputTopic;
-        optNextInterval = EventStoreTimeIntervalHelper.getNextBiggest(aggregationInterval);
+        optNextInterval = EventStoreTimeIntervalEnum.getNextBiggest(aggregationInterval);
         optNextIntervalTopic = optNextInterval.map(newInterval ->
                 TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, newInterval));
 

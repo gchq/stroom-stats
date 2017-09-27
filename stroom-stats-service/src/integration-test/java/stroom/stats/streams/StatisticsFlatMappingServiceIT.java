@@ -58,7 +58,6 @@ import stroom.stats.api.StatisticsService;
 import stroom.stats.configuration.MockStatisticConfiguration;
 import stroom.stats.configuration.MockStatisticConfigurationService;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.hbase.EventStoreTimeIntervalHelper;
 import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.uid.UniqueIdCache;
@@ -1019,7 +1018,7 @@ public class StatisticsFlatMappingServiceIT {
     private void addExpectedCount(int expectedCount, EventStoreTimeIntervalEnum currInterval, Map<EventStoreTimeIntervalEnum, Integer> countsMap) {
         countsMap.merge(currInterval, expectedCount, (v1, v2) -> v1 + v2);
 
-        EventStoreTimeIntervalHelper.getNextBiggest(currInterval)
+        EventStoreTimeIntervalEnum.getNextBiggest(currInterval)
                 .ifPresent(nextInterval -> addExpectedCount(expectedCount, nextInterval, countsMap));
     }
 
