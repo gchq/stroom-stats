@@ -127,6 +127,7 @@ defaultProperties:
     #The znode in zookeeper for hbase to use as its root
     stroom.stats.hbase.config.zookeeper.znode.parent: ${STATS_HBASE_ZK_ZNODE_PARENT:- /hbase}
     stroom.stats.hbase.dataStore.maxCheckAndPutRetries: 5
+    stroom.stats.hbase.dataStore.purge.intervalsToRetain.forever: 1
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.day: 6
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.hour: 39
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.minute: 60
