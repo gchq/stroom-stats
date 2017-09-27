@@ -53,12 +53,10 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
     /**
      * Constructor.
      *
-     * @param uniqueIdCache
-     *            The cache to use for UID->String or String->UID lookups
-     * @param timeInterval
-     *            The time interval to use when building or dealing with row
-     *            keys. This time interval controls the granularity of the rows
-     *            and column qualifiers.
+     * @param uniqueIdCache The cache to use for UID->String or String->UID lookups
+     * @param timeInterval  The time interval to use when building or dealing with row
+     *                      keys. This time interval controls the granularity of the rows
+     *                      and column qualifiers.
      */
     public SimpleRowKeyBuilder(final UniqueIdCache uniqueIdCache, final EventStoreTimeIntervalEnum timeInterval) {
         LOGGER.trace("Initialising SimpleRowKeyBuilder");
@@ -117,36 +115,40 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
         return new CellQualifier(rowKey, columnQualifier, fullTimestamp);
     }
 
-    /**
-     * Converts a {@link CellQualifier} from one time interval to another so it
-     * can be used in a different event store.
-     *
-     * @param currCellQualifier
-     *            The existing cell qualifier
-     * @param newTimeInterval
-     *            The new time interval to use
-     * @return A new instance of a {@link CellQualifier}
-     */
-    public static CellQualifier convertCellQualifier(final CellQualifier currCellQualifier,
-            final EventStoreTimeIntervalEnum newTimeInterval) {
-        final byte[] newPartialTimeStamp = buildPartialTimestamp(currCellQualifier.getFullTimestamp(), newTimeInterval);
-        final ColumnQualifier newColumnQualifier = buildColumnQualifier(currCellQualifier.getFullTimestamp(), newTimeInterval);
+//    /**
+//     * Converts a {@link CellQualifier} from one time interval to another so it
+//     * can be used in a different event store.
+//     *
+//     * @param currCellQualifier The existing cell qualifier
+//     * @param newTimeInterval   The new time interval to use
+//     * @return A new instance of a {@link CellQualifier}
+//     */
+//    private static CellQualifier convertCellQualifier(final CellQualifier currCellQualifier,
+//                                                      final EventStoreTimeIntervalEnum newTimeInterval) {
+//
+//        final byte[] newPartialTimeStamp = buildPartialTimestamp(currCellQualifier.getFullTimestamp(), newTimeInterval);
+//        final ColumnQualifier newColumnQualifier = buildColumnQualifier(currCellQualifier.getFullTimestamp(), newTimeInterval);
+//
+//        final RowKey currRowKey = currCellQualifier.getRowKey();
+//
+//        final RowKey newRowKey = new RowKey(
+//                currRowKey.getTypeId(),
+//                currRowKey.getRollUpBitMask(),
+//                newPartialTimeStamp,
+//                currRowKey.getTagValuePairs());
+//
+//        return new CellQualifier(
+//                newRowKey,
+//                newColumnQualifier,
+//                newTimeInterval.truncateTimeToColumnInterval(currCellQualifier.getFullTimestamp()));
+//    }
 
-        final RowKey currRowKey = currCellQualifier.getRowKey();
-
-        final RowKey newRowKey = new RowKey(currRowKey.getTypeId(), currRowKey.getRollUpBitMask(), newPartialTimeStamp,
-                currRowKey.getTagValuePairs());
-
-        return new CellQualifier(newRowKey, newColumnQualifier,
-                newTimeInterval.truncateTimeToColumnInterval(currCellQualifier.getFullTimestamp()));
-    }
-
-    public static CellQualifier convertCellQualifier(final RowKey rowKey, final ColumnQualifier columnQualifier,
-            final EventStoreTimeIntervalEnum oldTimeInterval, final EventStoreTimeIntervalEnum newTimeInterval) {
-        final CellQualifier currCellQualifier = buildCellQualifier(rowKey, columnQualifier, oldTimeInterval);
-
-        return convertCellQualifier(currCellQualifier, newTimeInterval);
-    }
+//    public static CellQualifier convertCellQualifier(final RowKey rowKey, final ColumnQualifier columnQualifier,
+//                                                     final EventStoreTimeIntervalEnum oldTimeInterval, final EventStoreTimeIntervalEnum newTimeInterval) {
+//        final CellQualifier currCellQualifier = buildCellQualifier(rowKey, columnQualifier, oldTimeInterval);
+//
+//        return convertCellQualifier(currCellQualifier, newTimeInterval);
+//    }
 
     @Override
     public RowKey buildStartKey(final String eventName, final RollUpBitMask rollUpBitMask, final long rangeStartTime) {
@@ -156,7 +158,7 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
         final byte[] partialTimestamp = buildPartialTimestamp(rangeStartTime);
 
         //tags/values will be handled by the row key filter, hence the empty list
-        return new RowKey(nameUid, rollUpBitMask.asBytes(), partialTimestamp, Collections.<RowKeyTagValue> emptyList());
+        return new RowKey(nameUid, rollUpBitMask.asBytes(), partialTimestamp, Collections.<RowKeyTagValue>emptyList());
     }
 
     @Override
@@ -168,7 +170,7 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
         final byte[] partialTimestamp = buildPartialTimestamp(rangeEndTime + timeInterval.rowKeyInterval());
 
         //tags/values will be handled by the row key filter, hence the empty list
-        return new RowKey(nameUid, rollUpBitMask.asBytes(), partialTimestamp, Collections.<RowKeyTagValue> emptyList());
+        return new RowKey(nameUid, rollUpBitMask.asBytes(), partialTimestamp, Collections.<RowKeyTagValue>emptyList());
     }
 
     @Override
@@ -223,22 +225,16 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
     }
 
     private byte[] buildRollUpBitMask(final List<StatisticTag> tagList) {
-        final byte[] rollUpBitMask = RollUpBitMaskUtil.fromSortedTagList(tagList).asBytes();
-        return rollUpBitMask;
+        return RollUpBitMaskUtil.fromSortedTagList(tagList).asBytes();
     }
 
-    public static byte[] buildPartialTimestamp(final long time, final EventStoreTimeIntervalEnum timeInterval) {
+    private static byte[] buildPartialTimestamp(final long time, final EventStoreTimeIntervalEnum timeInterval) {
         // event time is in millis, the desired time interval is in millis so
-        // divide one
-        // by the other to get the number of intervals since the epoch
+        // divide one by the other to get the number of intervals since the epoch
         // and use this as the row key time component
         final int timeIntervalNo = (int) (time / timeInterval.rowKeyInterval());
 
-        final byte[] partialTimestamp = Bytes.toBytes(timeIntervalNo);
-        // final byte[] partialTimestamp = UnsignedBytes.toBytes(4,
-        // timeIntervalNo);
-
-        return partialTimestamp;
+        return Bytes.toBytes(timeIntervalNo);
     }
 
     private ColumnQualifier buildColumnQualifier(final long time) {
