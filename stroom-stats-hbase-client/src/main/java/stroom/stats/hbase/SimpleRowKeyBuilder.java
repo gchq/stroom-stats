@@ -105,9 +105,12 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
         return buildCellQualifier(rowKey, columnQualifier, timeInterval);
     }
 
-    public static CellQualifier buildCellQualifier(final RowKey rowKey, final ColumnQualifier columnQualifier,
+    private static CellQualifier buildCellQualifier(
+            final RowKey rowKey,
+            final ColumnQualifier columnQualifier,
             final EventStoreTimeIntervalEnum timeInterval) {
-        final long columnIntervalNo = Bytes.toInt(columnQualifier.getBackingArray(), columnQualifier.getOffset(), columnQualifier.length());
+
+        final long columnIntervalNo = Bytes.toInt(columnQualifier.getBackingArray(), columnQualifier.getOffset(), ColumnQualifier.length());
         final long columnTimeComponentMillis = columnIntervalNo * timeInterval.columnInterval();
         final long fullTimestamp = getPartialTimestamp(rowKey, timeInterval) + columnTimeComponentMillis;
 
