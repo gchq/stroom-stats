@@ -32,10 +32,10 @@ import stroom.query.api.v2.QueryKey;
 import stroom.query.api.v2.SearchRequest;
 import stroom.stats.HBaseClient;
 import stroom.stats.datasource.DataSourceService;
-import stroom.stats.service.auth.User;
-import stroom.stats.service.config.Config;
 import stroom.stats.service.ResourcePaths;
 import stroom.stats.service.ServiceDiscoverer;
+import stroom.stats.service.auth.User;
+import stroom.stats.service.config.Config;
 import stroom.stats.service.resources.AuthorisationRequest;
 import stroom.stats.util.healthchecks.HasHealthCheck;
 
@@ -104,11 +104,11 @@ public class QueryResource implements HasHealthCheck {
     @Produces(MediaType.APPLICATION_JSON)
     @Path(DATA_SOURCE_ENDPOINT)
     @Timed
-//    public Response getDataSource(@Auth User user, @Valid final DocRef docRef) {
-        public Response getDataSource(@Valid final DocRef docRef) {
+    public Response getDataSource(@Auth User user, @Valid final DocRef docRef) {
+//    public Response getDataSource(@Valid final DocRef docRef) {
 
-//        return performWithAuthorisation(user,
-        return performWithAuthorisation(null,
+        return performWithAuthorisation(user,
+//        return performWithAuthorisation(null,
                 docRef,
                 () -> dataSourceService.getDatasource(docRef)
                         .map(dataSource -> Response.ok(dataSource).build())
@@ -121,12 +121,16 @@ public class QueryResource implements HasHealthCheck {
     @Produces({MediaType.APPLICATION_JSON})
     @Timed
     @UnitOfWork
-    public Response search(@Auth User user, @Valid SearchRequest searchRequest){
+    public Response search(@Valid SearchRequest searchRequest) {
+//    public Response search(@Auth User user, @Valid SearchRequest searchRequest){
         LOGGER.debug("Received search request");
 
-        return performWithAuthorisation(user,
-                searchRequest.getQuery().getDataSource(),
-                () -> Response.ok(hBaseClient.query(searchRequest)).build());
+        return performWithAuthorisation(null,
+//        return performWithAuthorisation(user,
+                searchRequest.getQuery().getDataSource(), () ->
+                        Response
+                                .ok(hBaseClient.query(searchRequest))
+                                .build());
     }
 
     @POST
@@ -141,17 +145,19 @@ public class QueryResource implements HasHealthCheck {
         //If we return a failure response then stroom will error so just silently
         //return a 200
         return Response
-                .ok()
+                .ok(Boolean.TRUE)
                 .build();
     }
 
-    private Response performWithAuthorisation(final User user, final DocRef docRef, final Supplier<Response> responseProvider) {
+    private Response performWithAuthorisation(final User user,
+                                              final DocRef docRef,
+                                              final Supplier<Response> responseProvider) {
         String authorisationUrl = String.format(
-            "%s/isAuthorised",
-            config.getAuthorisationServiceUrl());
+                "%s/isAuthorised",
+                config.getAuthorisationServiceUrl());
 
         boolean isAuthorised = checkPermissions(authorisationUrl, user, docRef);
-        if(!isAuthorised){
+        if (!isAuthorised) {
             return Response
                     .status(Response.Status.UNAUTHORIZED)
                     .entity("User is not authorised to perform this action.")
@@ -161,7 +167,7 @@ public class QueryResource implements HasHealthCheck {
         try {
             return responseProvider.get();
         } catch (Exception e) {
-            LOGGER.error("Error processing web service request",e);
+            LOGGER.error("Error processing web service request", e);
             return Response
                     .serverError()
                     .entity("Unexpected error processing request, check the server logs")
@@ -169,7 +175,7 @@ public class QueryResource implements HasHealthCheck {
         }
     }
 
-    private boolean checkPermissions(String authorisationUrl, User user, DocRef statisticRef){
+    private boolean checkPermissions(final String authorisationUrl, final User user, final DocRef statisticRef) {
         Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
         if (user != null) {
             AuthorisationRequest authorisationRequest = new AuthorisationRequest(statisticRef, "USE");
@@ -188,7 +194,7 @@ public class QueryResource implements HasHealthCheck {
 
 
     @Override
-    public HealthCheck.Result getHealth(){
+    public HealthCheck.Result getHealth() {
         return HealthCheck.Result.healthy();
     }
 }
