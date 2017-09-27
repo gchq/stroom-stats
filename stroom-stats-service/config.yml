@@ -113,9 +113,9 @@ defaultProperties:
     #The number of aggregators for each interval size and stat type
     stroom.stats.aggregation.threadsPerIntervalAndType: 2
     #The minimum size of an aggregator to cause a flush to HBase
-    stroom.stats.aggregation.minBatchSize: 100000
+    stroom.stats.aggregation.minBatchSize: 500000
     #The maximum age of an aggregator before a flush to HBase is required
-    stroom.stats.aggregation.maxFlushIntervalMs: 10000
+    stroom.stats.aggregation.maxFlushIntervalMs: 20000
     #The maximum number of distinct event IDs to store with a statistic
     #TODO event ID storage not currently implemented
     stroom.stats.aggregation.maxEventIds: 100
