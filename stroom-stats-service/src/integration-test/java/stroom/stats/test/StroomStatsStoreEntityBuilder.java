@@ -31,7 +31,6 @@ import stroom.stats.configuration.common.Folder;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.Arrays;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class StroomStatsStoreEntityBuilder {
@@ -58,7 +57,7 @@ public class StroomStatsStoreEntityBuilder {
 
         //Use the same folder for all entities
         Folder folder = Folder.create(null, "RootFolder");
-        folder.setUuid(UUID.randomUUID().toString());
+        folder.setUuid("RootFolder-UUID"); //fixed uuid to ensure we only have one
         stroomStatsStoreEntity.setFolder(folder);
 
         stroomStatsStoreEntityData = new StroomStatsStoreEntityData();

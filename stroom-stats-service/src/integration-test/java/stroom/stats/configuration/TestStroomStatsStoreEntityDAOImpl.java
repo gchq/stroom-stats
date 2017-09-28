@@ -51,7 +51,7 @@ public class TestStroomStatsStoreEntityDAOImpl extends AbstractAppIT {
     private StatisticConfigurationService statisticConfigurationService = injector.getInstance(StatisticConfigurationService.class);
 
     @Test
-    public void loadByName() throws Exception {
+    public void loadByUuid() throws Exception {
         StatisticConfiguration entity1 = createStatisticConfigurationEntity("statConfig1");
 
         //Ensure the cache is clear to make sure it uses the loaderWriter to pull from DB
@@ -65,26 +65,6 @@ public class TestStroomStatsStoreEntityDAOImpl extends AbstractAppIT {
         //now do it again, which should just come straight from the cache
 
         foundEntity = statisticConfigurationService.fetchStatisticConfigurationByUuid(entity1.getUuid())
-                .orElseThrow(() -> new RuntimeException(String.format("Entity %s should exist", entity1)));
-
-        Assertions.assertThat(foundEntity).isEqualTo(entity1);
-    }
-
-    @Test
-    public void loadByUuid() throws Exception {
-        StatisticConfiguration entity1 = createStatisticConfigurationEntity("statConfig1");
-
-        //Ensure the cache is clear to make sure it uses the loaderWriter to pull from DB
-        clearCache(StatisticConfigurationServiceImpl.KEY_BY_NAME_CACHE_NAME);
-
-        StatisticConfiguration foundEntity = statisticConfigurationService.fetchStatisticConfigurationByName(entity1.getName())
-                .orElseThrow(() -> new RuntimeException(String.format("Entity %s should exist", entity1)));
-
-        Assertions.assertThat(foundEntity).isEqualTo(entity1);
-
-        //now do it again, which should just come straight from the cache
-
-        foundEntity = statisticConfigurationService.fetchStatisticConfigurationByName(entity1.getName())
                 .orElseThrow(() -> new RuntimeException(String.format("Entity %s should exist", entity1)));
 
         Assertions.assertThat(foundEntity).isEqualTo(entity1);
@@ -110,11 +90,6 @@ public class TestStroomStatsStoreEntityDAOImpl extends AbstractAppIT {
             shuffledEntities.forEach(entity -> {
 
                 StatisticConfiguration foundEntity = statisticConfigurationService.fetchStatisticConfigurationByUuid(entity.getUuid())
-                        .orElseThrow(() -> new RuntimeException(String.format("Entity %s should exist", entity)));
-
-                Assertions.assertThat(foundEntity).isEqualTo(entity);
-
-                foundEntity = statisticConfigurationService.fetchStatisticConfigurationByName(entity.getName())
                         .orElseThrow(() -> new RuntimeException(String.format("Entity %s should exist", entity)));
 
                 Assertions.assertThat(foundEntity).isEqualTo(entity);
@@ -157,7 +132,9 @@ public class TestStroomStatsStoreEntityDAOImpl extends AbstractAppIT {
     }
 
     private void clearCache(String name) {
-        injector.getInstance(CacheManager.class).getCache(name, String.class, StatisticConfiguration.class).clear();
+        injector.getInstance(CacheManager.class)
+                .getCache(name, String.class, StatisticConfiguration.class)
+                .clear();
     }
 
 }
