@@ -102,7 +102,8 @@ public class QueryResource implements HasHealthCheck {
     @Path(DATA_SOURCE_ENDPOINT)
     @Timed
 //    public Response getDataSource(@Auth User user, @Valid final DocRef docRef) {
-        public Response getDataSource(@Valid final DocRef docRef) {
+    public Response getDataSource(@Valid final DocRef docRef) {
+        LOGGER.debug("{} called for docRef {}", DATA_SOURCE_ENDPOINT, docRef);
 
 //        return performWithAuthorisation(user,
         return performWithAuthorisation(null,
@@ -119,8 +120,8 @@ public class QueryResource implements HasHealthCheck {
     @Timed
     @UnitOfWork
 //    public Response search(@Auth User user, @Valid SearchRequest searchRequest){
-    public Response search(@Valid SearchRequest searchRequest){
-        LOGGER.debug("Received search request");
+    public Response search(@Valid SearchRequest searchRequest) {
+        LOGGER.debug("{} called for searchRequest {}", SEARCH_ENDPOINT, searchRequest);
 
 //        return performWithAuthorisation(user,
         return performWithAuthorisation(null,
@@ -134,6 +135,7 @@ public class QueryResource implements HasHealthCheck {
     @Path(DESTROY_ENDPOINT)
     @Timed
     public Response destroy(@Valid final QueryKey queryKey) {
+        LOGGER.debug("{} called for queryKey {}", DESTROY_ENDPOINT, queryKey);
 //    public Response destroy(@Auth User user, @Valid final QueryKey queryKey) {
 
         //destroy does nothing on stroom-stats as we don't hold any query state
@@ -148,14 +150,14 @@ public class QueryResource implements HasHealthCheck {
 
         Optional<String> authorisationServiceAddress = serviceDiscoverer.getServiceInstanceAddress(ExternalService.AUTHORISATION);
 
-        if(authorisationServiceAddress.isPresent()){
+        if (authorisationServiceAddress.isPresent()) {
             String authorisationUrl = String.format(
 //                    "%s/api/authorisation/isAuthorised",
                     "%s/isAuthorised",
                     authorisationServiceAddress.get());
 
             boolean isAuthorised = checkPermissions(authorisationUrl, user, docRef);
-            if(!isAuthorised){
+            if (!isAuthorised) {
                 return Response
                         .status(Response.Status.UNAUTHORIZED)
                         .entity("User is not authorised to perform this action.")
@@ -172,7 +174,7 @@ public class QueryResource implements HasHealthCheck {
         try {
             return responseProvider.get();
         } catch (Exception e) {
-            LOGGER.error("Error processing web service request",e);
+            LOGGER.error("Error processing web service request", e);
             return Response
                     .serverError()
                     .entity("Unexpected error processing request, check the server logs")
@@ -180,7 +182,7 @@ public class QueryResource implements HasHealthCheck {
         }
     }
 
-    private boolean checkPermissions(String authorisationUrl, User user, DocRef statisticRef){
+    private boolean checkPermissions(String authorisationUrl, User user, DocRef statisticRef) {
         Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
 
         if (user != null) {
@@ -200,8 +202,8 @@ public class QueryResource implements HasHealthCheck {
 
 
     @Override
-    public HealthCheck.Result getHealth(){
-        if(serviceDiscoverer.getServiceInstance(ExternalService.AUTHORISATION).isPresent()){
+    public HealthCheck.Result getHealth() {
+        if (serviceDiscoverer.getServiceInstance(ExternalService.AUTHORISATION).isPresent()) {
             return HealthCheck.Result.healthy();
         } else {
             return HealthCheck.Result.unhealthy(NO_AUTHORISATION_SERVICE_MESSAGE);
