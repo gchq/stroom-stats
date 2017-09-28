@@ -109,12 +109,13 @@ defaultProperties:
     stroom.stats.aggregation.pollTimeoutMs: 100
     stroom.stats.aggregation.pollRecords: 5000
 
-    stroom.stats.cache.nameToStatisticConfigurationCache.maxEntriesHeap: 1000
     stroom.stats.cache.uuidToStatisticConfigurationCache.maxEntriesHeap: 1000
+    stroom.stats.cache.uuidToStatisticConfigurationCache.timeToIdleSecs: 180
+    #uids and names are immutable so can live in the cache forever, hence zero timeToIdleSecs value
     stroom.stats.cache.nameToUidCache.maxEntriesHeap: 100000
-    stroom.stats.cache.nameToUidCache.timeToIdleSecs: 300
+    stroom.stats.cache.nameToUidCache.timeToIdleSecs: 0
     stroom.stats.cache.uidToNameCache.maxEntriesHeap: 100000
-    stroom.stats.cache.uidToNameCache.timeToIdleSecs: 300
+    stroom.stats.cache.uidToNameCache.timeToIdleSecs: 0
 
     stroom.stats.search.defaultMaxResultSizes: 1000000,100,10,1
     stroom.stats.search.storeSzie: 1000000,100,10,1
