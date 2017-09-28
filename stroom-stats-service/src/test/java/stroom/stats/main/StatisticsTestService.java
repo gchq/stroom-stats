@@ -72,6 +72,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -111,13 +112,13 @@ public final class StatisticsTestService {
     }
 
 
-    private StatisticDataSet performSearch(final String eventName, final long rangeFrom, final long rangeTo,
+    private StatisticDataSet performSearch(final String statUuid, final long rangeFrom, final long rangeTo,
                                            final FilterTermsTree.Node additionalFilterBranch) {
         StatisticDataSet statisticDataSet;
 
         final StatisticConfiguration statisticConfiguration = statisticConfigurationService
-                .fetchStatisticConfigurationByName(eventName)
-                .orElseThrow(() -> new RuntimeException("StatisticConfiguration not found with name " + eventName));
+                .fetchStatisticConfigurationByUuid(statUuid)
+                .orElseThrow(() -> new RuntimeException("StatisticConfiguration not found with uuid " + statUuid));
 
         final DocRef docRef = new DocRef(statisticConfiguration.getType(), statisticConfiguration.getUuid());
 
@@ -150,7 +151,7 @@ public final class StatisticsTestService {
     public void runRef() {
         LOGGER.info("Started");
 
-        final String statisticName = "ReadWriteVolumeBytes";
+        final String statisticName = UUID.randomUUID().toString();
         long rangeFrom;
         long rangeTo;
 

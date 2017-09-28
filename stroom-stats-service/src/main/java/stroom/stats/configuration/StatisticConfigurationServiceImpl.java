@@ -38,29 +38,20 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticConfigurationServiceImpl.class);
 
-    static final String KEY_BY_NAME_CACHE_NAME = "nameToStatisticConfigurationCache";
     static final String KEY_BY_UUID_CACHE_NAME = "uuidToStatisticConfigurationCache";
 
     private final StroomStatsStoreEntityDAO stroomStatsStoreEntityDAO;
-    private final Cache<String, StatisticConfiguration> keyByNameCache;
     private final Cache<String, StatisticConfiguration> keyByUuidCache;
     private final SessionFactory sessionFactory;
 
     @Inject
     public StatisticConfigurationServiceImpl(final CacheFactory cacheFactory,
                                              final StroomStatsStoreEntityDAO stroomStatsStoreEntityDAO,
-                                             final StatisticConfigurationCacheByNameLoaderWriter byNameLoaderWriter,
                                              final StatisticConfigurationCacheByUuidLoaderWriter byUuidLoaderWriter,
                                              final SessionFactory sessionFactory) {
 
         this.stroomStatsStoreEntityDAO = stroomStatsStoreEntityDAO;
         this.sessionFactory = sessionFactory;
-
-        this.keyByNameCache = cacheFactory.getOrCreateCache(
-                KEY_BY_NAME_CACHE_NAME,
-                String.class,
-                StatisticConfiguration.class,
-                Optional.of(byNameLoaderWriter));
 
         this.keyByUuidCache = cacheFactory.getOrCreateCache(
                 KEY_BY_UUID_CACHE_NAME,
@@ -73,15 +64,6 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
     public List<StatisticConfiguration> fetchAll() {
         return executeInSession(() ->
                 new ArrayList<>(stroomStatsStoreEntityDAO.loadAll())
-        );
-    }
-
-    @Override
-    public Optional<StatisticConfiguration> fetchStatisticConfigurationByName(final String name) {
-        return executeInSession(() ->
-                Try.of(() -> keyByNameCache.get(name))
-                        .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache", name, throwable))
-                        .toJavaOptional()
         );
     }
 

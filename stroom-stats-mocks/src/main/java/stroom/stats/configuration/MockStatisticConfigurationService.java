@@ -45,11 +45,6 @@ public class MockStatisticConfigurationService implements StatisticConfiguration
     }
 
     @Override
-    public Optional<StatisticConfiguration> fetchStatisticConfigurationByName(final String name) {
-        return Optional.ofNullable(nameToStatConfMap.get(name));
-    }
-
-    @Override
     public Optional<StatisticConfiguration> fetchStatisticConfigurationByUuid(final String uuid) {
         return Optional.ofNullable(uuidToStatConfMap.get(uuid));
     }

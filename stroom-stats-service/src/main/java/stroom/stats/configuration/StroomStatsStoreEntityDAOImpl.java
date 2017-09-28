@@ -51,25 +51,6 @@ public class StroomStatsStoreEntityDAOImpl
     }
 
     @Override
-    public Optional<StroomStatsStoreEntity> loadByName(final String name) {
-        try {
-
-            StroomStatsStoreEntity entity = super.currentSession()
-                    .createQuery(
-                            "from StroomStatsStoreEntity " +
-                                    "where name = :pName",
-                            StroomStatsStoreEntity.class)
-                    .setParameter("pName", name)
-                    .getSingleResult();
-
-            LOGGER.trace("Returning StroomStatsStoreEntity {} for name {}", entity, name);
-            return unmarshalEntity(entity);
-        } catch (HibernateException e) {
-            throw new RuntimeException("Error loading statisticConfiguration with name " + name, e);
-        }
-    }
-
-    @Override
     public Optional<StroomStatsStoreEntity> loadByUuid(final String uuid) {
         try {
             StroomStatsStoreEntity entity = super.currentSession()
@@ -115,5 +96,4 @@ public class StroomStatsStoreEntityDAOImpl
             return Optional.empty();
         }
     }
-
 }
