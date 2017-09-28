@@ -75,7 +75,8 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
     @Override
     public Try<UID> getUniqueId(final String name) {
         Preconditions.checkNotNull(name, "A null name is not valid");
-        return Try.of(() -> nameToUidCache.get(name));
+        return Try.of(() ->
+                nameToUidCache.get(name));
     }
 
     @Override

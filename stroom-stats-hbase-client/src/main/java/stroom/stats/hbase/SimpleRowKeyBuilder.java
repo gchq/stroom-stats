@@ -158,7 +158,7 @@ public class SimpleRowKeyBuilder implements RowKeyBuilder {
         final byte[] partialTimestamp = buildPartialTimestamp(rangeStartTime);
 
         //tags/values will be handled by the row key filter, hence the empty list
-        return new RowKey(nameUid, rollUpBitMask.asBytes(), partialTimestamp, Collections.<RowKeyTagValue>emptyList());
+        return new RowKey(nameUid, rollUpBitMask.asBytes(), partialTimestamp, Collections.emptyList());
     }
 
     @Override

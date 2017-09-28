@@ -19,6 +19,7 @@
 
 package stroom.stats.streams;
 
+import com.google.common.base.Preconditions;
 import stroom.stats.hbase.uid.UID;
 
 import java.nio.ByteBuffer;
@@ -53,6 +54,9 @@ public class TagValue implements Comparable<TagValue> {
 
 
     public TagValue(final byte[] bytes, int offset) {
+        Preconditions.checkNotNull(bytes);
+        Preconditions.checkNotNull(offset);
+
         this.tag = UID.from(bytes, offset);
         offset += TAG_PART_LENGTH;
         this.value = UID.from(bytes, offset);
@@ -61,6 +65,9 @@ public class TagValue implements Comparable<TagValue> {
     }
 
     public TagValue(final UID tag, final UID value) {
+        Preconditions.checkNotNull(tag);
+        Preconditions.checkNotNull(value);
+
         this.tag = tag;
         this.value = value;
 
@@ -74,6 +81,7 @@ public class TagValue implements Comparable<TagValue> {
      * @return
      */
     public TagValue cloneAndRollUp(final UID rolledUpValue) {
+        Preconditions.checkNotNull(rolledUpValue);
         return new TagValue(this.tag, rolledUpValue);
     }
 
