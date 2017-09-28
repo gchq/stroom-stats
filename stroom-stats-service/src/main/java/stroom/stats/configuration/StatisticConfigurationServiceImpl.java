@@ -69,6 +69,7 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
 
     @Override
     public Optional<StatisticConfiguration> fetchStatisticConfigurationByUuid(final String uuid) {
+        LOGGER.trace("fetchStatisticConfigurationByUuid called for uuid {}", uuid);
         return executeInSession(() ->
                 Try.of(() -> keyByUuidCache.get(uuid))
                         .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache", uuid, throwable))
