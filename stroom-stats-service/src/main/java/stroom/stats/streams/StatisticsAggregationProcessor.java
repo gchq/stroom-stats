@@ -80,15 +80,18 @@ import java.util.stream.StreamSupport;
  * the day is not yet over.
  * <p>
  * -------> consumer/producer SEC  -------->    statisticsService.putAggregatedEvents
- * __________________________|
- * V
+ *   ________________________|
+ *   V
  * -------> consumer/producer MIN  -------->    statisticsService.putAggregatedEvents
- * __________________________|
- * V
+ *   ________________________|
+ *   V
  * -------> consumer/producer HOUR -------->    statisticsService.putAggregatedEvents
- * __________________________|
- * V
+ *   ________________________|
+ *   V
  * -------> consumer/producer DAY  -------->    statisticsService.putAggregatedEvents
+ *   ________________________|
+ *   V
+ * -------> consumer/producer FOREVER  ---->    statisticsService.putAggregatedEvents
  * <p>
  * If the system goes down unexpectedly then events that have been read off a topic but not yet committed
  * may be re-processed to some extent depending on when the shutdown happened, e.g duplicate events may go to
