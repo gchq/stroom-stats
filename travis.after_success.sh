@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #exit script on any error
-set -o errexit
+set -e
 
 DOCKER_REPO="gchq/stroom-stats"
 DATE_ONLY="$(date +%Y%m%d)"
