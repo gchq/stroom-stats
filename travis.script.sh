@@ -12,6 +12,10 @@ SPECIFIC_TAG=""
 BRANCH_WHITELIST_REGEX='(^dev$|^master$|^v[0-9].*$)'
 doDockerBuild=false
 
+#Do the gradle build
+#TODO need to find a way of running the int tests that doesn't blow the memory limit
+./gradlew -Pversion=$TRAVIS_TAG clean build -x integrationTest
+
 #establish what version of stroom-stats we are building
 if [ -n "$TRAVIS_TAG" ]; then
     STROOM_STATS_VERSION="${TRAVIS_TAG}"
