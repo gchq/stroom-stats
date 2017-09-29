@@ -16,21 +16,28 @@
 
 FROM openjdk:8-alpine
 
-WORKDIR /usr/stroom-stats
-
-ADD ./stroom-stats-service/build/libs/stroom-stats-all*.jar ./stroom-stats-all.jar
-ADD ./stroom-stats-service/config.yml ./config.yml
+ADD build/stroom-stats-all*.jar ./stroom-stats-all.jar
+ADD build/config.yml ./config.yml
 
 # If we're using a VPN we'll need to set the proxies
 RUN echo "http_proxy: $http_proxy" && \
     echo "https_proxy: $https_proxy" && \
-    # Make sure everything is up-to-date
-    apk update && \
-    apk upgrade && \
-    # Alpine doesn't come with bash so install it
-    apk add --no-cache bash && \
-    rm -rf /var/cache/apk/*
+    apk add --no-cache \
+        bash \
+        su-exec \
+        tini && \
+    adduser -s /bin/false -D stroomstats && \
+    mkdir -p /stroom-stats
+
+WORKDIR /stroom-stats
+
+#Make sure all the files are owned by the stroom user
+RUN chown -R stroomstats /stroom-stats
 
 EXPOSE 8086 8087
 
-CMD java -jar stroom-stats-all.jar server config.yml
+#run entrypoint script inside tini for better unix process handling, see https://github.com/krallin/tini/issues/8
+ENTRYPOINT ["/sbin/tini", "--", "docker-entrypoint.sh"]
+
+#start the app
+CMD ["java", "-jar", "stroom-stats-all.jar", "server", "config.yml"]

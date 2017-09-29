@@ -4,25 +4,12 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '1.2.3'
 }
 
+def jarName = "stroom-stats-service-${version}.jar"
+def fatJarName = "stroom-stats-all-${version}.jar"
+def dockerBuildDir = "${rootProject.projectDir}/docker/build"
+
 apply plugin: 'application'
 mainClassName = 'stroom.stats.service.startup.App'
-
-jar {
-    manifest {
-        attributes(
-                "Implementation-Title": "stroom-stats",
-                "Implementation-Version": version,
-                "Main-Class" : "stroom.stats.service.startup.App"
-        )
-    }
-    archiveName "stroom-stats-${version}.jar"
-}
-
-shadowJar {
-    // A transformer to merges files in META-INF/services
-    mergeServiceFiles()
-    archiveName "stroom-stats-${version}-all.jar"
-}
 
 dependencies {
     //Project dependencies
@@ -110,6 +97,23 @@ dependencies {
 
 }
 
+jar {
+    manifest {
+        attributes(
+                "Implementation-Title": "stroom-stats",
+                "Implementation-Version": version,
+                "Main-Class" : "stroom.stats.service.startup.App"
+        )
+    }
+    archiveName jarName
+}
+
+shadowJar {
+    // A transformer to merges files in META-INF/services
+    mergeServiceFiles()
+    archiveName fatJarName
+}
+
 run {
     args 'server', './config.yml'
 }
@@ -153,3 +157,26 @@ tasks.withType(Test) {
     reports.html.destination = file("${reporting.baseDir}/${name}")
 }
 
+clean{
+    delete dockerBuildDir
+}
+
+//Copy all the files needed by the docker build into stroom-app/docker/build
+task copyFilesForDockerBuild() {
+    dependsOn shadowJar
+    doFirst {
+        //Copy the fat jar
+        copy {
+            from "${project.buildDir}/libs/${fatJarName}"
+            into dockerBuildDir
+        }
+
+        //Copy the dropwizard yml configuration
+        copy {
+            from "${projectDir}/config.yml"
+            into dockerBuildDir
+        }
+    }
+}
+
+tasks.build.dependsOn copyFilesForDockerBuild
