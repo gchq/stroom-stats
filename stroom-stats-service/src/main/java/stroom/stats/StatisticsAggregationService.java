@@ -58,6 +58,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 @Singleton
 public class StatisticsAggregationService implements Startable, Stoppable, HasRunState, HasHealthCheck {
@@ -202,7 +203,22 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
         Serde<StatEventKey> statKeySerde = StatEventKeySerde.instance();
         Serde<StatAggregate> statAggregateSerde = StatAggregateSerde.instance();
 
-        return new KafkaProducer<>(producerProps, statKeySerde.serializer(), statAggregateSerde.serializer());
+        try {
+            return new KafkaProducer<>(
+                    producerProps,
+                    statKeySerde.serializer(),
+                    statAggregateSerde.serializer());
+        } catch (Exception e) {
+            try {
+                String props = producerProps.entrySet().stream()
+                        .map(entry -> "  " + entry.getKey() + "=" + entry.getValue())
+                        .collect(Collectors.joining("\n"));
+                LOGGER.error("Error initialising kafka producer with props:\n{}",props, e);
+            } catch (Exception e1) {
+            }
+            LOGGER.error("Error initialising kafka producer, unable to dump property values ", e);
+            throw e;
+        }
     }
 
     private Map<String, Object> getProducerProps() {
