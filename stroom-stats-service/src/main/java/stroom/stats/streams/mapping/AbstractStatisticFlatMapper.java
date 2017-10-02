@@ -19,6 +19,7 @@
 
 package stroom.stats.streams.mapping;
 
+import com.google.common.base.Preconditions;
 import org.apache.kafka.streams.KeyValue;
 import stroom.stats.api.MultiPartIdentifier;
 import stroom.stats.common.rollup.RollUpBitMask;
@@ -69,6 +70,8 @@ public abstract class AbstractStatisticFlatMapper {
     public abstract Iterable<KeyValue<StatEventKey, StatAggregate>> flatMap(String statUuid, StatisticWrapper statisticWrapper);
 
     private TagValue buildTagValue(String tag, Optional<String> value) {
+
+        Preconditions.checkNotNull(tag);
 
         LOGGER.trace(() -> String.format("Creating TagValue tag: %s value %s", tag, value.orElse("NULL")));
         UID tagUid = uniqueIdCache.getOrCreateId(tag);
