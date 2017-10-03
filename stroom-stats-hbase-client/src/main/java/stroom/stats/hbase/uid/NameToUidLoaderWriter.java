@@ -22,15 +22,13 @@ package stroom.stats.hbase.uid;
 import org.ehcache.spi.loaderwriter.BulkCacheLoadingException;
 import org.ehcache.spi.loaderwriter.BulkCacheWritingException;
 import org.ehcache.spi.loaderwriter.CacheLoaderWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
 import java.util.Map;
-import java.util.Optional;
 
 class NameToUidLoaderWriter implements CacheLoaderWriter<String, UID> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(NameToUidLoaderWriter.class);
+    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(NameToUidLoaderWriter.class);
 
     private final UniqueIdGenerator uniqueIdGenerator;
 
@@ -43,11 +41,20 @@ class NameToUidLoaderWriter implements CacheLoaderWriter<String, UID> {
     public UID load(final String name) throws Exception {
         LOGGER.trace("load called on name {}", name);
 
-        return UID.from(
-                Optional.ofNullable(uniqueIdGenerator.getId(name))
-                        .orElseThrow(() ->
-                                new Exception(String.format("Name %s does not exist it uid table", name)))
-                        .get());
+        //EHCache does not cache null values so just return null if we can't find it
+        UID uid = uniqueIdGenerator.getId(name).orElse(null);
+        LOGGER.trace(() -> {
+            if (uid != null) {
+                return LambdaLogger.buildMessage("Loading uid {} into the cache for name {}", uid.toAllForms(), name);
+            } else {
+                return LambdaLogger.buildMessage("No uid exists for for name {}", name);
+            }
+        });
+        return uid;
+        //throw an exception if there isn't one as we don't want to put a null value into the cache
+//        return uniqueIdGenerator.getId(name)
+//                .orElseThrow(
+//                        () -> new Exception(String.format("Name %s does not exist it uid table", name)));
     }
 
     @Override

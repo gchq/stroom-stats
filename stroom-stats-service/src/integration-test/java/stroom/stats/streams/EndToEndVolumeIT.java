@@ -108,6 +108,10 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         stroomPropertyService.setProperty(StatisticsIngestService.PROP_KEY_KAFKA_AUTO_OFFSET_RESET, "latest");
     }
 
+    /**
+     * Loads a large number of count stats at finest precision, then keeps querying over all stores
+     * until it has found all the expected results, both un-rolled up and fully rolled up.
+     */
     @Test
     public void volumeTest_count() throws InterruptedException {
 
@@ -183,6 +187,10 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                 .sum();
     }
 
+    /**
+     * Loads a large number of value stats at finest precision, then keeps querying over all stores
+     * until it has found all the expected results, both un-rolled up and fully rolled up.
+     */
     @Test
     public void volumeTest_value() throws InterruptedException {
 

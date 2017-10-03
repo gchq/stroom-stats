@@ -147,6 +147,8 @@ task integrationTest(type: Test) {
 check.dependsOn integrationTest
 integrationTest.mustRunAfter test
 
+//TODO if we run with -x integrationTest then it is not compiling the int test code
+
 // This means the reports from our integration tests won't over-write the reports from our unit tests.
 tasks.withType(Test) {
     reports.html.destination = file("${reporting.baseDir}/${name}")

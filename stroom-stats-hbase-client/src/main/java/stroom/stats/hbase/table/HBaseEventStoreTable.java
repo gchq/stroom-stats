@@ -833,7 +833,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         final String statisticName = statisticConfiguration.getName();
 
         final byte[] bRowKey = uniqueIdCache.getUniqueId(statisticName)
-                .getOrElseThrow(() -> new RuntimeException("No UID found for statistic " + statisticName))
+                .orElseThrow(() -> new RuntimeException("No UID found for statistic " + statisticName))
                 .getUidBytes();
 
         // add a keyOnlyFilter so we only get back the keys and not the data

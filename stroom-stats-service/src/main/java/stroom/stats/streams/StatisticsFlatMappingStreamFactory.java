@@ -232,8 +232,11 @@ public class StatisticsFlatMappingStreamFactory {
                         Throwable linkedException = ((UnmarshalException) e.getCause()).getLinkedException();
                         return String.format("%s - %s - %s",
                                 e.getCause().getClass().getName(),
-                                linkedException.getMessage(),
-                                Optional.ofNullable(linkedException.getCause())
+                                Optional.ofNullable(linkedException)
+                                        .map(Throwable::getMessage)
+                                        .orElse("?"),
+                                Optional.ofNullable(linkedException)
+                                        .map(Throwable::getCause)
                                         .map(Throwable::getMessage)
                                         .orElse("?"));
                     } else if (e.getCause() != null){

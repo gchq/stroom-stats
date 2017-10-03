@@ -22,7 +22,6 @@
 package stroom.stats.main;
 
 import com.google.common.collect.Iterables;
-import javaslang.control.Try;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.client.Delete;
@@ -71,6 +70,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
@@ -393,9 +393,9 @@ public final class StatisticsTestService {
 
         final String statName = "FeedStatus";
 
-        final Try<UID> uniqueId = uniqueIdCache.getUniqueId(statName);
+        final Optional<UID> uniqueId = uniqueIdCache.getUniqueId(statName);
 
-        LOGGER.info(uniqueId.getOrElse(UID.NOT_FOUND_UID).toAllForms());
+        LOGGER.info(uniqueId.orElse(UID.NOT_FOUND_UID).toAllForms());
 
         final String name = uniqueIdCache.getName(uniqueId.get());
 

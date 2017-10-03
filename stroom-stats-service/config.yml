@@ -65,6 +65,7 @@ logging:
     loggers:
         org.hibernate.SQL: WARN
         stroom.stats: ${STATS_LOGGING_LEVEL:- INFO}
+#        stroom.stats.hbase.uid: TRACE
         io.dropwizard: ${STATS_LOGGING_LEVEL_DROPWIZARD:- INFO}
 #        stroom.stats.streams.StatisticsAggregationProcessor: TRACE
 #        stroom.stats.streams.FullEndToEndIT: TRACE
@@ -75,6 +76,12 @@ logging:
       - type: console
         logFormat: "%-6level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %X{code} %msg %n"
         target: stdout
+      - type: file
+        logFormat: "%-6level [%d{HH:mm:ss.SSS}] [%t] %logger{35} - %X{code} %msg %n"
+        currentLogFilename: ../stroom-stats.log
+        archivedLogFilenamePattern: stroom-stats-%d{yyyy-MM-dd}.log
+        archivedFileCount: 10
+        timeZone: UTC
 
 zookeeper:
     # The quorum of zookeeper hosts to connect to
@@ -113,9 +120,9 @@ defaultProperties:
     stroom.stats.cache.uuidToStatisticConfigurationCache.timeToIdleSecs: 180
     #uids and names are immutable so can live in the cache forever, hence zero timeToIdleSecs value
     stroom.stats.cache.nameToUidCache.maxEntriesHeap: 100000
-    stroom.stats.cache.nameToUidCache.timeToIdleSecs: 0
+    stroom.stats.cache.nameToUidCache.timeToIdleSecs: 300
     stroom.stats.cache.uidToNameCache.maxEntriesHeap: 100000
-    stroom.stats.cache.uidToNameCache.timeToIdleSecs: 0
+    stroom.stats.cache.uidToNameCache.timeToIdleSecs: 300
 
     stroom.stats.search.defaultMaxResultSizes: 1000000,100,10,1
     stroom.stats.search.storeSzie: 1000000,100,10,1

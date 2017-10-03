@@ -5,6 +5,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import stroom.stats.AbstractAppIT;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public class UniqueIdCacheImplIT extends AbstractAppIT {
@@ -15,19 +16,37 @@ public class UniqueIdCacheImplIT extends AbstractAppIT {
     @Test
     public void testGetOrCreateId() {
 
-        String uuid = "myUUID";
-        UID uid = uniqueIdCache.getOrCreateId(uuid);
+        String name = "myName" + UUID.randomUUID().toString();
+
+        //name should be created in hbase
+        UID uid = uniqueIdCache.getOrCreateId(name);
 
         Assertions.assertThat(uid).isNotNull();
 
-        String uuid2 = uniqueIdCache.getName(uid);
+        //should have a reverse map in hbase
+        String name2 = uniqueIdCache.getName(uid);
 
-        Assertions.assertThat(uuid).isEqualTo(uuid2);
+        Assertions.assertThat(name).isEqualTo(name2);
 
-
-        UID uid2 = uniqueIdCache.getUniqueId(uuid).get();
+        //go full circle
+        UID uid2 = uniqueIdCache.getUniqueId(name).get();
 
         Assertions.assertThat(uid).isEqualTo(uid2);
+    }
+
+    @Test
+    public void testUnknownNameNotCached() {
+
+        String name = "myName" + UUID.randomUUID().toString();
+
+        Optional<UID> optUid = uniqueIdCache.getUniqueId(name);
+
+        Assertions.assertThat(optUid).isEmpty();
+
+        //now try a getOrCreate call, which should go past the cache to create a new UID
+        UID uid = uniqueIdCache.getOrCreateId(name);
+
+        Assertions.assertThat(uid).isNotNull();
     }
 
     @Test(expected = RuntimeException.class)
@@ -52,8 +71,7 @@ public class UniqueIdCacheImplIT extends AbstractAppIT {
     public void testGetUniqueId_notKnown() {
 
         String unknownUuid = UUID.randomUUID().toString();
-        boolean isFailure = uniqueIdCache.getUniqueId(unknownUuid).isFailure();
-        Assertions.assertThat(isFailure).isTrue();
-
+        Optional<UID> optUid = uniqueIdCache.getUniqueId(unknownUuid);
+        Assertions.assertThat(optUid.isPresent()).isFalse();
     }
 }
