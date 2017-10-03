@@ -41,7 +41,8 @@ class UidToNameLoaderWriter implements CacheLoaderWriter<UID, String> {
 
     @Override
     public String load(final UID uid) throws Exception {
-        return Optional.ofNullable(uniqueIdGenerator.getName(uid.getUidBytes()))
+        return Optional
+                .ofNullable(uniqueIdGenerator.getName(uid.getUidBytes()))
                 .orElseThrow(() -> new Exception(String.format("UID %s does not exist in the uid table", uid.toAllForms())))
                 .get();
     }

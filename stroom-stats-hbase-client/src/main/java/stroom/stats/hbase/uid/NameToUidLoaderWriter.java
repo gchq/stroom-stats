@@ -43,9 +43,11 @@ class NameToUidLoaderWriter implements CacheLoaderWriter<String, UID> {
     public UID load(final String name) throws Exception {
         LOGGER.trace("load called on name {}", name);
 
-        return UID.from(Optional.ofNullable(uniqueIdGenerator.getId(name))
-                .orElseThrow(() -> new Exception(String.format("Name %s does not exist it uid table", name)))
-                .get());
+        return UID.from(
+                Optional.ofNullable(uniqueIdGenerator.getId(name))
+                        .orElseThrow(() ->
+                                new Exception(String.format("Name %s does not exist it uid table", name)))
+                        .get());
     }
 
     @Override
