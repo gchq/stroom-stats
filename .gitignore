@@ -5,7 +5,7 @@ classes/
 libs/
 */out/
 /schema/
-*/stroom-stats.log
+*/stroom-stats*.log
 /docker/build
 
 # Ignore the jaxb/xjc generated code
