@@ -17,7 +17,7 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.hbase;
+package stroom.stats.hbase.uid;
 
 import com.google.inject.Injector;
 import org.junit.Test;
