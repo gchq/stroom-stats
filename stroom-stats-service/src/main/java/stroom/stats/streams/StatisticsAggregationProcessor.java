@@ -32,7 +32,6 @@ import org.apache.kafka.common.serialization.Serde;
 import stroom.stats.StatisticsProcessor;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
-import stroom.stats.hbase.EventStoreTimeIntervalHelper;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -81,15 +80,18 @@ import java.util.stream.StreamSupport;
  * the day is not yet over.
  * <p>
  * -------> consumer/producer SEC  -------->    statisticsService.putAggregatedEvents
- * __________________________|
- * V
+ *   ________________________|
+ *   V
  * -------> consumer/producer MIN  -------->    statisticsService.putAggregatedEvents
- * __________________________|
- * V
+ *   ________________________|
+ *   V
  * -------> consumer/producer HOUR -------->    statisticsService.putAggregatedEvents
- * __________________________|
- * V
+ *   ________________________|
+ *   V
  * -------> consumer/producer DAY  -------->    statisticsService.putAggregatedEvents
+ *   ________________________|
+ *   V
+ * -------> consumer/producer FOREVER  ---->    statisticsService.putAggregatedEvents
  * <p>
  * If the system goes down unexpectedly then events that have been read off a topic but not yet committed
  * may be re-processed to some extent depending on when the shutdown happened, e.g duplicate events may go to
@@ -172,7 +174,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         inputTopic = TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, aggregationInterval);
         groupId = stroomPropertyService.getPropertyOrThrow(PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX) +
                 "-" + inputTopic;
-        optNextInterval = EventStoreTimeIntervalHelper.getNextBiggest(aggregationInterval);
+        optNextInterval = EventStoreTimeIntervalEnum.getNextBiggest(aggregationInterval);
         optNextIntervalTopic = optNextInterval.map(newInterval ->
                 TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, newInterval));
 

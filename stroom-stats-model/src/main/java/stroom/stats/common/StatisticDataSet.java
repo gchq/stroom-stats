@@ -22,7 +22,8 @@
 package stroom.stats.common;
 
 import com.google.common.base.Preconditions;
-import stroom.stats.api.StatisticType;
+import stroom.stats.configuration.StatisticConfiguration;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -31,44 +32,52 @@ import java.util.stream.Stream;
 
 
 public class StatisticDataSet implements Iterable<StatisticDataPoint> {
-    private final String statisticUuid;
-    private final StatisticType statisticType;
+    private final StatisticConfiguration statisticConfiguration;
+    private final EventStoreTimeIntervalEnum timeInterval;
+
     private final List<StatisticDataPoint> statisticDataPoints;
 
-    public StatisticDataSet(final String statisticUuid, final StatisticType statisticType) {
-        this.statisticUuid = statisticUuid;
-        this.statisticType = statisticType;
+    public StatisticDataSet(final StatisticConfiguration statisticConfiguration,
+                            final EventStoreTimeIntervalEnum timeInterval) {
+
+        Preconditions.checkNotNull(statisticConfiguration);
+        Preconditions.checkNotNull(timeInterval);
+
+        this.statisticConfiguration = statisticConfiguration;
+        this.timeInterval = timeInterval;
         this.statisticDataPoints = new ArrayList<>();
     }
 
-    public StatisticDataSet(final String statisticUuid,
-                            final StatisticType statisticType,
-                            final List<StatisticDataPoint> statisticDataPoints) {
-        if (Preconditions.checkNotNull(statisticDataPoints).stream()
-                .anyMatch(point -> !statisticType.equals(point.getStatisticType()))) {
-            throw new RuntimeException(
-                    "Attempting to create a StatisticDataSet with StatisticDataPoints of an incompatible StatisticType");
-        }
-
-        this.statisticUuid = statisticUuid;
-        this.statisticType = statisticType;
-        this.statisticDataPoints = statisticDataPoints;
-    }
+//    public StatisticDataSet(final String statisticUuid,
+//                            final StatisticType statisticType,
+//                            final List<StatisticDataPoint> statisticDataPoints) {
+//        if (Preconditions.checkNotNull(statisticDataPoints).stream()
+//                .anyMatch(point -> !statisticType.equals(point.getStatisticType()))) {
+//            throw new RuntimeException(
+//                    "Attempting to create a StatisticDataSet with StatisticDataPoints of an incompatible StatisticType");
+//        }
+//
+//        this.statisticUuid = statisticUuid;
+//        this.statisticType = statisticType;
+//        this.statisticDataPoints = statisticDataPoints;
+//    }
 
     public StatisticDataSet addDataPoint(StatisticDataPoint dataPoint) {
-        Preconditions.checkArgument(statisticType.equals(dataPoint.getStatisticType()),
-                "Attempting to add a StatisticDataPoint of an incompatible StatisticType");
+        Preconditions.checkNotNull(dataPoint);
+        //datapoint must be for the same statConfig as the dataset as a whole
+        Preconditions.checkArgument(dataPoint.getStatisticConfiguration().getUuid().equals(statisticConfiguration.getUuid()));
+        Preconditions.checkArgument(dataPoint.getTimeInterval().equals(timeInterval));
 
         this.statisticDataPoints.add(dataPoint);
         return this;
     }
 
-    public String getStatisticUuid() {
-        return statisticUuid;
+    public StatisticConfiguration getStatisticConfiguration() {
+        return statisticConfiguration;
     }
 
-    public StatisticType getStatisticType() {
-        return statisticType;
+    public EventStoreTimeIntervalEnum getTimeInterval() {
+        return timeInterval;
     }
 
     public List<StatisticDataPoint> getStatisticDataPoints() {
@@ -97,41 +106,31 @@ public class StatisticDataSet implements Iterable<StatisticDataPoint> {
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
+    public String toString() {
+        return "StatisticDataSet{" +
+                "statisticConfiguration=" + statisticConfiguration +
+                ", timeInterval=" + timeInterval +
+                ", statisticDataPoints=" + statisticDataPoints +
+                '}';
+    }
 
-        result = prime * result + ((statisticDataPoints == null) ? 0 : statisticDataPoints.hashCode());
-        result = prime * result + ((statisticUuid == null) ? 0 : statisticUuid.hashCode());
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        final StatisticDataSet that = (StatisticDataSet) o;
+
+        if (!statisticConfiguration.equals(that.statisticConfiguration)) return false;
+        if (timeInterval != that.timeInterval) return false;
+        return statisticDataPoints.equals(that.statisticDataPoints);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = statisticConfiguration.hashCode();
+        result = 31 * result + timeInterval.hashCode();
+        result = 31 * result + statisticDataPoints.hashCode();
         return result;
     }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        StatisticDataSet other = (StatisticDataSet) obj;
-        if (statisticDataPoints == null) {
-            if (other.statisticDataPoints != null)
-                return false;
-        } else if (!statisticDataPoints.equals(other.statisticDataPoints))
-            return false;
-        if (statisticUuid == null) {
-            if (other.statisticUuid != null)
-                return false;
-        } else if (!statisticUuid.equals(other.statisticUuid))
-            return false;
-        return true;
-    }
-
-    @Override
-    public String toString() {
-        return "StatisticDataSet [statisticUuid=" + statisticUuid + ", statisticType=" + statisticType
-                + ", statisticDataPoints size=" + statisticDataPoints.size() + "]";
-    }
-
 }

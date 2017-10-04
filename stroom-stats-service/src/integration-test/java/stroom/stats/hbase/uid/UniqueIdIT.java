@@ -22,8 +22,6 @@ package stroom.stats.hbase.uid;
 import com.google.inject.Injector;
 import org.junit.Test;
 import stroom.stats.AbstractAppIT;
-import stroom.stats.hbase.uid.UID;
-import stroom.stats.hbase.uid.UniqueIdGenerator;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -39,10 +37,9 @@ public class UniqueIdIT extends AbstractAppIT {
 
         String statNameStr = this.getClass().getName() + "-testGetOrCreateId-" + Instant.now().toString();
         //get the id for a name that will not exist, thus creating the mapping
-        byte[] id = uniqueIdGenerator.getOrCreateId(statNameStr);
+        UID id = uniqueIdGenerator.getOrCreateId(statNameStr);
 
         assertThat(id).isNotNull();
-        assertThat(id).hasSize(UID.UID_ARRAY_LENGTH);
 
         Optional<String> optName = uniqueIdGenerator.getName(id);
 
@@ -50,14 +47,14 @@ public class UniqueIdIT extends AbstractAppIT {
         assertThat(optName).hasValue(statNameStr);
 
         //now get the id for the same string which was created above
-        byte[] id2 = uniqueIdGenerator.getOrCreateId(statNameStr);
+        UID id2 = uniqueIdGenerator.getOrCreateId(statNameStr);
 
         assertThat(id2).isEqualTo(id);
 
         //now get the id for the same string using getId
-        Optional<byte[]> id3 = uniqueIdGenerator.getId(statNameStr);
+        UID id3 = uniqueIdGenerator.getId(statNameStr).get();
 
-        assertThat(id3).hasValue(id);
+        assertThat(id3).isEqualTo(id);
     }
 
     @Test
@@ -67,7 +64,7 @@ public class UniqueIdIT extends AbstractAppIT {
 
         //try and get an id for a name that will not exist
         String statNameStr = this.getClass().getName() + "-testGetId-" + Instant.now().toString();
-        Optional<byte[]> optId = uniqueIdGenerator.getId(statNameStr);
+        Optional<UID> optId = uniqueIdGenerator.getId(statNameStr);
 
         assertThat(optId).isEmpty();
     }

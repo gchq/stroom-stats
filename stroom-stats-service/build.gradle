@@ -130,11 +130,6 @@ sourceSets {
     }
 }
 
-configurations {
-    //prevent multiple logger bindings as dropwizard uses logback
-    all*.exclude group:'org.slf4j', module:'slf4j-log4j12'
-    all*.exclude group:'log4j', module:'log4j'
-}
 
 configurations {
     // This means our integration tests get all the dependencies from our tests and we don't need to specify them twice.
@@ -151,6 +146,8 @@ task integrationTest(type: Test) {
 // These lines pull the integration test task into our build process.
 check.dependsOn integrationTest
 integrationTest.mustRunAfter test
+
+//TODO if we run with -x integrationTest then it is not compiling the int test code
 
 // This means the reports from our integration tests won't over-write the reports from our unit tests.
 tasks.withType(Test) {

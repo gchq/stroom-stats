@@ -108,6 +108,10 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         stroomPropertyService.setProperty(StatisticsIngestService.PROP_KEY_KAFKA_AUTO_OFFSET_RESET, "latest");
     }
 
+    /**
+     * Loads a large number of count stats at finest precision, then keeps querying over all stores
+     * until it has found all the expected results, both un-rolled up and fully rolled up.
+     */
     @Test
     public void volumeTest_count() throws InterruptedException {
 
@@ -133,6 +137,9 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         LOGGER.info("Finished loading data (async)...");
 
         StatisticConfiguration statisticConfiguration = statConfigs.get(statisticType);
+
+        //give the data a chance to get there
+        Thread.sleep(2_000);
 
         //run a query that will use the zero mask
         for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
@@ -180,6 +187,10 @@ public class EndToEndVolumeIT extends AbstractAppIT {
                 .sum();
     }
 
+    /**
+     * Loads a large number of value stats at finest precision, then keeps querying over all stores
+     * until it has found all the expected results, both un-rolled up and fully rolled up.
+     */
     @Test
     public void volumeTest_value() throws InterruptedException {
 
@@ -250,6 +261,7 @@ public class EndToEndVolumeIT extends AbstractAppIT {
         List<Map<String, String>> rowData = Collections.emptyList();
         SearchResponse searchResponse = null;
         Instant timeoutTime = Instant.now().plus(4, ChronoUnit.MINUTES);
+
 
         //query the store repeatedly until we get the answer we want or give up
         while ((rowData.size() != expectedRowCount || getCountFieldSum(rowData) != expectedTotalEvents) &&

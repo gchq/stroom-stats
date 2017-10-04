@@ -21,19 +21,19 @@
 
 package stroom.stats.hbase.table;
 
+import stroom.stats.hbase.uid.UID;
+
 import java.util.Optional;
 
 /**
  * Table that maps a UID byte array to a String
  */
 public interface UniqueIdReverseMapTable extends GenericTable {
-    boolean checkAndPutName(final byte[] newId, final byte[] name);
+    boolean checkAndPutName(final byte[] newUid, final byte[] name);
 
     long nextId();
 
-    Optional<byte[]> getName(final byte[] idKey);
+    Optional<String> getNameAsString(final UID uid);
 
-    Optional<String> getNameAsString(final byte[] idKey);
-
-    boolean checkAndDeleteName(final byte[] newId, final byte[] name);
+    boolean checkAndDeleteName(final byte[] newUid, final byte[] name);
 }

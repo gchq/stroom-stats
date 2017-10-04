@@ -65,16 +65,24 @@ logging:
     loggers:
         org.hibernate.SQL: WARN
         stroom.stats: ${STATS_LOGGING_LEVEL:- INFO}
-        io.dropwizard: ${STATS_LOGGING_LEVEL_DROPWIZARD:- INFO}
+#        stroom.stats.hbase.uid: TRACE
+#        stroom.stats.configuration: TRACE
 #        stroom.stats.streams.StatisticsAggregationProcessor: TRACE
 #        stroom.stats.streams.FullEndToEndIT: TRACE
 #        stroom.stats.hbase.table.HBaseEventStoreTable: TRACE
+        io.dropwizard: ${STATS_LOGGING_LEVEL_DROPWIZARD:- INFO}
         org.ehcache: INFO
         org.eclipse.jetty: INFO
     appenders:
       - type: console
         logFormat: "%-6level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %X{code} %msg %n"
         target: stdout
+      - type: file
+        logFormat: "%-6level [%d{HH:mm:ss.SSS}] [%t] %logger{35} - %X{code} %msg %n"
+        currentLogFilename: ../stroom-stats.log
+        archivedLogFilenamePattern: stroom-stats-%d{yyyy-MM-dd}.log
+        archivedFileCount: 10
+        timeZone: UTC
 
 zookeeper:
     # The quorum of zookeeper hosts to connect to
@@ -93,7 +101,7 @@ zookeeper:
 defaultProperties:
     stroom.stats.streams.kafka.bootstrapServers: ${STATS_KAFKA_BOOTSTRAP:- localhost:9092}
     stroom.stats.streams.kafka.num.stream.threads: 2
-    stroom.stats.streams.kafka.commit.aggregationInterval.ms: 30000
+    stroom.stats.streams.kafka.commit.interval.ms: 30000
     stroom.stats.streams.kafka.auto.offset.reset: latest
     stroom.stats.streams.flatMapProcessorAppIdPrefix: FlatMapProcessor
 
@@ -104,17 +112,18 @@ defaultProperties:
     stroom.stats.aggregation.processorAppIdPrefix: AggregationProcessor
     stroom.stats.aggregation.threadsPerIntervalAndType: 2
     stroom.stats.aggregation.minBatchSize: 100000
-    stroom.stats.aggregation.maxFlushIntervalMs: 10000
+    stroom.stats.aggregation.maxFlushIntervalMs: 25000
     stroom.stats.aggregation.maxEventIds: 100
     stroom.stats.aggregation.pollTimeoutMs: 100
     stroom.stats.aggregation.pollRecords: 5000
 
-    stroom.stats.cache.nameToStatisticConfigurationCache.maxEntriesHeap: 1000
     stroom.stats.cache.uuidToStatisticConfigurationCache.maxEntriesHeap: 1000
-    stroom.stats.cache.nameToUidCache.maxEntriesHeap: 100000
-    stroom.stats.cache.nameToUidCache.timeToIdleSecs: 300
-    stroom.stats.cache.uidToNameCache.maxEntriesHeap: 100000
-    stroom.stats.cache.uidToNameCache.timeToIdleSecs: 300
+    stroom.stats.cache.uuidToStatisticConfigurationCache.timeToIdleSecs: 180
+    #uids and names are immutable so can live in the cache forever, hence high timeToIdleSecs value
+    stroom.stats.cache.nameToUidCache.maxEntriesHeap: 1000000
+    stroom.stats.cache.nameToUidCache.timeToIdleSecs: 99999999
+    stroom.stats.cache.uidToNameCache.maxEntriesHeap: 1000000
+    stroom.stats.cache.uidToNameCache.timeToIdleSecs: 99999999
 
     stroom.stats.search.defaultMaxResultSizes: 1000000,100,10,1
     stroom.stats.search.storeSzie: 1000000,100,10,1
@@ -127,6 +136,7 @@ defaultProperties:
     #The znode in zookeeper for hbase to use as its root
     stroom.stats.hbase.config.zookeeper.znode.parent: ${STATS_HBASE_ZK_ZNODE_PARENT:- /hbase}
     stroom.stats.hbase.dataStore.maxCheckAndPutRetries: 5
+    stroom.stats.hbase.dataStore.purge.intervalsToRetain.forever: 1
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.day: 6
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.hour: 39
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.minute: 60

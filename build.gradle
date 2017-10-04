@@ -152,6 +152,14 @@ subprojects {
 
     configurations {
         all {
+            exclude group: "org.slf4j", module: "slf4j-log4j12"
+            exclude group: "log4j", module: "log4j"
+
+            resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+                if (details.requested.name == 'log4j') {
+                    details.useTarget "org.slf4j:log4j-over-slf4j:$versions.slf4j"
+                }
+            }
             resolutionStrategy {
                 forcedModules = [
                     //>=v21 removes MoreExecutors.sameThreadExecutor() which is needed by curator 2.11

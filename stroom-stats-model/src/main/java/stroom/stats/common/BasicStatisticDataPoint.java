@@ -24,6 +24,7 @@ import com.google.common.collect.ImmutableMap;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,33 +34,38 @@ import java.util.function.Function;
 
 public class BasicStatisticDataPoint implements StatisticDataPoint {
 
-    private static final Map<String, Function<StatisticDataPoint, String>> FIELD_VALUE_FUNCTION_MAP;
+    private static final Map<String, Function<BasicStatisticDataPoint, String>> FIELD_VALUE_FUNCTION_MAP;
 
     static {
-        FIELD_VALUE_FUNCTION_MAP = ImmutableMap.<String, Function<StatisticDataPoint, String>>builder()
-                .put(StatisticConfiguration.FIELD_NAME_STATISTIC, StatisticDataPoint::getStatisticUuid)
+        FIELD_VALUE_FUNCTION_MAP = ImmutableMap.<String, Function<BasicStatisticDataPoint, String>>builder()
                 .put(StatisticConfiguration.FIELD_NAME_DATE_TIME, dataPoint -> Long.toString(dataPoint.getTimeMs()))
-                .put(StatisticConfiguration.FIELD_NAME_PRECISION, StatisticDataPoint::getPrecision)
-                .put(StatisticConfiguration.FIELD_NAME_PRECISION_MS, dataPoint -> Long.toString(dataPoint.getPrecisionMs()))
+                .put(StatisticConfiguration.FIELD_NAME_STATISTIC, dataPoint -> dataPoint.statisticConfiguration.getName())
+                .put(StatisticConfiguration.FIELD_NAME_UUID, dataPoint -> dataPoint.statisticConfiguration.getUuid())
+                .put(StatisticConfiguration.FIELD_NAME_PRECISION, dataPoint -> dataPoint.precision.longName())
+                .put(StatisticConfiguration.FIELD_NAME_PRECISION_MS, dataPoint -> Long.toString(dataPoint.precision.columnInterval()))
                 .build();
     }
 
-    private final String statisticName;
+    private final StatisticConfiguration statisticConfiguration;
+    private final EventStoreTimeIntervalEnum precision;
     private final long timeMs;
-    private final long precisionMs;
     private final List<StatisticTag> tags;
     private final Map<String, String> tagToValueMap;
 
+    BasicStatisticDataPoint(
+            final StatisticConfiguration statisticConfiguration,
+            final EventStoreTimeIntervalEnum precision,
+            final long timeMs,
+            final List<StatisticTag> tags) {
 
-    public BasicStatisticDataPoint(final String statisticName, final long timeMs, final long precisionMs, final List<StatisticTag> tags) {
-        Preconditions.checkNotNull(statisticName);
+        this.statisticConfiguration = statisticConfiguration;
+        this.precision = precision;
+        Preconditions.checkNotNull(statisticConfiguration);
+        Preconditions.checkNotNull(precision);
         Preconditions.checkArgument(timeMs >= 0);
-        Preconditions.checkArgument(precisionMs >= 0);
         Preconditions.checkNotNull(tags);
 
-        this.statisticName = statisticName;
         this.timeMs = timeMs;
-        this.precisionMs = precisionMs;
         this.tags = Collections.unmodifiableList(tags);
 
         final Map<String, String> tempMap = new HashMap<>();
@@ -67,22 +73,27 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
         this.tagToValueMap = Collections.unmodifiableMap(tempMap);
     }
 
-    public String getStatisticUuid() {
-        return statisticName;
+    @Override
+    public StatisticConfiguration getStatisticConfiguration() {
+        return statisticConfiguration;
     }
 
+    @Override
+    public EventStoreTimeIntervalEnum getTimeInterval() {
+        return precision;
+    }
+
+    @Override
     public long getTimeMs() {
         return timeMs;
     }
 
-    public long getPrecisionMs() {
-        return precisionMs;
-    }
-
+    @Override
     public List<StatisticTag> getTags() {
         return tags;
     }
 
+    @Override
     public Map<String, String> getTagsAsMap() {
         Map<String, String> map = new HashMap<>();
         for (StatisticTag tag : tags) {
@@ -93,12 +104,12 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
 
     @Override
     public StatisticType getStatisticType() {
-        throw new UnsupportedOperationException("A BasicStatisticDataPoint has no type");
+        return statisticConfiguration.getStatisticType();
     }
 
     @Override
     public String getFieldValue(final String fieldName) {
-        Function<StatisticDataPoint, String> fieldValueFunction = FIELD_VALUE_FUNCTION_MAP.get(fieldName);
+        Function<BasicStatisticDataPoint, String> fieldValueFunction = FIELD_VALUE_FUNCTION_MAP.get(fieldName);
 
         if (fieldValueFunction == null) {
             //either it is a tag field or we don't know about this field
@@ -111,12 +122,13 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
     @Override
     public String toString() {
         return "BasicStatisticDataPoint{" +
-                "statisticName=" + statisticName +
+                "statisticConfiguration=" + statisticConfiguration +
+                ", precision=" + precision +
                 ", timeMs=" + timeMs +
-                ", precisionMs=" + precisionMs +
-                ", tags=" + tags +
+                ", tagToValueMap=" + tagToValueMap +
                 '}';
     }
+
 
     @Override
     public boolean equals(final Object o) {
@@ -126,19 +138,17 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
         final BasicStatisticDataPoint that = (BasicStatisticDataPoint) o;
 
         if (timeMs != that.timeMs) return false;
-        if (precisionMs != that.precisionMs) return false;
-        if (!statisticName.equals(that.statisticName)) return false;
-        if (!tags.equals(that.tags)) return false;
-        return tagToValueMap.equals(that.tagToValueMap);
+        if (!statisticConfiguration.equals(that.statisticConfiguration)) return false;
+        if (precision != that.precision) return false;
+        return tags.equals(that.tags);
     }
 
     @Override
     public int hashCode() {
-        int result = statisticName.hashCode();
+        int result = statisticConfiguration.hashCode();
+        result = 31 * result + precision.hashCode();
         result = 31 * result + (int) (timeMs ^ (timeMs >>> 32));
-        result = 31 * result + (int) (precisionMs ^ (precisionMs >>> 32));
         result = 31 * result + tags.hashCode();
-        result = 31 * result + tagToValueMap.hashCode();
         return result;
     }
 }

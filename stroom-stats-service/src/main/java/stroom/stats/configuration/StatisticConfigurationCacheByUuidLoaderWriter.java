@@ -19,16 +19,12 @@
 
 package stroom.stats.configuration;
 
-import org.ehcache.spi.loaderwriter.BulkCacheLoadingException;
-import org.ehcache.spi.loaderwriter.BulkCacheWritingException;
 import org.ehcache.spi.loaderwriter.CacheLoaderWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class StatisticConfigurationCacheByUuidLoaderWriter implements CacheLoaderWriter<String,StatisticConfiguration>{
 
@@ -44,18 +40,19 @@ public class StatisticConfigurationCacheByUuidLoaderWriter implements CacheLoade
 
     @Override
     public StatisticConfiguration load(final String key) throws Exception {
-        LOGGER.debug("load called for key {}", key);
-        return stroomStatsStoreEntityDAO.loadByUuid(key)
-                .orElseThrow(() -> new Exception(String.format("Statistic configuration with uuid %s cannot be found in the database", key)));
+        LOGGER.trace("load called for key {}", key);
+        //EHCache doesn't cache null values so if we can't find a stat config for this uuid,
+        //just return null
+        StatisticConfiguration statisticConfiguration = stroomStatsStoreEntityDAO.loadByUuid(key).orElse(null);
+
+        LOGGER.trace("Returning statisticConfiguration {}", statisticConfiguration);
+        return statisticConfiguration;
     }
 
     @Override
-    public Map<String, StatisticConfiguration> loadAll(final Iterable<? extends String> keys) throws BulkCacheLoadingException, Exception {
-        LOGGER.debug("loadAll called for keys {}", keys);
-        //unique key constraint shoudl ensure we only have one stat config per uuid, hence (o1,o2) -> o1
-        return stroomStatsStoreEntityDAO.loadAll().stream()
-                .map(statConfigEntity -> (StatisticConfiguration) statConfigEntity)
-                .collect(Collectors.toMap(StatisticConfiguration::getUuid, Function.identity(), (o1, o2) -> o1));
+    public Map<String, StatisticConfiguration> loadAll(final Iterable<? extends String> keys)
+            throws Exception {
+        throw new UnsupportedOperationException("loadAll (getAll) is not currently supported on this cache");
     }
 
     @Override
@@ -64,7 +61,7 @@ public class StatisticConfigurationCacheByUuidLoaderWriter implements CacheLoade
     }
 
     @Override
-    public void writeAll(final Iterable<? extends Map.Entry<? extends String, ? extends StatisticConfiguration>> entries) throws BulkCacheWritingException, Exception {
+    public void writeAll(final Iterable<? extends Map.Entry<? extends String, ? extends StatisticConfiguration>> entries) throws Exception {
         throw new UnsupportedOperationException("CRUD operations are not currently supported on this cache");
     }
 
@@ -74,7 +71,7 @@ public class StatisticConfigurationCacheByUuidLoaderWriter implements CacheLoade
     }
 
     @Override
-    public void deleteAll(final Iterable<? extends String> keys) throws BulkCacheWritingException, Exception {
+    public void deleteAll(final Iterable<? extends String> keys) throws Exception {
         throw new UnsupportedOperationException("CRUD operations are not currently supported on this cache");
     }
 }

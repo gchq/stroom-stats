@@ -23,8 +23,13 @@ package stroom.stats.shared;
 
 import org.apache.hadoop.hbase.util.Bytes;
 
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 
 /**
@@ -40,21 +45,29 @@ public enum EventStoreTimeIntervalEnum {
     // times from one store to the next without knowing the original exact time
 
     // Hourly row key with 3600 1sec column intervals
-    SECOND(3_600_000L, 1_000L, "Second", "s"),
+    SECOND(3_600_000L, 1_000L, "Second", "s", EventStoreTimeIntervalEnum::truncateTimeToInterval),
     // Daily row key with 1440 1min column intervals
-    MINUTE(86_400_000L, 60_000L, "Minute", "m"),
+    MINUTE(86_400_000L, 60_000L, "Minute", "m", EventStoreTimeIntervalEnum::truncateTimeToInterval),
     // Four Weekly row key with 672 1hour column intervals
-    HOUR(2_419_200_000L, 3_600_000L, "Hour", "h"),
+    HOUR(2_419_200_000L, 3_600_000L, "Hour", "h", EventStoreTimeIntervalEnum::truncateTimeToInterval),
     // Fifty two Weekly row key with 364 1day column intervals
-    DAY(31_449_600_000L, 86_400_000L, "Day", "d");
+    DAY(31_449_600_000L, 86_400_000L, "Day", "d", EventStoreTimeIntervalEnum::truncateTimeToInterval),
+    // Single row with one cell representing all time past and present
+    FOREVER(Long.MAX_VALUE, Long.MAX_VALUE, "Forever", "f", EventStoreTimeIntervalEnum::truncateToForever);
 
     public static final int BYTE_VALUE_LENGTH = Long.BYTES;
+    public static final EventStoreTimeIntervalEnum LARGEST_INTERVAL;
+    public static final EventStoreTimeIntervalEnum SMALLEST_INTERVAL;
+    public static final Comparator<EventStoreTimeIntervalEnum> comparator =
+            Comparator.comparingLong(EventStoreTimeIntervalEnum::columnInterval);
 
+    private static final TreeSet<EventStoreTimeIntervalEnum> reverseSortedSet = new TreeSet<>(comparator.reversed());
     private final long rowKeyInterval;
     private final long columnInterval;
     private final String longName;
     private final String shortName;
     private final byte[] byteVal;
+    private final TruncateFunction truncateFunction;
 
     private static final Map<Long, EventStoreTimeIntervalEnum> fromColumnIntervalMap = new HashMap<>();
     private static final Map<String, EventStoreTimeIntervalEnum> fromShortnameMap = new HashMap<>();
@@ -64,28 +77,62 @@ public enum EventStoreTimeIntervalEnum {
             fromColumnIntervalMap.put(interval.columnInterval, interval);
             fromShortnameMap.put(interval.shortName, interval);
         }
+        reverseSortedSet.addAll(Arrays.asList(EventStoreTimeIntervalEnum.values()));
+        //set is reverse sorted
+        LARGEST_INTERVAL = EventStoreTimeIntervalEnum.reverseSortedSet.first();
+        SMALLEST_INTERVAL = EventStoreTimeIntervalEnum.reverseSortedSet.last();
     }
 
     /**
      * Constructor
      *
-     * @param rowKeyInterval
-     *            The time interval in milliseconds for the row key
-     * @param columnInterval
-     *            The time interval in milliseconds for the column qualifier
-     * @param longName
-     *            The Human readable name for the interval
-     * @param shortName
-     *            The short name for the interval, used in the hbase table name
+     * @param rowKeyInterval The time interval in milliseconds for the row key
+     * @param columnInterval The time interval in milliseconds for the column qualifier
+     * @param longName       The Human readable name for the interval
+     * @param shortName      The short name for the interval, used in the hbase table name
      */
-    EventStoreTimeIntervalEnum(final long rowKeyInterval, final long columnInterval, final String longName,
-            final String shortName) {
+    EventStoreTimeIntervalEnum(final long rowKeyInterval,
+                               final long columnInterval,
+                               final String longName,
+                               final String shortName,
+                               final TruncateFunction truncateFunction) {
         this.rowKeyInterval = rowKeyInterval;
         this.columnInterval = columnInterval;
         this.longName = longName;
         this.shortName = shortName;
         this.byteVal = Bytes.toBytes(columnInterval);
+        this.truncateFunction = truncateFunction;
     }
+
+    /**
+     * Works out what the next biggest (i.e. more coarse grained) interval is
+     * after this object. If this is the biggest then it will return an empty optional
+     *
+     * @return The next biggest interval or an empty Optional
+     */
+    public static Optional<EventStoreTimeIntervalEnum> getNextBiggest(final EventStoreTimeIntervalEnum interval) {
+        // set is in reverse order so use lower to get the next biggest
+        return Optional.ofNullable(reverseSortedSet.lower(interval));
+    }
+
+    public static EventStoreTimeIntervalEnum getSmallestInterval() {
+        // set is reverse sorted
+        return SMALLEST_INTERVAL;
+    }
+
+    public static EventStoreTimeIntervalEnum getLargestInterval() {
+        // set is reverse sorted
+        return LARGEST_INTERVAL;
+    }
+
+    public static SortedSet<EventStoreTimeIntervalEnum> getReverseSortedSet() {
+        return reverseSortedSet;
+    }
+
+    private static interface TruncateFunction {
+        long truncate(final long timestampMillis, final long intervalMillis);
+    }
+
 
     public static EventStoreTimeIntervalEnum fromColumnInterval(final long columnInterval) {
         try {
@@ -111,6 +158,26 @@ public enum EventStoreTimeIntervalEnum {
 
     public static EventStoreTimeIntervalEnum fromBytes(final byte[] bytes, final int offset) {
         return EventStoreTimeIntervalEnum.fromColumnInterval(Bytes.toLong(bytes, offset));
+    }
+
+    /**
+     * Standard function for truncating a time down to an interval
+     *
+     * @return The time at the start of the interval bucket
+     */
+    private static long truncateTimeToInterval(final long timestampMillis, final long intervalMillis) {
+        return ((long) (timestampMillis / intervalMillis)) * intervalMillis;
+    }
+
+    /**
+     * Special case for truncating a time to our Forever interval, else we would get a
+     * divide by zero error
+     *
+     * @return The time at the start of the interval bucket
+     */
+    private static long truncateToForever(final long timestampMillis, final long intervalMillis) {
+        //all times in the forever interval are truncated down to the epoch
+        return 0;
     }
 
     /**
@@ -151,7 +218,6 @@ public enum EventStoreTimeIntervalEnum {
 
     public String getRowKeyIntervalAsString() {
         return timeIntervalToString(rowKeyInterval);
-
     }
 
     private String timeIntervalToString(final long timeMs) {
@@ -178,31 +244,27 @@ public enum EventStoreTimeIntervalEnum {
 
 
     public long truncateTimeToColumnInterval(final long timestampMillis) {
-        return truncateTimeToInterval(timestampMillis, this.columnInterval);
+        return truncateFunction.truncate(timestampMillis, this.columnInterval);
     }
 
     public long truncateTimeToRowKeyInterval(final long timestampMillis) {
-        return truncateTimeToInterval(timestampMillis, this.rowKeyInterval);
+        return truncateFunction.truncate(timestampMillis, this.rowKeyInterval);
     }
 
-    private long truncateTimeToInterval(final long timestampMillis, final long intervalMillis) {
-        return ((long)(timestampMillis / intervalMillis)) * intervalMillis;
-    }
 
-    public static class InvalidTimeIntervalException extends RuntimeException {
-        private static final long serialVersionUID = -7383690663978635032L;
-
-        public InvalidTimeIntervalException(final String msg) {
-            super(msg);
-        }
-    }
+//    public static class InvalidTimeIntervalException extends RuntimeException {
+//        private static final long serialVersionUID = -7383690663978635032L;
+//
+//        public InvalidTimeIntervalException(final String msg) {
+//            super(msg);
+//        }
+//    }
 
     public boolean isLargerThan(final EventStoreTimeIntervalEnum other) {
         return this.columnInterval > other.columnInterval;
     }
 
-    public boolean isSmnallerThan(final EventStoreTimeIntervalEnum other) {
+    public boolean isSmallerThan(final EventStoreTimeIntervalEnum other) {
         return this.columnInterval < other.columnInterval;
     }
-
 }

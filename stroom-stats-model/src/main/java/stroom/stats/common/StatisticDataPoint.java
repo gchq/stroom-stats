@@ -21,6 +21,7 @@ package stroom.stats.common;
 
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
+import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.List;
@@ -29,27 +30,13 @@ import java.util.Map;
 public interface StatisticDataPoint {
 
 
-    /**
-     * @return The UUID string of the statistic that this datapoint belongs to
-     */
-    String getStatisticUuid();
+    StatisticConfiguration getStatisticConfiguration();
 
+    EventStoreTimeIntervalEnum getTimeInterval();
     /**
      * @return The time in ms since epoch that the statistic event(s) bucket started
      */
     long getTimeMs();
-
-    /**
-     * @return The size of the time bucket that the data point represents
-     */
-    long getPrecisionMs();
-
-    /**
-     * @return The size of the time bucket represented as thr name of a {@link EventStoreTimeIntervalEnum}
-     */
-    default String getPrecision() {
-        return EventStoreTimeIntervalEnum.fromColumnInterval(getPrecisionMs()).longName();
-    }
 
     /**
      * @return A list of the {@link StatisticTag} objects that qualify the data point

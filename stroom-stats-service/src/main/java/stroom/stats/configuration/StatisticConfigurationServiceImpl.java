@@ -19,7 +19,6 @@
 
 package stroom.stats.configuration;
 
-import javaslang.control.Try;
 import org.ehcache.Cache;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -38,29 +37,20 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticConfigurationServiceImpl.class);
 
-    static final String KEY_BY_NAME_CACHE_NAME = "nameToStatisticConfigurationCache";
     static final String KEY_BY_UUID_CACHE_NAME = "uuidToStatisticConfigurationCache";
 
     private final StroomStatsStoreEntityDAO stroomStatsStoreEntityDAO;
-    private final Cache<String, StatisticConfiguration> keyByNameCache;
     private final Cache<String, StatisticConfiguration> keyByUuidCache;
     private final SessionFactory sessionFactory;
 
     @Inject
     public StatisticConfigurationServiceImpl(final CacheFactory cacheFactory,
                                              final StroomStatsStoreEntityDAO stroomStatsStoreEntityDAO,
-                                             final StatisticConfigurationCacheByNameLoaderWriter byNameLoaderWriter,
                                              final StatisticConfigurationCacheByUuidLoaderWriter byUuidLoaderWriter,
                                              final SessionFactory sessionFactory) {
 
         this.stroomStatsStoreEntityDAO = stroomStatsStoreEntityDAO;
         this.sessionFactory = sessionFactory;
-
-        this.keyByNameCache = cacheFactory.getOrCreateCache(
-                KEY_BY_NAME_CACHE_NAME,
-                String.class,
-                StatisticConfiguration.class,
-                Optional.of(byNameLoaderWriter));
 
         this.keyByUuidCache = cacheFactory.getOrCreateCache(
                 KEY_BY_UUID_CACHE_NAME,
@@ -77,20 +67,11 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
     }
 
     @Override
-    public Optional<StatisticConfiguration> fetchStatisticConfigurationByName(final String name) {
-        return executeInSession(() ->
-                Try.of(() -> keyByNameCache.get(name))
-                        .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache", name, throwable))
-                        .toJavaOptional()
-        );
-    }
-
-    @Override
     public Optional<StatisticConfiguration> fetchStatisticConfigurationByUuid(final String uuid) {
+        LOGGER.trace("fetchStatisticConfigurationByUuid called for uuid {}", uuid);
+
         return executeInSession(() ->
-                Try.of(() -> keyByUuidCache.get(uuid))
-                        .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache", uuid, throwable))
-                        .toJavaOptional()
+                Optional.ofNullable(keyByUuidCache.get(uuid))
         );
     }
 

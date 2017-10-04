@@ -31,6 +31,8 @@ import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
 import stroom.stats.util.HasRunState;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
@@ -159,13 +161,17 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
     public void stop() {
         synchronized (startStopMonitor) {
             runState = RunState.STOPPING;
+            Instant startTime = Instant.now();
             if (kafkaStreams != null) {
                 kafkaStreams.close();
                 //kstream will be recreated on start allowing for different configuration
                 kafkaStreams = null;
             }
             runState = RunState.STOPPED;
-            LOGGER.info("Stopped processor {} for input topic {}", appId, inputTopic);
+            LOGGER.info("Stopped processor {} for input topic {} in {}s",
+                    appId,
+                    inputTopic,
+                    Duration.between(startTime, Instant.now()).getSeconds());
         }
     }
 

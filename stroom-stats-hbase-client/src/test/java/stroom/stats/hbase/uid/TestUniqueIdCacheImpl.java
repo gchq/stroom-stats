@@ -19,7 +19,6 @@
 
 package stroom.stats.hbase.uid;
 
-import javaslang.control.Try;
 import org.ehcache.Cache;
 import org.ehcache.CacheManager;
 import org.ehcache.config.builders.CacheConfigurationBuilder;
@@ -122,9 +121,9 @@ public class TestUniqueIdCacheImpl {
         assertThat(id2).isEqualTo(id);
 
         //now get the id for the same string using getId
-        Try<UID> id3 = uniqueIdCache.getUniqueId(statNameStr);
+        Optional<UID> id3 = uniqueIdCache.getUniqueId(statNameStr);
 
-        assertThat(id3.isSuccess()).isTrue();
+        assertThat(id3.isPresent()).isTrue();
         assertThat(id3.get()).isEqualTo(id);
     }
 
@@ -133,9 +132,9 @@ public class TestUniqueIdCacheImpl {
 
         //try and get an id for a name that will not exist
         String statNameStr = this.getClass().getName() + "-testGetId-" + Instant.now().toString();
-        Try<UID> id = uniqueIdCache.getUniqueId(statNameStr);
+        Optional<UID> id = uniqueIdCache.getUniqueId(statNameStr);
 
-        assertThat(id.isFailure()).isTrue();
+        assertThat(id.isPresent()).isFalse();
     }
 
 
@@ -146,17 +145,17 @@ public class TestUniqueIdCacheImpl {
         private static final Logger LOGGER = LoggerFactory.getLogger(MockUniqueIdGenerator.class);
 
         private final AtomicInteger idSequence = new AtomicInteger(0);
-        private final ConcurrentMap<UID, String> idToNameMap = new ConcurrentHashMap<>();
-        private final ConcurrentMap<String, byte[]> nameToIdMap = new ConcurrentHashMap<>();
+        private final ConcurrentMap<UID, String> uidToNameMap = new ConcurrentHashMap<>();
+        private final ConcurrentMap<String, UID> nameToUidMap = new ConcurrentHashMap<>();
 
         @Override
-        public Optional<byte[]> getId(String name) {
-            return Optional.ofNullable(nameToIdMap.get(name));
+        public Optional<UID> getId(String name) {
+            return Optional.ofNullable(nameToUidMap.get(name));
         }
 
         @Override
-        public byte[] getOrCreateId(String name) {
-            final byte[] uniqueId = nameToIdMap.computeIfAbsent(name, key -> {
+        public UID getOrCreateId(String name) {
+            final UID uniqueId = nameToUidMap.computeIfAbsent(name, key -> {
                 // name not mapped so create a new ID
                 final byte[] id = generateNewId();
 
@@ -164,17 +163,17 @@ public class TestUniqueIdCacheImpl {
 
                 LOGGER.trace("Creating mock UID: {} for name: {} ", uid.toString(), key);
 
-                idToNameMap.put(uid, key);
+                uidToNameMap.put(uid, key);
 
-                return id;
+                return uid;
             });
 
             return uniqueId;
         }
 
         @Override
-        public Optional<String> getName(byte[] id) {
-            return Optional.ofNullable(idToNameMap.get(UID.from(id)));
+        public Optional<String> getName(final UID uid) {
+            return Optional.ofNullable(uidToNameMap.get(uid));
         }
 
         @Override
