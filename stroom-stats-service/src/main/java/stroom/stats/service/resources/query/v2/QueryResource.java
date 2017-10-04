@@ -119,6 +119,7 @@ public class QueryResource implements HasHealthCheck {
     @Produces({MediaType.APPLICATION_JSON})
     @Timed
     @UnitOfWork
+    //TODO @Auth commented out until the auth branch work is merged in as it is not working
 //    public Response search(@Auth User user, @Valid SearchRequest searchRequest){
     public Response search(@Valid SearchRequest searchRequest) {
         LOGGER.debug("{} called for searchRequest {}", SEARCH_ENDPOINT, searchRequest);

@@ -19,7 +19,6 @@
 
 package stroom.stats.configuration;
 
-import javaslang.control.Try;
 import org.ehcache.Cache;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -70,10 +69,9 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
     @Override
     public Optional<StatisticConfiguration> fetchStatisticConfigurationByUuid(final String uuid) {
         LOGGER.trace("fetchStatisticConfigurationByUuid called for uuid {}", uuid);
+
         return executeInSession(() ->
-                Try.of(() -> keyByUuidCache.get(uuid))
-                        .onFailure(throwable -> LOGGER.error("Error fetching key {} from the cache", uuid, throwable))
-                        .toJavaOptional()
+                Optional.ofNullable(keyByUuidCache.get(uuid))
         );
     }
 

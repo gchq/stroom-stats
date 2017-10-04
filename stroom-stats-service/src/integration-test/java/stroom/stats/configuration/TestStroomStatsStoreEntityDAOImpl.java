@@ -71,7 +71,7 @@ public class TestStroomStatsStoreEntityDAOImpl extends AbstractAppIT {
     }
 
     @Test
-    public void loadByUuidAndName_volumeTest() throws Exception {
+    public void loadByUuid_volumeTest() throws Exception {
         clearCache(StatisticConfigurationServiceImpl.KEY_BY_UUID_CACHE_NAME);
 
         List<StatisticConfiguration> entities = new ArrayList<>();
@@ -81,7 +81,7 @@ public class TestStroomStatsStoreEntityDAOImpl extends AbstractAppIT {
 
         //Now have 2 goes at retrieving all 1_500 entities. As the Cache doesn't hold that many it
         // will mean it will have to keep evicting entities from the cache and loading new ones
-        IntStream.rangeClosed(1,2).forEach(i -> {
+        IntStream.rangeClosed(1, 2).forEach(i -> {
 
             List<StatisticConfiguration> shuffledEntities = new ArrayList<>(entities);
             Collections.shuffle(shuffledEntities);
