@@ -190,12 +190,15 @@ public final class StatisticsTestService {
     }
 
     private void dumpStatisticsData(final StatisticDataSet statisticDataSet) {
-        LOGGER.info("Dumping data for statistic: " + statisticDataSet.getStatisticUuid());
+        LOGGER.info("Dumping data for statistic: {} {}",
+                statisticDataSet.getStatisticConfiguration().getName(),
+                statisticDataSet.getStatisticConfiguration().getUuid());
 
         final List<String> records = new ArrayList<>();
 
         for (final StatisticDataPoint dataPoint : statisticDataSet) {
-            records.add("  " + DateUtil.createNormalDateTimeString(dataPoint.getTimeMs()) + " - " + dataPoint.getFieldValue(StatisticConfiguration.FIELD_NAME_COUNT)
+            records.add("  " + DateUtil.createNormalDateTimeString(dataPoint.getTimeMs())
+                    + " - " + dataPoint.getFieldValue(StatisticConfiguration.FIELD_NAME_COUNT)
                     + " - " + dataPoint.getFieldValue(StatisticConfiguration.FIELD_NAME_VALUE));
         }
 

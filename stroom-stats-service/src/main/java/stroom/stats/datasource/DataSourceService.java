@@ -48,6 +48,7 @@ public class DataSourceService {
 
     private static final ImmutableMap<String, FieldDefinition> FIELD_DEFINITION_MAP =
             ImmutableMap.<String, FieldDefinition>builder()
+                    .put(StatisticConfiguration.FIELD_NAME_UUID, FIELD_DEF_NON_QUERYABLE_FIELD)
                     .put(StatisticConfiguration.FIELD_NAME_STATISTIC, FIELD_DEF_NON_QUERYABLE_FIELD)
                     .put(StatisticConfiguration.FIELD_NAME_DATE_TIME, FIELD_DEF_DATE_TIME)
                     .put(StatisticConfiguration.FIELD_NAME_COUNT, FIELD_DEF_NON_QUERYABLE_NUMERIC)

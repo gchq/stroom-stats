@@ -19,33 +19,23 @@
 
 package stroom.stats.hbase.structure;
 
-import stroom.stats.api.StatisticType;
-
-import javax.inject.Inject;
+import stroom.stats.configuration.StatisticConfiguration;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 public class StatisticDataPointAdapterFactory {
 
-    final CountStatisticDataPointAdapter countStatisticDataPointAdapter;
-    final ValueStatisticDataPointAdapter valueStatisticDataPointAdapter;
 
-    @Inject
-    public StatisticDataPointAdapterFactory(
-            final CountStatisticDataPointAdapter countStatisticDataPointAdapter,
-            final ValueStatisticDataPointAdapter valueStatisticDataPointAdapter) {
+    public StatisticDataPointAdapter getAdapter(final StatisticConfiguration statisticConfiguration,
+                                                final EventStoreTimeIntervalEnum precision) {
 
-        this.countStatisticDataPointAdapter = countStatisticDataPointAdapter;
-        this.valueStatisticDataPointAdapter = valueStatisticDataPointAdapter;
-    }
-
-    public StatisticDataPointAdapter getAdapter(StatisticType statisticType) {
-
-        switch (statisticType) {
+        switch (statisticConfiguration.getStatisticType()) {
             case COUNT:
-                return countStatisticDataPointAdapter;
+                return new CountStatisticDataPointAdapter(statisticConfiguration, precision);
             case VALUE:
-                return valueStatisticDataPointAdapter;
+                return new ValueStatisticDataPointAdapter(statisticConfiguration, precision);
             default:
-                throw new IllegalArgumentException("Unexpected StatisticType " + statisticType);
+                throw new IllegalArgumentException("Unexpected StatisticType " +
+                        statisticConfiguration.getStatisticType());
         }
     }
 }

@@ -19,19 +19,31 @@
 
 package stroom.stats.hbase.structure;
 
+import com.google.common.base.Preconditions;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.common.StatisticDataPoint;
 import stroom.stats.common.ValueStatisticDataPoint;
+import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.List;
 
 public class ValueStatisticDataPointAdapter implements StatisticDataPointAdapter {
 
+    private final StatisticConfiguration statisticConfiguration;
+    private final EventStoreTimeIntervalEnum precision;
+
+    public ValueStatisticDataPointAdapter(final StatisticConfiguration statisticConfiguration,
+                                          final EventStoreTimeIntervalEnum precision) {
+        Preconditions.checkNotNull(statisticConfiguration);
+        Preconditions.checkNotNull(precision);
+
+        this.statisticConfiguration = statisticConfiguration;
+        this.precision = precision;
+    }
+
     @Override
-    public StatisticDataPoint convertCell(final String statisticName,
-                                          final long timeMs,
-                                          final EventStoreTimeIntervalEnum interval,
+    public StatisticDataPoint convertCell(final long timeMs,
                                           final List<StatisticTag> tags,
                                           final byte[] bytes,
                                           final int cellValueOffset,
@@ -39,9 +51,9 @@ public class ValueStatisticDataPointAdapter implements StatisticDataPointAdapter
 
         final ValueCellValue cellValue = new ValueCellValue(bytes, cellValueOffset, cellValueLength);
 
-        return new ValueStatisticDataPoint(statisticName,
+        return new ValueStatisticDataPoint(statisticConfiguration,
+                precision,
                 timeMs,
-                interval.columnInterval(),
                 tags,
                 cellValue.getCount(),
                 cellValue.getAverageValue(),
