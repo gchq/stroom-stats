@@ -43,6 +43,7 @@ public interface StatisticConfiguration {
 
     //static field names
     String FIELD_NAME_STATISTIC = "Statistic Name";
+    String FIELD_NAME_UUID = "Statistic UUID";
     String FIELD_NAME_DATE_TIME = "Date Time";
     String FIELD_NAME_VALUE = "Statistic Value";
     String FIELD_NAME_COUNT = "Statistic Count";
@@ -55,6 +56,7 @@ public interface StatisticConfiguration {
     Map<StatisticType, List<String>> STATIC_FIELDS_MAP = Maps.immutableEnumMap(ImmutableMap.of(
             StatisticType.COUNT, Arrays.asList(
                     FIELD_NAME_STATISTIC,
+                    FIELD_NAME_UUID,
                     FIELD_NAME_DATE_TIME,
                     FIELD_NAME_COUNT,
                     FIELD_NAME_PRECISION,
@@ -62,6 +64,7 @@ public interface StatisticConfiguration {
             ),
             StatisticType.VALUE, Arrays.asList(
                     FIELD_NAME_STATISTIC,
+                    FIELD_NAME_UUID,
                     FIELD_NAME_DATE_TIME,
                     FIELD_NAME_VALUE,
                     FIELD_NAME_COUNT,

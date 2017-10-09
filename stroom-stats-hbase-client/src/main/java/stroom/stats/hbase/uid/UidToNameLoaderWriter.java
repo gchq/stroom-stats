@@ -22,15 +22,13 @@ package stroom.stats.hbase.uid;
 import org.ehcache.spi.loaderwriter.BulkCacheLoadingException;
 import org.ehcache.spi.loaderwriter.BulkCacheWritingException;
 import org.ehcache.spi.loaderwriter.CacheLoaderWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
 import java.util.Map;
-import java.util.Optional;
 
 class UidToNameLoaderWriter implements CacheLoaderWriter<UID, String> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(UidToNameLoaderWriter.class);
+    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(UidToNameLoaderWriter.class);
 
     private final UniqueIdGenerator uniqueIdGenerator;
 
@@ -41,9 +39,21 @@ class UidToNameLoaderWriter implements CacheLoaderWriter<UID, String> {
 
     @Override
     public String load(final UID uid) throws Exception {
-        return Optional.ofNullable(uniqueIdGenerator.getName(uid.getUidBytes()))
-                .orElseThrow(() -> new Exception(String.format("UID %s does not exist in the uid table", uid.toAllForms())))
-                .get();
+        LOGGER.trace("load called on uid {}", uid);
+
+
+        //EHCache does not cache null values so just return null if we can't find it
+        String name = uniqueIdGenerator.getName(uid).orElse(null);
+        LOGGER.trace(() -> {
+            if (name != null) {
+                return LambdaLogger.buildMessage("Loading name {} into the cache for uid {}", name, uid.toAllForms());
+            } else {
+                return LambdaLogger.buildMessage("No name exists for uid {}", uid);
+            }
+        });
+        return name;
+//        return optName.orElseThrow(
+//                () -> new Exception(String.format("Name %s does not exist it uid table", uid.toAllForms())));
     }
 
     @Override

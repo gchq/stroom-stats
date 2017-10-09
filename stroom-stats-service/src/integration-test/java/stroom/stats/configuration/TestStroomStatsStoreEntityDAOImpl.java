@@ -51,7 +51,7 @@ public class TestStroomStatsStoreEntityDAOImpl extends AbstractAppIT {
     private StatisticConfigurationService statisticConfigurationService = injector.getInstance(StatisticConfigurationService.class);
 
     @Test
-    public void loadByName() throws Exception {
+    public void loadByUuid() throws Exception {
         StatisticConfiguration entity1 = createStatisticConfigurationEntity("statConfig1");
 
         //Ensure the cache is clear to make sure it uses the loaderWriter to pull from DB
@@ -71,27 +71,7 @@ public class TestStroomStatsStoreEntityDAOImpl extends AbstractAppIT {
     }
 
     @Test
-    public void loadByUuid() throws Exception {
-        StatisticConfiguration entity1 = createStatisticConfigurationEntity("statConfig1");
-
-        //Ensure the cache is clear to make sure it uses the loaderWriter to pull from DB
-        clearCache(StatisticConfigurationServiceImpl.KEY_BY_NAME_CACHE_NAME);
-
-        StatisticConfiguration foundEntity = statisticConfigurationService.fetchStatisticConfigurationByName(entity1.getName())
-                .orElseThrow(() -> new RuntimeException(String.format("Entity %s should exist", entity1)));
-
-        Assertions.assertThat(foundEntity).isEqualTo(entity1);
-
-        //now do it again, which should just come straight from the cache
-
-        foundEntity = statisticConfigurationService.fetchStatisticConfigurationByName(entity1.getName())
-                .orElseThrow(() -> new RuntimeException(String.format("Entity %s should exist", entity1)));
-
-        Assertions.assertThat(foundEntity).isEqualTo(entity1);
-    }
-
-    @Test
-    public void loadByUuidAndName_volumeTest() throws Exception {
+    public void loadByUuid_volumeTest() throws Exception {
         clearCache(StatisticConfigurationServiceImpl.KEY_BY_UUID_CACHE_NAME);
 
         List<StatisticConfiguration> entities = new ArrayList<>();
@@ -101,7 +81,7 @@ public class TestStroomStatsStoreEntityDAOImpl extends AbstractAppIT {
 
         //Now have 2 goes at retrieving all 1_500 entities. As the Cache doesn't hold that many it
         // will mean it will have to keep evicting entities from the cache and loading new ones
-        IntStream.rangeClosed(1,2).forEach(i -> {
+        IntStream.rangeClosed(1, 2).forEach(i -> {
 
             List<StatisticConfiguration> shuffledEntities = new ArrayList<>(entities);
             Collections.shuffle(shuffledEntities);
@@ -110,11 +90,6 @@ public class TestStroomStatsStoreEntityDAOImpl extends AbstractAppIT {
             shuffledEntities.forEach(entity -> {
 
                 StatisticConfiguration foundEntity = statisticConfigurationService.fetchStatisticConfigurationByUuid(entity.getUuid())
-                        .orElseThrow(() -> new RuntimeException(String.format("Entity %s should exist", entity)));
-
-                Assertions.assertThat(foundEntity).isEqualTo(entity);
-
-                foundEntity = statisticConfigurationService.fetchStatisticConfigurationByName(entity.getName())
                         .orElseThrow(() -> new RuntimeException(String.format("Entity %s should exist", entity)));
 
                 Assertions.assertThat(foundEntity).isEqualTo(entity);
@@ -157,7 +132,9 @@ public class TestStroomStatsStoreEntityDAOImpl extends AbstractAppIT {
     }
 
     private void clearCache(String name) {
-        injector.getInstance(CacheManager.class).getCache(name, String.class, StatisticConfiguration.class).clear();
+        injector.getInstance(CacheManager.class)
+                .getCache(name, String.class, StatisticConfiguration.class)
+                .clear();
     }
 
 }

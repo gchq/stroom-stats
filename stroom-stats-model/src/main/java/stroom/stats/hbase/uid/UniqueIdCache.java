@@ -21,7 +21,7 @@
 
 package stroom.stats.hbase.uid;
 
-import javaslang.control.Try;
+import java.util.Optional;
 
 public interface UniqueIdCache {
     /**
@@ -52,7 +52,7 @@ public interface UniqueIdCache {
      *            The name string to look up in the cache
      * @return The mapped UID or an empty optional
      */
-    Try<UID> getUniqueId(final String name);
+    Optional<UID> getUniqueId(final String name);
 
     default UID getCreateOrDefaultId(final String name, final UniqueIdFetchMode fetchMode) {
         switch (fetchMode) {
@@ -66,11 +66,11 @@ public interface UniqueIdCache {
     }
 
     default UID getUniqueIdOrElse(final String name, final UID notFoundUid) {
-        return getUniqueId(name).getOrElse(notFoundUid);
+        return getUniqueId(name).orElse(notFoundUid);
     }
 
     default UID getUniqueIdOrDefault(final String name) {
-        return getUniqueId(name).getOrElse(UID.NOT_FOUND_UID);
+        return getUniqueId(name).orElse(UID.NOT_FOUND_UID);
     }
 
     /**

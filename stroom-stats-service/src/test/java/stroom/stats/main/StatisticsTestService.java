@@ -22,7 +22,6 @@
 package stroom.stats.main;
 
 import com.google.common.collect.Iterables;
-import javaslang.control.Try;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.client.Delete;
@@ -71,7 +70,9 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
+import java.util.UUID;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -111,13 +112,13 @@ public final class StatisticsTestService {
     }
 
 
-    private StatisticDataSet performSearch(final String eventName, final long rangeFrom, final long rangeTo,
+    private StatisticDataSet performSearch(final String statUuid, final long rangeFrom, final long rangeTo,
                                            final FilterTermsTree.Node additionalFilterBranch) {
         StatisticDataSet statisticDataSet;
 
         final StatisticConfiguration statisticConfiguration = statisticConfigurationService
-                .fetchStatisticConfigurationByName(eventName)
-                .orElseThrow(() -> new RuntimeException("StatisticConfiguration not found with name " + eventName));
+                .fetchStatisticConfigurationByUuid(statUuid)
+                .orElseThrow(() -> new RuntimeException("StatisticConfiguration not found with uuid " + statUuid));
 
         final DocRef docRef = new DocRef(statisticConfiguration.getType(), statisticConfiguration.getUuid());
 
@@ -150,7 +151,7 @@ public final class StatisticsTestService {
     public void runRef() {
         LOGGER.info("Started");
 
-        final String statisticName = "ReadWriteVolumeBytes";
+        final String statisticName = UUID.randomUUID().toString();
         long rangeFrom;
         long rangeTo;
 
@@ -189,12 +190,15 @@ public final class StatisticsTestService {
     }
 
     private void dumpStatisticsData(final StatisticDataSet statisticDataSet) {
-        LOGGER.info("Dumping data for statistic: " + statisticDataSet.getStatisticUuid());
+        LOGGER.info("Dumping data for statistic: {} {}",
+                statisticDataSet.getStatisticConfiguration().getName(),
+                statisticDataSet.getStatisticConfiguration().getUuid());
 
         final List<String> records = new ArrayList<>();
 
         for (final StatisticDataPoint dataPoint : statisticDataSet) {
-            records.add("  " + DateUtil.createNormalDateTimeString(dataPoint.getTimeMs()) + " - " + dataPoint.getFieldValue(StatisticConfiguration.FIELD_NAME_COUNT)
+            records.add("  " + DateUtil.createNormalDateTimeString(dataPoint.getTimeMs())
+                    + " - " + dataPoint.getFieldValue(StatisticConfiguration.FIELD_NAME_COUNT)
                     + " - " + dataPoint.getFieldValue(StatisticConfiguration.FIELD_NAME_VALUE));
         }
 
@@ -392,9 +396,9 @@ public final class StatisticsTestService {
 
         final String statName = "FeedStatus";
 
-        final Try<UID> uniqueId = uniqueIdCache.getUniqueId(statName);
+        final Optional<UID> uniqueId = uniqueIdCache.getUniqueId(statName);
 
-        LOGGER.info(uniqueId.getOrElse(UID.NOT_FOUND_UID).toAllForms());
+        LOGGER.info(uniqueId.orElse(UID.NOT_FOUND_UID).toAllForms());
 
         final String name = uniqueIdCache.getName(uniqueId.get());
 

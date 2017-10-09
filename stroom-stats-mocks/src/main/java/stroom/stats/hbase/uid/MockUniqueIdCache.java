@@ -21,12 +21,12 @@
 
 package stroom.stats.hbase.uid;
 
-import javaslang.control.Try;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.hbase.util.bytes.UnsignedBytes;
 
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -64,8 +64,8 @@ public class MockUniqueIdCache implements UniqueIdCache {
     }
 
     @Override
-    public Try<UID> getUniqueId(final String name) {
-        return Try.of(() -> nameToIdMap.get(name));
+    public Optional<UID> getUniqueId(final String name) {
+        return Optional.ofNullable(nameToIdMap.get(name));
     }
 
     @Override

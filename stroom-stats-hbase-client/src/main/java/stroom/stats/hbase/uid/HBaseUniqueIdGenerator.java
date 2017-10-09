@@ -62,13 +62,14 @@ public class HBaseUniqueIdGenerator implements UniqueIdGenerator {
     }
 
     @Override
-    public Optional<byte[]> getId(final String name) {
+    public Optional<UID> getId(final String name) {
         final byte[] nameKey = Bytes.toBytes(name);
-        return forwardMapTable.getId(nameKey);
+        return forwardMapTable.getId(nameKey)
+                .map(UID::from);
     }
 
     @Override
-    public byte[] getOrCreateId(final String name) {
+    public UID getOrCreateId(final String name) {
         short attempt = MAX_ATTEMPTS_ASSIGN_ID;
 
         Optional<byte[]> bId = Optional.empty();
@@ -195,15 +196,13 @@ public class HBaseUniqueIdGenerator implements UniqueIdGenerator {
                         MAX_ATTEMPTS_ASSIGN_ID, name));
             }
         }
-        // by this point we should either have a bId or an exception would have
-        // been thrown
-        return bId.get();
+        // by this point we should either have a bId or an exception would have been thrown
+        return bId.map(UID::from).get();
     }
 
     @Override
-    public Optional<String> getName(final byte[] id) {
-        final Optional<byte[]> bName = reverseMapTable.getName(id);
-        return bName.flatMap(bytes -> Optional.of(Bytes.toString(bytes)));
+    public Optional<String> getName(final UID uid) {
+        return reverseMapTable.getNameAsString(uid);
     }
 
     @Override

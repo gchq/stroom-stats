@@ -22,11 +22,11 @@ package stroom.stats.configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
 
 /**
  * Simple implementation to hold in memory {@link StatisticConfiguration} entities for
@@ -36,17 +36,11 @@ public class MockStatisticConfigurationService implements StatisticConfiguration
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MockStatisticConfigurationService.class);
 
-    private final ConcurrentMap<String, StatisticConfiguration> nameToStatConfMap = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, StatisticConfiguration> uuidToStatConfMap = new ConcurrentHashMap<>();
 
     @Override
     public List<StatisticConfiguration> fetchAll() {
-        return nameToStatConfMap.values().stream().collect(Collectors.toList());
-    }
-
-    @Override
-    public Optional<StatisticConfiguration> fetchStatisticConfigurationByName(final String name) {
-        return Optional.ofNullable(nameToStatConfMap.get(name));
+        return new ArrayList<>(uuidToStatConfMap.values());
     }
 
     @Override
@@ -62,16 +56,11 @@ public class MockStatisticConfigurationService implements StatisticConfiguration
         String name = statisticConfiguration.getName();
         String uuid = statisticConfiguration.getUuid();
 
-        if (nameToStatConfMap.get(name) != null) {
-            throw new RuntimeException(String.format("StatisticConfiguration with name %s already exists", name));
-        }
         if (uuidToStatConfMap.get(uuid) != null) {
             throw new RuntimeException(String.format("StatisticConfiguration with uuid %s already exists", uuid));
         }
 
-        nameToStatConfMap.put(name, statisticConfiguration);
         uuidToStatConfMap.put(uuid, statisticConfiguration);
-
         return this;
     }
 

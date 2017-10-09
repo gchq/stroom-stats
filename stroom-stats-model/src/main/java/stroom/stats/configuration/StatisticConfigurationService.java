@@ -26,8 +26,6 @@ public interface StatisticConfigurationService {
 
     List<StatisticConfiguration> fetchAll();
 
-    Optional<StatisticConfiguration> fetchStatisticConfigurationByName(final String name);
-
     Optional<StatisticConfiguration> fetchStatisticConfigurationByUuid(final String uuid);
 
 }

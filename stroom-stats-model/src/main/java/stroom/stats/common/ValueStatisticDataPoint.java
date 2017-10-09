@@ -21,10 +21,12 @@
 
 package stroom.stats.common;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
+import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.List;
 import java.util.Map;
@@ -70,16 +72,18 @@ public class ValueStatisticDataPoint implements StatisticDataPoint {
      * @param maxValue The max value in this time period
      * @return A populated {@link ValueStatisticDataPoint} instance
      */
-    public ValueStatisticDataPoint(final String statisticName,
+    public ValueStatisticDataPoint(final StatisticConfiguration statisticConfiguration,
+                                   final EventStoreTimeIntervalEnum precision,
                                    final long timeMs,
-                                   final long precisionMs,
                                    final List<StatisticTag> tags,
                                    final long count,
                                    final double value,
                                    final double minValue,
                                    final double maxValue) {
 
-        this.delegate = new BasicStatisticDataPoint(statisticName, timeMs, precisionMs, tags);
+        Preconditions.checkArgument(StatisticType.VALUE.equals(statisticConfiguration.getStatisticType()));
+
+        this.delegate = new BasicStatisticDataPoint(statisticConfiguration, precision, timeMs, tags);
         this.count = count;
         this.value = value;
         this.minValue = minValue;
@@ -87,18 +91,18 @@ public class ValueStatisticDataPoint implements StatisticDataPoint {
     }
 
     @Override
-    public String getStatisticUuid() {
-        return delegate.getStatisticUuid();
+    public StatisticConfiguration getStatisticConfiguration() {
+        return delegate.getStatisticConfiguration();
+    }
+
+    @Override
+    public EventStoreTimeIntervalEnum getTimeInterval() {
+        return delegate.getTimeInterval();
     }
 
     @Override
     public long getTimeMs() {
         return delegate.getTimeMs();
-    }
-
-    @Override
-    public long getPrecisionMs() {
-        return delegate.getPrecisionMs();
     }
 
     @Override

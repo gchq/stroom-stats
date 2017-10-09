@@ -21,15 +21,12 @@ package stroom.stats.hbase.structure;
 
 import stroom.stats.api.StatisticTag;
 import stroom.stats.common.StatisticDataPoint;
-import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.List;
 
 public interface StatisticDataPointAdapter {
 
-    StatisticDataPoint convertCell(final String statisticName,
-                                   final long timeMs,
-                                   final EventStoreTimeIntervalEnum interval,
+    StatisticDataPoint convertCell(final long timeMs,
                                    final List<StatisticTag> tags,
                                    final byte[] bytes,
                                    final int cellValueOffset,

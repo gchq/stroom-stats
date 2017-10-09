@@ -26,8 +26,6 @@ import java.util.Optional;
 
 public interface StroomStatsStoreEntityDAO {
 
-    Optional<StroomStatsStoreEntity> loadByName(String name);
-
     Optional<StroomStatsStoreEntity> loadByUuid(String uuid);
 
     List<StroomStatsStoreEntity> loadAll();

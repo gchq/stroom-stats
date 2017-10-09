@@ -57,35 +57,48 @@ public class UniqueIdCacheImpl implements UniqueIdCache {
     public UID getOrCreateId(final String name) {
         Preconditions.checkNotNull(name, "A null name is not valid");
 
-        return Try.of(() -> nameToUidCache.get(name))
-                .getOrElse(() -> {
-                    //not in cache or table so create it in the tables
-                    //in the event that another thread does this as well then getOrCreateId will handle
-                    //thread safety issues
-                    UID newUid = UID.from(uniqueIdGenerator.getOrCreateId(name));
-                    LOGGER.trace(() -> String.format("Created new UID %s for name %s", newUid.toString(), name));
+        //will either get the UID from the cache or use the loaderwriter to look it up in hbase
+        //but it won't create a new UID.
+        UID uidFromCache = nameToUidCache.get(name);
 
-                    //add the new K/V to both caches as we have the values and chances are somebody else will need them
-                    uidToNameCache.put(newUid, name);
-                    nameToUidCache.put(name, newUid);
-                    return newUid;
-                });
+        if (uidFromCache == null) {
+            //not in cache or table so create it in the tables
+            //in the event that another thread does this as well then getOrCreateId and HBase's consistency
+            //guarantees will handle thread safety issues
+            UID newUid = uniqueIdGenerator.getOrCreateId(name);
+            Preconditions.checkNotNull(newUid,
+                    "newUid should never be null as we are creating one for name ", name);
+
+            LOGGER.trace(() -> String.format("Created new UID %s for name %s", newUid.toString(), name));
+
+            //add the new K/V to both caches as we have the values and chances are somebody else will need them
+            uidToNameCache.put(newUid, name);
+            nameToUidCache.put(name, newUid);
+            return newUid;
+        } else {
+            return uidFromCache;
+        }
     }
 
     @Override
-    public Try<UID> getUniqueId(final String name) {
+    public Optional<UID> getUniqueId(final String name) {
         Preconditions.checkNotNull(name, "A null name is not valid");
-        return Try.of(() -> nameToUidCache.get(name));
+        return Optional.ofNullable(nameToUidCache.get(name));
     }
 
     @Override
     public String getName(final UID uniqueId) {
         Preconditions.checkNotNull(uniqueId, "A null uniqueIdGenerator is not valid");
 
-        final String name = Try.of(() -> uidToNameCache.get(uniqueId))
-                .getOrElseThrow(() -> new RuntimeException(String.format(
-                    "uniqueIdGenerator %s should exist in the cache, something may have gone wrong with self population",
-                        uniqueId.toAllForms())));
+
+        final String name = Try
+                .of(() ->
+                        uidToNameCache.get(uniqueId))
+                .getOrElseThrow(() ->
+                        //exception will be a failure in the loaderwriter
+                        new RuntimeException(String.format(
+                                "uniqueIdGenerator %s should exist in the cache, something may have gone wrong with self population",
+                                uniqueId.toAllForms())));
 
         if (name == null) {
             throw new RuntimeException(String.format(

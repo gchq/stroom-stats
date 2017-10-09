@@ -19,20 +19,32 @@
 
 package stroom.stats.hbase.structure;
 
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.common.CountStatisticDataPoint;
 import stroom.stats.common.StatisticDataPoint;
+import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.List;
 
 public class CountStatisticDataPointAdapter implements StatisticDataPointAdapter {
 
+    private final StatisticConfiguration statisticConfiguration;
+    private final EventStoreTimeIntervalEnum precision;
+
+    public CountStatisticDataPointAdapter(final StatisticConfiguration statisticConfiguration,
+                                          final EventStoreTimeIntervalEnum precision) {
+        Preconditions.checkNotNull(statisticConfiguration);
+        Preconditions.checkNotNull(precision);
+
+        this.statisticConfiguration = statisticConfiguration;
+        this.precision = precision;
+    }
+
     @Override
-    public StatisticDataPoint convertCell(final String statisticName,
-                                          final long timeMs,
-                                          final EventStoreTimeIntervalEnum interval,
+    public StatisticDataPoint convertCell(final long timeMs,
                                           final List<StatisticTag> tags,
                                           final byte[] bytes,
                                           final int cellValueOffset,
@@ -40,6 +52,6 @@ public class CountStatisticDataPointAdapter implements StatisticDataPointAdapter
 
         final long count = (cellValueLength == 0) ? 0 : Bytes.toLong(bytes, cellValueOffset, cellValueLength);
 
-        return new CountStatisticDataPoint(statisticName, timeMs, interval.columnInterval(), tags, count);
+        return new CountStatisticDataPoint(statisticConfiguration, precision, timeMs, tags, count);
     }
 }

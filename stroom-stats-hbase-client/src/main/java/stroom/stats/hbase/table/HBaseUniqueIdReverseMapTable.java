@@ -30,11 +30,12 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
-import stroom.stats.hbase.connection.HBaseConnection;
-import stroom.stats.hbase.exception.HBaseException;
-import stroom.stats.hbase.util.bytes.ByteArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.hbase.connection.HBaseConnection;
+import stroom.stats.hbase.exception.HBaseException;
+import stroom.stats.hbase.uid.UID;
+import stroom.stats.hbase.util.bytes.ByteArrayUtils;
 
 import javax.inject.Inject;
 import java.util.Optional;
@@ -100,63 +101,59 @@ public class HBaseUniqueIdReverseMapTable extends HBaseTable implements UniqueId
     }
 
     @Override
-    public boolean checkAndPutName(final byte[] newId, final byte[] name) {
+    public boolean checkAndPutName(final byte[] bNewUid, final byte[] name) {
         if (LOGGER.isTraceEnabled()) {
-            final String rowKeyStr = ByteArrayUtils.byteArrayToHex(newId);
+            final String rowKeyStr = ByteArrayUtils.byteArrayToHex(bNewUid);
 
             final String valueStr = Bytes.toString(name);
 
             LOGGER.trace("checkAndPutName - Key: [" + rowKeyStr + "], Value: [" + valueStr + "]");
         }
 
-        final Put put = new Put(newId);
+        final Put put = new Put(bNewUid);
         put.addColumn(NAME_FAMILY, NAME_COL_QUALIFIER, name);
 
         boolean result;
 
         // pass null as the expected value to ensure we only put if it didn't
         // exist before
-        result = doCheckAndPut(newId, NAME_FAMILY, NAME_COL_QUALIFIER, null, put);
+        result = doCheckAndPut(bNewUid, NAME_FAMILY, NAME_COL_QUALIFIER, null, put);
 
         return result;
     }
 
     @Override
-    public boolean checkAndDeleteName(final byte[] newId, final byte[] name) {
+    public boolean checkAndDeleteName(final byte[] bNewUid, final byte[] name) {
         if (LOGGER.isTraceEnabled()) {
-            final String rowKeyStr = ByteArrayUtils.byteArrayToHex(newId);
+            final String rowKeyStr = ByteArrayUtils.byteArrayToHex(bNewUid);
 
             final String valueStr = Bytes.toString(name);
 
             LOGGER.trace("checkAndDeleteName - Key: [" + rowKeyStr + "], Value: [" + valueStr + "]");
         }
 
-        final Delete delete = new Delete(newId);
+        final Delete delete = new Delete(bNewUid);
         delete.addColumn(NAME_FAMILY, NAME_COL_QUALIFIER);
 
         boolean result;
 
         // only delete the naem if the current value matches what we think it is
-        result = doCheckAndDelete(newId, NAME_FAMILY, NAME_COL_QUALIFIER, name, delete);
+        result = doCheckAndDelete(bNewUid, NAME_FAMILY, NAME_COL_QUALIFIER, name, delete);
 
         return result;
     }
 
-    @Override
-    public Optional<byte[]> getName(final byte[] idKey) {
-        final Get get = new Get(idKey);
+    public Optional<byte[]> getName(final UID uid) {
+        final Get get = new Get(uid.getUidBytes());
         get.addColumn(NAME_FAMILY, NAME_COL_QUALIFIER);
         final Result result = doGet(get);
         return Optional.ofNullable(result.getValue(NAME_FAMILY, NAME_COL_QUALIFIER));
     }
 
     @Override
-    public Optional<String> getNameAsString(final byte[] idKey) {
-        final Optional<byte[]> nameBytes = getName(idKey);
-
-        final Optional<String> name = nameBytes.flatMap(bytes -> Optional.of(Bytes.toString(bytes)));
-
-        return name;
+    public Optional<String> getNameAsString(final UID uid) {
+        return getName(uid)
+                .map(Bytes::toString);
     }
 
     @Override

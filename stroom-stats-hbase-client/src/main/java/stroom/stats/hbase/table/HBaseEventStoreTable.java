@@ -94,7 +94,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     private final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory;
 
     private static final String DISPLAY_NAME_POSTFIX = " EventStore";
-    public static final String TABLE_NAME_POSTFIX = "es";
+    private static final String TABLE_NAME_POSTFIX = "es";
 
 
     // counters to track how many cell puts we do for the
@@ -107,15 +107,15 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     /**
      * Private constructor
      */
-    private HBaseEventStoreTable(final EventStoreTimeIntervalEnum eventStoreTimeIntervalEnum,
+    private HBaseEventStoreTable(final EventStoreTimeIntervalEnum timeInterval,
                                  final StroomPropertyService propertyService,
                                  final HBaseConnection hBaseConnection,
                                  final UniqueIdCache uniqueIdCache,
                                  final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory) {
         super(hBaseConnection);
-        this.displayName = eventStoreTimeIntervalEnum.longName() + DISPLAY_NAME_POSTFIX;
-        this.tableName = TableName.valueOf(Bytes.toBytes(eventStoreTimeIntervalEnum.shortName() + TABLE_NAME_POSTFIX));
-        this.timeInterval = eventStoreTimeIntervalEnum;
+        this.displayName = timeInterval.longName() + DISPLAY_NAME_POSTFIX;
+        this.tableName = TableName.valueOf(Bytes.toBytes(timeInterval.shortName() + TABLE_NAME_POSTFIX));
+        this.timeInterval = timeInterval;
         this.propertyService = propertyService;
         this.rowKeyBuilder = new SimpleRowKeyBuilder(uniqueIdCache, timeInterval);
         this.statisticDataPointAdapterFactory = statisticDataPointAdapterFactory;
@@ -131,13 +131,13 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     /**
      * Static constructor
      */
-    public static HBaseEventStoreTable getInstance(final EventStoreTimeIntervalEnum eventStoreTimeIntervalEnum,
+    public static HBaseEventStoreTable getInstance(final EventStoreTimeIntervalEnum timeInterval,
                                                    final StroomPropertyService propertyService,
                                                    final HBaseConnection hBaseConnection,
                                                    final UniqueIdCache uniqueIdCache,
                                                    final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory) {
 
-        return new HBaseEventStoreTable(eventStoreTimeIntervalEnum,
+        return new HBaseEventStoreTable(timeInterval,
                 propertyService,
                 hBaseConnection,
                 uniqueIdCache,
@@ -436,7 +436,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
         String statUuid = statisticConfiguration.getUuid();
 
-        final Scan scan = buildBasicScan(rollUpBitMask, period, statisticType, statUuid);
+        final Scan scan = buildBasicScan(rollUpBitMask, period, statisticConfiguration);
 
         // Query the event store over the given range.
         // We may only want part of the row from the first row and last row
@@ -451,7 +451,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         final ResultScanner scanner = getScanner(tableInterface, scan);
 
         // object to hold all the data returned
-        final StatisticDataSet statisticDataSet = new StatisticDataSet(statUuid, statisticType);
+        final StatisticDataSet statisticDataSet = new StatisticDataSet(statisticConfiguration, timeInterval);
 
         try {
             final long periodFrom = period.getFromOrElse(0L);
@@ -494,11 +494,12 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                     //periodTo is exclusive
                     if (fullTimestamp >= periodFrom && fullTimestamp < periodTo) {
 
-                        final StatisticDataPointAdapter adapter = statisticDataPointAdapterFactory.getAdapter(statisticType);
+                        final StatisticDataPointAdapter adapter = statisticDataPointAdapterFactory.getAdapter(
+                                statisticConfiguration,
+                                timeInterval);
+
                         final StatisticDataPoint dataPoint = adapter.convertCell(
-                                statUuid,
                                 fullTimestamp,
-                                timeInterval,
                                 tags,
                                 cell.getValueArray(),
                                 cell.getValueOffset(),
@@ -529,10 +530,11 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
     private Scan buildBasicScan(final RollUpBitMask rollUpBitMask,
                                 final Period period,
-                                final StatisticType statisticType,
-                                final String statUuid) {
+                                final StatisticConfiguration statisticConfiguration) {
 
         final Scan scan = new Scan();
+
+        String statUuid = statisticConfiguration.getUuid();
 
         final Optional<RowKey> optStartRowKey = Optional.ofNullable(period.getFrom())
                 .map(fromMsInc ->
@@ -577,7 +579,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         scan.setCaching(1_000);
 
         // determine which column family to use based on the kind of data we are trying to query
-        if (statisticType.equals(StatisticType.COUNT)) {
+        if (StatisticType.COUNT.equals(statisticConfiguration.getStatisticType())) {
             scan.addFamily(EventStoreColumnFamily.COUNTS.asByteArray());
         } else {
             scan.addFamily(EventStoreColumnFamily.VALUES.asByteArray());
@@ -614,7 +616,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
         final UID statUuidUid = uniqueIdCache.getUniqueIdOrDefault(statUuid);
 
-        Scan scan = buildBasicScan(rollUpBitMask, period, statisticConfiguration.getStatisticType(), statUuid);
+        Scan scan = buildBasicScan(rollUpBitMask, period, statisticConfiguration);
 
         // filter on rows with a key starting with the UID of our stat name
         final Filter prefixFilter = new PrefixFilter(statUuidUid.getUidBytes());
@@ -833,7 +835,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         final String statisticName = statisticConfiguration.getName();
 
         final byte[] bRowKey = uniqueIdCache.getUniqueId(statisticName)
-                .getOrElseThrow(() -> new RuntimeException("No UID found for statistic " + statisticName))
+                .orElseThrow(() -> new RuntimeException("No UID found for statistic " + statisticName))
                 .getUidBytes();
 
         // add a keyOnlyFilter so we only get back the keys and not the data

@@ -1,10 +1,12 @@
 .gradle
+stroom-stats*.log
 classes
 build/
 classes/
 libs/
 */out/
 /schema/
+/docker/build
 
 # Ignore the jaxb/xjc generated code
 */src-generated/

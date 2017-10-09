@@ -21,6 +21,7 @@
 
 package stroom.stats.hbase.structure;
 
+import com.google.common.base.Preconditions;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.hbase.util.bytes.ByteArrayUtils;
 
@@ -45,12 +46,17 @@ public class TimeAgnosticRowKey {
     public static final int UID_ARRAY_LENGTH = UID.UID_ARRAY_LENGTH;
     public static final int ROLL_UP_BIT_MASK_LENGTH = 2;
 
-    public TimeAgnosticRowKey(final UID typeId, final byte[] rollUpBitMask,
-            final List<RowKeyTagValue> sortedTagValuePairs) {
+    public TimeAgnosticRowKey(final UID typeId,
+                              final byte[] rollUpBitMask,
+                              final List<RowKeyTagValue> sortedTagValuePairs) {
+
+        Preconditions.checkNotNull(typeId);
+        Preconditions.checkNotNull(rollUpBitMask);
+        Preconditions.checkNotNull(sortedTagValuePairs);
         this.typeId = typeId;
         this.rollUpBitMask = rollUpBitMask;
 
-        // conver the list of tags to an unmodifiable list
+        // convert the list of tags to an unmodifiable list
         final List<RowKeyTagValue> tempList = new ArrayList<>();
         for (final RowKeyTagValue rowKeyTagValue : sortedTagValuePairs) {
             tempList.add(rowKeyTagValue.shallowCopy());

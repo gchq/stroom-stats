@@ -59,13 +59,13 @@ public class ProcessingStartStopIT extends AbstractAppIT {
 
     private void assertStates(HasRunState.RunState expectedRunState, boolean expectedIsHealthy) throws InterruptedException {
 
-        assertState(statisticsFlatMappingService, expectedRunState, 10_000);
+        assertState(statisticsFlatMappingService, expectedRunState, 30_000);
         statisticsFlatMappingService.getHealthCheckProviders().forEach(hasHealthCheck ->
-                assertState(hasHealthCheck, expectedIsHealthy, 10_000));
+                assertState(hasHealthCheck, expectedIsHealthy, 30_000));
 
-        assertState(statisticsAggregationService, expectedRunState, 10_000);
+        assertState(statisticsAggregationService, expectedRunState, 30_000);
         statisticsAggregationService.getHealthCheckProviders().forEach(hasHealthCheck ->
-                assertState(hasHealthCheck, expectedIsHealthy, 10_000));
+                assertState(hasHealthCheck, expectedIsHealthy, 30_000));
     }
 
 

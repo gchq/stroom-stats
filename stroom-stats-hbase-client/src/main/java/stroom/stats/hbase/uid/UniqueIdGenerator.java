@@ -47,11 +47,11 @@ public interface UniqueIdGenerator {
         return UnsignedBytes.toBytes(width, val);
     }
 
-    Optional<byte[]> getId(String name);
+    Optional<UID> getId(String name);
 
-    byte[] getOrCreateId(String name);
+    UID getOrCreateId(String name);
 
-    Optional<String> getName(byte[] id);
+    Optional<String> getName(UID uid);
 
     int getWidth();
 }

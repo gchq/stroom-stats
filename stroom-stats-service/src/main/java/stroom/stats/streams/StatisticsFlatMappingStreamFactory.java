@@ -10,7 +10,6 @@ import org.apache.kafka.streams.kstream.KStreamBuilder;
 import org.apache.kafka.streams.kstream.Predicate;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
-import stroom.stats.hbase.EventStoreTimeIntervalHelper;
 import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.partitions.StatEventKeyPartitioner;
 import stroom.stats.properties.StroomPropertyService;
@@ -233,8 +232,11 @@ public class StatisticsFlatMappingStreamFactory {
                         Throwable linkedException = ((UnmarshalException) e.getCause()).getLinkedException();
                         return String.format("%s - %s - %s",
                                 e.getCause().getClass().getName(),
-                                linkedException.getMessage(),
-                                Optional.ofNullable(linkedException.getCause())
+                                Optional.ofNullable(linkedException)
+                                        .map(Throwable::getMessage)
+                                        .orElse("?"),
+                                Optional.ofNullable(linkedException)
+                                        .map(Throwable::getCause)
                                         .map(Throwable::getMessage)
                                         .orElse("?"));
                     } else if (e.getCause() != null){
@@ -287,7 +289,7 @@ public class StatisticsFlatMappingStreamFactory {
         //TODO get smallest interval from stat config, get purge retention for that interval
         //check it is inside it. May want to cache retention periods by interval
 
-        EventStoreTimeIntervalEnum biggestInterval = EventStoreTimeIntervalHelper.getLargestInterval();
+        EventStoreTimeIntervalEnum biggestInterval = EventStoreTimeIntervalEnum.getLargestInterval();
 
         //TODO probably ought to cache this to save computing it each time
         //i.e. a cache of ESTIE:Integer with a short retention, e.g. a few mins
