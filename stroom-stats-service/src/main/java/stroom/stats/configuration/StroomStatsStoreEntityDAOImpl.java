@@ -27,6 +27,7 @@ import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
+import javax.persistence.NoResultException;
 import java.util.List;
 import java.util.Optional;
 
@@ -52,6 +53,7 @@ public class StroomStatsStoreEntityDAOImpl
 
     @Override
     public Optional<StroomStatsStoreEntity> loadByUuid(final String uuid) {
+        LOGGER.trace("loadByUuid called for uuid {}", uuid);
         try {
             StroomStatsStoreEntity entity = super.currentSession()
                     .createQuery(
@@ -64,6 +66,9 @@ public class StroomStatsStoreEntityDAOImpl
             LOGGER.trace("Returning StroomStatsStoreEntity {} for uuid {}", entity, uuid);
             return unmarshalEntity(entity);
 
+        } catch (NoResultException nre) {
+            LOGGER.debug("No entity found for uuid {}, returning empty Optional", uuid);
+            return Optional.empty();
         } catch (HibernateException e) {
             throw new RuntimeException("Error loading statisticConfiguration with UUID " + uuid, e);
         }
