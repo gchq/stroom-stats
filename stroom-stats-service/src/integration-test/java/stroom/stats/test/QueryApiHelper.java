@@ -28,7 +28,6 @@ import stroom.query.api.v2.ExpressionItem;
 import stroom.query.api.v2.ExpressionOperator;
 import stroom.query.api.v2.ExpressionTerm;
 import stroom.query.api.v2.Field;
-import stroom.query.api.v2.FieldBuilder;
 import stroom.query.api.v2.FlatResult;
 import stroom.query.api.v2.Query;
 import stroom.query.api.v2.QueryKey;
@@ -38,7 +37,6 @@ import stroom.query.api.v2.Row;
 import stroom.query.api.v2.SearchRequest;
 import stroom.query.api.v2.SearchResponse;
 import stroom.query.api.v2.TableSettings;
-import stroom.query.api.v2.TableSettingsBuilder;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
@@ -149,11 +147,11 @@ public class QueryApiHelper {
 
         //build the fields for the search response table settings
         List<Field> fields = fieldNames.stream()
-                .map(field -> new FieldBuilder().name(field).expression("${" + field + "}").build())
+                .map(field -> new Field.Builder().name(field).expression("${" + field + "}").build())
                 .collect(Collectors.toList());
 
-        TableSettings tableSettings = new TableSettingsBuilder()
-                .fields(fields)
+        TableSettings tableSettings = new TableSettings.Builder()
+                .addFields(fields)
                 .build();
 
         ResultRequest resultRequest = new ResultRequest("mainResult", tableSettings);

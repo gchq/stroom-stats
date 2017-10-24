@@ -45,7 +45,7 @@ ext.versions = [
     spring_kafka_test: '1.1.1.RELEASE',
 
     //same version for both stroom-query-api and stroom-query-common
-    stroomQuery: 'v2.0.0-alpha.3',
+    stroomQuery: 'v2.0.0-alpha.5',
     stroomExpression: 'v1.0.0',
     swagger: '1.5.16',
     zzzDummyzzz: 'Here to make sorting easier'

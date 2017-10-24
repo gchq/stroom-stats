@@ -5,18 +5,11 @@ import com.google.inject.Injector;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.query.api.v2.DocRef;
 import stroom.query.api.v2.ExpressionOperator;
 import stroom.query.api.v2.ExpressionTerm;
-import stroom.query.api.v2.FieldBuilder;
 import stroom.query.api.v2.FlatResult;
-import stroom.query.api.v2.Query;
-import stroom.query.api.v2.QueryKey;
-import stroom.query.api.v2.ResultRequest;
 import stroom.query.api.v2.SearchRequest;
 import stroom.query.api.v2.SearchResponse;
-import stroom.query.api.v2.TableSettings;
-import stroom.query.api.v2.TableSettingsBuilder;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
@@ -185,39 +178,31 @@ public class QueryResource_simpleQueries_IT extends AbstractAppIT {
 
 
     private static SearchRequest getUsersDoorsRequest(String statisticConfigurationUuid, String timeConstraint) {
-
-        ExpressionOperator expressionOperator = new ExpressionOperator(
-                true,
-                ExpressionOperator.Op.AND,
-                new ExpressionTerm(StatisticConfiguration.FIELD_NAME_PRECISION,
-                        ExpressionTerm.Condition.EQUALS,
-                        EventStoreTimeIntervalEnum.DAY.longName()),
-                new ExpressionTerm("door", ExpressionTerm.Condition.EQUALS, "door1"),
-                new ExpressionTerm(
-                        StatisticConfiguration.FIELD_NAME_DATE_TIME,
-                        ExpressionTerm.Condition.BETWEEN,
-                        timeConstraint)
-        );
-
-        TableSettings tableSettings = new TableSettingsBuilder()
-                .fields(Arrays.asList(
-                    new FieldBuilder().name(USER_TAG).expression("${" + USER_TAG + "}").build(),
-                    new FieldBuilder().name(DOOR_TAG).expression("${" + DOOR_TAG + "}").build()))
-                . build();
-
-        ResultRequest resultRequest = new ResultRequest("mainResult", tableSettings);
-        Query query = new Query(
-                new DocRef(StatisticConfiguration.ENTITY_TYPE, statisticConfigurationUuid, statisticConfigurationUuid),
-                expressionOperator);
-
-        SearchRequest searchRequest = new SearchRequest(
-                new QueryKey(UUID.randomUUID().toString()),
-                query,
-                Arrays.asList(resultRequest),
-                "en-gb",
-                false);
-
-        return searchRequest;
+        return new SearchRequest.Builder()
+                .key(UUID.randomUUID().toString())
+                .dateTimeLocale("en-gb")
+                .incremental(false)
+                .query()
+                    .dataSource(StatisticConfiguration.ENTITY_TYPE, statisticConfigurationUuid, statisticConfigurationUuid)
+                    .expression(ExpressionOperator.Op.AND)
+                        .enabled(true)
+                            .addTerm(StatisticConfiguration.FIELD_NAME_PRECISION,
+                                    ExpressionTerm.Condition.EQUALS,
+                                    EventStoreTimeIntervalEnum.DAY.longName())
+                            .addTerm("door", ExpressionTerm.Condition.EQUALS, "door1")
+                            .addTerm(StatisticConfiguration.FIELD_NAME_DATE_TIME,
+                                    ExpressionTerm.Condition.BETWEEN,
+                                    timeConstraint)
+                        .end()
+                    .end()
+                .addResultRequest()
+                    .componentId("mainResult")
+                    .addMapping()
+                        .addField().name(USER_TAG).expression("${" + USER_TAG + "}").end()
+                        .addField().name(DOOR_TAG).expression("${" + DOOR_TAG + "}").end()
+                        .end()
+                    .end()
+                .build();
     }
 
     private void dumpRowData(final FlatResult flatResult,
