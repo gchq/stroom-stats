@@ -14,14 +14,7 @@
  * limitations under the License.
  */
 
-import { combineReducers } from 'redux'
-import { routerReducer } from 'react-router-redux'
-import { reducer as formReducer } from 'redux-form'
-import { authenticationReducer as authentication, authorisationReducer as authorisation } from 'stroom-auth-js'
-
-export default combineReducers({
-    routing: routerReducer,
-    authorisation,
-    authentication,
-    form: formReducer
-})
+.PathNotFound-card {
+    width: 300px;
+    padding: 15px;
+}

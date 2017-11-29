@@ -14,14 +14,29 @@
  * limitations under the License.
  */
 
-import { combineReducers } from 'redux'
-import { routerReducer } from 'react-router-redux'
-import { reducer as formReducer } from 'redux-form'
-import { authenticationReducer as authentication, authorisationReducer as authorisation } from 'stroom-auth-js'
+.content-floating-without-appbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
 
-export default combineReducers({
-    routing: routerReducer,
-    authorisation,
-    authentication,
-    form: formReducer
-})
+.content-floating-with-appbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 85vh;
+}
+
+.content-fullHeight {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /*height: 100vh;*/
+}
+
+.content-expandableHeight {
+    display: flex;
+    align-items: center;
+    /*justify-content: center;*/
+}

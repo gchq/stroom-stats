@@ -11,13 +11,15 @@
     "react-dom": "^16.1.1",
     "react-redux": "^5.0.6",
     "react-router-dom": "^4.2.2",
-    "react-router-redux": "^4.0.8",
+    "react-router-redux": "^5.0.0-alpha.8",
+    "react-tap-event-plugin": "^3.0.2",
     "redux": "^3.7.2",
     "redux-form": "^7.1.2",
     "redux-form-material-ui": "^4.3.1",
     "redux-logger": "^3.0.6",
     "redux-thunk": "^2.2.0",
-    "serve": "^6.4.1"
+    "serve": "^6.4.1",
+    "stroom-auth-js": "../../stroom-auth/stroom-auth-js"
   },
   "devDependencies": {
     "react-scripts": "1.0.17"

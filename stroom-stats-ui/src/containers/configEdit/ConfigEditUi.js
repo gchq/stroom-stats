@@ -17,25 +17,15 @@
 import React, {Component} from 'react'
 import { connect } from 'react-redux'
 import { bindActionCreators } from 'redux'
-import { Field, reduxForm } from 'redux-form'
-import { NavLink } from 'react-router-dom'
+import { reduxForm } from 'redux-form'
 
-import { SelectField, TextField, Toggle } from 'redux-form-material-ui'
-import { MenuItem } from 'material-ui/Menu'
-import Card from 'material-ui/Card'
-import RaisedButton from 'material-ui/RaisedButton'
-import FlatButton from 'material-ui/FlatButton'
-import Snackbar from 'material-ui/Snackbar'
-
-import { amber900 } from 'material-ui/styles/colors'
-
-import './ConfigEdit.css'
-import {saveChanges as onSubmit, toggleAlertVisibility} from '../../modules/config'
+//import './ConfigEdit.css'
+import {saveChanges as onSubmit} from '../../modules/config'
 
 export class ConfigEditUi extends Component {
 
   render () {
-    const { handleSubmit, pristine, submitting form } = this.props
+      const { handleSubmit, pristine, submitting, form } = this.props
 
     return (
             <div>Todo: Form for editing </div>

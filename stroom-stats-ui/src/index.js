@@ -15,7 +15,7 @@
  */
 
 import React from 'react'
-import { render } from 'react-dom'
+import ReactDOM from 'react-dom'
 import { Provider } from 'react-redux'
 import { ConnectedRouter } from 'react-router-redux'
 import injectTapEventPlugin from 'react-tap-event-plugin'
@@ -41,13 +41,14 @@ injectTapEventPlugin()
 
 const target = document.querySelector('#root')
 
-render(
+ReactDOM.render(
   <Provider store={store}>
     <ConnectedRouter history={history}>
       <MuiThemeProvider muiTheme={theme}>
-        <App />
+        <App/>
       </MuiThemeProvider>
     </ConnectedRouter>
   </Provider>,
   target
 )
+

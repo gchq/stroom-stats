@@ -16,26 +16,18 @@
 
 import React, { Component } from 'react'
 import PropTypes, { object } from 'prop-types'
-import {Route, Redirect, NavLink, withRouter, Switch, BrowserRouter} from 'react-router-dom'
+import {Route, withRouter, Switch, BrowserRouter} from 'react-router-dom'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 
-import AppBar from 'material-ui/AppBar'
-import IconMenu from 'material-ui/IconMenu'
-import MenuItem from 'material-ui/MenuItem'
-import IconButton from 'material-ui/IconButton'
-import FlatButton from 'material-ui/FlatButton'
-import ExitToApp from 'material-ui-icons/ExitToApp'
-import Lock from 'material-ui-icons/Lock'
-import MoreVert from 'material-ui-icons/MoreVert'
-import {fullWhite} from 'material-ui/styles/colors'
+import { AuthenticationRequest } from 'stroom-auth-js'
+import { HandleAuthenticationResponse } from 'stroom-auth-js'
 
 import './App.css'
-import logo from './logo.svg'
-import PathNotFound from '../../containers/pathNotFound'
-import Unauthorised from '../../containers/unauthorised'
-import AuthenticationRequest from '../../containers/authenticationRequest'
-import HandleAuthenticationResponse from '../../containers/handleAuthenticationResponse'
+//import logo from './logo.svg'
+import PathNotFound from '../pathNotFound'
+import Unauthorised from '../unauthorised'
+import ConfigEdit from '../configEdit'
 
 class App extends Component {
   isLoggedIn () {
@@ -84,8 +76,7 @@ App.propTypes = {
 }
 
 const mapStateToProps = state => ({
-  idToken: state.authentication.idToken,
-  showUnauthorizedDialog: state.login.showUnauthorizedDialog
+  idToken: state.authentication.idToken
 })
 
 const mapDispatchToProps = dispatch => bindActionCreators({
