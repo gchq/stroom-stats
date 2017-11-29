@@ -17,7 +17,7 @@ checkContainerStatus kafka
 checkContainerStatus hbase
 
 #do the build without the integration tests for speed
-./gradlew clean downloadUrlDependencies build -x integrationTest shadowJar
+./gradlew clean build -x integrationTest shadowJar
 
 #run the app
 find ./stroom-stats-service/build/libs -name "stroom-stats*-all.jar" -exec java -jar {} server ./stroom-stats-service/config_dev.yml \;

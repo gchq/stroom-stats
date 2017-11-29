@@ -1,3 +1,21 @@
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.1'
+}
+
+//if the project has a value for the passed property (i.e from the cmd line via -PpropName=xxx)
+//use that, else use a default value
+ext.getPropertyOrDefault = { propName, defaultValue -> 
+    def val;
+    if (project.hasProperty(propName) && project.getProperty(propName) != "unspecified" && project.getProperty(propName) != "") {
+        val = project.getProperty(propName)
+        println "Using property [$propName] with value [$val]"
+    } else {
+        val = defaultValue
+        println "Property [$propName] has no value, using default value [$val]"
+    }
+    return val;
+}
+
 def projectGroup = "stroom-stats"
 def projectVersion = "${version}"
 
@@ -7,21 +25,23 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath group: 'gchq', name: 'urlDependencyPlugin', version: 'v0.2.0'
         classpath group: 'ca.cutterslade.gradle', name: 'gradle-dependency-analyze', version: '1.1.0'
     }
 }
 
-apply plugin: 'gchq.urldependencies'
 apply plugin: 'idea'
 
-task wrapper(type: Wrapper) {
-    gradleVersion = '4.1'
-}
-
-ext.libsDir = "libs"
 
 ext.versions = [
+    //----------Stroom-Stats-----------
+    stroomStats: getPropertyOrDefault('version', 'SNAPSHOT'),
+
+    //------Stroom-libs---------------
+    eventLogging: 'v3.1.2_schema-v3.1.2',
+    stroomExpression: 'v1.0.1',
+    //same version for both stroom-query-api and stroom-query-common
+    stroomQuery: 'v2.0.0-alpha.10',
+
     dropwizard: '1.1.0',
     dropwizardMetrics: '3.2.2', //keep in sync with dropwizard (1.1.0 => 3.2.2)
     slf4j: '1.7.24', //in line with dropwiz version
@@ -44,22 +64,19 @@ ext.versions = [
     //1.1.1.RELEASE is the latest version that runs against kafka 0.10.0.1
     spring_kafka_test: '1.1.1.RELEASE',
 
-    //same version for both stroom-query-api and stroom-query-common
-    stroomQuery: 'v2.0.0-alpha.3',
-    stroomExpression: 'v1.0.0',
     swagger: '1.5.16',
     zzzDummyzzz: 'Here to make sorting easier'
 ]
 
-//lib names for urlDependenciesPlugin
-ext.urlLibs = [
-    stroomQueryApi: "stroom-query-api-$versions.stroomQuery",
-    stroomQueryCommon: "stroom-query-common-$versions.stroomQuery",
-    stroomExpression: "stroom-expression-$versions.stroomExpression"
-]
-
 //3rd Party libs
 ext.libs = [
+    //------Stroom-libs---------------
+    eventLogging: "event-logging:event-logging:$versions.eventLogging",
+    stroomExpression: "stroom:stroom-expression:$versions.stroomExpression",
+    stroomQueryApi: "stroom:stroom-query-api:$versions.stroomQuery",
+    stroomQueryCommon: "stroom:stroom-query-common:$versions.stroomQuery",
+    
+    //------------3rd-party------------
     assertj: "org.assertj:assertj-core:3.6.2",
     byte_buddy: "net.bytebuddy:byte-buddy:1.5.8",
     commons_lang: "commons-lang:commons-lang:2.6",
@@ -142,6 +159,8 @@ subprojects {
     repositories {
         jcenter()
         mavenLocal()
+        maven { url "https://dl.bintray.com/stroom/event-logging" }
+        maven { url "https://dl.bintray.com/stroom/stroom" }
 
         //Not currently using the cloudera hbase client as they don't publish a shaded version that can play nice
         //with dropwizard
@@ -152,6 +171,7 @@ subprojects {
 
     configurations {
         all {
+            //Ensure any transitive deps don't bring any logging implementations with them
             exclude group: "org.slf4j", module: "slf4j-log4j12"
             exclude group: "log4j", module: "log4j"
 
@@ -168,21 +188,9 @@ subprojects {
             }
         }
     }
-
-    //ensure we download our libs before compiling java
-    tasks.compileJava.dependsOn downloadUrlDependencies
 }
 
-urlDependencies {
-    libs "${libsDir}"
-    compile(urlLibs.stroomQueryApi,
-            "https://github.com/gchq/stroom-query/releases/download/$versions.stroomQuery/${urlLibs.stroomQueryApi}.jar")
-    compile(urlLibs.stroomQueryCommon,
-            "https://github.com/gchq/stroom-query/releases/download/$versions.stroomQuery/${urlLibs.stroomQueryCommon}.jar")
-    compile(urlLibs.stroomExpression,
-            "https://github.com/gchq/stroom-expression/releases/download/$versions.stroomExpression/${urlLibs.stroomExpression}.jar")
-}
-
+//TODO this all needs to go once stroom builds the jaxb from the schema
 project(':stroom-stats-schema') {
 
     publishing.publications {
@@ -208,7 +216,6 @@ project(':stroom-stats-schema') {
     task packageSources(type: Jar) {
         classifier = 'sources'
         from sourceSets.main.allSource
-
     }
     artifacts.archives packageSources
 }

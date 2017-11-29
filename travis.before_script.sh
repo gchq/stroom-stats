@@ -21,14 +21,6 @@ else
     # Increase the size of the heap
     export JAVA_OPTS=-Xmx1024m
 
-    echo "Clone build and publish our urlDependencies plugin"
-    mkdir -p ../git_work
-    pushd ../git_work
-    git clone https://github.com/gchq/urlDependencies-plugin.git
-    pushd urlDependencies-plugin
-    ./gradlew clean build publishToMavenLocal
-    popd
-
     #TODO commented out until we can work out how to get all the dockers running
     #inside travis without blowing it up.
     #echo "Clone our stroom-resources repo"
