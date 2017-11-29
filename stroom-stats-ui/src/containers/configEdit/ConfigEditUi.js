@@ -20,7 +20,7 @@ import { bindActionCreators } from 'redux'
 import { reduxForm } from 'redux-form'
 
 //import './ConfigEdit.css'
-import {saveChanges as onSubmit} from '../../modules/config'
+import {saveConfig as onSubmit} from '../../modules/config'
 
 export class ConfigEditUi extends Component {
 
