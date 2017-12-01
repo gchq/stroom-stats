@@ -5,7 +5,7 @@ set -e
 
 DOCKER_REPO="gchq/stroom-stats"
 GITHUB_REPO="gchq/stroom-stats"
-GITHUB_API_URL="https://api.github.com/repos/gchq/stroom/releases"
+GITHUB_API_URL="https://api.github.com/repos/gchq/stroom-stats/releases"
 DOCKER_CONTEXT_ROOT="docker/."
 FLOATING_TAG=""
 SPECIFIC_TAG=""
