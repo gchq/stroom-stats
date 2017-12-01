@@ -102,17 +102,23 @@ if [ "$TRAVIS_EVENT_TYPE" = "cron" ]; then
         createGitTag ${gitTag}
     fi
 else
-    #Do the gradle build
-    #TODO need to find a way of running the int tests that doesn't blow the memory limit
-    ./gradlew -Pversion=$TRAVIS_TAG clean build -x integrationTest
+    #Normal commit/PR/tag build
 
     if [ -n "$TRAVIS_TAG" ]; then
         SPECIFIC_TAG="--tag=${DOCKER_REPO}:${TRAVIS_TAG}"
         doDockerBuild=true
+
+        #add task for publishing libs to Bintray
+        EXTRA_BUILD_ARGS="bintrayUpload"
     elif [[ "$TRAVIS_BRANCH" =~ $BRANCH_WHITELIST_REGEX ]]; then
         FLOATING_TAG="--tag=${DOCKER_REPO}:${STROOM_STATS_VERSION}-SNAPSHOT"
         doDockerBuild=true
+        EXTRA_BUILD_ARGS=""
     fi
+
+    #Do the gradle build
+    #TODO need to find a way of running the int tests that doesn't blow the memory limit
+    ./gradlew -Pversion=$TRAVIS_TAG clean build -x integrationTest ${EXTRA_BUILD_ARGS}
 
     echo -e "SPECIFIC DOCKER TAG: [${GREEN}${SPECIFIC_TAG}${NC}]"
     echo -e "FLOATING DOCKER TAG: [${GREEN}${FLOATING_TAG}${NC}]"
