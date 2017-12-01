@@ -11,6 +11,7 @@ FLOATING_TAG=""
 SPECIFIC_TAG=""
 #This is a whitelist of branches to produce docker builds for
 BRANCH_WHITELIST_REGEX='(^dev$|^master$|^v[0-9].*$)'
+RELEASE_VERSION_REGEX='^v\d+\.\d+\.\d+.*$'
 CRON_TAG_SUFFIX="DAILY"
 doDockerBuild=false
 
@@ -97,23 +98,26 @@ if [ "$TRAVIS_EVENT_TYPE" = "cron" ]; then
         echo "The build will happen when travis picks up the tagged commit"
         #This is a cron triggered build so tag as -DAILY and push a tag to git
         DATE_ONLY="$(date +%Y%m%d)"
-        gitTag="${STROOM_STATS_VERSION}-${DATE_ONLY}-DAILY"
+        gitTag="${STROOM_STATS_VERSION}-${DATE_ONLY}-${CRON_TAG_SUFFIX}"
         
         createGitTag ${gitTag}
     fi
 else
     #Normal commit/PR/tag build
+    extraBuildArgs=""
 
     if [ -n "$TRAVIS_TAG" ]; then
         SPECIFIC_TAG="--tag=${DOCKER_REPO}:${TRAVIS_TAG}"
         doDockerBuild=true
 
-        #add task for publishing libs to Bintray
-        EXTRA_BUILD_ARGS="bintrayUpload"
+        if [[ "$TRAVIS_BRANCH" =~ ${RELEASE_VERSION_REGEX} ]]; then
+            echo "This is a release version so add gradle arg for publishing libs to Bintray"
+            extraBuildArgs="bintrayUpload"
+        fi
+            
     elif [[ "$TRAVIS_BRANCH" =~ $BRANCH_WHITELIST_REGEX ]]; then
         FLOATING_TAG="--tag=${DOCKER_REPO}:${STROOM_STATS_VERSION}-SNAPSHOT"
         doDockerBuild=true
-        EXTRA_BUILD_ARGS=""
     fi
 
     #Do the gradle build
@@ -123,6 +127,7 @@ else
     echo -e "SPECIFIC DOCKER TAG: [${GREEN}${SPECIFIC_TAG}${NC}]"
     echo -e "FLOATING DOCKER TAG: [${GREEN}${FLOATING_TAG}${NC}]"
     echo -e "doDockerBuild:       [${GREEN}${doDockerBuild}${NC}]"
+    echo -e "extraBuildArgs:      [${GREEN}${extraBuildArgs}${NC}]"
 
     #Don't do a docker build for pull requests
     if [ "$doDockerBuild" = true ] && [ "$TRAVIS_PULL_REQUEST" = "false" ] ; then
