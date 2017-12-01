@@ -5,11 +5,13 @@ set -e
 
 DOCKER_REPO="gchq/stroom-stats"
 GITHUB_REPO="gchq/stroom-stats"
+GITHUB_API_URL="https://api.github.com/repos/gchq/stroom/releases"
 DOCKER_CONTEXT_ROOT="docker/."
 FLOATING_TAG=""
 SPECIFIC_TAG=""
 #This is a whitelist of branches to produce docker builds for
 BRANCH_WHITELIST_REGEX='(^dev$|^master$|^v[0-9].*$)'
+CRON_TAG_SUFFIX="DAILY"
 doDockerBuild=false
 
 #Shell Colour constants for use in 'echo -e'
@@ -32,6 +34,45 @@ createGitTag() {
     git push -q https://$TAGPERM@github.com/${GITHUB_REPO} ${tagName}
 }
 
+isCronBuildRequired() {
+    #GH_USER_AND_TOKEN is set in env section of .travis.yml
+    if [ "${GH_USER_AND_TOKEN}x" = "x" ]; then 
+        #no token so do it unauthenticated
+        authArgs=""
+    else
+        echo "Using authentication with curl"
+        authArgs="--user ${GH_USER_AND_TOKEN}"
+    fi
+    #query the github api for the latest cron release tag name
+    #redirect stderr to dev/null to protect api token
+    latestTagName=$(curl -s ${authArgs} ${GITHUB_API_URL} | \
+        jq -r "[.[] | select(.tag_name | test(\"${TRAVIS_BRANCH}.*${CRON_TAG_SUFFIX}\"))][0].tag_name" 2>/dev/null)
+    echo -e "Latest release ${CRON_TAG_SUFFIX} tag: [${GREEN}${latestTagName}${NC}]"
+
+    true
+    if [ "${latestTagName}x" != "x" ]; then 
+        #Get the commit sha that this tag applies to (not the commit of the tag itself)
+        shaForTag=$(git rev-list -n 1 "${latestTagName}")
+        echo -e "SHA hash for tag ${latestTagName}: [${GREEN}${shaForTag}${NC}]"
+        if [ "${shaForTag}x" = "x" ]; then
+            echo -e "${RED}Unable to get sha for tag ${BLUE}${latestTagName}${NC}"
+            exit 1
+        else
+            if [ "${shaForTag}x" = "${TRAVIS_COMMIT}x" ]; then
+                echo -e "${RED}The commit of the build matches the latest ${CRON_TAG_SUFFIX} release.${NC}"
+                echo -e "${RED}Git will not be tagged and no release will be made.${NC}"
+                #The latest release has the same commit sha as the commit travis is building
+                #so don't bother creating a new tag as we don't want a new release
+                false
+            fi
+        fi
+    else
+        #no release found so return true so a build happens
+        true
+    fi
+    return
+}
+
 #establish what version of stroom-stats we are building
 if [ -n "$TRAVIS_TAG" ]; then
     STROOM_STATS_VERSION="${TRAVIS_TAG}"
@@ -51,12 +92,15 @@ echo -e "STROOM_STATS_VERSION: [${GREEN}${STROOM_STATS_VERSION}${NC}]"
 
 if [ "$TRAVIS_EVENT_TYPE" = "cron" ]; then
     echo "This is a cron build so just tag the commit and exit"
-    echo "The build will happen when travis picks up the tagged commit"
-    #This is a cron triggered build so tag as -DAILY and push a tag to git
-    DATE_ONLY="$(date +%Y%m%d)"
-    gitTag="${STROOM_STATS_VERSION}-${DATE_ONLY}-DAILY"
-    
-    createGitTag ${gitTag}
+
+    if isCronBuildRequired; then
+        echo "The build will happen when travis picks up the tagged commit"
+        #This is a cron triggered build so tag as -DAILY and push a tag to git
+        DATE_ONLY="$(date +%Y%m%d)"
+        gitTag="${STROOM_STATS_VERSION}-${DATE_ONLY}-DAILY"
+        
+        createGitTag ${gitTag}
+    fi
 else
     #Do the gradle build
     #TODO need to find a way of running the int tests that doesn't blow the memory limit
