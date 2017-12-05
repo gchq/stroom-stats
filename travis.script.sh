@@ -11,7 +11,7 @@ FLOATING_TAG=""
 SPECIFIC_TAG=""
 #This is a whitelist of branches to produce docker builds for
 BRANCH_WHITELIST_REGEX='(^dev$|^master$|^v[0-9].*$)'
-RELEASE_VERSION_REGEX='^v\d+\.\d+\.\d+.*$'
+RELEASE_VERSION_REGEX='^v[0-9]+\.[0-9]+\.[0-9].*$'
 CRON_TAG_SUFFIX="DAILY"
 doDockerBuild=false
 
@@ -92,7 +92,7 @@ echo -e "TRAVIS_EVENT_TYPE:    [${GREEN}${TRAVIS_EVENT_TYPE}${NC}]"
 echo -e "STROOM_STATS_VERSION: [${GREEN}${STROOM_STATS_VERSION}${NC}]"
 
 if [ "$TRAVIS_EVENT_TYPE" = "cron" ]; then
-    echo "This is a cron build so just tag the commit and exit"
+    echo "This is a cron build so just tag the commit (if required) and exit"
 
     if isCronBuildRequired; then
         echo "The build will happen when travis picks up the tagged commit"
