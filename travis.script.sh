@@ -110,6 +110,10 @@ curl -s ${authArgs} ${GITHUB_API_URL} | \
 echo -e "${RED}Outputting lates release:${NC}"
 curl -s ${authArgs} ${GITHUB_API_URL}/latest 
 
+latestTagName=$(curl -s ${authArgs} ${GITHUB_API_URL} | \
+    jq -r "[.[] | select(.tag_name | test(\"${TRAVIS_BRANCH}.*${CRON_TAG_SUFFIX}\"))][0].tag_name" 2>/dev/null)
+echo -e "Latest release ${CRON_TAG_SUFFIX} tag: [${GREEN}${latestTagName}${NC}]"
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
