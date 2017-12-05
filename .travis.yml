@@ -2,7 +2,7 @@
 language: java
 dist: trusty
 group: edge
-jdk: oraclejdk8
+jdk: openjdk8
 #this is needed for using the docker daemon
 sudo: required
 
