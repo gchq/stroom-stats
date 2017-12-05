@@ -91,6 +91,28 @@ echo -e "TRAVIS_PULL_REQUEST:  [${GREEN}${TRAVIS_PULL_REQUEST}${NC}]"
 echo -e "TRAVIS_EVENT_TYPE:    [${GREEN}${TRAVIS_EVENT_TYPE}${NC}]"
 echo -e "STROOM_STATS_VERSION: [${GREEN}${STROOM_STATS_VERSION}${NC}]"
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#TODO temporary code for debugging
+
+if [ "${GH_USER_AND_TOKEN}x" = "x" ]; then 
+    #no token so do it unauthenticated
+    authArgs=""
+else
+    echo "Using authentication with curl"
+    authArgs="--user ${GH_USER_AND_TOKEN}"
+fi
+#query the github api for the latest cron release tag name
+#redirect stderr to dev/null to protect api token
+echo -e "${RED}Outputting all release tags:${NC}"
+curl -s ${authArgs} ${GITHUB_API_URL} | \
+    jq -r "[.[] | select(.tag_name | test(\"${TRAVIS_BRANCH}.*${CRON_TAG_SUFFIX}\"))][].tag_name" 2>/dev/null
+
+echo -e "${RED}Outputting lates release:${NC}"
+curl -s ${authArgs} ${GITHUB_API_URL}/latest 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 if [ "$TRAVIS_EVENT_TYPE" = "cron" ]; then
     echo "This is a cron build so just tag the commit (if required) and exit"
 
