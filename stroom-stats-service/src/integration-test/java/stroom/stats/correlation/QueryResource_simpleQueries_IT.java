@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import stroom.query.api.v2.DocRef;
 import stroom.query.api.v2.ExpressionOperator;
 import stroom.query.api.v2.ExpressionTerm;
-import stroom.query.api.v2.FieldBuilder;
+import stroom.query.api.v2.Field;
 import stroom.query.api.v2.FlatResult;
 import stroom.query.api.v2.Query;
 import stroom.query.api.v2.QueryKey;
@@ -16,7 +16,6 @@ import stroom.query.api.v2.ResultRequest;
 import stroom.query.api.v2.SearchRequest;
 import stroom.query.api.v2.SearchResponse;
 import stroom.query.api.v2.TableSettings;
-import stroom.query.api.v2.TableSettingsBuilder;
 import stroom.stats.AbstractAppIT;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
@@ -199,10 +198,16 @@ public class QueryResource_simpleQueries_IT extends AbstractAppIT {
                         timeConstraint)
         );
 
-        TableSettings tableSettings = new TableSettingsBuilder()
-                .fields(Arrays.asList(
-                    new FieldBuilder().name(USER_TAG).expression("${" + USER_TAG + "}").build(),
-                    new FieldBuilder().name(DOOR_TAG).expression("${" + DOOR_TAG + "}").build()))
+        TableSettings tableSettings = new TableSettings.Builder()
+                .addFields(Arrays.asList(
+                    new Field.Builder()
+                            .name(USER_TAG)
+                            .expression("${" + USER_TAG + "}")
+                            .build(),
+                    new Field.Builder()
+                            .name(DOOR_TAG)
+                            .expression("${" + DOOR_TAG + "}")
+                            .build()))
                 . build();
 
         ResultRequest resultRequest = new ResultRequest("mainResult", tableSettings);

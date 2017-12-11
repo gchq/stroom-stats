@@ -1,6 +1,4 @@
-plugins {
-    id 'com.github.johnrengelman.shadow' version '1.2.3'
-}
+apply plugin: 'com.github.johnrengelman.shadow' 
 
 dependencies {
 
@@ -35,10 +33,3 @@ dependencies {
     testCompile libs.junit
     testCompile libs.assertj
 }
-
-
-//shadowJar {
-   //exclude 'org.slf4j.*'
-   //exclude 'log4j.*'
-   //exclude 'ch.qos.logback.*'
-//}

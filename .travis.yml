@@ -2,26 +2,22 @@
 language: java
 dist: trusty
 group: edge
-services:
-  - docker
-jdk: oraclejdk8
+jdk: openjdk8
 #this is needed for using the docker daemon
 sudo: required
 
-# Increase the size of the heap, use urlDependencies plugin from cache
-before_script:
-  - "echo $JAVA_OPTS"
-  - "export JAVA_OPTS=-Xmx1024m"
-  - "git clone https://github.com/gchq/urlDependencies-plugin.git"
-  - "pushd urlDependencies-plugin"
-  - "./gradlew clean build publishToMavenLocal"
-  - "popd"
-  - "git clone https://github.com/gchq/stroom-resources.git"
-  - "pushd stroom-resources/dev-resources/compose"
-  #- "docker-compose -f hbase-kafka-mysql-stroom-zk.yml up -d"
-  - "popd"
+env:
+  global:
+    # $TAGPERM environment variable
+    # generate a token at https://github.com/settings/tokens and encrypt it
+    # with `travis encrypt TAGPERM=<yoursecrettoken>`
+    # also see: https://docs.travis-ci.com/user/encryption-keys/#Usage
+    # and: https://docs.travis-ci.com/user/best-practices-security/
+    - secure: "eEYzUNi44hdz7dfoLaJrajAEQNVqFoOnuBQvsUJkQlIciQp+69wJ4dFZOzsOrcDILwU11s05YbSqkQ3zGqkQfIRlwO45yHLvmjgPyk3DUxgF3fJytlCBxU90iZKQNBfhbgooXbpYpHLv6OHxU9JYQLeVY6LiY+4POPzfDqOIvCqFaJHNkM54TUtVMWI4lGHN1pNco98vlnrXOscyVLre8Of6X7skGlKt5v8im777wgaTQiF04HawUFSdUfEIBkSMyE76TCS9ifeNvg9ro6XwTZiiMfchavdPTQtj8+VvSoCIghuPdx7nGENuEKtwqwPHKdjNMA1ApX5wG8M2/sQG3ZmIorXk+oj/27RO7LkEcV3A9Uu1XqQAWE79PlHQQzuPZ9YNBuN5zYtOeHhqvpDkd48XjD79IZB7TqC8yI8Pzx6TV+1PVqfF3nncsUcv+2/HN5jjLMiogqynI//Mb2mrb5QZsZmxEZpi6P+tKuFNmm7+TyDYBRkT1YgEvW4Mzjemp0PufzdBr4Yo/ATOhfZw+xFhjeo6dWrb6+0qDcZB5aNVNB8LR48Hox/VCQJh4Eic59J7GEnqfDv1cX5/lwClJW1HrFPlptVm7EHRXZgw9cA1VNNGvG8qDERRjk1Jd/3cv/Sh3Pyfc5joNOjmKWiPNCoUciRcaz0cYLBjuznNq3c=" 
 
 install: echo "skip 'gradle assemble' step to speed up build"
+
+before_script: ./travis.before_script.sh
 
 # We need to run shadowJar otherwise we won't be able to publish to DockerHub
 script: ./travis.script.sh

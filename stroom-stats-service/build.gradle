@@ -1,8 +1,5 @@
-plugins {
-    //errorprone plugin relies on guava 21 and will not work on guava 20
-    id "net.ltgt.errorprone" version "0.0.10" 
-    id 'com.github.johnrengelman.shadow' version '1.2.3'
-}
+apply plugin: 'com.github.johnrengelman.shadow' 
+apply plugin: 'net.ltgt.errorprone' 
 
 def jarName = "stroom-stats-service-${version}.jar"
 def fatJarName = "stroom-stats-all-${version}.jar"
@@ -12,7 +9,7 @@ apply plugin: 'application'
 mainClassName = 'stroom.stats.service.startup.App'
 
 dependencies {
-    //Project dependencies
+    //--------Project----------
     compile project(':stroom-stats-schema')
     permitUnusedDeclared project(':stroom-stats-schema') //not clear why it thinks this is unused
     compile project(':stroom-stats-hbase-client')
@@ -22,13 +19,12 @@ dependencies {
     // TODO: add HBase-client dependency here, be sure to include the 'all' classifier
     //compile 'stroom:stats:1.0-SNAPSHOT:all'
 
-    //Non-project stroom dependencies
-    //compile 'stroom:stroom-query-api:5.0-beta.9-SNAPSHOT'
-    compile urlDependencies.get(urlLibs.stroomQueryApi)
-    compile urlDependencies.get(urlLibs.stroomQueryCommon)
-    compile urlDependencies.get(urlLibs.stroomExpression)
+    //--------Stroom libs------
+    compile libs.stroomQueryApi
+    compile libs.stroomQueryCommon
+    compile libs.stroomExpression
 
-    //Third party dependencies
+    //--------3rd party--------
     compile libs.curator_client
     compile libs.curator_framework
     compile libs.curator_recipies
@@ -68,7 +64,7 @@ dependencies {
     compile libs.logback_classic
     compile libs.objenesis //used for Kryo strategies
     compile libs.slf4j_api
-    permitUnusedDeclared libs.swagger_annotations //Needed for query api urlLib
+    permitUnusedDeclared libs.swagger_annotations //Needed for stroom-query-api 
     compile libs.swagger_annotations
     compile libs.xml_apis
     compile libs.zookeeper

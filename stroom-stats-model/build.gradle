@@ -1,8 +1,6 @@
-
 dependencies {
     compile project(':stroom-stats-util')
 
-    compile urlDependencies.get(urlLibs.stroomQueryApi)
     compile libs.guava
     compile libs.hbase_shaded_client
     compile libs.find_bugs

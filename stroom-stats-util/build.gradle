@@ -1,4 +1,3 @@
-
 dependencies {
     compile libs.dropwizard_metrics_healthchecks
     compile libs.guava

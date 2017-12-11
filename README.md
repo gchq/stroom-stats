@@ -8,13 +8,13 @@ Stroom-Stats is currently work in progress and not in a usable state. More detai
 
 ```bash
 #runs all unit and integration tests - requires docker containers to be running (see below)
-./gradlew clean downloadUrlDependencies build shadowJar
+./gradlew clean build shadowJar
 
 #runs only unit tests, no docker containers required
-./gradlew clean downloadUrlDependencies build -x integrationTest
+./gradlew clean build -x integrationTest
 
 #Run a full build producing fat jars with a specified version number
-./gradlew -Pversion=v1.2.3 clean downloadUrlDependencies build -x test -x integrationTest shadowJar
+./gradlew -Pversion=v1.2.3 clean build -x test -x integrationTest shadowJar
 ```
 
 ## Running
@@ -32,7 +32,7 @@ The logging level can be changed at runtime by executing something similar to th
 http -f POST http://localhost:8087/tasks/log-level logger=stroom.stats.StatisticsStore level=DEBUG
 ```
 
-(Where `8087` is the admin port)
+Where `8087` is the admin port.
 
 Active logging levels can be viewed on the health check page [http://localhost:8087/healthcheck](http://localhost:8087/healthcheck) (where 8087 is the admin port) under the `stroom.stats.logging.LogLevelInspector` section.
 
@@ -63,3 +63,7 @@ git clone https://github.com/gchq/stroom-resources.git
 cd stroom-resources/bin
 ./bouncceIt.sh hbase-kafka-mysql-stroom-zk.yml
 ```
+
+## Licence
+
+Stroom-Stats is licensed under [LGPL-v3](LICENSE.md), however the stroom-stats-schema module and associated published library is entirely auto-generated from an XML Schema hosted by [stroom-content](https://github.com/gchq/stroom-content). This XML Schema and the stroom-stats-schema library are licensed under the _Apache License, Version 2.0_.
