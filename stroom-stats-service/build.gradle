@@ -76,6 +76,8 @@ dependencies {
 
     testCompile libs.hamcrest_core
     testCompile libs.assertj
+    permitTestUnusedDeclared libs.jose4j
+    testCompile libs.jose4j
     testCompile libs.junit
 
     //deps for integrationTest
