@@ -25,7 +25,7 @@ import stroom.stats.api.model.Result;
  * The response to a search request, that may or may not contain results. The results may only be a partial set if an iterative screech was requested
  */
 @ApiModel(description = "The response to a search request, that may or may not contain results. The results may only be a partial set if an iterative screech was requested")
-@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T09:26:40.688Z")
+@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T13:37:48.590Z")
 public class SearchResponse {
   @SerializedName("highlights")
   private List<String> highlights = new ArrayList<String>();

@@ -17,40 +17,32 @@ import java.util.Objects;
 import com.google.gson.annotations.SerializedName;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
-import java.util.ArrayList;
-import java.util.List;
-import stroom.stats.api.model.DataSourceField;
 
 /**
- * The definition of a data source, describing the fields available
+ * A unique key to identify the instance of the search by. This key is used to identify multiple requests for the same search when running in incremental mode.
  */
-@ApiModel(description = "The definition of a data source, describing the fields available")
+@ApiModel(description = "A unique key to identify the instance of the search by. This key is used to identify multiple requests for the same search when running in incremental mode.")
 @javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T13:37:48.590Z")
-public class DataSource {
-  @SerializedName("fields")
-  private List<DataSourceField> fields = new ArrayList<DataSourceField>();
+public class QueryKey {
+  @SerializedName("uuid")
+  private String uuid = null;
 
-  public DataSource fields(List<DataSourceField> fields) {
-    this.fields = fields;
-    return this;
-  }
-
-  public DataSource addFieldsItem(DataSourceField fieldsItem) {
-    this.fields.add(fieldsItem);
+  public QueryKey uuid(String uuid) {
+    this.uuid = uuid;
     return this;
   }
 
    /**
-   * Get fields
-   * @return fields
+   * The UUID that makes up the query key
+   * @return uuid
   **/
-  @ApiModelProperty(example = "null", required = true, value = "")
-  public List<DataSourceField> getFields() {
-    return fields;
+  @ApiModelProperty(example = "7740bcd0-a49e-4c22-8540-044f85770716", required = true, value = "The UUID that makes up the query key")
+  public String getUuid() {
+    return uuid;
   }
 
-  public void setFields(List<DataSourceField> fields) {
-    this.fields = fields;
+  public void setUuid(String uuid) {
+    this.uuid = uuid;
   }
 
 
@@ -62,22 +54,22 @@ public class DataSource {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DataSource dataSource = (DataSource) o;
-    return Objects.equals(this.fields, dataSource.fields);
+    QueryKey queryKey = (QueryKey) o;
+    return Objects.equals(this.uuid, queryKey.uuid);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fields);
+    return Objects.hash(uuid);
   }
 
 
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("class DataSource {\n");
+    sb.append("class QueryKey {\n");
     
-    sb.append("    fields: ").append(toIndentedString(fields)).append("\n");
+    sb.append("    uuid: ").append(toIndentedString(uuid)).append("\n");
     sb.append("}");
     return sb.toString();
   }

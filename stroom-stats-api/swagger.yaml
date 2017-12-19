@@ -29,7 +29,13 @@ paths:
       - "application/json"
       produces:
       - "application/json"
-      parameters: []
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "docRef"
+        required: false
+        schema:
+          $ref: "#/definitions/DocRef"
       responses:
         200:
           description: "successful operation"
@@ -46,7 +52,13 @@ paths:
       - "application/json"
       produces:
       - "application/json"
-      parameters: []
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "searchRequest"
+        required: false
+        schema:
+          $ref: "#/definitions/SearchRequest"
       responses:
         200:
           description: "successful operation"
@@ -126,6 +138,102 @@ definitions:
       timeZone:
         $ref: "#/definitions/TimeZone"
     description: "The string formatting to apply to a date value"
+  DocRef:
+    type: "object"
+    required:
+    - "name"
+    - "type"
+    - "uuid"
+    properties:
+      type:
+        type: "string"
+        example: "StroomStatsStore"
+        description: "The type of the 'document' that this DocRef refers to"
+      id:
+        type: "integer"
+        format: "int64"
+        description: "DEPRECATED"
+      uuid:
+        type: "string"
+        example: "9f6184b4-bd78-48bc-b0cd-6e51a357f6a6"
+        description: "The unique identifier for this 'document'"
+      name:
+        type: "string"
+        example: "MyStatistic"
+        description: "The name for the data source"
+    description: "The query terms for the search"
+    xml:
+      name: "doc"
+  ExpressionItem:
+    type: "object"
+    required:
+    - "enabled"
+    discriminator: "type"
+    properties:
+      enabled:
+        type: "boolean"
+        example: true
+        description: "Whether this item in the expression tree is enabled or not"
+    description: "Base type for an item in an expression tree"
+  ExpressionOperator:
+    type: "object"
+    required:
+    - "enabled"
+    - "op"
+    properties:
+      op:
+        type: "string"
+        description: "The logical addOperator type"
+        enum:
+        - "AND"
+        - "OR"
+        - "NOT"
+      children:
+        type: "array"
+        xml:
+          wrapped: true
+        items:
+          $ref: "#/definitions/ExpressionItem"
+      enabled:
+        type: "boolean"
+        example: true
+        description: "Whether this item in the expression tree is enabled or not"
+    description: "A logical addOperator term in a query expression tree"
+  ExpressionTerm:
+    allOf:
+    - $ref: "#/definitions/ExpressionItem"
+    - type: "object"
+      required:
+      - "condition"
+      - "dictionary"
+      - "field"
+      properties:
+        field:
+          type: "string"
+          description: "The name of the field that is being evaluated in this predicate\
+            \ term"
+        condition:
+          type: "string"
+          description: "The condition of the predicate term"
+          enum:
+          - "CONTAINS"
+          - "EQUALS"
+          - "GREATER_THAN"
+          - "GREATER_THAN_OR_EQUAL_TO"
+          - "LESS_THAN"
+          - "LESS_THAN_OR_EQUAL_TO"
+          - "BETWEEN"
+          - "IN"
+          - "IN_DICTIONARY"
+        value:
+          type: "string"
+          description: "The value that the field value is being evaluated against.\
+            \ Not required if a dictionary is supplied"
+        dictionary:
+          description: "The DocRef for the dictionary that this predicate is using\
+            \ for its evaluation"
+          $ref: "#/definitions/DocRef"
+      description: "A predicate term in a query expression tree"
   Field:
     type: "object"
     required:
@@ -240,6 +348,55 @@ definitions:
         description: "The length in records of the sub-set of results"
     description: "The offset and length of a range of data in a sub-set of a query\
       \ result set"
+  Param:
+    type: "object"
+    required:
+    - "key"
+    - "value"
+    properties:
+      key:
+        type: "string"
+        description: "The property key"
+      value:
+        type: "string"
+        description: "The property value"
+    description: "A key value pair that describes a property of a query"
+  Query:
+    type: "object"
+    required:
+    - "dataSource"
+    - "expression"
+    properties:
+      dataSource:
+        $ref: "#/definitions/DocRef"
+      expression:
+        description: "The root logical operator in the query expression tree"
+        $ref: "#/definitions/ExpressionOperator"
+      params:
+        type: "array"
+        xml:
+          wrapped: true
+        description: "A list of key/value pairs that provide additional information\
+          \ about the query"
+        items:
+          xml:
+            name: "param"
+          $ref: "#/definitions/Param"
+    description: "The query terms for the search"
+    xml:
+      name: "query"
+  QueryKey:
+    type: "object"
+    required:
+    - "uuid"
+    properties:
+      uuid:
+        type: "string"
+        example: "7740bcd0-a49e-4c22-8540-044f85770716"
+        description: "The UUID that makes up the query key"
+    description: "A unique key to identify the instance of the search by. This key\
+      \ is used to identify multiple requests for the same search when running in\
+      \ incremental mode."
   Result:
     type: "object"
     required:
@@ -255,6 +412,56 @@ definitions:
         description: "If an error has occurred producing this result set then this\
           \ will have details of the error"
     description: "Base object for describing a set of result data"
+  ResultRequest:
+    type: "object"
+    required:
+    - "componentId"
+    - "mappings"
+    - "openGroups"
+    - "requestedRange"
+    - "resultStyle"
+    properties:
+      componentId:
+        type: "string"
+        description: "The ID of the component that will receive the results corresponding\
+          \ to this ResultRequest"
+      mappings:
+        type: "array"
+        xml:
+          wrapped: true
+        items:
+          xml:
+            name: "mappings"
+          $ref: "#/definitions/TableSettings"
+      requestedRange:
+        $ref: "#/definitions/OffsetRange"
+      openGroups:
+        type: "array"
+        xml:
+          wrapped: true
+        description: "TODO"
+        items:
+          type: "string"
+          xml:
+            name: "key"
+      resultStyle:
+        type: "string"
+        description: "The style of results required. FLAT will provide a FlatResult\
+          \ object, while TABLE will provide a TableResult object"
+        enum:
+        - "FLAT"
+        - "TABLE"
+      fetch:
+        type: "string"
+        description: "The fetch mode for the query. NONE means fetch no data, ALL\
+          \ means fetch all known results, CHANGES means fetch only those records\
+          \ not see in previous requests"
+        enum:
+        - "NONE"
+        - "CHANGES"
+        - "ALL"
+    description: "A definition for how to return the raw results of the query in the\
+      \ SearchResponse, e.g. sorted, grouped, limited, etc."
   Row:
     type: "object"
     required:
@@ -282,6 +489,42 @@ definitions:
         description: "The grouping depth, where 0 is the top level of grouping, or\
           \ where there is no grouping"
     description: "A row of data in a result set"
+  SearchRequest:
+    type: "object"
+    required:
+    - "dateTimeLocale"
+    - "incremental"
+    - "key"
+    - "query"
+    - "resultRequests"
+    properties:
+      key:
+        $ref: "#/definitions/QueryKey"
+      query:
+        $ref: "#/definitions/Query"
+      resultRequests:
+        type: "array"
+        xml:
+          wrapped: true
+        items:
+          xml:
+            name: "resultRequest"
+          $ref: "#/definitions/ResultRequest"
+      dateTimeLocale:
+        type: "string"
+        description: "The locale to use when formatting date values in the search\
+          \ results. The value is the string form of a java.time.ZoneId"
+      incremental:
+        type: "boolean"
+        description: "If true the response will contain all results found so far.\
+          \ Future requests for the same query key may return more results. Intended\
+          \ for use on longer running searches to allow partial result sets to be\
+          \ returned as soon as they are available rather than waiting for the full\
+          \ result set."
+    description: "A request for new search or a follow up request for more data for\
+      \ an existing iterative search"
+    xml:
+      name: "searchRequest"
   SearchResponse:
     type: "object"
     required:
@@ -359,6 +602,51 @@ definitions:
           description: "The total number of results in this result set"
       description: "Object for describing a set of results in a table form that supports\
         \ grouped data"
+  TableSettings:
+    type: "object"
+    required:
+    - "fields"
+    - "queryId"
+    properties:
+      queryId:
+        type: "string"
+        description: "TODO"
+      fields:
+        type: "array"
+        xml:
+          wrapped: true
+        items:
+          xml:
+            name: "field"
+          $ref: "#/definitions/Field"
+      extractValues:
+        type: "boolean"
+        description: "TODO"
+      extractionPipeline:
+        $ref: "#/definitions/DocRef"
+      maxResults:
+        type: "array"
+        example: "1000,10,1"
+        xml:
+          wrapped: true
+        description: "Defines the maximum number of results to return at each grouping\
+          \ level, e.g. '1000,10,1' means 1000 results at group level 0, 10 at level\
+          \ 1 and 1 at level 2. In the absence of this field system defaults will\
+          \ apply"
+        items:
+          type: "integer"
+          format: "int32"
+          xml:
+            name: "val"
+      showDetail:
+        type: "boolean"
+        description: "When grouping is used a value of true indicates that the results\
+          \ will include the full detail of any results aggregated into a group as\
+          \ well as their aggregates. A value of false will only include the aggregated\
+          \ values for each group. Defaults to false."
+    description: "An object to describe how the query results should be returned,\
+      \ including which fields should be included and what sorting, grouping, filtering,\
+      \ limiting, etc. should be applied"
   TimeZone:
     type: "object"
     required:

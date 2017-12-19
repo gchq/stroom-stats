@@ -28,6 +28,8 @@ import java.io.IOException;
 
 
 import stroom.stats.api.model.DataSource;
+import stroom.stats.api.model.DocRef;
+import stroom.stats.api.model.SearchRequest;
 import stroom.stats.api.model.SearchResponse;
 
 import java.lang.reflect.Type;
@@ -56,8 +58,8 @@ public class QueryApi {
     }
 
     /* Build call for getDataSource */
-    private com.squareup.okhttp.Call getDataSourceCall(final ProgressResponseBody.ProgressListener progressListener, final ProgressRequestBody.ProgressRequestListener progressRequestListener) throws ApiException {
-        Object localVarPostBody = null;
+    private com.squareup.okhttp.Call getDataSourceCall(DocRef body, final ProgressResponseBody.ProgressListener progressListener, final ProgressRequestBody.ProgressRequestListener progressRequestListener) throws ApiException {
+        Object localVarPostBody = body;
         
         // create path and map variables
         String localVarPath = "/api/stroom-stats/v2/dataSource".replaceAll("\\{format\\}","json");
@@ -97,10 +99,10 @@ public class QueryApi {
     }
     
     @SuppressWarnings("rawtypes")
-    private com.squareup.okhttp.Call getDataSourceValidateBeforeCall(final ProgressResponseBody.ProgressListener progressListener, final ProgressRequestBody.ProgressRequestListener progressRequestListener) throws ApiException {
+    private com.squareup.okhttp.Call getDataSourceValidateBeforeCall(DocRef body, final ProgressResponseBody.ProgressListener progressListener, final ProgressRequestBody.ProgressRequestListener progressRequestListener) throws ApiException {
         
         
-        com.squareup.okhttp.Call call = getDataSourceCall(progressListener, progressRequestListener);
+        com.squareup.okhttp.Call call = getDataSourceCall(body, progressListener, progressRequestListener);
         return call;
 
         
@@ -112,22 +114,24 @@ public class QueryApi {
     /**
      * Get data source for a DocRef
      * 
+     * @param body docRef (optional)
      * @return DataSource
      * @throws ApiException If fail to call the API, e.g. server error or cannot deserialize the response body
      */
-    public DataSource getDataSource() throws ApiException {
-        ApiResponse<DataSource> resp = getDataSourceWithHttpInfo();
+    public DataSource getDataSource(DocRef body) throws ApiException {
+        ApiResponse<DataSource> resp = getDataSourceWithHttpInfo(body);
         return resp.getData();
     }
 
     /**
      * Get data source for a DocRef
      * 
+     * @param body docRef (optional)
      * @return ApiResponse&lt;DataSource&gt;
      * @throws ApiException If fail to call the API, e.g. server error or cannot deserialize the response body
      */
-    public ApiResponse<DataSource> getDataSourceWithHttpInfo() throws ApiException {
-        com.squareup.okhttp.Call call = getDataSourceValidateBeforeCall(null, null);
+    public ApiResponse<DataSource> getDataSourceWithHttpInfo(DocRef body) throws ApiException {
+        com.squareup.okhttp.Call call = getDataSourceValidateBeforeCall(body, null, null);
         Type localVarReturnType = new TypeToken<DataSource>(){}.getType();
         return apiClient.execute(call, localVarReturnType);
     }
@@ -135,11 +139,12 @@ public class QueryApi {
     /**
      * Get data source for a DocRef (asynchronously)
      * 
+     * @param body docRef (optional)
      * @param callback The callback to be executed when the API call finishes
      * @return The request call
      * @throws ApiException If fail to process the API call, e.g. serializing the request body object
      */
-    public com.squareup.okhttp.Call getDataSourceAsync(final ApiCallback<DataSource> callback) throws ApiException {
+    public com.squareup.okhttp.Call getDataSourceAsync(DocRef body, final ApiCallback<DataSource> callback) throws ApiException {
 
         ProgressResponseBody.ProgressListener progressListener = null;
         ProgressRequestBody.ProgressRequestListener progressRequestListener = null;
@@ -160,14 +165,14 @@ public class QueryApi {
             };
         }
 
-        com.squareup.okhttp.Call call = getDataSourceValidateBeforeCall(progressListener, progressRequestListener);
+        com.squareup.okhttp.Call call = getDataSourceValidateBeforeCall(body, progressListener, progressRequestListener);
         Type localVarReturnType = new TypeToken<DataSource>(){}.getType();
         apiClient.executeAsync(call, localVarReturnType, callback);
         return call;
     }
     /* Build call for search */
-    private com.squareup.okhttp.Call searchCall(final ProgressResponseBody.ProgressListener progressListener, final ProgressRequestBody.ProgressRequestListener progressRequestListener) throws ApiException {
-        Object localVarPostBody = null;
+    private com.squareup.okhttp.Call searchCall(SearchRequest body, final ProgressResponseBody.ProgressListener progressListener, final ProgressRequestBody.ProgressRequestListener progressRequestListener) throws ApiException {
+        Object localVarPostBody = body;
         
         // create path and map variables
         String localVarPath = "/api/stroom-stats/v2/search".replaceAll("\\{format\\}","json");
@@ -207,10 +212,10 @@ public class QueryApi {
     }
     
     @SuppressWarnings("rawtypes")
-    private com.squareup.okhttp.Call searchValidateBeforeCall(final ProgressResponseBody.ProgressListener progressListener, final ProgressRequestBody.ProgressRequestListener progressRequestListener) throws ApiException {
+    private com.squareup.okhttp.Call searchValidateBeforeCall(SearchRequest body, final ProgressResponseBody.ProgressListener progressListener, final ProgressRequestBody.ProgressRequestListener progressRequestListener) throws ApiException {
         
         
-        com.squareup.okhttp.Call call = searchCall(progressListener, progressRequestListener);
+        com.squareup.okhttp.Call call = searchCall(body, progressListener, progressRequestListener);
         return call;
 
         
@@ -222,22 +227,24 @@ public class QueryApi {
     /**
      * Execute a stats search
      * 
+     * @param body searchRequest (optional)
      * @return SearchResponse
      * @throws ApiException If fail to call the API, e.g. server error or cannot deserialize the response body
      */
-    public SearchResponse search() throws ApiException {
-        ApiResponse<SearchResponse> resp = searchWithHttpInfo();
+    public SearchResponse search(SearchRequest body) throws ApiException {
+        ApiResponse<SearchResponse> resp = searchWithHttpInfo(body);
         return resp.getData();
     }
 
     /**
      * Execute a stats search
      * 
+     * @param body searchRequest (optional)
      * @return ApiResponse&lt;SearchResponse&gt;
      * @throws ApiException If fail to call the API, e.g. server error or cannot deserialize the response body
      */
-    public ApiResponse<SearchResponse> searchWithHttpInfo() throws ApiException {
-        com.squareup.okhttp.Call call = searchValidateBeforeCall(null, null);
+    public ApiResponse<SearchResponse> searchWithHttpInfo(SearchRequest body) throws ApiException {
+        com.squareup.okhttp.Call call = searchValidateBeforeCall(body, null, null);
         Type localVarReturnType = new TypeToken<SearchResponse>(){}.getType();
         return apiClient.execute(call, localVarReturnType);
     }
@@ -245,11 +252,12 @@ public class QueryApi {
     /**
      * Execute a stats search (asynchronously)
      * 
+     * @param body searchRequest (optional)
      * @param callback The callback to be executed when the API call finishes
      * @return The request call
      * @throws ApiException If fail to process the API call, e.g. serializing the request body object
      */
-    public com.squareup.okhttp.Call searchAsync(final ApiCallback<SearchResponse> callback) throws ApiException {
+    public com.squareup.okhttp.Call searchAsync(SearchRequest body, final ApiCallback<SearchResponse> callback) throws ApiException {
 
         ProgressResponseBody.ProgressListener progressListener = null;
         ProgressRequestBody.ProgressRequestListener progressRequestListener = null;
@@ -270,7 +278,7 @@ public class QueryApi {
             };
         }
 
-        com.squareup.okhttp.Call call = searchValidateBeforeCall(progressListener, progressRequestListener);
+        com.squareup.okhttp.Call call = searchValidateBeforeCall(body, progressListener, progressRequestListener);
         Type localVarReturnType = new TypeToken<SearchResponse>(){}.getType();
         apiClient.executeAsync(call, localVarReturnType, callback);
         return call;

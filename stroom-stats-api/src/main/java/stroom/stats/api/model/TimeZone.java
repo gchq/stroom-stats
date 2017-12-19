@@ -22,7 +22,7 @@ import io.swagger.annotations.ApiModelProperty;
  * The timezone to apply to a date time value
  */
 @ApiModel(description = "The timezone to apply to a date time value")
-@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T09:26:40.688Z")
+@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T13:37:48.590Z")
 public class TimeZone {
   /**
    * The required type of time zone

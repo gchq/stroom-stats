@@ -17,40 +17,33 @@ import java.util.Objects;
 import com.google.gson.annotations.SerializedName;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
-import java.util.ArrayList;
-import java.util.List;
-import stroom.stats.api.model.DataSourceField;
 
 /**
- * The definition of a data source, describing the fields available
+ * Base type for an item in an expression tree
  */
-@ApiModel(description = "The definition of a data source, describing the fields available")
+@ApiModel(description = "Base type for an item in an expression tree")
 @javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T13:37:48.590Z")
-public class DataSource {
-  @SerializedName("fields")
-  private List<DataSourceField> fields = new ArrayList<DataSourceField>();
 
-  public DataSource fields(List<DataSourceField> fields) {
-    this.fields = fields;
-    return this;
-  }
+public class ExpressionItem {
+  @SerializedName("enabled")
+  private Boolean enabled = null;
 
-  public DataSource addFieldsItem(DataSourceField fieldsItem) {
-    this.fields.add(fieldsItem);
+  public ExpressionItem enabled(Boolean enabled) {
+    this.enabled = enabled;
     return this;
   }
 
    /**
-   * Get fields
-   * @return fields
+   * Whether this item in the expression tree is enabled or not
+   * @return enabled
   **/
-  @ApiModelProperty(example = "null", required = true, value = "")
-  public List<DataSourceField> getFields() {
-    return fields;
+  @ApiModelProperty(example = "true", required = true, value = "Whether this item in the expression tree is enabled or not")
+  public Boolean getEnabled() {
+    return enabled;
   }
 
-  public void setFields(List<DataSourceField> fields) {
-    this.fields = fields;
+  public void setEnabled(Boolean enabled) {
+    this.enabled = enabled;
   }
 
 
@@ -62,22 +55,22 @@ public class DataSource {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DataSource dataSource = (DataSource) o;
-    return Objects.equals(this.fields, dataSource.fields);
+    ExpressionItem expressionItem = (ExpressionItem) o;
+    return Objects.equals(this.enabled, expressionItem.enabled);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fields);
+    return Objects.hash(enabled);
   }
 
 
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("class DataSource {\n");
+    sb.append("class ExpressionItem {\n");
     
-    sb.append("    fields: ").append(toIndentedString(fields)).append("\n");
+    sb.append("    enabled: ").append(toIndentedString(enabled)).append("\n");
     sb.append("}");
     return sb.toString();
   }

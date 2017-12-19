@@ -25,6 +25,7 @@ import io.dropwizard.auth.Auth;
 import io.dropwizard.hibernate.UnitOfWork;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientResponse;
 import org.slf4j.Logger;
@@ -45,6 +46,7 @@ import stroom.stats.util.healthchecks.HasHealthCheck;
 
 import javax.inject.Inject;
 import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -113,7 +115,9 @@ public class QueryResource implements HasHealthCheck {
     @Produces(MediaType.APPLICATION_JSON)
     @Path(DATA_SOURCE_ENDPOINT)
     @Timed
-    public Response getDataSource(@Auth User user, @Valid final DocRef docRef) {
+    public Response getDataSource(
+            @Auth User user,
+            @ApiParam("docRef") @NotNull @Valid final DocRef docRef) {
 //    public Response getDataSource(@Valid final DocRef docRef) {
 
         return performWithAuthorisation(user,
@@ -134,7 +138,9 @@ public class QueryResource implements HasHealthCheck {
     @Produces({MediaType.APPLICATION_JSON})
     @Timed
     @UnitOfWork
-    public Response search(@Valid SearchRequest searchRequest) {
+    public Response search(
+//            TODO: Why is this endpoint not secured?
+            @ApiParam("searchRequest") @NotNull @Valid SearchRequest searchRequest) {
 //    public Response search(@Auth User user, @Valid SearchRequest searchRequest){
         LOGGER.debug("Received search request");
 

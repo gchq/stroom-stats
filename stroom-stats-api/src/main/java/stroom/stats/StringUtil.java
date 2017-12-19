@@ -13,7 +13,7 @@
 
 package stroom.stats;
 
-@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T09:26:40.688Z")
+@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T13:37:48.590Z")
 public class StringUtil {
   /**
    * Check if the given array contains the given value (with case-insensitive comparison).

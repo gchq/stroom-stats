@@ -10,7 +10,7 @@ Method | HTTP request | Description
 
 <a name="getDataSource"></a>
 # **getDataSource**
-> DataSource getDataSource()
+> DataSource getDataSource(body)
 
 Get data source for a DocRef
 
@@ -24,8 +24,9 @@ Get data source for a DocRef
 
 
 QueryApi apiInstance = new QueryApi();
+DocRef body = new DocRef(); // DocRef | docRef
 try {
-    DataSource result = apiInstance.getDataSource();
+    DataSource result = apiInstance.getDataSource(body);
     System.out.println(result);
 } catch (ApiException e) {
     System.err.println("Exception when calling QueryApi#getDataSource");
@@ -34,7 +35,10 @@ try {
 ```
 
 ### Parameters
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **body** | [**DocRef**](DocRef.md)| docRef | [optional]
 
 ### Return type
 
@@ -51,7 +55,7 @@ No authorization required
 
 <a name="search"></a>
 # **search**
-> SearchResponse search()
+> SearchResponse search(body)
 
 Execute a stats search
 
@@ -65,8 +69,9 @@ Execute a stats search
 
 
 QueryApi apiInstance = new QueryApi();
+SearchRequest body = new SearchRequest(); // SearchRequest | searchRequest
 try {
-    SearchResponse result = apiInstance.search();
+    SearchResponse result = apiInstance.search(body);
     System.out.println(result);
 } catch (ApiException e) {
     System.err.println("Exception when calling QueryApi#search");
@@ -75,7 +80,10 @@ try {
 ```
 
 ### Parameters
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **body** | [**SearchRequest**](SearchRequest.md)| searchRequest | [optional]
 
 ### Return type
 

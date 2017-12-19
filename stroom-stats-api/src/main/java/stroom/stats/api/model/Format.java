@@ -24,7 +24,7 @@ import stroom.stats.api.model.NumberFormat;
  * Describes the formatting that will be applied to values in a field
  */
 @ApiModel(description = "Describes the formatting that will be applied to values in a field")
-@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T09:26:40.688Z")
+@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T13:37:48.590Z")
 public class Format {
   /**
    * The formatting type to apply

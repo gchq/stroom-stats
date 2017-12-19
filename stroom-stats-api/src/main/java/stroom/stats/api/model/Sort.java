@@ -22,7 +22,7 @@ import io.swagger.annotations.ApiModelProperty;
  * Describes the sorting applied to a field
  */
 @ApiModel(description = "Describes the sorting applied to a field")
-@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T09:26:40.688Z")
+@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T13:37:48.590Z")
 public class Sort {
   @SerializedName("order")
   private Integer order = null;

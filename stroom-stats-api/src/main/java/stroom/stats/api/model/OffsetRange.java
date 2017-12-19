@@ -22,7 +22,7 @@ import io.swagger.annotations.ApiModelProperty;
  * The offset and length of a range of data in a sub-set of a query result set
  */
 @ApiModel(description = "The offset and length of a range of data in a sub-set of a query result set")
-@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T09:26:40.688Z")
+@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T13:37:48.590Z")
 public class OffsetRange {
   @SerializedName("offset")
   private Long offset = null;

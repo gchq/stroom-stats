@@ -17,40 +17,53 @@ import java.util.Objects;
 import com.google.gson.annotations.SerializedName;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
-import java.util.ArrayList;
-import java.util.List;
-import stroom.stats.api.model.DataSourceField;
 
 /**
- * The definition of a data source, describing the fields available
+ * A key value pair that describes a property of a query
  */
-@ApiModel(description = "The definition of a data source, describing the fields available")
+@ApiModel(description = "A key value pair that describes a property of a query")
 @javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T13:37:48.590Z")
-public class DataSource {
-  @SerializedName("fields")
-  private List<DataSourceField> fields = new ArrayList<DataSourceField>();
+public class Param {
+  @SerializedName("key")
+  private String key = null;
 
-  public DataSource fields(List<DataSourceField> fields) {
-    this.fields = fields;
-    return this;
-  }
+  @SerializedName("value")
+  private String value = null;
 
-  public DataSource addFieldsItem(DataSourceField fieldsItem) {
-    this.fields.add(fieldsItem);
+  public Param key(String key) {
+    this.key = key;
     return this;
   }
 
    /**
-   * Get fields
-   * @return fields
+   * The property key
+   * @return key
   **/
-  @ApiModelProperty(example = "null", required = true, value = "")
-  public List<DataSourceField> getFields() {
-    return fields;
+  @ApiModelProperty(example = "null", required = true, value = "The property key")
+  public String getKey() {
+    return key;
   }
 
-  public void setFields(List<DataSourceField> fields) {
-    this.fields = fields;
+  public void setKey(String key) {
+    this.key = key;
+  }
+
+  public Param value(String value) {
+    this.value = value;
+    return this;
+  }
+
+   /**
+   * The property value
+   * @return value
+  **/
+  @ApiModelProperty(example = "null", required = true, value = "The property value")
+  public String getValue() {
+    return value;
+  }
+
+  public void setValue(String value) {
+    this.value = value;
   }
 
 
@@ -62,22 +75,24 @@ public class DataSource {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DataSource dataSource = (DataSource) o;
-    return Objects.equals(this.fields, dataSource.fields);
+    Param param = (Param) o;
+    return Objects.equals(this.key, param.key) &&
+        Objects.equals(this.value, param.value);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fields);
+    return Objects.hash(key, value);
   }
 
 
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("class DataSource {\n");
+    sb.append("class Param {\n");
     
-    sb.append("    fields: ").append(toIndentedString(fields)).append("\n");
+    sb.append("    key: ").append(toIndentedString(key)).append("\n");
+    sb.append("    value: ").append(toIndentedString(value)).append("\n");
     sb.append("}");
     return sb.toString();
   }

@@ -89,6 +89,7 @@ dependencies {
     testCompile libs.fastClasspathScanner
     testCompile libs.dropwizard_testing
     testCompile libs.spring_kafka_test
+    testCompile project(':stroom-stats-api')
 
     //TODO gradle-dependency-analyze doesn't understand about integrationTest so says these libs are unused
     permitTestUnusedDeclared libs.dropwizard_testing

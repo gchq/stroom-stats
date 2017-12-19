@@ -24,7 +24,7 @@ import java.util.List;
  * The definition of a field within a data source
  */
 @ApiModel(description = "The definition of a field within a data source")
-@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T09:26:40.688Z")
+@javax.annotation.Generated(value = "io.swagger.codegen.languages.JavaClientCodegen", date = "2017-12-19T13:37:48.590Z")
 public class DataSourceField {
   /**
    * The data type for the field

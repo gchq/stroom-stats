@@ -32,7 +32,7 @@ task wrapper(type: Wrapper) {
 
 //if the project has a value for the passed property (i.e from the cmd line via -PpropName=xxx)
 //use that, else use a default value
-ext.getPropertyOrDefault = { propName, defaultValue -> 
+ext.getPropertyOrDefault = { propName, defaultValue ->
     def val;
     if (project.hasProperty(propName) && project.getProperty(propName) != "unspecified" && project.getProperty(propName) != "") {
         val = project.getProperty(propName)
@@ -45,6 +45,7 @@ ext.getPropertyOrDefault = { propName, defaultValue ->
 }
 
 
+apply plugin: 'com.jfrog.bintray'
 apply plugin: 'idea'
 
 
