@@ -18,6 +18,10 @@ public class AuthConfig {
     @JsonProperty
     private String expectedIssuer;
 
+    @NotNull
+    @JsonProperty
+    private String apiKey;
+
     public String getAuthorisationServiceUrl() {
         return authorisationServiceUrl;
     }
@@ -28,5 +32,9 @@ public class AuthConfig {
 
     public String getExpectedIssuer() {
         return expectedIssuer;
+    }
+
+    public String getApiKey() {
+        return apiKey;
     }
 }

@@ -6,6 +6,8 @@ def fatJarName = "stroom-stats-all-${version}.jar"
 def dockerBuildDir = "${rootProject.projectDir}/docker/build"
 
 apply plugin: 'application'
+apply plugin: 'com.benjaminsproule.swagger'
+
 mainClassName = 'stroom.stats.service.startup.App'
 
 dependencies {
@@ -177,3 +179,60 @@ task copyFilesForDockerBuild() {
 }
 
 tasks.build.dependsOn copyFilesForDockerBuild
+
+
+
+def apiProjectRoot = "${projectDir}/../stroom-stats-api"
+
+swagger {
+    apiSource {
+        springmvc = false //makes it search for jersey annotations
+        outputFormats = 'json,yaml'
+        locations = [
+                'stroom.stats.service.resources.query.v2.QueryResource',
+                'stroom.datasource.api.v2.DataSource',
+                'stroom.datasource.api.v2.DocRef',
+                'stroom.query.api.v2.SearchRequest',
+                'stroom.query.api.v2.SearchResponse',
+                'javax.ws.rs.core.Response']
+        schemes = [
+                'http',
+                'https' ]
+        host = 'localhost:8080'
+        basePath = '/'
+        info {
+            title = 'Stroom Stats API'
+            version = 'v1'
+            description = 'APIs for interacting with Stroom Stats.'
+            contact {
+                name = 'GCHQ'
+                url = 'https://github.com/gchq/stroom-stats'
+            }
+            license {
+                url = 'http://www.apache.org/licenses/LICENSE-2.0.html'
+                name = 'Apache 2.0'
+            }
+        }
+        outputPath = "$apiProjectRoot/generated/document.html"
+        swaggerDirectory = "./stroom-stats-api"
+    }
+}
+
+import io.swagger.codegen.config.CodegenConfigurator
+import io.swagger.codegen.DefaultGenerator
+def sourceFolder = "$apiProjectRoot/src/main/java"
+task generateSwaggerApi {
+    doLast {
+        def config = new CodegenConfigurator()
+        config.setInputSpec("./stroom-stats-api/swagger.yaml")
+        config.setOutputDir("$apiProjectRoot")
+        config.setLang('java')
+        config.setAdditionalProperties([
+                'interfaceOnly' : 'true',
+                'apiPackage'    : 'stroom.stats.api',
+                'modelPackage'  : 'stroom.stats.api.model',
+                'sourceFolder'  : 'src/main/java'
+        ])
+        new DefaultGenerator().opts(config.toClientOptInput()).generate()
+    }
+}

@@ -58,11 +58,6 @@ public class Config extends Configuration implements JobConfiguration {
     @JsonProperty
     private DataSourceFactory database = new DataSourceFactory();
 
-    @NotNull
-    @Valid
-    @JsonProperty
-    private String apiKey;
-
     public DataSourceFactory getDataSourceFactory() {
         return database;
     }
@@ -81,10 +76,6 @@ public class Config extends Configuration implements JobConfiguration {
 
     public Map<String, String> getDefaultProperties() {
         return defaultProperties;
-    }
-
-    public String getApiKey() {
-        return apiKey;
     }
 
     public AuthConfig getAuthConfig() {
