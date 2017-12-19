@@ -27,7 +27,6 @@ import stroom.stats.configuration.StatisticField;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.configuration.StroomStatsStoreEntity;
 import stroom.stats.configuration.StroomStatsStoreEntityData;
-import stroom.stats.configuration.common.Folder;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.util.Arrays;
@@ -54,11 +53,6 @@ public class StroomStatsStoreEntityBuilder {
         stroomStatsStoreEntity.setStatisticType(statisticType);
         stroomStatsStoreEntity.setPrecision(interval);
         stroomStatsStoreEntity.setRollUpType(statisticRollUpType);
-
-        //Use the same folder for all entities
-        Folder folder = Folder.create(null, "RootFolder");
-        folder.setUuid("RootFolder-UUID"); //fixed uuid to ensure we only have one
-        stroomStatsStoreEntity.setFolder(folder);
 
         stroomStatsStoreEntityData = new StroomStatsStoreEntityData();
         stroomStatsStoreEntity.setDataObject(stroomStatsStoreEntityData);

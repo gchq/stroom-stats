@@ -12,13 +12,11 @@ import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.configuration.StroomStatsStoreEntity;
-import stroom.stats.configuration.common.Folder;
 import stroom.stats.configuration.marshaller.StroomStatsStoreEntityMarshaller;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class StroomStatsStoreEntityHelper {
@@ -73,25 +71,6 @@ public class StroomStatsStoreEntityHelper {
         try (Session session = sessionFactory.openSession()){
             ManagedSessionContext.bind(session);
             Transaction transaction = session.beginTransaction();
-            Folder folder = entity.getFolder();
-
-            try {
-                GenericDAO<Folder> folderDAO = new GenericDAO<>(sessionFactory);
-
-                Optional<Folder> optPersistedFolder = folderDAO.getByName(folder.getName());
-                if (!optPersistedFolder.isPresent()) {
-                    LOGGER.debug("Folder {} doesn't exist so creating it", folder.getName());
-                    optPersistedFolder = Optional.of(folderDAO.persist(folder));
-                    LOGGER.debug("Created folder {} with id {}", optPersistedFolder.get().getName(), optPersistedFolder.get().getId());
-                } else {
-                    LOGGER.debug("Folder {} already exists with id {}", optPersistedFolder.get().getName(), optPersistedFolder.get().getId());
-                }
-
-                entity.setFolder(optPersistedFolder.get());
-
-            } catch (HibernateException e) {
-                LOGGER.debug("Failed to create folder entity with msg: {}", e.getMessage(), e);
-            }
 
             WriteOnlyStroomStatsStoreEntityDAO statConfDao = new WriteOnlyStroomStatsStoreEntityDAO(
                     sessionFactory,

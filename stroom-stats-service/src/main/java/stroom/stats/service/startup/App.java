@@ -45,7 +45,6 @@ import stroom.stats.service.resources.query.v2.QueryResource;
 import stroom.stats.HBaseClient;
 import stroom.stats.StroomStatsServiceModule;
 import stroom.stats.service.config.Config;
-import stroom.stats.configuration.common.Folder;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.tasks.StartProcessingTask;
 import stroom.stats.tasks.StopProcessingTask;
@@ -57,10 +56,7 @@ public class App extends Application<Config> {
     public static final String APP_NAME = "stroom-stats";
     private Injector injector = null;
 
-    private final HibernateBundle<Config> hibernateBundle = new HibernateBundle<Config>(
-            StroomStatsStoreEntity.class,
-            Folder.class) {
-
+    private final HibernateBundle<Config> hibernateBundle = new HibernateBundle<Config>(StroomStatsStoreEntity.class) {
         @Override
         public DataSourceFactory getDataSourceFactory(Config configuration) {
             return configuration.getDataSourceFactory();

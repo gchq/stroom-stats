@@ -43,7 +43,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 
 import static stroom.query.api.v2.ExpressionTerm.Condition;
-import static stroom.stats.HttpAsserts.assertAccepted;
+import static stroom.stats.HttpAsserts.assertOk;
 import static stroom.stats.HttpAsserts.assertUnauthorized;
 
 public class QueryResource_authHeader_IT extends AbstractAppIT {
@@ -71,19 +71,28 @@ public class QueryResource_authHeader_IT extends AbstractAppIT {
      */
     @Test
     public void testPostQueryData_validCredentials() throws UnsupportedEncodingException {
-        Response response = req().body(QueryResource_authHeader_IT::getSearchRequest).getStats();
-        assertAccepted(response);
+        Response response = req()
+                .body(QueryResource_authHeader_IT::getSearchRequest)
+                .jwtToken("eyJhbGciOiJSUzI1NiJ9.eyJleHAiOjE1NDQ4NjMwNjIsInN1YiI6InN0YXRzU2VydmljZVVzZXIiLCJpc3MiOiJzdHJvb20ifQ.7AFPkNgM1UBL_Pj-K5kSNPClgDJ6wZ22WWukjWGw_myZWuMZPGd-kqYxUuQzqqmTA918wylFSx5xBPWA1oCbx0aEPGEOdMnUViykq5XaGEHwPGT9Tf9JI0h8z6-TfOt2VJ2CFsSmRSpfe1CYOywZwziqBwvf5m0rWhfb0wm1abcBnjmX_EfxZiV3McmY0MEzSN6AkYGyWr4ggja06onKEObkoZ9f5pRt7tkTsBpCvaolavfu3IF5FXP9GRifOcxdQXFOgRCDe4JkG6ZAeKbTT6aJJCU798F9jL2ozIw-tQTrA5KjkwIpefaA6CoA_mZd-gIa-ZOLVGzRaIMBo-dl-g")
+                .getStats();
+        assertOk(response);
     }
 
     @Test
     public void postQueryData_missingCredentials(){
-        Response response = req().body(QueryResource_authHeader_IT::getSearchRequest).authHeader(AuthHeader.MISSING).getStats();
+        Response response = req()
+                .body(QueryResource_authHeader_IT::getSearchRequest)
+                .authHeader(AuthHeader.MISSING)
+                .getStats();
         assertUnauthorized(response);
     }
 
     @Test
     public void postQueryData_invalidCredentials() throws UnsupportedEncodingException {
-        Response response = req().body(QueryResource_authHeader_IT::getSearchRequest).authHeader(AuthHeader.INVALID).getStats();
+        Response response = req()
+                .body(QueryResource_authHeader_IT::getSearchRequest)
+                .authHeader(AuthHeader.INVALID)
+                .getStats();
         assertUnauthorized(response);
     }
 

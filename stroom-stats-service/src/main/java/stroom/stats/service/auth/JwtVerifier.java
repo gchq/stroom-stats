@@ -16,6 +16,7 @@ import stroom.auth.service.api.ApiKeyApi;
 import stroom.auth.service.api.AuthenticationApi;
 import stroom.stats.service.config.Config;
 
+import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.Optional;
 
@@ -30,12 +31,13 @@ public class JwtVerifier {
     private PublicJsonWebKey jwk;
     private Config config;
 
+    @Inject
     public JwtVerifier(Config config){
         this.config = config;
 
         ApiClient authServiceClient = new ApiClient();
         authServiceClient.setBasePath(config.getAuthConfig().getAuthenticationServiceUrl());
-        authServiceClient.addDefaultHeader(AUTHORIZATION, "Bearer " + config.getApiKey());
+        authServiceClient.addDefaultHeader(AUTHORIZATION, "Bearer " + config.getAuthConfig().getApiKey());
 
         apiKeyApi = new ApiKeyApi(authServiceClient);
         authenticationApi = new AuthenticationApi(authServiceClient);
