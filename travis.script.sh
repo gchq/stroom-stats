@@ -136,10 +136,10 @@ else
         SPECIFIC_TAG="--tag=${DOCKER_REPO}:${TRAVIS_TAG}"
         doDockerBuild=true
 
-       # if [[ "$TRAVIS_BRANCH" =~ ${RELEASE_VERSION_REGEX} ]]; then
-        echo "This is a release version so add gradle arg for publishing libs to Bintray"
-        extraBuildArgs="bintrayUpload"
-       # fi
+        if [[ "$TRAVIS_BRANCH" =~ ${RELEASE_VERSION_REGEX} ]]; then
+            echo "This is a release version so add gradle arg for publishing libs to Bintray"
+            extraBuildArgs="bintrayUpload"
+        fi
             
     elif [[ "$TRAVIS_BRANCH" =~ $BRANCH_WHITELIST_REGEX ]]; then
         FLOATING_TAG="--tag=${DOCKER_REPO}:${STROOM_STATS_VERSION}-SNAPSHOT"
