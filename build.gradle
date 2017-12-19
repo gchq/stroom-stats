@@ -228,7 +228,7 @@ configure(projectsToBePublished) {
     apply plugin: 'com.jfrog.bintray'
 
     group = 'stroom'
-    version = versions.stroom
+    version = versions.stroomStats
 
     task sourcesJar(type: Jar, dependsOn: classes) {
         classifier = 'sources'
