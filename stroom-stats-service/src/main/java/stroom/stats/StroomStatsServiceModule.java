@@ -40,6 +40,10 @@ import stroom.stats.properties.StroomPropertyServiceImpl;
 import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.ServiceDiscovererImpl;
 import stroom.stats.service.ServiceDiscoveryManager;
+import stroom.stats.service.auth.JwtVerificationFilter;
+import stroom.stats.service.auth.JwtVerifier;
+import stroom.stats.service.auth.User;
+import stroom.stats.service.auth.UserAuthenticator;
 import stroom.stats.service.config.Config;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.schema.v4.StatisticsMarshaller;
@@ -80,10 +84,23 @@ public class StroomStatsServiceModule extends AbstractModule {
         //Singleton as it holds a cache of the properties
         bind(StroomPropertyService.class).to(StroomPropertyServiceImpl.class).asEagerSingleton();
         bind(StroomPropertyServiceHealthCheck.class);
+        bind(UserAuthenticator.class);
+        bind(JwtVerifier.class);
     }
 
     @Provides
     public Config getConfig() {
         return config;
+    }
+
+    @Provides
+    public JwtVerificationFilter getJwtVerificationFilter(UserAuthenticator userAuthenticator){
+        JwtVerificationFilter jwtVerificationFilter = new JwtVerificationFilter.Builder<User>()
+                .setConfig(config)
+                .setRealm("realm")
+                .setPrefix("Bearer")
+                .setAuthenticator(userAuthenticator)
+                .buildAuthFilter();
+        return jwtVerificationFilter;
     }
 }

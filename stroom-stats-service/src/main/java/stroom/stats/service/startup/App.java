@@ -39,7 +39,7 @@ import stroom.stats.configuration.StroomStatsStoreEntity;
 import stroom.stats.datasource.DataSourceService;
 import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.ServiceDiscoveryManager;
-import stroom.stats.service.auth.AuthenticationFilter;
+import stroom.stats.service.auth.JwtVerificationFilter;
 import stroom.stats.service.auth.User;
 import stroom.stats.service.resources.query.v2.QueryResource;
 import stroom.stats.HBaseClient;
@@ -83,11 +83,10 @@ public class App extends Application<Config> {
 
     @Override
     public void run(Config config, Environment environment) throws UnsupportedEncodingException {
-        configureAuthentication(config, environment);
-
         injector = Guice.createInjector(new StroomStatsServiceModule(config, hibernateBundle.getSessionFactory()));
         injector.getInstance(ServiceDiscoveryManager.class);
 
+        configureAuthentication(environment, injector.getInstance(JwtVerificationFilter.class));
         registerResources(environment, config);
         registerTasks(environment);
         HealthChecks.register(environment, injector);
@@ -135,8 +134,8 @@ public class App extends Application<Config> {
         environment.lifecycle().manage(managed);
     }
 
-    private static void configureAuthentication(Config config, Environment environment) {
-        environment.jersey().register(new AuthDynamicFeature(AuthenticationFilter.get(config)));
+    private static void configureAuthentication(Environment environment, JwtVerificationFilter<User> jwtVerificationFilter) {
+        environment.jersey().register(new AuthDynamicFeature(jwtVerificationFilter));
         environment.jersey().register(new AuthValueFactoryProvider.Binder<>(User.class));
         environment.jersey().register(RolesAllowedDynamicFeature.class);
     }

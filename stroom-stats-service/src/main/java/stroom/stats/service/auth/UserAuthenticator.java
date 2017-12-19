@@ -21,40 +21,35 @@ package stroom.stats.service.auth;
 
 import io.dropwizard.auth.AuthenticationException;
 import io.dropwizard.auth.Authenticator;
-import org.glassfish.jersey.client.ClientConfig;
-import org.glassfish.jersey.client.ClientResponse;
-import stroom.stats.service.config.Config;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.core.Response;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.util.Optional;
 
+@Singleton
 public class UserAuthenticator implements Authenticator<String, User> {
+    public static final Logger LOGGER = LoggerFactory.getLogger(UserAuthenticator.class);
 
-    private Config config;
+    private JwtVerifier jwtVerifier;
 
-    public UserAuthenticator(Config config) {
-        this.config = config;
+    @Inject
+    public UserAuthenticator(JwtVerifier jwtVerifier) {
+        this.jwtVerifier = jwtVerifier;
     }
 
     @Override
     public Optional<User> authenticate(String securityToken) throws AuthenticationException {
-        Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
-        Response response = client
-            .target(this.config.getAuthenticationServiceUrl() + "/verify/" + securityToken)
-            .request()
-            .get();
+        Optional<String> userEmail = jwtVerifier.verify(securityToken);
+        boolean hasBeenRevoked = jwtVerifier.hasBeenRevoked(securityToken);
 
-        if(response.getStatus() == Response.Status.UNAUTHORIZED.getStatusCode()){
-            throw new AuthenticationException("Token verification failed: unauthorised.");
-        }
-        else if (response.getStatus() != Response.Status.OK.getStatusCode()){
-            throw new AuthenticationException("Token verification failed: server response is " + response.getStatus());
+        if(userEmail.isPresent() && !hasBeenRevoked){
+            return Optional.of(new User(userEmail.get(), securityToken));
         }
 
-        String userEmail = response.readEntity(String.class);
-        User user = new User(userEmail, securityToken);
-        return Optional.of(user);
+        return Optional.empty();
     }
+
+
 }

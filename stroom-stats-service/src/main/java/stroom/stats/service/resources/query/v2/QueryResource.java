@@ -154,7 +154,7 @@ public class QueryResource implements HasHealthCheck {
                                               final Supplier<Response> responseProvider) {
         String authorisationUrl = String.format(
                 "%s/isAuthorised",
-                config.getAuthorisationServiceUrl());
+                config.getAuthConfig().getAuthorisationServiceUrl());
 
         boolean isAuthorised = checkPermissions(authorisationUrl, user, docRef);
         if (!isAuthorised) {

@@ -53,6 +53,7 @@ ext.versions = [
 
     //------Stroom-libs---------------
     eventLogging: 'v3.1.2_schema-v3.1.2',
+    stroomAuth: 'v0.1-alpha.5',
     stroomExpression: 'v1.0.1',
     //same version for both stroom-query-api and stroom-query-common
     stroomQuery: 'v2.0.0-alpha.10',
@@ -87,6 +88,7 @@ ext.versions = [
 ext.libs = [
     //------Stroom-libs---------------
     eventLogging: "event-logging:event-logging:$versions.eventLogging",
+    stroomAuthApi: "stroom:stroom-auth-service-api:$versions.stroomAuth",
     stroomExpression: "stroom:stroom-expression:$versions.stroomExpression",
     stroomQueryApi: "stroom:stroom-query-api:$versions.stroomQuery",
     stroomQueryCommon: "stroom:stroom-query-common:$versions.stroomQuery",

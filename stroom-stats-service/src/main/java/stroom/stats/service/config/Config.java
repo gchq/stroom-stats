@@ -45,6 +45,11 @@ public class Config extends Configuration implements JobConfiguration {
 
     @NotNull
     @Valid
+    @JsonProperty("auth")
+    private AuthConfig authConfig;
+
+    @NotNull
+    @Valid
     @JsonProperty("defaultProperties")
     private Map<String,String> defaultProperties;
 
@@ -56,12 +61,7 @@ public class Config extends Configuration implements JobConfiguration {
     @NotNull
     @Valid
     @JsonProperty
-    private String authorisationServiceUrl;
-
-    @NotNull
-    @Valid
-    @JsonProperty
-    private String authenticationServiceUrl;
+    private String apiKey;
 
     public DataSourceFactory getDataSourceFactory() {
         return database;
@@ -83,8 +83,12 @@ public class Config extends Configuration implements JobConfiguration {
         return defaultProperties;
     }
 
-    public String getAuthenticationServiceUrl() {
-        return authenticationServiceUrl;
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    public AuthConfig getAuthConfig() {
+        return authConfig;
     }
 
     @Override
@@ -96,10 +100,6 @@ public class Config extends Configuration implements JobConfiguration {
                 ", defaultProperties=" + defaultProperties +
                 ", database=" + database +
                 '}';
-    }
-
-    public String getAuthorisationServiceUrl() {
-        return authorisationServiceUrl;
     }
 }
 
