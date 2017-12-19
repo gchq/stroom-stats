@@ -146,14 +146,15 @@ else
         doDockerBuild=true
     fi
 
-    #Do the gradle build
-    #TODO need to find a way of running the int tests that doesn't blow the memory limit
-    ./gradlew -Pversion=$TRAVIS_TAG clean build -x integrationTest ${EXTRA_BUILD_ARGS}
-
     echo -e "SPECIFIC DOCKER TAG: [${GREEN}${SPECIFIC_TAG}${NC}]"
     echo -e "FLOATING DOCKER TAG: [${GREEN}${FLOATING_TAG}${NC}]"
     echo -e "doDockerBuild:       [${GREEN}${doDockerBuild}${NC}]"
     echo -e "extraBuildArgs:      [${GREEN}${extraBuildArgs}${NC}]"
+
+    #Do the gradle build
+    #TODO need to find a way of running the int tests that doesn't blow the memory limit
+    ./gradlew -Pversion=$TRAVIS_TAG clean build -x integrationTest ${extraBuildArgs}
+
 
     #Don't do a docker build for pull requests
     if [ "$doDockerBuild" = true ] && [ "$TRAVIS_PULL_REQUEST" = "false" ] ; then
