@@ -59,14 +59,9 @@ public class QueryResource_authHeader_IT extends AbstractAppIT {
                 .setBasePath("http://localhost:8086")
                 .addDefaultHeader("Authorization", "Bearer " + idToken));
 
-        try {
-            SearchRequest searchRequest = getSearchRequest();
-            ApiResponse<SearchResponse> response = queryApi.searchWithHttpInfo(getSearchRequest());
-            assertThat(response.getStatusCode()).isEqualTo(200);
-        } catch (ApiException e){
-            String thing = "sdfsd";
-            fail();
-        }
+        SearchRequest searchRequest = getSearchRequest();
+        ApiResponse<SearchResponse> response = queryApi.searchWithHttpInfo(getSearchRequest());
+        assertThat(response.getStatusCode()).isEqualTo(200);
     }
 
     @Test
