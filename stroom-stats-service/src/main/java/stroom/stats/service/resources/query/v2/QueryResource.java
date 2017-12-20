@@ -23,18 +23,13 @@ import com.codahale.metrics.annotation.Timed;
 import com.codahale.metrics.health.HealthCheck;
 import io.dropwizard.auth.Auth;
 import io.dropwizard.hibernate.UnitOfWork;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stroom.datasource.api.v2.DataSource;
 import stroom.query.api.v2.DocRef;
 import stroom.query.api.v2.QueryKey;
 import stroom.query.api.v2.SearchRequest;
-import stroom.query.api.v2.SearchResponse;
 import stroom.stats.HBaseClient;
 import stroom.stats.datasource.DataSourceService;
 import stroom.stats.service.ResourcePaths;
@@ -59,7 +54,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.function.Supplier;
 
-@Api(description = "Stroom Stats Query API", tags = {"Query"})
 @Path(ResourcePaths.ROOT_PATH + ResourcePaths.STROOM_STATS + ResourcePaths.V2)
 @Produces(MediaType.APPLICATION_JSON)
 public class QueryResource implements HasHealthCheck {
@@ -106,10 +100,6 @@ public class QueryResource implements HasHealthCheck {
 //        return Response.accepted().build();
 //    }
 
-    @ApiOperation(
-            value = "Get data source for a DocRef",
-            response = DataSource.class,
-            tags = {"Query"})
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -117,7 +107,7 @@ public class QueryResource implements HasHealthCheck {
     @Timed
     public Response getDataSource(
             @Auth User user,
-            @ApiParam("docRef") @NotNull @Valid final DocRef docRef) {
+            @NotNull @Valid final DocRef docRef) {
 
         return dataSourceService.getDatasource(docRef)
                 .map(dataSource -> Response.ok(dataSource).build())
@@ -132,10 +122,6 @@ public class QueryResource implements HasHealthCheck {
 //                        .orElse(Response.noContent().build()));
     }
 
-    @ApiOperation(
-            value = "Execute a stats search",
-            response = SearchResponse.class,
-            tags = {"Query"})
     @POST
     @Path(SEARCH_ENDPOINT)
     @Consumes({MediaType.APPLICATION_JSON})
@@ -144,7 +130,7 @@ public class QueryResource implements HasHealthCheck {
     @UnitOfWork
     public Response search(
             @Auth User user,
-            @ApiParam("searchRequest") @NotNull @Valid SearchRequest searchRequest) {
+            @NotNull @Valid SearchRequest searchRequest) {
         LOGGER.debug("Received search request");
 
         return Response.ok(hBaseClient.query(searchRequest)).build();
