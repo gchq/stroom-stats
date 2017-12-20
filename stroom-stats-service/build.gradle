@@ -2,7 +2,7 @@ apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'net.ltgt.errorprone' 
 
 def jarName = "stroom-stats-service-${version}.jar"
-def fatJarName = "stroom-stats-service${version}-all.jar"
+def fatJarName = "stroom-stats-service-${version}-all.jar"
 def dockerBuildDir = "${rootProject.projectDir}/docker/build"
 
 apply plugin: 'application'
