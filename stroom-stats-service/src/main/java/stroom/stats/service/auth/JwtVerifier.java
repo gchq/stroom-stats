@@ -26,10 +26,11 @@ import static javax.ws.rs.core.HttpHeaders.AUTHORIZATION;
 public class JwtVerifier {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(JwtVerifier.class);
 
-    private ApiKeyApi apiKeyApi;
-    private AuthenticationApi authenticationApi;
+    private final ApiKeyApi apiKeyApi;
+    private final AuthenticationApi authenticationApi;
+    private final Config config;
+    private final JwtConsumer jwtConsumer;
     private PublicJsonWebKey jwk;
-    private Config config;
 
     @Inject
     public JwtVerifier(Config config){
@@ -41,14 +42,14 @@ public class JwtVerifier {
 
         apiKeyApi = new ApiKeyApi(authServiceClient);
         authenticationApi = new AuthenticationApi(authServiceClient);
+        jwtConsumer = newJwsConsumer();
 
         fetchNewPublicKeys();
     }
 
     public Optional<String> verify(String securityToken) {
         try {
-            JwtClaims jwtClaims = toClaims(securityToken);
-            //TODO check for revocation
+            JwtClaims jwtClaims = jwtConsumer.processToClaims(securityToken);
             return Optional.of(jwtClaims.getSubject());
         } catch (InvalidJwtException | MalformedClaimException e) {
             return Optional.empty();
@@ -74,12 +75,6 @@ public class JwtVerifier {
             LOGGER.error("Unable to retrieve public key! Can't verify any API requests without the " +
                     "public key so all API requests must be refused until this the service is available again!");
         }
-    }
-
-    private JwtClaims toClaims(String token) throws InvalidJwtException {
-        JwtConsumer jwtConsumer = newJwsConsumer();
-        JwtClaims claims = jwtConsumer.processToClaims(token);
-        return claims;
     }
 
     private JwtConsumer newJwsConsumer(){
