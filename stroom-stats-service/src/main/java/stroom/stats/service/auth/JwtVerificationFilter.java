@@ -30,6 +30,7 @@ import javax.ws.rs.Priorities;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.security.Principal;
@@ -67,32 +68,37 @@ public class JwtVerificationFilter<P extends Principal> extends AuthFilter<Strin
         try {
             optionalUser = authenticator.authenticate(optionalToken.get());
         } catch (AuthenticationException e) {
-            LOGGER.info("Authentication failed");
+            LOGGER.info("Authentication process failed. Credentials not necessarily invalid.");
             throw new WebApplicationException(unauthorizedHandler.buildResponse(prefix, realm));
         }
 
-        // We need to set up the security context so that our endpoints have a User to work with.
-        requestContext.setSecurityContext(new SecurityContext() {
-            @Override
-            public Principal getUserPrincipal() {
-                return optionalUser.get();
-            }
+        if(optionalUser.isPresent()) {
+            // We need to set up the security context so that our endpoints have a User to work with.
+            requestContext.setSecurityContext(new SecurityContext() {
+                @Override
+                public Principal getUserPrincipal() {
+                    return optionalUser.get();
+                }
 
-            @Override
-            public boolean isUserInRole(String role) {
-                return true;
-            }
+                @Override
+                public boolean isUserInRole(String role) {
+                    return true;
+                }
 
-            @Override
-            public boolean isSecure() {
-                return requestContext.getSecurityContext().isSecure();
-            }
+                @Override
+                public boolean isSecure() {
+                    return requestContext.getSecurityContext().isSecure();
+                }
 
-            @Override
-            public String getAuthenticationScheme() {
-                return "Bearer";
-            }
-        });
+                @Override
+                public String getAuthenticationScheme() {
+                    return "Bearer";
+                }
+            });
+        }
+        else {
+            throw new WebApplicationException(Response.Status.UNAUTHORIZED);
+        }
     }
 
     private Optional<String> getTokenFromHeader(MultivaluedMap<String, String> headers) {
