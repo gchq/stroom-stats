@@ -84,7 +84,7 @@ public class App extends Application<Config> {
         injector = Guice.createInjector(new StroomStatsServiceModule(config, hibernateBundle.getSessionFactory()));
         injector.getInstance(ServiceDiscoveryManager.class);
 
-        if(config.getLogRequestsAndResponses()) {
+        if(config.isLogRequestsAndResponses()) {
             environment.jersey().register(new LoggingFeature(java.util.logging.Logger.getLogger(
                     getClass().getName()),
                     Level.OFF,

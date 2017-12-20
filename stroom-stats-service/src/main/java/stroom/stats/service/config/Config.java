@@ -85,7 +85,7 @@ public class Config extends Configuration implements JobConfiguration {
         return authConfig;
     }
 
-    public Boolean getLogRequestsAndResponses() {
+    public Boolean isLogRequestsAndResponses() {
         return logRequestsAndResponses;
     }
 
