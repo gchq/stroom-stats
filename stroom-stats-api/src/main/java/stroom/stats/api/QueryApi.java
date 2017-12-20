@@ -13,6 +13,10 @@
 
 package stroom.stats.api;
 
+import stroom.datasource.api.v2.DataSource;
+import stroom.query.api.v2.DocRef;
+import stroom.query.api.v2.SearchRequest;
+import stroom.query.api.v2.SearchResponse;
 import stroom.stats.ApiCallback;
 import stroom.stats.ApiClient;
 import stroom.stats.ApiException;
@@ -25,12 +29,6 @@ import stroom.stats.ProgressResponseBody;
 import com.google.gson.reflect.TypeToken;
 
 import java.io.IOException;
-
-
-import stroom.stats.api.model.DataSource;
-import stroom.stats.api.model.DocRef;
-import stroom.stats.api.model.SearchRequest;
-import stroom.stats.api.model.SearchResponse;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
