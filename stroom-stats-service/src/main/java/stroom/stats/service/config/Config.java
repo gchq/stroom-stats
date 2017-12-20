@@ -38,6 +38,9 @@ public class Config extends Configuration implements JobConfiguration {
     @Valid
     private OptionalInt advertisedPort;
 
+    @Valid
+    private boolean logRequestsAndResponses;
+
     @NotNull
     @Valid
     @JsonProperty("zookeeper")
@@ -80,6 +83,10 @@ public class Config extends Configuration implements JobConfiguration {
 
     public AuthConfig getAuthConfig() {
         return authConfig;
+    }
+
+    public boolean shouldLogRequestsAndResponses() {
+        return logRequestsAndResponses;
     }
 
     @Override

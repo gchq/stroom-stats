@@ -53,6 +53,14 @@ advertisedHostNameOrIp: ${STATS_ADVERTISED_HOST_OR_IP:- }
 #As above but for port
 advertisedPort: ${STATS_ADVERTISED_PORT:- }
 
+# Enabling logRequestsAndResponses will cause all requests and response to be logged.
+# This means the logs will end up containing Authorization headers, i.e. API keys.
+# So don't do this unless you:
+#   1) plan on cleaning up the logs
+#   2) are ok with your logs containing sensitive information
+#   3) are doing development
+logRequestsAndResponses: ${LOG_REQUESTS_AND_RESPONSES:- false}
+
 server:
     adminMinThreads: 1
     adminMaxThreads: 10

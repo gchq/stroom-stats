@@ -32,6 +32,7 @@ import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.servlets.tasks.Task;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import org.glassfish.jersey.logging.LoggingFeature;
 import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +51,7 @@ import stroom.stats.tasks.StartProcessingTask;
 import stroom.stats.tasks.StopProcessingTask;
 
 import java.io.UnsupportedEncodingException;
+import java.util.logging.Level;
 
 public class App extends Application<Config> {
     private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
@@ -81,6 +83,14 @@ public class App extends Application<Config> {
     public void run(Config config, Environment environment) throws UnsupportedEncodingException {
         injector = Guice.createInjector(new StroomStatsServiceModule(config, hibernateBundle.getSessionFactory()));
         injector.getInstance(ServiceDiscoveryManager.class);
+
+        if(config.shouldLogRequestsAndResponses()) {
+            environment.jersey().register(new LoggingFeature(java.util.logging.Logger.getLogger(
+                    getClass().getName()),
+                    Level.OFF,
+                    LoggingFeature.Verbosity.PAYLOAD_TEXT,
+                    8192));
+        }
 
         configureAuthentication(environment, injector.getInstance(JwtVerificationFilter.class));
         registerResources(environment, config);
