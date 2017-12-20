@@ -33,3 +33,5 @@ dependencies {
     testCompile libs.junit
     testCompile libs.assertj
 }
+
+tasks.build.dependsOn shadowJar

@@ -16,7 +16,7 @@
 
 FROM openjdk:8-alpine
 
-ADD build/stroom-stats-all*.jar /stroom-stats/stroom-stats-all.jar
+ADD build/stroom-stats-service*-all.jar /stroom-stats/stroom-stats-service-all.jar
 ADD build/config.yml /stroom-stats/
 Add docker-entrypoint.sh /usr/local/bin/
 
@@ -41,4 +41,4 @@ EXPOSE 8086 8087
 ENTRYPOINT ["/sbin/tini", "--", "docker-entrypoint.sh"]
 
 #start the app
-CMD ["java", "-jar", "stroom-stats-all.jar", "server", "config.yml"]
+CMD ["java", "-jar", "stroom-stats-service-all.jar", "server", "config.yml"]
