@@ -50,7 +50,7 @@ public class QueryResource_authHeader_IT extends AbstractAppIT {
      * This test depends on SetupSampleData being run - the DocRef with the uuid needs to exist.
      */
     @Test
-    public void testPostQueryData_validCredentials() throws UnsupportedEncodingException, ApiException {
+    public void testPostQueryData_validCredentials() throws UnsupportedEncodingException {
         Response response = getClient().target("http://localhost:8086/api/stroom-stats/v2/search")
                 .request()
                 .header("Authorization", "Bearer " + idToken)
@@ -60,7 +60,7 @@ public class QueryResource_authHeader_IT extends AbstractAppIT {
     }
 
     @Test
-    public void postQueryData_missingCredentials() throws ApiException {
+    public void postQueryData_missingCredentials() {
         Response response = getClient().target("http://localhost:8086/api/stroom-stats/v2/search")
                 .request()
                 .post(Entity.json(getSearchRequest()));
@@ -69,7 +69,7 @@ public class QueryResource_authHeader_IT extends AbstractAppIT {
     }
 
     @Test
-    public void postQueryData_invalidCredentials() throws UnsupportedEncodingException, ApiException {
+    public void postQueryData_invalidCredentials() throws UnsupportedEncodingException {
         Response response = getClient().target("http://localhost:8086/api/stroom-stats/v2/search")
                 .request()
                 .header("Authorization", "Bearer " + "GARBAGE")

@@ -28,5 +28,3 @@ include 'stroom-stats-schema'
 include 'stroom-stats-service'
 include 'stroom-stats-tasking'
 include 'stroom-stats-util'
-include 'stroom-stats-api'
-

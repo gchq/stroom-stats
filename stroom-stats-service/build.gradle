@@ -53,6 +53,8 @@ dependencies {
     compile libs.hibernate_core
     compile libs.hibernate_jpa_api
     compile libs.jackson_annotations
+    permitUnusedDeclared libs.jackson_databind
+    compile libs.jackson_databind
     compile libs.javaslang
     compile libs.javassist
     compile libs.javax_annotation
@@ -61,6 +63,7 @@ dependencies {
     compile libs.javax_ws_rs_api
     compile libs.jersey_server
     compile libs.jersey_client
+    compile libs.jersey_common
     compile libs.jose4j
     compile libs.kafka_clients
     compile libs.kafka_streams
@@ -89,8 +92,6 @@ dependencies {
     testCompile libs.fastClasspathScanner
     testCompile libs.dropwizard_testing
     testCompile libs.spring_kafka_test
-    permitTestUnusedDeclared project(':stroom-stats-api')
-    testCompile project(':stroom-stats-api')
 
     //TODO gradle-dependency-analyze doesn't understand about integrationTest so says these libs are unused
     permitTestUnusedDeclared libs.dropwizard_testing
@@ -181,60 +182,3 @@ task copyFilesForDockerBuild() {
 }
 
 tasks.build.dependsOn copyFilesForDockerBuild
-
-
-
-def apiProjectRoot = "${projectDir}/../stroom-stats-api"
-
-swagger {
-    apiSource {
-        springmvc = false //makes it search for jersey annotations
-        outputFormats = 'json,yaml'
-        locations = [
-                'stroom.stats.service.resources.query.v2.QueryResource',
-                'stroom.datasource.api.v2.DataSource',
-                'stroom.datasource.api.v2.DocRef',
-                'stroom.query.api.v2.SearchRequest',
-                'stroom.query.api.v2.SearchResponse',
-                'javax.ws.rs.core.Response']
-        schemes = [
-                'http',
-                'https' ]
-        host = 'localhost:8080'
-        basePath = '/'
-        info {
-            title = 'Stroom Stats API'
-            version = 'v1'
-            description = 'APIs for interacting with Stroom Stats.'
-            contact {
-                name = 'GCHQ'
-                url = 'https://github.com/gchq/stroom-stats'
-            }
-            license {
-                url = 'http://www.apache.org/licenses/LICENSE-2.0.html'
-                name = 'Apache 2.0'
-            }
-        }
-        outputPath = "$apiProjectRoot/generated/document.html"
-        swaggerDirectory = "./stroom-stats-api"
-    }
-}
-
-import io.swagger.codegen.config.CodegenConfigurator
-import io.swagger.codegen.DefaultGenerator
-def sourceFolder = "$apiProjectRoot/src/main/java"
-task generateSwaggerApi {
-    doLast {
-        def config = new CodegenConfigurator()
-        config.setInputSpec("./stroom-stats-api/swagger.yaml")
-        config.setOutputDir("$apiProjectRoot")
-        config.setLang('java')
-        config.setAdditionalProperties([
-                'interfaceOnly' : 'true',
-                'apiPackage'    : 'stroom.stats.api',
-                'modelPackage'  : 'stroom.stats.api.model',
-                'sourceFolder'  : 'src/main/java'
-        ])
-        new DefaultGenerator().opts(config.toClientOptInput()).generate()
-    }
-}

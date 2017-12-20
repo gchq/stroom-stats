@@ -58,7 +58,7 @@ ext.versions = [
     stroomAuth: 'v0.1-alpha.5',
     stroomExpression: 'v1.0.1',
     //same version for both stroom-query-api and stroom-query-common
-    stroomQuery: 'v2.0.0-alpha.10',
+    stroomQuery: 'v2.0.0-alpha.18',
 
     dropwizard: '1.1.0',
     dropwizardMetrics: '3.2.2', //keep in sync with dropwizard (1.1.0 => 3.2.2)
@@ -130,6 +130,7 @@ ext.libs = [
     hibernate_jpa_api: "org.hibernate.javax.persistence:hibernate-jpa-2.1-api:1.0.0.Final",
     jCommander: "com.beust:jcommander:1.48",
     jackson_annotations: "com.fasterxml.jackson.core:jackson-annotations:2.7.8",
+    jackson_databind: "com.fasterxml.jackson.core:jackson-databind:2.8.7",
     javaslang: 'io.javaslang:javaslang:2.0.5',
     javassist: "org.javassist:javassist:3.20.0-GA",
     javax_annotation: "javax.annotation:javax.annotation-api:1.2",
@@ -141,6 +142,7 @@ ext.libs = [
     jcl_over_slf4j: "org.slf4j:jcl-over-slf4j:$versions.slf4j",
     jersey_server: "org.glassfish.jersey.core:jersey-server:$versions.jersey",
     jersey_client: "org.glassfish.jersey.core:jersey-client:$versions.jersey",
+    jersey_common: "org.glassfish.jersey.core:jersey-common:$versions.jersey",
     joda_time: 'joda-time:joda-time:2.9.4',
     jose4j: "org.bitbucket.b_c:jose4j:0.5.5", //keep in sync with dropwizard_auth_jwt
     junit: "junit:junit:4.12", 
@@ -213,8 +215,7 @@ subprojects {
 //defines a list of gradle projects that we will publish with maven/bintray
 def projectsToBePublished = subprojects.findAll { project ->
     project.path in [
-            ':stroom-stats-schema',
-            ':stroom-stats-api'
+            ':stroom-stats-schema'
     ]
 }
 
