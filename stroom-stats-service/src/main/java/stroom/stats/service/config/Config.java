@@ -39,7 +39,7 @@ public class Config extends Configuration implements JobConfiguration {
     private OptionalInt advertisedPort;
 
     @Valid
-    private boolean logRequestsAndResponses;
+    private Boolean logRequestsAndResponses;
 
     @NotNull
     @Valid
@@ -85,7 +85,7 @@ public class Config extends Configuration implements JobConfiguration {
         return authConfig;
     }
 
-    public boolean shouldLogRequestsAndResponses() {
+    public Boolean getLogRequestsAndResponses() {
         return logRequestsAndResponses;
     }
 
