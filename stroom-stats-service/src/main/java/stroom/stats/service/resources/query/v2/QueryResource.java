@@ -118,14 +118,18 @@ public class QueryResource implements HasHealthCheck {
     public Response getDataSource(
             @Auth User user,
             @ApiParam("docRef") @NotNull @Valid final DocRef docRef) {
-//    public Response getDataSource(@Valid final DocRef docRef) {
 
-        return performWithAuthorisation(user,
-//        return performWithAuthorisation(null,
-                docRef,
-                () -> dataSourceService.getDatasource(docRef)
-                        .map(dataSource -> Response.ok(dataSource).build())
-                        .orElse(Response.noContent().build()));
+        return dataSourceService.getDatasource(docRef)
+                .map(dataSource -> Response.ok(dataSource).build())
+                .orElse(Response.noContent().build());
+
+        //TODO Re-enable authorisations
+//        return performWithAuthorisation(
+//                user,
+//                docRef,
+//                () -> dataSourceService.getDatasource(docRef)
+//                        .map(dataSource -> Response.ok(dataSource).build())
+//                        .orElse(Response.noContent().build()));
     }
 
     @ApiOperation(
@@ -139,17 +143,17 @@ public class QueryResource implements HasHealthCheck {
     @Timed
     @UnitOfWork
     public Response search(
-//            TODO: Why is this endpoint not secured?
+            @Auth User user,
             @ApiParam("searchRequest") @NotNull @Valid SearchRequest searchRequest) {
-//    public Response search(@Auth User user, @Valid SearchRequest searchRequest){
         LOGGER.debug("Received search request");
 
-        return performWithAuthorisation(null,
-//        return performWithAuthorisation(user,
-                searchRequest.getQuery().getDataSource(), () ->
-                        Response
-                                .ok(hBaseClient.query(searchRequest))
-                                .build());
+        return Response.ok(hBaseClient.query(searchRequest)).build();
+
+        // TODO: Re-enable authorisations
+//        return performWithAuthorisation(
+//                user,
+//                searchRequest.getQuery().getDataSource(),
+//                () -> Response.ok(hBaseClient.query(searchRequest)).build());
     }
 
     @POST

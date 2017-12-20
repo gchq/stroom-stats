@@ -19,31 +19,27 @@
 
 package stroom.stats;
 
-import org.junit.Before;
 import org.junit.Test;
-import stroom.stats.api.model.Field;
-import stroom.stats.api.model.Filter;
-import stroom.stats.api.model.Query;
-import stroom.stats.api.model.QueryKey;
-import stroom.stats.api.model.ResultRequest;
-import stroom.stats.api.model.SearchResponse;
-import stroom.stats.api.model.Sort;
-import stroom.stats.api.model.TableSettings;
-import stroom.stats.api.model.TimeZone;
-import stroom.stats.api.QueryApi;
-import stroom.stats.api.model.DateTimeFormat;
-import stroom.stats.api.model.DocRef;
-import stroom.stats.api.model.ExpressionOperator;
-import stroom.stats.api.model.ExpressionTerm;
-import stroom.stats.api.model.Format;
-import stroom.stats.api.model.NumberFormat;
-import stroom.stats.api.model.SearchRequest;
-import stroom.stats.configuration.StatisticConfiguration;
+import stroom.query.api.v2.DateTimeFormat;
+import stroom.query.api.v2.DocRef;
+import stroom.query.api.v2.ExpressionOperator;
+import stroom.query.api.v2.ExpressionTerm;
+import stroom.query.api.v2.Field;
+import stroom.query.api.v2.Filter;
+import stroom.query.api.v2.Format;
+import stroom.query.api.v2.NumberFormat;
+import stroom.query.api.v2.Query;
+import stroom.query.api.v2.QueryKey;
+import stroom.query.api.v2.ResultRequest;
+import stroom.query.api.v2.SearchRequest;
+import stroom.query.api.v2.Sort;
+import stroom.query.api.v2.TableSettings;
+import stroom.query.api.v2.TimeZone;
 
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
-import java.util.Arrays;
 
-import static junit.framework.TestCase.fail;
 import static org.assertj.core.api.Java6Assertions.assertThat;
 
 public class QueryResource_authHeader_IT extends AbstractAppIT {
@@ -55,98 +51,98 @@ public class QueryResource_authHeader_IT extends AbstractAppIT {
      */
     @Test
     public void testPostQueryData_validCredentials() throws UnsupportedEncodingException, ApiException {
-        QueryApi queryApi = new QueryApi(new ApiClient()
-                .setBasePath("http://localhost:8086")
-                .addDefaultHeader("Authorization", "Bearer " + idToken));
+        Response response = getClient().target("http://localhost:8086/api/stroom-stats/v2/search")
+                .request()
+                .header("Authorization", "Bearer " + idToken)
+                .post(Entity.json(getSearchRequest()));
 
-        SearchRequest searchRequest = getSearchRequest();
-        ApiResponse<SearchResponse> response = queryApi.searchWithHttpInfo(getSearchRequest());
-        assertThat(response.getStatusCode()).isEqualTo(200);
+        assertThat(response.getStatus()).isEqualTo(200);
     }
 
     @Test
     public void postQueryData_missingCredentials() throws ApiException {
-        QueryApi queryApi = new QueryApi(new ApiClient()
-                .setBasePath("http://localhost:8086"));
+        Response response = getClient().target("http://localhost:8086/api/stroom-stats/v2/search")
+                .request()
+                .post(Entity.json(getSearchRequest()));
 
-        SearchRequest searchRequest = getSearchRequest();
-        ApiResponse<SearchResponse> response = queryApi.searchWithHttpInfo(getSearchRequest());
-        assertThat(response.getStatusCode()).isEqualTo(401);
+        assertThat(response.getStatus()).isEqualTo(401);
     }
 
     @Test
     public void postQueryData_invalidCredentials() throws UnsupportedEncodingException, ApiException {
-        QueryApi queryApi = new QueryApi(new ApiClient()
-                .setBasePath("http://localhost:8086")
-                .addDefaultHeader("Authorization", "Bearer " + "GARBAGE"));
+        Response response = getClient().target("http://localhost:8086/api/stroom-stats/v2/search")
+                .request()
+                .header("Authorization", "Bearer " + "GARBAGE")
+                .post(Entity.json(getSearchRequest()));
 
-        SearchRequest searchRequest = getSearchRequest();
-        ApiResponse<SearchResponse> response = queryApi.searchWithHttpInfo(getSearchRequest());
-        assertThat(response.getStatusCode()).isEqualTo(401);
+        assertThat(response.getStatus()).isEqualTo(401);
     }
 
     private static SearchRequest getSearchRequest() {
-        DocRef docRef = new DocRef()
+        DocRef docRef = new DocRef.Builder()
                 .type("docRefType")
                 .uuid("e40d59ac-e785-11e6-a678-0242ac120005")
-                .name("docRefName");
+                .name("docRefName")
+                .build();
 
-        ExpressionOperator expressionOperator = new ExpressionOperator()
-                .enabled(true)
-                .op(ExpressionOperator.OpEnum.AND)
-                .children(Arrays.asList(
-                    new ExpressionTerm()
-                    .field("field1")
-                    .condition(ExpressionTerm.ConditionEnum.EQUALS)
-                    .value("value1"),
-                    new ExpressionTerm()
-                            .field("field2")
-                            .condition(ExpressionTerm.ConditionEnum.BETWEEN)
-                            .value("value2"),
-                    new ExpressionTerm()
-                            .field(StatisticConfiguration.FIELD_NAME_DATE_TIME)
-                            .condition(ExpressionTerm.ConditionEnum.BETWEEN)
-                            .value("2017-01-01T00:00:00.000Z,2017-01-31T00:00:00.000Z")
-                ));
-
-        Format format = new Format()
-                .type(Format.TypeEnum.DATE_TIME)
-                .numberFormat(new NumberFormat().decimalPlaces(1).useSeparator(false))
-                .dateTimeFormat(new DateTimeFormat()
+        Format format = new Format.Builder()
+                .type(Format.Type.DATE_TIME)
+                .number(new NumberFormat.Builder().decimalPlaces(1).useSeparator(false).build())
+                .dateTime(new DateTimeFormat.Builder()
                         .pattern("yyyy-MM-dd'T'HH:mm:ss")
-                        .timeZone(new TimeZone().offsetHours(0).offsetMinutes(0)));
+                        .timeZone(new TimeZone.Builder().offsetHours(0).offsetMinutes(0).build())
+                        .build())
+                .build();
 
-        TableSettings tableSettings = new TableSettings()
-                .queryId("someQueryId")
-                .fields(Arrays.asList(
-                        new Field()
-                            .name("name1")
-                            .expression("expression1")
-                            .sort(new Sort().order(1).direction(Sort.DirectionEnum.ASCENDING))
-                            .filter(new Filter().includes("include1").excludes("exclude1"))
-                            .format(format)
-                            .group(1),
-                        new Field()
+        ResultRequest resultRequest = new ResultRequest.Builder()
+                .componentId("componentId")
+                .addMappings(
+                    new TableSettings.Builder()
+                        .queryId("someQueryId")
+                        .addFields(
+                            new Field.Builder()
+                                .name("name1")
+                                .expression("expression1")
+                                .sort(new Sort.Builder().order(1).direction(Sort.SortDirection.ASCENDING).build())
+                                .filter(new Filter.Builder().includes("include1").excludes("exclude1").build())
+                                .format(format)
+                                .group(1)
+                                .build(),
+                            new Field.Builder()
                                 .name("name2")
                                 .expression("expression2")
-                                .sort(new Sort().order(1).direction(Sort.DirectionEnum.DESCENDING))
-                                .filter(new Filter().includes("include2").excludes("exclude2"))
+                                .sort(new Sort.Builder().order(1).direction(Sort.SortDirection.ASCENDING).build())
+                                .filter(new Filter.Builder().includes("include2").excludes("exclude2").build())
                                 .format(format)
-                                .group(2)))
-                .extractValues(false)
-                .extractionPipeline(new DocRef().type("docRefType2").uuid("docRefUuid2").name("docRefName2"))
-                .maxResults(Arrays.asList(1, 2))
-                .showDetail(false);
+                                .group(1)
+                                .build())
+                        .extractValues(false)
+                        .extractionPipeline(new DocRef.Builder().type("docRefType2").uuid("docRefUuid2").name("docRefName2").build())
+                        .addMaxResults(1, 2)
+                        .showDetail(false)
+                        .build())
+                .build();
 
-        ResultRequest resultRequest = new ResultRequest().componentId("componentId").mappings(Arrays.asList(tableSettings));
-        Query query = new Query().dataSource(docRef).expression(expressionOperator);
+        Query query = new Query.Builder()
+                .dataSource(docRef)
+                .expression(
+                        new ExpressionOperator.Builder(ExpressionOperator.Op.AND)
+                            .addTerm("fieldX", ExpressionTerm.Condition.EQUALS, "abc")
+                            .addOperator(new ExpressionOperator.Builder(ExpressionOperator.Op.OR)
+                                    .addTerm("fieldA", ExpressionTerm.Condition.EQUALS, "Fred")
+                                    .addTerm("fieldA", ExpressionTerm.Condition.EQUALS, "Fred")
+                                    .build())
+                            .addTerm("fieldY", ExpressionTerm.Condition.BETWEEN, "10,20")
+                        .build())
+                .build();
 
-        SearchRequest searchRequest = new SearchRequest()
-            .key(new QueryKey().uuid("queryKeyUuid"))
+        SearchRequest searchRequest = new SearchRequest.Builder()
+            .key(new QueryKey("queryKeyUuid"))
             .query(query)
-            .resultRequests(Arrays.asList(resultRequest))
+            .addResultRequests(resultRequest)
             .dateTimeLocale("en-gb")
-            .incremental(false);
+            .incremental(false)
+            .build();
         return searchRequest;
     }
 }
