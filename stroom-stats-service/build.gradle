@@ -52,8 +52,6 @@ dependencies {
     compile libs.hibernate_core
     compile libs.hibernate_jpa_api
     compile libs.jackson_annotations
-    permitUnusedDeclared libs.jackson_databind
-    compile libs.jackson_databind
     compile libs.javaslang
     compile libs.javassist
     compile libs.javax_annotation
@@ -89,7 +87,10 @@ dependencies {
     testCompile libs.fastClasspathScanner
     testCompile libs.dropwizard_testing
     testCompile libs.spring_kafka_test
+    permitTestUnusedDeclared "${libs.wiremock}"
     testCompile libs.wiremock
+    permitTestUnusedDeclared libs.jackson_annotations
+    testCompile libs.jackson_annotations
 
     //TODO gradle-dependency-analyze doesn't understand about integrationTest so says these libs are unused
     permitTestUnusedDeclared libs.dropwizard_testing
