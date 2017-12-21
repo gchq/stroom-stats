@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.configuration.StroomStatsStoreEntity;
 import stroom.stats.datasource.DataSourceService;
+import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.auth.JwtVerificationFilter;
@@ -93,7 +94,7 @@ public class App extends Application<Config> {
         }
 
         configureAuthentication(environment, injector.getInstance(JwtVerificationFilter.class));
-        registerResources(environment, config);
+        registerResources(environment);
         registerTasks(environment);
         HealthChecks.register(environment, injector);
         registerManagedObjects(environment);
@@ -108,13 +109,13 @@ public class App extends Application<Config> {
         return injector;
     }
 
-    private void registerResources(final Environment environment, Config config) {
+    private void registerResources(final Environment environment) {
         LOGGER.info("Registering API");
         environment.jersey().register(new QueryResource(
                 injector.getInstance(HBaseClient.class),
                 injector.getInstance(DataSourceService.class),
                 injector.getInstance(ServiceDiscoverer.class),
-                config));
+                injector.getInstance(StroomPropertyService.class)));
     }
 
     private void registerTasks(final Environment environment) {

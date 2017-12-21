@@ -32,10 +32,10 @@ import stroom.query.api.v2.QueryKey;
 import stroom.query.api.v2.SearchRequest;
 import stroom.stats.HBaseClient;
 import stroom.stats.datasource.DataSourceService;
+import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.service.ResourcePaths;
 import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.auth.User;
-import stroom.stats.service.config.Config;
 import stroom.stats.service.resources.AuthorisationRequest;
 import stroom.stats.util.healthchecks.HasHealthCheck;
 
@@ -64,22 +64,24 @@ public class QueryResource implements HasHealthCheck {
     public static final String SEARCH_ENDPOINT = "/search";
     public static final String DESTROY_ENDPOINT = "/destroy";
 
-    private Config config;
+    private static final String AUTHORISATION_SERVICE_URL_PROPERTY = "stroom.stats.auth.authorisationServiceUrl";
+
     private final HBaseClient hBaseClient;
     private final DataSourceService dataSourceService;
     private final ServiceDiscoverer serviceDiscoverer;
-    private static final String NO_AUTHORISATION_SERVICE_MESSAGE
-            = "I don't have an address for the Authorisation service, so I can't authorise requests!";
+    private final String authorisationServiceUrl;
 
     @Inject
     public QueryResource(final HBaseClient hBaseClient,
                          final DataSourceService dataSourceService,
                          final ServiceDiscoverer serviceDiscoverer,
-                         final Config config) {
+                         final StroomPropertyService stroomPropertyService) {
+
         this.hBaseClient = hBaseClient;
         this.dataSourceService = dataSourceService;
         this.serviceDiscoverer = serviceDiscoverer;
-        this.config = config;
+
+        authorisationServiceUrl = stroomPropertyService.getPropertyOrThrow(AUTHORISATION_SERVICE_URL_PROPERTY);
     }
 
     @GET
@@ -163,7 +165,7 @@ public class QueryResource implements HasHealthCheck {
                                               final Supplier<Response> responseProvider) {
         String authorisationUrl = String.format(
                 "%s/isAuthorised",
-                config.getAuthConfig().getAuthorisationServiceUrl());
+                this.authorisationServiceUrl);
 
         boolean isAuthorised = checkPermissions(authorisationUrl, user, docRef);
         if (!isAuthorised) {

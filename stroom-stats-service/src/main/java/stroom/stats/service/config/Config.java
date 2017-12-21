@@ -48,11 +48,6 @@ public class Config extends Configuration implements JobConfiguration {
 
     @NotNull
     @Valid
-    @JsonProperty("auth")
-    private AuthConfig authConfig;
-
-    @NotNull
-    @Valid
     @JsonProperty("defaultProperties")
     private Map<String,String> defaultProperties;
 
@@ -79,10 +74,6 @@ public class Config extends Configuration implements JobConfiguration {
 
     public Map<String, String> getDefaultProperties() {
         return defaultProperties;
-    }
-
-    public AuthConfig getAuthConfig() {
-        return authConfig;
     }
 
     public Boolean isLogRequestsAndResponses() {

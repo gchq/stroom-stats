@@ -14,7 +14,7 @@ import stroom.auth.service.ApiClient;
 import stroom.auth.service.ApiException;
 import stroom.auth.service.api.ApiKeyApi;
 import stroom.auth.service.api.AuthenticationApi;
-import stroom.stats.service.config.Config;
+import stroom.stats.properties.StroomPropertyService;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -26,19 +26,26 @@ import static javax.ws.rs.core.HttpHeaders.AUTHORIZATION;
 public class JwtVerifier {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(JwtVerifier.class);
 
+    private static final String API_KEY_PROPERTY = "stroom.stats.auth.apiKey";
+    private static final String AUTHENTICATION_SERVICE_URL_PROPERTY = "stroom.stats.auth.authenticationServiceUrl";
+
     private final ApiKeyApi apiKeyApi;
     private final AuthenticationApi authenticationApi;
-    private final Config config;
+    private final StroomPropertyService stroomPropertyService;
     private final JwtConsumer jwtConsumer;
+
     private PublicJsonWebKey jwk;
 
     @Inject
-    public JwtVerifier(Config config){
-        this.config = config;
+    public JwtVerifier(final StroomPropertyService stroomPropertyService){
+        this.stroomPropertyService = stroomPropertyService;
+
+        final String authenticationServiceUrl = stroomPropertyService.getPropertyOrThrow(AUTHENTICATION_SERVICE_URL_PROPERTY);
+        final String apiKey = stroomPropertyService.getPropertyOrThrow(API_KEY_PROPERTY);
 
         ApiClient authServiceClient = new ApiClient();
-        authServiceClient.setBasePath(config.getAuthConfig().getAuthenticationServiceUrl());
-        authServiceClient.addDefaultHeader(AUTHORIZATION, "Bearer " + config.getAuthConfig().getApiKey());
+        authServiceClient.setBasePath(authenticationServiceUrl);
+        authServiceClient.addDefaultHeader(AUTHORIZATION, "Bearer " + apiKey);
 
         apiKeyApi = new ApiKeyApi(authServiceClient);
         authenticationApi = new AuthenticationApi(authServiceClient);
@@ -85,6 +92,8 @@ public class JwtVerifier {
             fetchNewPublicKeys();
         }
 
+        final String expectedIssuer = stroomPropertyService.getPropertyOrThrow("stroom.stats.auth.expectedIssuer");
+
         JwtConsumerBuilder builder = new JwtConsumerBuilder()
                 .setAllowedClockSkewInSeconds(30) // allow some leeway in validating time based claims to account for clock skew
                 .setRequireSubject() // the JWT must have a subject claim
@@ -93,7 +102,7 @@ public class JwtVerifier {
                 .setJwsAlgorithmConstraints( // only allow the expected signature algorithm(s) in the given context
                         new AlgorithmConstraints(AlgorithmConstraints.ConstraintType.WHITELIST, // which is only RS256 here
                                 AlgorithmIdentifiers.RSA_USING_SHA256))
-                .setExpectedIssuer(this.config.getAuthConfig().getExpectedIssuer());
+                .setExpectedIssuer(expectedIssuer);
         return builder.build();
     }
 

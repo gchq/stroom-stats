@@ -12,25 +12,11 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
 public enum ExternalService {
-    //TODO think index can be removed
-//    INDEX ("stroomIndex"),
-//    AUTHORISATION ("authorisation"),
-//    AUTHENTICATION ("authentication");
 
     //stroom stats returns all results in one go so is stateless and can use a random strategy
     STROOM_STATS(
             "stroomStats",
             Type.SERVER,
-            new RandomStrategy<>()),
-    //stateless so random strategy
-    AUTHENTICATION(
-            "authentication",
-            Type.CLIENT,
-            new RandomStrategy<>()),
-    //stateless so random strategy
-    AUTHORISATION(
-            "authorisation",
-            Type.CLIENT,
             new RandomStrategy<>());
 
     private static final String PROP_KEY_PREFIX = "stroom.services.";
