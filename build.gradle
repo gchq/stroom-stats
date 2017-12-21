@@ -90,7 +90,7 @@ ext.libs = [
     stroomExpression: "stroom:stroom-expression:$versions.stroomExpression",
     stroomQueryApi: "stroom:stroom-query-api:$versions.stroomQuery",
     stroomQueryCommon: "stroom:stroom-query-common:$versions.stroomQuery",
-    
+
     //------------3rd-party------------
     assertj: "org.assertj:assertj-core:3.6.2",
     byte_buddy: "net.bytebuddy:byte-buddy:1.5.8",
@@ -111,7 +111,7 @@ ext.libs = [
     dropwizard_jobs_core: "de.spinscale.dropwizard:dropwizard-jobs-core:2.0.1",
     dropwizard_lifecycle: "io.dropwizard:dropwizard-lifecycle:$versions.dropwizard",
     dropwizard_metrics_annotation: "io.dropwizard.metrics:metrics-annotation:$versions.dropwizardMetrics",
-    dropwizard_metrics_healthchecks: "io.dropwizard.metrics:metrics-healthchecks:$versions.dropwizardMetrics", 
+    dropwizard_metrics_healthchecks: "io.dropwizard.metrics:metrics-healthchecks:$versions.dropwizardMetrics",
     dropwizard_servlets: "io.dropwizard:dropwizard-servlets:$versions.dropwizard",
     dropwizard_configuration: "io.dropwizard:dropwizard-configuration:$versions.dropwizard",
     dropwizard_testing: "io.dropwizard:dropwizard-testing:$versions.dropwizard",
@@ -141,7 +141,7 @@ ext.libs = [
     jersey_common: "org.glassfish.jersey.core:jersey-common:$versions.jersey",
     joda_time: 'joda-time:joda-time:2.9.4',
     jose4j: "org.bitbucket.b_c:jose4j:0.5.5", //keep in sync with dropwizard_auth_jwt
-    junit: "junit:junit:4.12", 
+    junit: "junit:junit:4.12",
     kafka_clients: "org.apache.kafka:kafka-clients:$versions.kafka",
     kafka_streams: "org.apache.kafka:kafka-streams:$versions.kafka",
     kryo: "com.esotericsoftware:kryo-shaded:4.0.0",
@@ -154,10 +154,11 @@ ext.libs = [
     saxon: "net.sf.saxon:Saxon-HE:9.6.0-6",
     slf4j_api: "org.slf4j:slf4j-api:$versions.slf4j",
     spring_kafka_test: "org.springframework.kafka:spring-kafka-test:$versions.spring_kafka_test", //instead of spring_kafka_test could use 'org.apache.kafka:kafka-streams-examples'
+    wiremock: 'com.github.tomakehurst:wiremock:2.12.0',
     xml_apis: "xml-apis:xml-apis:1.0.b2",
     zookeeper: "org.apache.zookeeper:zookeeper:3.4.5",
     zzzDummyzzz: 'Here to make sorting easier'
-] 
+]
 
 allprojects {
     group "stroom"

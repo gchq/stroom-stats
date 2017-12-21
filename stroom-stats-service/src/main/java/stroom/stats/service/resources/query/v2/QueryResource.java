@@ -110,18 +110,12 @@ public class QueryResource implements HasHealthCheck {
     public Response getDataSource(
             @Auth User user,
             @NotNull @Valid final DocRef docRef) {
-
-        return dataSourceService.getDatasource(docRef)
-                .map(dataSource -> Response.ok(dataSource).build())
-                .orElse(Response.noContent().build());
-
-        //TODO Re-enable authorisations
-//        return performWithAuthorisation(
-//                user,
-//                docRef,
-//                () -> dataSourceService.getDatasource(docRef)
-//                        .map(dataSource -> Response.ok(dataSource).build())
-//                        .orElse(Response.noContent().build()));
+        return performWithAuthorisation(
+                user,
+                docRef,
+                () -> dataSourceService.getDatasource(docRef)
+                        .map(dataSource -> Response.ok(dataSource).build())
+                        .orElse(Response.noContent().build()));
     }
 
     @POST
@@ -131,17 +125,14 @@ public class QueryResource implements HasHealthCheck {
     @Timed
     @UnitOfWork
     public Response search(
-            @Auth User user,
+            @NotNull @Auth User user,
             @NotNull @Valid SearchRequest searchRequest) {
         LOGGER.debug("Received search request");
 
-        return Response.ok(hBaseClient.query(searchRequest)).build();
-
-        // TODO: Re-enable authorisations
-//        return performWithAuthorisation(
-//                user,
-//                searchRequest.getQuery().getDataSource(),
-//                () -> Response.ok(hBaseClient.query(searchRequest)).build());
+        return performWithAuthorisation(
+                user,
+                searchRequest.getQuery().getDataSource(),
+                () -> Response.ok(hBaseClient.query(searchRequest)).build());
     }
 
     @POST
@@ -188,19 +179,15 @@ public class QueryResource implements HasHealthCheck {
 
     private boolean checkPermissions(final String authorisationUrl, final User user, final DocRef statisticRef) {
         Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
-        if (user != null) {
-            AuthorisationRequest authorisationRequest = new AuthorisationRequest(statisticRef, "USE");
-            Response response = client
-                    .target(authorisationUrl)
-                    .request()
-                    .header("Authorization", "Bearer " + user.getJwt())
-                    .post(Entity.json(authorisationRequest));
+        AuthorisationRequest authorisationRequest = new AuthorisationRequest(statisticRef, "USE");
+        Response response = client
+                .target(authorisationUrl)
+                .request()
+                .header("Authorization", "Bearer " + user.getJwt())
+                .post(Entity.json(authorisationRequest));
 
-            boolean isAuthorised = response.getStatus() == 200;
-            return isAuthorised;
-        } else {
-            return true;
-        }
+        boolean isAuthorised = response.getStatus() == 200;
+        return isAuthorised;
     }
 
 
