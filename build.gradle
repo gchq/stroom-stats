@@ -10,7 +10,6 @@ buildscript {
         //to work, elses it gives a NoClassDefFound, possibly due to a conflict with the Bintray plugin
         //See https://github.com/michel-kraemer/gradle-download-task/issues/58
         classpath 'org.apache.httpcomponents:httpclient:4.5.2'
-
         classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
     }
 }
@@ -31,7 +30,7 @@ task wrapper(type: Wrapper) {
 
 //if the project has a value for the passed property (i.e from the cmd line via -PpropName=xxx)
 //use that, else use a default value
-ext.getPropertyOrDefault = { propName, defaultValue -> 
+ext.getPropertyOrDefault = { propName, defaultValue ->
     def val;
     if (project.hasProperty(propName) && project.getProperty(propName) != "unspecified" && project.getProperty(propName) != "") {
         val = project.getProperty(propName)
@@ -44,6 +43,7 @@ ext.getPropertyOrDefault = { propName, defaultValue ->
 }
 
 
+apply plugin: 'com.jfrog.bintray'
 apply plugin: 'idea'
 
 
@@ -53,9 +53,10 @@ ext.versions = [
 
     //------Stroom-libs---------------
     eventLogging: 'v3.1.2_schema-v3.1.2',
+    stroomAuth: 'v0.1-alpha.5',
     stroomExpression: 'v1.0.1',
     //same version for both stroom-query-api and stroom-query-common
-    stroomQuery: 'v2.0.0-alpha.10',
+    stroomQuery: 'v2.0.0-alpha.18',
 
     dropwizard: '1.1.0',
     dropwizardMetrics: '3.2.2', //keep in sync with dropwizard (1.1.0 => 3.2.2)
@@ -78,8 +79,6 @@ ext.versions = [
 
     //1.1.1.RELEASE is the latest version that runs against kafka 0.10.0.1
     spring_kafka_test: '1.1.1.RELEASE',
-
-    swagger: '1.5.16',
     zzzDummyzzz: 'Here to make sorting easier'
 ]
 
@@ -87,10 +86,11 @@ ext.versions = [
 ext.libs = [
     //------Stroom-libs---------------
     eventLogging: "event-logging:event-logging:$versions.eventLogging",
+    stroomAuthApi: "stroom:stroom-auth-service-api:$versions.stroomAuth",
     stroomExpression: "stroom:stroom-expression:$versions.stroomExpression",
     stroomQueryApi: "stroom:stroom-query-api:$versions.stroomQuery",
     stroomQueryCommon: "stroom:stroom-query-common:$versions.stroomQuery",
-    
+
     //------------3rd-party------------
     assertj: "org.assertj:assertj-core:3.6.2",
     byte_buddy: "net.bytebuddy:byte-buddy:1.5.8",
@@ -111,7 +111,7 @@ ext.libs = [
     dropwizard_jobs_core: "de.spinscale.dropwizard:dropwizard-jobs-core:2.0.1",
     dropwizard_lifecycle: "io.dropwizard:dropwizard-lifecycle:$versions.dropwizard",
     dropwizard_metrics_annotation: "io.dropwizard.metrics:metrics-annotation:$versions.dropwizardMetrics",
-    dropwizard_metrics_healthchecks: "io.dropwizard.metrics:metrics-healthchecks:$versions.dropwizardMetrics", 
+    dropwizard_metrics_healthchecks: "io.dropwizard.metrics:metrics-healthchecks:$versions.dropwizardMetrics",
     dropwizard_servlets: "io.dropwizard:dropwizard-servlets:$versions.dropwizard",
     dropwizard_configuration: "io.dropwizard:dropwizard-configuration:$versions.dropwizard",
     dropwizard_testing: "io.dropwizard:dropwizard-testing:$versions.dropwizard",
@@ -126,8 +126,10 @@ ext.libs = [
     hibernate_jpa_api: "org.hibernate.javax.persistence:hibernate-jpa-2.1-api:1.0.0.Final",
     jCommander: "com.beust:jcommander:1.48",
     jackson_annotations: "com.fasterxml.jackson.core:jackson-annotations:2.7.8",
+    jackson_databind: "com.fasterxml.jackson.core:jackson-databind:2.8.7",
     javaslang: 'io.javaslang:javaslang:2.0.5',
     javassist: "org.javassist:javassist:3.20.0-GA",
+    javax_annotation: "javax.annotation:javax.annotation-api:1.2",
     javax_inject: "javax.inject:javax.inject:1",
     javax_validation_api: "javax.validation:validation-api:1.1.0.Final",
     javax_ws_rs_api: "javax.ws.rs:javax.ws.rs-api:2.0.1",
@@ -136,9 +138,10 @@ ext.libs = [
     jcl_over_slf4j: "org.slf4j:jcl-over-slf4j:$versions.slf4j",
     jersey_server: "org.glassfish.jersey.core:jersey-server:$versions.jersey",
     jersey_client: "org.glassfish.jersey.core:jersey-client:$versions.jersey",
+    jersey_common: "org.glassfish.jersey.core:jersey-common:$versions.jersey",
     joda_time: 'joda-time:joda-time:2.9.4',
     jose4j: "org.bitbucket.b_c:jose4j:0.5.5", //keep in sync with dropwizard_auth_jwt
-    junit: "junit:junit:4.12", 
+    junit: "junit:junit:4.12",
     kafka_clients: "org.apache.kafka:kafka-clients:$versions.kafka",
     kafka_streams: "org.apache.kafka:kafka-streams:$versions.kafka",
     kryo: "com.esotericsoftware:kryo-shaded:4.0.0",
@@ -151,11 +154,11 @@ ext.libs = [
     saxon: "net.sf.saxon:Saxon-HE:9.6.0-6",
     slf4j_api: "org.slf4j:slf4j-api:$versions.slf4j",
     spring_kafka_test: "org.springframework.kafka:spring-kafka-test:$versions.spring_kafka_test", //instead of spring_kafka_test could use 'org.apache.kafka:kafka-streams-examples'
-    swagger_annotations: "io.swagger:swagger-annotations:$versions.swagger",
+    wiremock: 'com.github.tomakehurst:wiremock:2.12.0',
     xml_apis: "xml-apis:xml-apis:1.0.b2",
     zookeeper: "org.apache.zookeeper:zookeeper:3.4.5",
     zzzDummyzzz: 'Here to make sorting easier'
-] 
+]
 
 allprojects {
     group "stroom"
@@ -205,11 +208,24 @@ subprojects {
 }
 
 
-project(':stroom-stats-schema') {
+//defines a list of gradle projects that we will publish with maven/bintray
+def projectsToBePublished = subprojects.findAll { project ->
+    project.path in [
+            ':stroom-stats-schema'
+    ]
+}
+
+//configures only those projects in publishedProjectsPaths
+configure(projectsToBePublished) {
+
+    println "Configuring ${project.path} for publishing"
 
     apply plugin: 'maven'
     apply plugin: 'maven-publish'
     apply plugin: 'com.jfrog.bintray'
+
+    group = 'stroom'
+    version = versions.stroomStats
 
     task sourcesJar(type: Jar, dependsOn: classes) {
         classifier = 'sources'
@@ -241,14 +257,13 @@ project(':stroom-stats-schema') {
             }
         }
         scm {
-           url "https://github.com/stroom/stroom-stats"
+            url "https://github.com/gchq/stroom-stats"
         }
     }
 
     publishing {
         publications {
             mavenJava(MavenPublication) {
-                from components.java
                 artifact sourcesJar
                 artifact javadocJar
                 pom.withXml {
@@ -256,6 +271,14 @@ project(':stroom-stats-schema') {
                     root.appendNode('name', project.name)
                     root.children().last() + pomConfig
                 }
+            }
+        }
+    }
+
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java
             }
         }
     }
@@ -278,7 +301,7 @@ project(':stroom-stats-schema') {
             repo = 'stroom'
             name = 'stroom-stats'
             userOrg = 'stroom'
-            licenses = ['Apache-2.0'] //This assume the only 
+            licenses = ['Apache-2.0']
             vcsUrl = 'https://github.com/gchq/stroom-stats.git'
             version {
                 name = "${versions.stroomStats}"
@@ -292,5 +315,4 @@ project(':stroom-stats-schema') {
             }
         }
     }
-
 }

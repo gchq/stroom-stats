@@ -21,23 +21,35 @@ package stroom.stats.service.auth;
 
 import io.dropwizard.auth.AuthenticationException;
 import io.dropwizard.auth.Authenticator;
-import org.jose4j.jwt.MalformedClaimException;
-import org.jose4j.jwt.consumer.JwtContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.util.Optional;
 
-public class UserAuthenticator implements Authenticator<JwtContext, User> {
+@Singleton
+public class UserAuthenticator implements Authenticator<String, User> {
+    public static final Logger LOGGER = LoggerFactory.getLogger(UserAuthenticator.class);
+
+    private JwtVerifier jwtVerifier;
+
+    @Inject
+    public UserAuthenticator(JwtVerifier jwtVerifier) {
+        this.jwtVerifier = jwtVerifier;
+    }
 
     @Override
-    public Optional<User> authenticate(JwtContext context) throws AuthenticationException {
-        //TODO: If we want to check anything else about the user we need to do it here.
-        try {
-            return Optional.of(new User(
-                    context.getJwtClaims().getSubject(),
-                    context.getJwt()));
+    public Optional<User> authenticate(String securityToken) throws AuthenticationException {
+        Optional<String> userEmail = jwtVerifier.verify(securityToken);
+        boolean hasBeenRevoked = jwtVerifier.hasBeenRevoked(securityToken);
+
+        if(userEmail.isPresent() && !hasBeenRevoked){
+            return Optional.of(new User(userEmail.get(), securityToken));
         }
-        catch (MalformedClaimException e) {
-            return Optional.empty();
-        }
+
+        return Optional.empty();
     }
+
+
 }

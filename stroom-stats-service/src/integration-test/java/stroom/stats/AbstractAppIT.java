@@ -19,12 +19,16 @@
 
 package stroom.stats;
 
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.junit.WireMockClassRule;
 import io.dropwizard.client.JerseyClientBuilder;
 import io.dropwizard.client.JerseyClientConfiguration;
 import io.dropwizard.testing.junit.DropwizardAppRule;
 import io.dropwizard.util.Duration;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.service.ResourcePaths;
@@ -34,7 +38,22 @@ import stroom.stats.service.startup.App;
 
 import javax.ws.rs.client.Client;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+
+
 public abstract class AbstractAppIT {
+    @ClassRule
+    public static final DropwizardAppRule<Config> RULE = new DropwizardAppRule<>(App.class, "config.yml");
+
+    @ClassRule
+    public static WireMockClassRule wireMockRule = new WireMockClassRule(
+            WireMockConfiguration.options().port(8080));
+
+    @Rule
+    public WireMockClassRule instanceRule = wireMockRule;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractAppIT.class);
 
@@ -85,9 +104,14 @@ public abstract class AbstractAppIT {
         LOGGER.info("Stop processing url:  {}, e.g. curl -X POST {}", STOP_PROCESSING_URL, STOP_PROCESSING_URL);
     }
 
-    @ClassRule
-    public static final DropwizardAppRule<Config> RULE = new DropwizardAppRule<>(App.class, "config.yml");
-
+    @Before
+    public void before(){
+        stubFor(post(urlEqualTo("/api/authorisation/v1/isAuthorised"))
+                .willReturn(aResponse()
+                        .withHeader("Content-Type", "text/plain")
+                        .withBody("Mock approval for authorisation")
+                        .withStatus(200)));
+    }
 
     protected static Client getClient() {
         return client;

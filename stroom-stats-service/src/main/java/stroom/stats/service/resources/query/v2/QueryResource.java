@@ -21,6 +21,7 @@ package stroom.stats.service.resources.query.v2;
 
 import com.codahale.metrics.annotation.Timed;
 import com.codahale.metrics.health.HealthCheck;
+import io.dropwizard.auth.Auth;
 import io.dropwizard.hibernate.UnitOfWork;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientResponse;
@@ -31,7 +32,7 @@ import stroom.query.api.v2.QueryKey;
 import stroom.query.api.v2.SearchRequest;
 import stroom.stats.HBaseClient;
 import stroom.stats.datasource.DataSourceService;
-import stroom.stats.service.ExternalService;
+import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.service.ResourcePaths;
 import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.auth.User;
@@ -40,6 +41,7 @@ import stroom.stats.util.healthchecks.HasHealthCheck;
 
 import javax.inject.Inject;
 import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -50,7 +52,6 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.Optional;
 import java.util.function.Supplier;
 
 @Path(ResourcePaths.ROOT_PATH + ResourcePaths.STROOM_STATS + ResourcePaths.V2)
@@ -63,19 +64,24 @@ public class QueryResource implements HasHealthCheck {
     public static final String SEARCH_ENDPOINT = "/search";
     public static final String DESTROY_ENDPOINT = "/destroy";
 
+    private static final String AUTHORISATION_SERVICE_URL_PROPERTY = "stroom.stats.auth.authorisationServiceUrl";
+
     private final HBaseClient hBaseClient;
     private final DataSourceService dataSourceService;
     private final ServiceDiscoverer serviceDiscoverer;
-    private static final String NO_AUTHORISATION_SERVICE_MESSAGE
-            = "I don't have an address for the Authorisation service, so I can't authorise requests!";
+    private final String authorisationServiceUrl;
 
     @Inject
     public QueryResource(final HBaseClient hBaseClient,
                          final DataSourceService dataSourceService,
-                         final ServiceDiscoverer serviceDiscoverer) {
+                         final ServiceDiscoverer serviceDiscoverer,
+                         final StroomPropertyService stroomPropertyService) {
+
         this.hBaseClient = hBaseClient;
         this.dataSourceService = dataSourceService;
         this.serviceDiscoverer = serviceDiscoverer;
+
+        authorisationServiceUrl = stroomPropertyService.getPropertyOrThrow(AUTHORISATION_SERVICE_URL_PROPERTY);
     }
 
     @GET
@@ -101,12 +107,11 @@ public class QueryResource implements HasHealthCheck {
     @Produces(MediaType.APPLICATION_JSON)
     @Path(DATA_SOURCE_ENDPOINT)
     @Timed
-//    public Response getDataSource(@Auth User user, @Valid final DocRef docRef) {
-    public Response getDataSource(@Valid final DocRef docRef) {
-        LOGGER.debug("{} called for docRef {}", DATA_SOURCE_ENDPOINT, docRef);
-
-//        return performWithAuthorisation(user,
-        return performWithAuthorisation(null,
+    public Response getDataSource(
+            @Auth User user,
+            @NotNull @Valid final DocRef docRef) {
+        return performWithAuthorisation(
+                user,
                 docRef,
                 () -> dataSourceService.getDatasource(docRef)
                         .map(dataSource -> Response.ok(dataSource).build())
@@ -119,13 +124,13 @@ public class QueryResource implements HasHealthCheck {
     @Produces({MediaType.APPLICATION_JSON})
     @Timed
     @UnitOfWork
-    //TODO @Auth commented out until the auth branch work is merged in as it is not working
-//    public Response search(@Auth User user, @Valid SearchRequest searchRequest){
-    public Response search(@Valid SearchRequest searchRequest) {
-        LOGGER.debug("{} called for searchRequest {}", SEARCH_ENDPOINT, searchRequest);
+    public Response search(
+            @NotNull @Auth User user,
+            @NotNull @Valid SearchRequest searchRequest) {
+        LOGGER.debug("Received search request");
 
-//        return performWithAuthorisation(user,
-        return performWithAuthorisation(null,
+        return performWithAuthorisation(
+                user,
                 searchRequest.getQuery().getDataSource(),
                 () -> Response.ok(hBaseClient.query(searchRequest)).build());
     }
@@ -136,39 +141,28 @@ public class QueryResource implements HasHealthCheck {
     @Path(DESTROY_ENDPOINT)
     @Timed
     public Response destroy(@Valid final QueryKey queryKey) {
-        LOGGER.debug("{} called for queryKey {}", DESTROY_ENDPOINT, queryKey);
 //    public Response destroy(@Auth User user, @Valid final QueryKey queryKey) {
 
         //destroy does nothing on stroom-stats as we don't hold any query state
         //If we return a failure response then stroom will error so just silently
         //return a 200
         return Response
-                .ok()
+                .ok(Boolean.TRUE)
                 .build();
     }
 
-    private Response performWithAuthorisation(final User user, final DocRef docRef, final Supplier<Response> responseProvider) {
+    private Response performWithAuthorisation(final User user,
+                                              final DocRef docRef,
+                                              final Supplier<Response> responseProvider) {
+        String authorisationUrl = String.format(
+                "%s/isAuthorised",
+                this.authorisationServiceUrl);
 
-        Optional<String> authorisationServiceAddress = serviceDiscoverer.getServiceInstanceAddress(ExternalService.AUTHORISATION);
-
-        if (authorisationServiceAddress.isPresent()) {
-            String authorisationUrl = String.format(
-//                    "%s/api/authorisation/isAuthorised",
-                    "%s/isAuthorised",
-                    authorisationServiceAddress.get());
-
-            boolean isAuthorised = checkPermissions(authorisationUrl, user, docRef);
-            if (!isAuthorised) {
-                return Response
-                        .status(Response.Status.UNAUTHORIZED)
-                        .entity("User is not authorised to perform this action.")
-                        .build();
-            }
-        } else {
-            LOGGER.error(NO_AUTHORISATION_SERVICE_MESSAGE);
+        boolean isAuthorised = checkPermissions(authorisationUrl, user, docRef);
+        if (!isAuthorised) {
             return Response
-                    .serverError()
-                    .entity("This request cannot be authorised because the authorisation service (Stroom) is not available.")
+                    .status(Response.Status.UNAUTHORIZED)
+                    .entity("User is not authorised to perform this action.")
                     .build();
         }
 
@@ -183,35 +177,22 @@ public class QueryResource implements HasHealthCheck {
         }
     }
 
-    private boolean checkPermissions(String authorisationUrl, User user, DocRef statisticRef) {
+    private boolean checkPermissions(final String authorisationUrl, final User user, final DocRef statisticRef) {
         Client client = ClientBuilder.newClient(new ClientConfig().register(ClientResponse.class));
+        AuthorisationRequest authorisationRequest = new AuthorisationRequest(statisticRef, "USE");
+        Response response = client
+                .target(authorisationUrl)
+                .request()
+                .header("Authorization", "Bearer " + user.getJwt())
+                .post(Entity.json(authorisationRequest));
 
-        if (user != null) {
-            AuthorisationRequest authorisationRequest = new AuthorisationRequest(statisticRef, "USE");
-            Response response = client
-                    .target(authorisationUrl)
-                    .request()
-                    .header("Authorization", "Bearer " + user.getJwt())
-                    .post(Entity.json(authorisationRequest));
-
-            boolean isAuthorised = response.getStatus() == 200;
-            return isAuthorised;
-        } else {
-            return true;
-        }
+        boolean isAuthorised = response.getStatus() == 200;
+        return isAuthorised;
     }
 
 
     @Override
     public HealthCheck.Result getHealth() {
-        if (serviceDiscoverer.getServiceInstance(ExternalService.AUTHORISATION).isPresent()) {
-            return HealthCheck.Result.healthy();
-        } else {
-            return HealthCheck.Result.unhealthy(NO_AUTHORISATION_SERVICE_MESSAGE);
-        }
+        return HealthCheck.Result.healthy();
     }
-
-    //TODO need an endpoint for completely purging a whole set of stats (passing in a stat data source uuid)
-
-    //TODO need an endpoint for purging all stats to the configured retention periods
 }

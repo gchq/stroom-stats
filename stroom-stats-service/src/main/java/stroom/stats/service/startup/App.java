@@ -32,35 +32,34 @@ import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.servlets.tasks.Task;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import org.glassfish.jersey.logging.LoggingFeature;
 import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.configuration.StroomStatsStoreEntity;
 import stroom.stats.datasource.DataSourceService;
+import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.ServiceDiscoveryManager;
-import stroom.stats.service.auth.AuthenticationFilter;
+import stroom.stats.service.auth.JwtVerificationFilter;
 import stroom.stats.service.auth.User;
 import stroom.stats.service.resources.query.v2.QueryResource;
 import stroom.stats.HBaseClient;
 import stroom.stats.StroomStatsServiceModule;
 import stroom.stats.service.config.Config;
-import stroom.stats.configuration.common.Folder;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.tasks.StartProcessingTask;
 import stroom.stats.tasks.StopProcessingTask;
 
 import java.io.UnsupportedEncodingException;
+import java.util.logging.Level;
 
 public class App extends Application<Config> {
     private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
     public static final String APP_NAME = "stroom-stats";
     private Injector injector = null;
 
-    private final HibernateBundle<Config> hibernateBundle = new HibernateBundle<Config>(
-            StroomStatsStoreEntity.class,
-            Folder.class) {
-
+    private final HibernateBundle<Config> hibernateBundle = new HibernateBundle<Config>(StroomStatsStoreEntity.class) {
         @Override
         public DataSourceFactory getDataSourceFactory(Config configuration) {
             return configuration.getDataSourceFactory();
@@ -83,11 +82,18 @@ public class App extends Application<Config> {
 
     @Override
     public void run(Config config, Environment environment) throws UnsupportedEncodingException {
-        configureAuthentication(config, environment);
-
         injector = Guice.createInjector(new StroomStatsServiceModule(config, hibernateBundle.getSessionFactory()));
         injector.getInstance(ServiceDiscoveryManager.class);
 
+        if(config.isLogRequestsAndResponses()) {
+            environment.jersey().register(new LoggingFeature(java.util.logging.Logger.getLogger(
+                    getClass().getName()),
+                    Level.OFF,
+                    LoggingFeature.Verbosity.PAYLOAD_TEXT,
+                    8192));
+        }
+
+        configureAuthentication(environment, injector.getInstance(JwtVerificationFilter.class));
         registerResources(environment);
         registerTasks(environment);
         HealthChecks.register(environment, injector);
@@ -108,7 +114,8 @@ public class App extends Application<Config> {
         environment.jersey().register(new QueryResource(
                 injector.getInstance(HBaseClient.class),
                 injector.getInstance(DataSourceService.class),
-                injector.getInstance(ServiceDiscoverer.class)));
+                injector.getInstance(ServiceDiscoverer.class),
+                injector.getInstance(StroomPropertyService.class)));
     }
 
     private void registerTasks(final Environment environment) {
@@ -134,8 +141,8 @@ public class App extends Application<Config> {
         environment.lifecycle().manage(managed);
     }
 
-    private static void configureAuthentication(Config config, Environment environment) {
-        environment.jersey().register(new AuthDynamicFeature(AuthenticationFilter.get(config)));
+    private static void configureAuthentication(Environment environment, JwtVerificationFilter<User> jwtVerificationFilter) {
+        environment.jersey().register(new AuthDynamicFeature(jwtVerificationFilter));
         environment.jersey().register(new AuthValueFactoryProvider.Binder<>(User.class));
         environment.jersey().register(RolesAllowedDynamicFeature.class);
     }

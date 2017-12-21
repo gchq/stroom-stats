@@ -6,11 +6,13 @@ def fatJarName = "stroom-stats-service-${version}-all.jar"
 def dockerBuildDir = "${rootProject.projectDir}/docker/build"
 
 apply plugin: 'application'
+
 mainClassName = 'stroom.stats.service.startup.App'
 
 dependencies {
     //--------Project----------
     compile project(':stroom-stats-schema')
+    permitUnusedDeclared project(':stroom-stats-schema') //not clear why it thinks this is unused
     compile project(':stroom-stats-hbase-client')
     compile project(':stroom-stats-util')
     compile project(':stroom-stats-model')
@@ -22,6 +24,7 @@ dependencies {
     compile libs.stroomQueryApi
     compile libs.stroomQueryCommon
     compile libs.stroomExpression
+    compile libs.stroomAuthApi
 
     //--------3rd party--------
     compile libs.curator_client
@@ -29,7 +32,6 @@ dependencies {
     compile libs.curator_recipies
     compile libs.curator_service_discovery
     compile libs.dropwizard_auth
-    compile libs.dropwizard_auth_jwt
     compile libs.dropwizard_core
     compile libs.dropwizard_jetty
     compile libs.dropwizard_jersey
@@ -52,11 +54,13 @@ dependencies {
     compile libs.jackson_annotations
     compile libs.javaslang
     compile libs.javassist
+    compile libs.javax_annotation
     compile libs.javax_inject
     compile libs.javax_validation_api
     compile libs.javax_ws_rs_api
     compile libs.jersey_server
     compile libs.jersey_client
+    compile libs.jersey_common
     compile libs.jose4j
     compile libs.kafka_clients
     compile libs.kafka_streams
@@ -64,8 +68,6 @@ dependencies {
     compile libs.logback_classic
     compile libs.objenesis //used for Kryo strategies
     compile libs.slf4j_api
-    permitUnusedDeclared libs.swagger_annotations //Needed for stroom-query-api 
-    compile libs.swagger_annotations
     compile libs.xml_apis
     compile libs.zookeeper
 
@@ -76,6 +78,8 @@ dependencies {
 
     testCompile libs.hamcrest_core
     testCompile libs.assertj
+    permitTestUnusedDeclared libs.jose4j
+    testCompile libs.jose4j
     testCompile libs.junit
 
     //deps for integrationTest
@@ -83,7 +87,11 @@ dependencies {
     testCompile libs.fastClasspathScanner
     testCompile libs.dropwizard_testing
     testCompile libs.spring_kafka_test
-    
+    permitTestUnusedDeclared "${libs.wiremock}"
+    testCompile libs.wiremock
+    permitTestUnusedDeclared libs.jackson_annotations
+    testCompile libs.jackson_annotations
+
     //TODO gradle-dependency-analyze doesn't understand about integrationTest so says these libs are unused
     permitTestUnusedDeclared libs.dropwizard_testing
     permitTestUnusedDeclared libs.spring_kafka_test

@@ -1,5 +1,3 @@
-
-
 /*
  * Copyright 2017 Crown Copyright
  *
@@ -19,33 +17,22 @@
  * along with Stroom-Stats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package stroom.stats.configuration.common;
+package stroom.stats;
 
+public class Credentials{
+  private String email;
+  private String password;
 
-import javax.persistence.Column;
-import javax.persistence.MappedSuperclass;
+  public Credentials(String email, String password){
+    this.email = email;
+    this.password = password;
+  }
 
-@MappedSuperclass
-public abstract class DocumentEntity extends NamedEntity implements Document {
-    public static final String UUID = SQLNameConstants.UUID;
+  public String getEmail() {
+    return email;
+  }
 
-    private static final long serialVersionUID = -6752797140242673318L;
-
-    private String uuid;
-
-    @Override
-    @Column(name = UUID, unique = true, nullable = false)
-    public String getUuid() {
-        return uuid;
-    }
-
-    public void setUuid(final String uuid) {
-        this.uuid = uuid;
-    }
-
-    @Override
-    public void clearPersistence() {
-        super.clearPersistence();
-        uuid = null;
-    }
+  public String getPassword() {
+    return password;
+  }
 }

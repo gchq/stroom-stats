@@ -98,7 +98,7 @@ public class StatsApiClient {
         if(Strings.isNullOrEmpty(jwtToken)){
             return authHeader.get();
         }
-        else{
+        else {
             return "Bearer " + jwtToken;
         }
     }

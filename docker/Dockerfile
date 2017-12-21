@@ -18,7 +18,7 @@ FROM openjdk:8-alpine
 
 ADD build/stroom-stats-service*-all.jar /stroom-stats/stroom-stats-service-all.jar
 ADD build/config.yml /stroom-stats/
-Add docker-entrypoint.sh /usr/local/bin/
+ADD docker-entrypoint.sh /usr/local/bin/
 
 # If we're using a VPN we'll need to set the proxies
 RUN echo "http_proxy: $http_proxy" && \

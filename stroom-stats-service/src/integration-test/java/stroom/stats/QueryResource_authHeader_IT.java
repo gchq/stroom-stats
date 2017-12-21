@@ -19,7 +19,6 @@
 
 package stroom.stats;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import stroom.query.api.v2.DateTimeFormat;
 import stroom.query.api.v2.DocRef;
@@ -36,106 +35,114 @@ import stroom.query.api.v2.SearchRequest;
 import stroom.query.api.v2.Sort;
 import stroom.query.api.v2.TableSettings;
 import stroom.query.api.v2.TimeZone;
-import stroom.stats.configuration.StatisticConfiguration;
 
+import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
-import java.util.Arrays;
 
-import static stroom.query.api.v2.ExpressionTerm.Condition;
-import static stroom.stats.HttpAsserts.assertAccepted;
-import static stroom.stats.HttpAsserts.assertUnauthorized;
+import static org.assertj.core.api.Java6Assertions.assertThat;
 
 public class QueryResource_authHeader_IT extends AbstractAppIT {
 
-//    @Test
-//    public void postEmptyStatistics_validCredentials() throws UnsupportedEncodingException {
-//        Response response = req().useXml().body(Statistics::new).postStats();
-//        assertAccepted(response);
-//    }
-//
-//    @Test
-//    public void postEmptyStatistics_missingCredentials() {
-//        Response response = req().useXml().body(Statistics::new).authHeader(AuthHeader.MISSING).postStats();
-//        assertUnauthorized(response);
-//    }
-//
-//    @Test
-//    public void postEmptyStatistics_invalidCredentials() throws UnsupportedEncodingException {
-//        Response response = req().useXml().body(Statistics::new).authHeader(AuthHeader.INVALID).postStats();
-//        assertUnauthorized(response);
-//    }
+    private String idToken = "eyJhbGciOiJSUzI1NiJ9.eyJleHAiOjE1NDQ4NjMwNjIsInN1YiI6InN0YXRzU2VydmljZVVzZXIiLCJpc3MiOiJzdHJvb20ifQ.7AFPkNgM1UBL_Pj-K5kSNPClgDJ6wZ22WWukjWGw_myZWuMZPGd-kqYxUuQzqqmTA918wylFSx5xBPWA1oCbx0aEPGEOdMnUViykq5XaGEHwPGT9Tf9JI0h8z6-TfOt2VJ2CFsSmRSpfe1CYOywZwziqBwvf5m0rWhfb0wm1abcBnjmX_EfxZiV3McmY0MEzSN6AkYGyWr4ggja06onKEObkoZ9f5pRt7tkTsBpCvaolavfu3IF5FXP9GRifOcxdQXFOgRCDe4JkG6ZAeKbTT6aJJCU798F9jL2ozIw-tQTrA5KjkwIpefaA6CoA_mZd-gIa-ZOLVGzRaIMBo-dl-g";
 
     /**
      * This test depends on SetupSampleData being run - the DocRef with the uuid needs to exist.
      */
     @Test
     public void testPostQueryData_validCredentials() throws UnsupportedEncodingException {
-        Response response = req().body(QueryResource_authHeader_IT::getSearchRequest).getStats();
-        assertAccepted(response);
+        Response response = getClient().target("http://localhost:8086/api/stroom-stats/v2/search")
+                .request()
+                .header("Authorization", "Bearer " + idToken)
+                .post(Entity.json(getSearchRequest()));
+
+        assertThat(response.getStatus()).isEqualTo(200);
     }
 
     @Test
-    public void postQueryData_missingCredentials(){
-        Response response = req().body(QueryResource_authHeader_IT::getSearchRequest).authHeader(AuthHeader.MISSING).getStats();
-        assertUnauthorized(response);
+    public void postQueryData_missingCredentials() {
+        Response response = getClient().target("http://localhost:8086/api/stroom-stats/v2/search")
+                .request()
+                .post(Entity.json(getSearchRequest()));
+
+        assertThat(response.getStatus()).isEqualTo(401);
     }
 
     @Test
     public void postQueryData_invalidCredentials() throws UnsupportedEncodingException {
-        Response response = req().body(QueryResource_authHeader_IT::getSearchRequest).authHeader(AuthHeader.INVALID).getStats();
-        assertUnauthorized(response);
+        Response response = getClient().target("http://localhost:8086/api/stroom-stats/v2/search")
+                .request()
+                .header("Authorization", "Bearer " + "GARBAGE")
+                .post(Entity.json(getSearchRequest()));
+
+        assertThat(response.getStatus()).isEqualTo(401);
     }
 
     private static SearchRequest getSearchRequest() {
-        DocRef docRef = new DocRef("docRefType", "e40d59ac-e785-11e6-a678-0242ac120005", "docRefName");
+        DocRef docRef = new DocRef.Builder()
+                .type("docRefType")
+                .uuid("e40d59ac-e785-11e6-a678-0242ac120005")
+                .name("docRefName")
+                .build();
 
-        ExpressionOperator expressionOperator = new ExpressionOperator(
-                true,
-                ExpressionOperator.Op.AND,
-                new ExpressionTerm("field1", Condition.EQUALS, "value1"),
-                new ExpressionTerm("field2", Condition.BETWEEN, "value2"),
-                new ExpressionTerm(StatisticConfiguration.FIELD_NAME_DATE_TIME, Condition.BETWEEN, "2017-01-01T00:00:00.000Z,2017-01-31T00:00:00.000Z")
-        );
+        Format format = new Format.Builder()
+                .type(Format.Type.DATE_TIME)
+                .number(new NumberFormat.Builder().decimalPlaces(1).useSeparator(false).build())
+                .dateTime(new DateTimeFormat.Builder()
+                        .pattern("yyyy-MM-dd'T'HH:mm:ss")
+                        .timeZone(new TimeZone.Builder().offsetHours(0).offsetMinutes(0).build())
+                        .build())
+                .build();
 
-        Format format = new Format(
-                Format.Type.DATE_TIME,
-                new NumberFormat(1, false),
-                new DateTimeFormat("yyyy-MM-dd'T'HH:mm:ss", TimeZone.fromOffset(0, 0)));
+        ResultRequest resultRequest = new ResultRequest.Builder()
+                .componentId("componentId")
+                .addMappings(
+                    new TableSettings.Builder()
+                        .queryId("someQueryId")
+                        .addFields(
+                            new Field.Builder()
+                                .name("name1")
+                                .expression("expression1")
+                                .sort(new Sort.Builder().order(1).direction(Sort.SortDirection.ASCENDING).build())
+                                .filter(new Filter.Builder().includes("include1").excludes("exclude1").build())
+                                .format(format)
+                                .group(1)
+                                .build(),
+                            new Field.Builder()
+                                .name("name2")
+                                .expression("expression2")
+                                .sort(new Sort.Builder().order(1).direction(Sort.SortDirection.ASCENDING).build())
+                                .filter(new Filter.Builder().includes("include2").excludes("exclude2").build())
+                                .format(format)
+                                .group(1)
+                                .build())
+                        .extractValues(false)
+                        .extractionPipeline(new DocRef.Builder().type("docRefType2").uuid("docRefUuid2").name("docRefName2").build())
+                        .addMaxResults(1, 2)
+                        .showDetail(false)
+                        .build())
+                .build();
 
-        TableSettings tableSettings = new TableSettings(
-                "someQueryId",
-                Arrays.asList(
-                        new Field(
-                                "name1",
-                                "expression1",
-                                new Sort(1, Sort.SortDirection.ASCENDING),
-                                new Filter("include1", "exclude1"),
-                                format,
-                                1),
-                        new Field(
-                                "name2",
-                                "expression2",
-                                new Sort(2, Sort.SortDirection.DESCENDING),
-                                new Filter("include2", "exclude2"),
-                                format,
-                                2)),
-                false,
-                new DocRef("docRefType2", "docRefUuid2", "docRefName2"),
-                Arrays.asList(1, 2),
-                false
-        );
+        Query query = new Query.Builder()
+                .dataSource(docRef)
+                .expression(
+                        new ExpressionOperator.Builder(ExpressionOperator.Op.AND)
+                            .addTerm("fieldX", ExpressionTerm.Condition.EQUALS, "abc")
+                            .addOperator(new ExpressionOperator.Builder(ExpressionOperator.Op.OR)
+                                    .addTerm("fieldA", ExpressionTerm.Condition.EQUALS, "Fred")
+                                    .addTerm("fieldA", ExpressionTerm.Condition.EQUALS, "Fred")
+                                    .build())
+                            .addTerm("fieldY", ExpressionTerm.Condition.BETWEEN, "10,20")
+                        .build())
+                .build();
 
-        ResultRequest resultRequest = new ResultRequest("componentId", tableSettings);
-        Query query = new Query(docRef, expressionOperator);
-
-        SearchRequest searchRequest = new SearchRequest(
-                new QueryKey("queryKeyUuid"),
-                query,
-                Arrays.asList(resultRequest),
-                "en-gb",
-                false);
-
+        SearchRequest searchRequest = new SearchRequest.Builder()
+            .key(new QueryKey("queryKeyUuid"))
+            .query(query)
+            .addResultRequests(resultRequest)
+            .dateTimeLocale("en-gb")
+            .incremental(false)
+            .build();
         return searchRequest;
     }
 }

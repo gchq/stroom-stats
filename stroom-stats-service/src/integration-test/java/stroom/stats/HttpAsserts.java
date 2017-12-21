@@ -9,6 +9,10 @@ public class HttpAsserts {
         assertThat(response.getStatus()).isEqualTo(Response.Status.ACCEPTED.getStatusCode());
     }
 
+    public static void assertOk(Response response){
+        assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
     public static void assertUnauthorized(Response response){
         assertThat(response.getStatus()).isEqualTo(Response.Status.UNAUTHORIZED.getStatusCode());
     }
