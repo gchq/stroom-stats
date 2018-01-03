@@ -34,4 +34,23 @@ dependencies {
     testCompile libs.assertj
 }
 
+clean{
+    //clear out the directories used for the transient build artefacts copied into the docker context
+    delete stroomStatsHbaseDockerBuildDir
+}
+
+//Copy all the files needed by the docker build into docker/stroom-stats/build
+task copyFilesForDockerBuild() {
+    dependsOn shadowJar
+    doFirst {
+        //Copy the fat jar
+        copy {
+            from "${project.buildDir}/libs/"
+            include "stroom-stats-hbase-filter*-all.jar"
+            into stroomStatsHbaseDockerBuildDir
+        }
+    }
+}
+
+tasks.build.dependsOn copyFilesForDockerBuild
 tasks.build.dependsOn shadowJar

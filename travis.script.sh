@@ -3,12 +3,17 @@
 #exit script on any error
 set -e
 
-DOCKER_REPO="gchq/stroom-stats"
 GITHUB_REPO="gchq/stroom-stats"
 GITHUB_API_URL="https://api.github.com/repos/gchq/stroom-stats/releases"
-DOCKER_CONTEXT_ROOT="docker/."
-FLOATING_TAG=""
-SPECIFIC_TAG=""
+STROOM_STATS_DOCKER_REPO="gchq/stroom-stats"
+STROOM_STATS_HBASE_DOCKER_REPO="gchq/stroom-stats-hbase"
+STROOM_STATS_DOCKER_CONTEXT_ROOT="docker/stroom-stats/."
+STROOM_STATS_HBASE_DOCKER_CONTEXT_ROOT="docker/stroom-stats-hbase/."
+STROOM_STATS_FLOATING_TAG=""
+STROOM_STATS_SPECIFIC_TAG=""
+STROOM_STATS_HBASE_FLOATING_TAG=""
+STROOM_STATS_HBASE_SPECIFIC_TAG=""
+HBASE_VERSION_SUFFIX="_hbase-v1.2.0" #TODO ideally we should pick this up dynamically so it is only defined in the gradle build
 #This is a whitelist of branches to produce docker builds for
 BRANCH_WHITELIST_REGEX='(^dev$|^master$|^v[0-9].*$)'
 RELEASE_VERSION_REGEX='^v[0-9]+\.[0-9]+\.[0-9].*$'
@@ -74,6 +79,27 @@ isCronBuildRequired() {
     return
 }
 
+releaseToDockerHub() {
+    if [ $# -lt 3 ]; then
+        echo "Incorrect args, expecting at least 3"
+        exit 1
+    fi
+    dockerRepo=$1
+    contextRoot=$2
+    specifcTag=$3
+    floatingTag=$4 #optional
+
+    echo -e "dockerRepo:  [${GREEN}${dockerRepo}${NC}]"
+    echo -e "contextRoot: [${GREEN}${contextRoot}${NC}]"
+    echo -e "specifcTag:  [${GREEN}${specificTag}${NC}]"
+    echo -e "floatingTag: [${GREEN}${floatingTag}${NC}]"
+
+    echo -e "Building and releasing a docker image to ${GREEN}${dockerRepo}${NC} with tags: ${GREEN}${specificTag}${NC} ${GREEN}${floatingTag}${NC}"
+
+    docker build ${specificTag} ${floatingTag} ${contextRoot}
+    docker push ${dockerRepo}
+}
+
 #establish what version of stroom-stats we are building
 if [ -n "$TRAVIS_TAG" ]; then
     STROOM_STATS_VERSION="${TRAVIS_TAG}"
@@ -94,25 +120,25 @@ echo -e "STROOM_STATS_VERSION: [${GREEN}${STROOM_STATS_VERSION}${NC}]"
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #TODO temporary code for debugging
 
-if [ "${GH_USER_AND_TOKEN}x" = "x" ]; then 
-    #no token so do it unauthenticated
-    authArgs=""
-else
-    echo "Using authentication with curl"
-    authArgs="--user ${GH_USER_AND_TOKEN}"
-fi
-#query the github api for the latest cron release tag name
-#redirect stderr to dev/null to protect api token
-echo -e "${RED}Outputting all release tags:${NC}"
-curl -s ${authArgs} ${GITHUB_API_URL} | \
-    jq -r "[.[] | select(.tag_name | test(\"${TRAVIS_BRANCH}.*${CRON_TAG_SUFFIX}\"))][].tag_name" 2>/dev/null
-
-echo -e "${RED}Outputting lates release:${NC}"
-curl -s ${authArgs} ${GITHUB_API_URL}/latest 
-
-latestTagName=$(curl -s ${authArgs} ${GITHUB_API_URL} | \
-    jq -r "[.[] | select(.tag_name | test(\"${TRAVIS_BRANCH}.*${CRON_TAG_SUFFIX}\"))][0].tag_name" 2>/dev/null)
-echo -e "Latest release ${CRON_TAG_SUFFIX} tag: [${GREEN}${latestTagName}${NC}]"
+#if [ "${GH_USER_AND_TOKEN}x" = "x" ]; then 
+#    #no token so do it unauthenticated
+#    authArgs=""
+#else
+#    echo "Using authentication with curl"
+#    authArgs="--user ${GH_USER_AND_TOKEN}"
+#fi
+##query the github api for the latest cron release tag name
+##redirect stderr to dev/null to protect api token
+#echo -e "${RED}Outputting all release tags:${NC}"
+#curl -s ${authArgs} ${GITHUB_API_URL} | \
+#    jq -r "[.[] | select(.tag_name | test(\"${TRAVIS_BRANCH}.*${CRON_TAG_SUFFIX}\"))][].tag_name" 2>/dev/null
+#
+#echo -e "${RED}Outputting lates release:${NC}"
+#curl -s ${authArgs} ${GITHUB_API_URL}/latest 
+#
+#latestTagName=$(curl -s ${authArgs} ${GITHUB_API_URL} | \
+#    jq -r "[.[] | select(.tag_name | test(\"${TRAVIS_BRANCH}.*${CRON_TAG_SUFFIX}\"))][0].tag_name" 2>/dev/null)
+#echo -e "Latest release ${CRON_TAG_SUFFIX} tag: [${GREEN}${latestTagName}${NC}]"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -133,7 +159,8 @@ else
     extraBuildArgs=""
 
     if [ -n "$TRAVIS_TAG" ]; then
-        SPECIFIC_TAG="--tag=${DOCKER_REPO}:${TRAVIS_TAG}"
+        STROOM_STATS_SPECIFIC_TAG="--tag=${STROOM_STATS_DOCKER_REPO}:${TRAVIS_TAG}"
+        STROOM_STATS_HBASE_SPECIFIC_TAG="--tag=${STROOM_STATS_HBASE_DOCKER_REPO}:${TRAVIS_TAG}${HBASE_VERSION_SUFFIX}"
         doDockerBuild=true
 
         if [[ "$TRAVIS_BRANCH" =~ ${RELEASE_VERSION_REGEX} ]]; then
@@ -142,19 +169,16 @@ else
         fi
             
     elif [[ "$TRAVIS_BRANCH" =~ $BRANCH_WHITELIST_REGEX ]]; then
-        FLOATING_TAG="--tag=${DOCKER_REPO}:${STROOM_STATS_VERSION}-SNAPSHOT"
+        STROOM_STATS_FLOATING_TAG="--tag=${DOCKER_REPO}:${STROOM_STATS_VERSION}-SNAPSHOT${HBASE_VERSION_SUFFIX}"
         doDockerBuild=true
     fi
 
-    echo -e "SPECIFIC DOCKER TAG: [${GREEN}${SPECIFIC_TAG}${NC}]"
-    echo -e "FLOATING DOCKER TAG: [${GREEN}${FLOATING_TAG}${NC}]"
-    echo -e "doDockerBuild:       [${GREEN}${doDockerBuild}${NC}]"
-    echo -e "extraBuildArgs:      [${GREEN}${extraBuildArgs}${NC}]"
+    echo -e "doDockerBuild:  [${GREEN}${doDockerBuild}${NC}]"
+    echo -e "extraBuildArgs: [${GREEN}${extraBuildArgs}${NC}]"
 
     #Do the gradle build
     #TODO need to find a way of running the int tests that doesn't blow the memory limit
     ./gradlew -Pversion=$TRAVIS_TAG clean build -x integrationTest ${extraBuildArgs}
-
 
     #Don't do a docker build for pull requests
     if [ "$doDockerBuild" = true ] && [ "$TRAVIS_PULL_REQUEST" = "false" ] ; then
@@ -162,8 +186,12 @@ else
 
         #The username and password are configured in the travis gui
         docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-        docker build ${SPECIFIC_TAG} ${FLOATING_TAG} ${DOCKER_CONTEXT_ROOT}
-        docker push ${DOCKER_REPO}
+
+        #Release the stroom-stats image
+        releaseToDockerHub "${STROOM_STATS_DOCKER_REPO}" "${STROOM_STATS_DOCKER_CONTEXT_ROOT}" "${STROOM_STATS_FLOATING_TAG}" "${STROOM_STATS_FLOATING_TAG}"
+
+        #Release the hbase image with the stroom-stats filter already in it
+        releaseToDockerHub "${STROOM_STATS_HBASE_DOCKER_REPO}" "${STROOM_STATS_HBASE_DOCKER_CONTEXT_ROOT}" "${STROOM_STATS_HBASE_FLOATING_TAG}" "${STROOM_STATS_HBASE_FLOATING_TAG}"
     fi
 fi
 

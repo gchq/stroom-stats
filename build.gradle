@@ -160,6 +160,10 @@ ext.libs = [
     zzzDummyzzz: 'Here to make sorting easier'
 ]
 
+def dockerDir = "${rootProject.projectDir}/docker"
+ext.stroomStatsDockerBuildDir = "${dockerDir}/stroom-stats/build"
+ext.stroomStatsHbaseDockerBuildDir = "${dockerDir}/stroom-stats-hbase/build"
+
 allprojects {
     group "stroom"
     version versions.stroomStats
@@ -316,3 +320,4 @@ configure(projectsToBePublished) {
         }
     }
 }
+

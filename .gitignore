@@ -6,7 +6,9 @@ classes/
 libs/
 */out/
 /schema/
-/docker/build
+
+# Ignore the transient dir/files for the build artefacts used by docker
+/docker/*/build
 
 # Ignore the jaxb/xjc generated code
 */src-generated/

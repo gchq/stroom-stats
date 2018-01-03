@@ -3,7 +3,6 @@ apply plugin: 'net.ltgt.errorprone'
 
 def jarName = "stroom-stats-service-${version}.jar"
 def fatJarName = "stroom-stats-service-${version}-all.jar"
-def dockerBuildDir = "${rootProject.projectDir}/docker/build"
 
 apply plugin: 'application'
 
@@ -159,23 +158,24 @@ tasks.withType(Test) {
 }
 
 clean{
-    delete dockerBuildDir
+    //clear out the directories used for the transient build artefacts copied into the docker context
+    delete stroomStatsDockerBuildDir
 }
 
-//Copy all the files needed by the docker build into stroom-app/docker/build
+//Copy all the files needed by the docker build into docker/stroom-stats/build
 task copyFilesForDockerBuild() {
     dependsOn shadowJar
     doFirst {
         //Copy the fat jar
         copy {
             from "${project.buildDir}/libs/${fatJarName}"
-            into dockerBuildDir
+            into stroomStatsDockerBuildDir
         }
 
         //Copy the dropwizard yml configuration
         copy {
             from "${projectDir}/config.yml"
-            into dockerBuildDir
+            into stroomStatsDockerBuildDir
         }
     }
 }
