@@ -9,15 +9,18 @@ STROOM_STATS_DOCKER_REPO="gchq/stroom-stats"
 STROOM_STATS_HBASE_DOCKER_REPO="gchq/stroom-stats-hbase"
 STROOM_STATS_DOCKER_CONTEXT_ROOT="docker/stroom-stats/."
 STROOM_STATS_HBASE_DOCKER_CONTEXT_ROOT="docker/stroom-stats-hbase/."
-STROOM_STATS_FLOATING_TAG=""
-STROOM_STATS_SPECIFIC_TAG=""
-STROOM_STATS_HBASE_FLOATING_TAG=""
-STROOM_STATS_HBASE_SPECIFIC_TAG=""
+
+VERSION_FIXED_TAG=""
+SNAPSHOT_FLOATING_TAG=""
+MAJOR_VER_FLOATING_TAG=""
+MINOR_VER_FLOATING_TAG=""
+
 HBASE_VERSION_SUFFIX="_hbase-v1.2.0" #TODO ideally we should pick this up dynamically so it is only defined in the gradle build
 #This is a whitelist of branches to produce docker builds for
 BRANCH_WHITELIST_REGEX='(^dev$|^master$|^v[0-9].*$)'
 RELEASE_VERSION_REGEX='^v[0-9]+\.[0-9]+\.[0-9].*$'
 CRON_TAG_SUFFIX="DAILY"
+LATEST_SUFFIX="-LATEST"
 doDockerBuild=false
 
 #Shell Colour constants for use in 'echo -e'
@@ -79,24 +82,32 @@ isCronBuildRequired() {
     return
 }
 
+#args: dockerRepo contextRoot tag1VersionPart tag2VersionPart ... tagNVersionPart
 releaseToDockerHub() {
     if [ $# -lt 3 ]; then
         echo "Incorrect args, expecting at least 3"
         exit 1
     fi
-    dockerRepo=$1
-    contextRoot=$2
-    specifcTag=$3
-    floatingTag=$4 #optional
+    dockerRepo="$1"
+    contextRoot="$2"
+    #shift the the args so we can loop round theopen ended list of tags, $1 becomes the first tag
+    shift 2
 
+    allTagArgs=""
+
+    for tagVersionPart in "$#"; do
+        if [ "x${tagVersionPart}" != "x" ]; then
+            echo -e "Adding docker tag [${GREEN}${tagVersionPart}${NC}]"
+            allTagArgs="${allTagArgs} --tag=${dockerRepo}:${tagVersionPart}"
+        fi
+    done
+
+
+    echo -e "Building and releasing a docker image to ${GREEN}${dockerRepo}${NC} with tags: ${GREEN}${allTagArgs}${NC}"
     echo -e "dockerRepo:  [${GREEN}${dockerRepo}${NC}]"
     echo -e "contextRoot: [${GREEN}${contextRoot}${NC}]"
-    echo -e "specifcTag:  [${GREEN}${specificTag}${NC}]"
-    echo -e "floatingTag: [${GREEN}${floatingTag}${NC}]"
 
-    echo -e "Building and releasing a docker image to ${GREEN}${dockerRepo}${NC} with tags: ${GREEN}${specificTag}${NC} ${GREEN}${floatingTag}${NC}"
-
-    docker build ${specificTag} ${floatingTag} ${contextRoot}
+    docker build ${allTagArgs} ${contextRoot}
     docker push ${dockerRepo}
 }
 
@@ -159,9 +170,22 @@ else
     extraBuildArgs=""
 
     if [ -n "$TRAVIS_TAG" ]; then
-        STROOM_STATS_SPECIFIC_TAG="--tag=${STROOM_STATS_DOCKER_REPO}:${TRAVIS_TAG}"
-        STROOM_STATS_HBASE_SPECIFIC_TAG="--tag=${STROOM_STATS_HBASE_DOCKER_REPO}:${TRAVIS_TAG}${HBASE_VERSION_SUFFIX}"
         doDockerBuild=true
+
+        #This is a tagged commit, so create a docker image with that tag, e.g. v6.1.2
+        VERSION_FIXED_TAG="${TRAVIS_TAG}"
+
+        #Extract the major version part for a floating tag, e.g. v6-LATEST
+        majorVer=$(echo "${TRAVIS_TAG}" | grep -oP "^v[0-9]+")
+        if [ -n "${majorVer}" ]; then
+            MAJOR_VER_FLOATING_TAG="${majorVer}${LATEST_SUFFIX}"
+        fi
+
+        #Extract the minor version part for a floating tag, e.g. v6.0-LATEST
+        minorVer=$(echo "${TRAVIS_TAG}" | grep -oP "^v[0-9]+\.[0-9]+")
+        if [ -n "${minorVer}" ]; then
+            MINOR_VER_FLOATING_TAG="${minorVer}${LATEST_SUFFIX}"
+        fi
 
         if [[ "$TRAVIS_BRANCH" =~ ${RELEASE_VERSION_REGEX} ]]; then
             echo "This is a release version so add gradle arg for publishing libs to Bintray"
@@ -169,13 +193,16 @@ else
         fi
             
     elif [[ "$TRAVIS_BRANCH" =~ $BRANCH_WHITELIST_REGEX ]]; then
-        STROOM_STATS_FLOATING_TAG="--tag=${STROOM_STATS_DOCKER_REPO}:${STROOM_STATS_VERSION}-SNAPSHOT"
-        STROOM_STATS_HBASE_FLOATING_TAG="--tag=${STROOM_STATS_HBASE_DOCKER_REPO}:${STROOM_STATS_VERSION}-SNAPSHOT${HBASE_VERSION_SUFFIX}"
+        SNAPSHOT_FLOATING_TAG="${STROOM_STATS_VERSION}-SNAPSHOT"
         doDockerBuild=true
     fi
 
-    echo -e "doDockerBuild:  [${GREEN}${doDockerBuild}${NC}]"
-    echo -e "extraBuildArgs: [${GREEN}${extraBuildArgs}${NC}]"
+    echo -e "doDockerBuild:                 [${GREEN}${doDockerBuild}${NC}]"
+    echo -e "extraBuildArgs:                [${GREEN}${extraBuildArgs}${NC}]"
+    echo -e "VERSION FIXED DOCKER TAG:      [${GREEN}${VERSION_FIXED_TAG}${NC}]"
+    echo -e "SNAPSHOT FLOATING DOCKER TAG:  [${GREEN}${SNAPSHOT_FLOATING_TAG}${NC}]"
+    echo -e "MAJOR VER FLOATING DOCKER TAG: [${GREEN}${MAJOR_VER_FLOATING_TAG}${NC}]"
+    echo -e "MINOR VER FLOATING DOCKER TAG: [${GREEN}${MINOR_VER_FLOATING_TAG}${NC}]"
 
     #Do the gradle build
     #TODO need to find a way of running the int tests that doesn't blow the memory limit
@@ -183,16 +210,24 @@ else
 
     #Don't do a docker build for pull requests
     if [ "$doDockerBuild" = true ] && [ "$TRAVIS_PULL_REQUEST" = "false" ] ; then
-        echo -e "Building a docker image with tags: ${GREEN}${SPECIFIC_TAG}${NC} ${GREEN}${FLOATING_TAG}${NC}"
 
         #The username and password are configured in the travis gui
         docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
 
-        #Release the stroom-stats image
-        releaseToDockerHub "${STROOM_STATS_DOCKER_REPO}" "${STROOM_STATS_DOCKER_CONTEXT_ROOT}" "${STROOM_STATS_FLOATING_TAG}" "${STROOM_STATS_FLOATING_TAG}"
+        allStatsTags="${VERSION_FIXED_TAG} ${SNAPSHOT_FLOATING_TAG} ${MAJOR_VER_FLOATING_TAG} ${MINOR_VER_FLOATING_TAG}"
 
-        #Release the hbase image with the stroom-stats filter already in it
-        releaseToDockerHub "${STROOM_STATS_HBASE_DOCKER_REPO}" "${STROOM_STATS_HBASE_DOCKER_CONTEXT_ROOT}" "${STROOM_STATS_HBASE_FLOATING_TAG}" "${STROOM_STATS_HBASE_FLOATING_TAG}"
+        #build and release the stroom-stats image to dockerhub
+        releaseToDockerHub "${STROOM_STATS_DOCKER_REPO}" "${STROOM_STATS_DOCKER_CONTEXT_ROOT}" ${allStatsTags}
+
+        #build all the docker tags for the hbase image
+        allHbaseTags=""
+        allHbaseTags="${allHbaseTags} ${VERSION_FIXED_TAG}${HBASE_VERSION_SUFFIX}"
+        allHbaseTags="${allHbaseTags} ${SNAPSHOT_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
+        allHbaseTags="${allHbaseTags} ${MAJOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
+        allHbaseTags="${allHbaseTags} ${MINOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
+
+        #Build and release the hbase image to dockerhub with the stroom-stats filter already in it
+        releaseToDockerHub "${STROOM_STATS_HBASE_DOCKER_REPO}" "${STROOM_STATS_HBASE_DOCKER_CONTEXT_ROOT}" ${allHbaseTags}
     fi
 fi
 
