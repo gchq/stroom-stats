@@ -45,7 +45,7 @@ createGitTag() {
 
 isCronBuildRequired() {
     #GH_USER_AND_TOKEN is set in env section of .travis.yml
-    if [ "${GH_USER_AND_TOKEN}x" = "x" ]; then 
+    if [ "x${GH_USER_AND_TOKEN}" = "x" ]; then 
         #no token so do it unauthenticated
         authArgs=""
     else
@@ -59,11 +59,11 @@ isCronBuildRequired() {
     echo -e "Latest release ${CRON_TAG_SUFFIX} tag: [${GREEN}${latestTagName}${NC}]"
 
     true
-    if [ "${latestTagName}x" != "x" ]; then 
+    if [ "x${latestTagName}" != "x" ]; then 
         #Get the commit sha that this tag applies to (not the commit of the tag itself)
         shaForTag=$(git rev-list -n 1 "${latestTagName}")
         echo -e "SHA hash for tag ${latestTagName}: [${GREEN}${shaForTag}${NC}]"
-        if [ "${shaForTag}x" = "x" ]; then
+        if [ "x${shaForTag}" = "x" ]; then
             echo -e "${RED}Unable to get sha for tag ${BLUE}${latestTagName}${NC}"
             exit 1
         else
@@ -84,14 +84,15 @@ isCronBuildRequired() {
 
 #args: dockerRepo contextRoot tag1VersionPart tag2VersionPart ... tagNVersionPart
 releaseToDockerHub() {
-    echo "releaseToDockerHub called with args [$@]"
+    #echo "releaseToDockerHub called with args [$@]"
+
     if [ $# -lt 3 ]; then
         echo "Incorrect args, expecting at least 3"
         exit 1
     fi
     dockerRepo="$1"
     contextRoot="$2"
-    #shift the the args so we can loop round theopen ended list of tags, $1 becomes the first tag
+    #shift the the args so we can loop round the open ended list of tags, $1 is now the first tag
     shift 2
 
     allTagArgs=""
@@ -102,7 +103,6 @@ releaseToDockerHub() {
             allTagArgs="${allTagArgs} --tag=${dockerRepo}:${tagVersionPart}"
         fi
     done
-
 
     echo -e "Building and releasing a docker image to ${GREEN}${dockerRepo}${NC} with tags: ${GREEN}${allTagArgs}${NC}"
     echo -e "dockerRepo:  [${GREEN}${dockerRepo}${NC}]"
@@ -215,7 +215,6 @@ else
     #Don't do a docker build for pull requests
     if [ "$doDockerBuild" = true ] && [ "$TRAVIS_PULL_REQUEST" = "false" ] ; then
 
-
         allStatsTags="${VERSION_FIXED_TAG} ${SNAPSHOT_FLOATING_TAG} ${MAJOR_VER_FLOATING_TAG} ${MINOR_VER_FLOATING_TAG}"
 
         #build and release the stroom-stats image to dockerhub
@@ -223,10 +222,10 @@ else
 
         #build all the docker tags for the hbase image
         allHbaseTags=""
-        [ -n ${VERSION_FIXED_TAG} ] && allHbaseTags="${allHbaseTags} ${VERSION_FIXED_TAG}${HBASE_VERSION_SUFFIX}"
-        [ -n ${SNAPSHOT_FLOATING_TAG} ] && allHbaseTags="${allHbaseTags} ${SNAPSHOT_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
-        [ -n ${MAJOR_VER_FLOATING_TAG} ] && allHbaseTags="${allHbaseTags} ${MAJOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
-        [ -n ${MINOR_VER_FLOATING_TAG} ] && allHbaseTags="${allHbaseTags} ${MINOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
+        [ -n "${VERSION_FIXED_TAG}" ] && allHbaseTags="${allHbaseTags} ${VERSION_FIXED_TAG}${HBASE_VERSION_SUFFIX}"
+        [ -n "${SNAPSHOT_FLOATING_TAG}" ] && allHbaseTags="${allHbaseTags} ${SNAPSHOT_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
+        [ -n "${MAJOR_VER_FLOATING_TAG}" ] && allHbaseTags="${allHbaseTags} ${MAJOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
+        [ -n "${MINOR_VER_FLOATING_TAG}" ] && allHbaseTags="${allHbaseTags} ${MINOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
 
         #Build and release the hbase image to dockerhub with the stroom-stats filter already in it
         releaseToDockerHub "${STROOM_STATS_HBASE_DOCKER_REPO}" "${STROOM_STATS_HBASE_DOCKER_CONTEXT_ROOT}" ${allHbaseTags}
