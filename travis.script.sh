@@ -84,6 +84,7 @@ isCronBuildRequired() {
 
 #args: dockerRepo contextRoot tag1VersionPart tag2VersionPart ... tagNVersionPart
 releaseToDockerHub() {
+    echo "releaseToDockerHub called with args [$@]"
     if [ $# -lt 3 ]; then
         echo "Incorrect args, expecting at least 3"
         exit 1
@@ -107,7 +108,9 @@ releaseToDockerHub() {
     echo -e "dockerRepo:  [${GREEN}${dockerRepo}${NC}]"
     echo -e "contextRoot: [${GREEN}${contextRoot}${NC}]"
 
-    #Assumes docker login has already been done
+    #The username and password are configured in the travis gui
+    docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" >/dev/null 2>&1
+
     docker build ${allTagArgs} ${contextRoot} >/dev/null 2>&1
     docker push ${dockerRepo} >/dev/null 2>&1
 }
@@ -212,8 +215,6 @@ else
     #Don't do a docker build for pull requests
     if [ "$doDockerBuild" = true ] && [ "$TRAVIS_PULL_REQUEST" = "false" ] ; then
 
-        #The username and password are configured in the travis gui
-        docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" >/dev/null 2>&1
 
         allStatsTags="${VERSION_FIXED_TAG} ${SNAPSHOT_FLOATING_TAG} ${MAJOR_VER_FLOATING_TAG} ${MINOR_VER_FLOATING_TAG}"
 
