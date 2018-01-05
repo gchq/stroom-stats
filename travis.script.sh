@@ -221,10 +221,10 @@ else
 
         #build all the docker tags for the hbase image
         allHbaseTags=""
-        allHbaseTags="${allHbaseTags} ${VERSION_FIXED_TAG}${HBASE_VERSION_SUFFIX}"
-        allHbaseTags="${allHbaseTags} ${SNAPSHOT_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
-        allHbaseTags="${allHbaseTags} ${MAJOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
-        allHbaseTags="${allHbaseTags} ${MINOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
+        [ -n ${VERSION_FIXED_TAG} ] && allHbaseTags="${allHbaseTags} ${VERSION_FIXED_TAG}${HBASE_VERSION_SUFFIX}"
+        [ -n ${VERSION_FIXED_TAG} ] && allHbaseTags="${allHbaseTags} ${SNAPSHOT_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
+        [ -n ${VERSION_FIXED_TAG} ] && allHbaseTags="${allHbaseTags} ${MAJOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
+        [ -n ${VERSION_FIXED_TAG} ] && allHbaseTags="${allHbaseTags} ${MINOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
 
         #Build and release the hbase image to dockerhub with the stroom-stats filter already in it
         releaseToDockerHub "${STROOM_STATS_HBASE_DOCKER_REPO}" "${STROOM_STATS_HBASE_DOCKER_CONTEXT_ROOT}" ${allHbaseTags}
