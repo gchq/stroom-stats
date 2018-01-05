@@ -95,7 +95,7 @@ releaseToDockerHub() {
 
     allTagArgs=""
 
-    for tagVersionPart in "$#"; do
+    for tagVersionPart in "$@"; do
         if [ "x${tagVersionPart}" != "x" ]; then
             echo -e "Adding docker tag [${GREEN}${tagVersionPart}${NC}]"
             allTagArgs="${allTagArgs} --tag=${dockerRepo}:${tagVersionPart}"
