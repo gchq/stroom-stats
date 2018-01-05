@@ -107,8 +107,9 @@ releaseToDockerHub() {
     echo -e "dockerRepo:  [${GREEN}${dockerRepo}${NC}]"
     echo -e "contextRoot: [${GREEN}${contextRoot}${NC}]"
 
-    docker build ${allTagArgs} ${contextRoot}
-    docker push ${dockerRepo}
+    #Assumes docker login has already been done
+    docker build ${allTagArgs} ${contextRoot} >/dev/null 2>&1
+    docker push ${dockerRepo} >/dev/null 2>&1
 }
 
 #establish what version of stroom-stats we are building
@@ -212,7 +213,7 @@ else
     if [ "$doDockerBuild" = true ] && [ "$TRAVIS_PULL_REQUEST" = "false" ] ; then
 
         #The username and password are configured in the travis gui
-        docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+        docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" >/dev/null 2>&1
 
         allStatsTags="${VERSION_FIXED_TAG} ${SNAPSHOT_FLOATING_TAG} ${MAJOR_VER_FLOATING_TAG} ${MINOR_VER_FLOATING_TAG}"
 
@@ -222,9 +223,9 @@ else
         #build all the docker tags for the hbase image
         allHbaseTags=""
         [ -n ${VERSION_FIXED_TAG} ] && allHbaseTags="${allHbaseTags} ${VERSION_FIXED_TAG}${HBASE_VERSION_SUFFIX}"
-        [ -n ${VERSION_FIXED_TAG} ] && allHbaseTags="${allHbaseTags} ${SNAPSHOT_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
-        [ -n ${VERSION_FIXED_TAG} ] && allHbaseTags="${allHbaseTags} ${MAJOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
-        [ -n ${VERSION_FIXED_TAG} ] && allHbaseTags="${allHbaseTags} ${MINOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
+        [ -n ${SNAPSHOT_FLOATING_TAG} ] && allHbaseTags="${allHbaseTags} ${SNAPSHOT_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
+        [ -n ${MAJOR_VER_FLOATING_TAG} ] && allHbaseTags="${allHbaseTags} ${MAJOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
+        [ -n ${MINOR_VER_FLOATING_TAG} ] && allHbaseTags="${allHbaseTags} ${MINOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
 
         #Build and release the hbase image to dockerhub with the stroom-stats filter already in it
         releaseToDockerHub "${STROOM_STATS_HBASE_DOCKER_REPO}" "${STROOM_STATS_HBASE_DOCKER_CONTEXT_ROOT}" ${allHbaseTags}
