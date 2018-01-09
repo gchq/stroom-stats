@@ -14,7 +14,7 @@
 # limitations under the License.
 #**********************************************************************
 
-FROM openjdk:8-alpine
+FROM openjdk:8u151-jre-alpine
 
 ADD build/stroom-stats-service*-all.jar /stroom-stats/stroom-stats-service-all.jar
 ADD build/config.yml /stroom-stats/
