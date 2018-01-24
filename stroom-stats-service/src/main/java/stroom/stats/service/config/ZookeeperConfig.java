@@ -45,6 +45,9 @@ public class ZookeeperConfig {
     @JsonProperty
     private String serviceDiscoveryPath;
 
+    /**
+     * @return The quorum string, e.g. host1,host2,host3:2181
+     */
     public String getQuorum() {
         return quorum;
     }

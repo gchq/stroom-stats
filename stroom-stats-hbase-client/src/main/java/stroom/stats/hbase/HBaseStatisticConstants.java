@@ -61,7 +61,7 @@ public interface HBaseStatisticConstants {
     // HBase connection/configuration properties. These are properties to hold
     // values for HBase's own configuration
     // properties.
-    String HBASE_ZOOKEEPER_QUORUM_PROPERTY_NAME = "stroom.stats.hbase.config.zookeeper.quorum";
+    String HBASE_ZOOKEEPER_QUORUM_HOSTS_PROPERTY_NAME = "stroom.stats.hbase.config.zookeeper.quorumHosts";
 
     String HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME = "stroom.stats.hbase.config.zookeeper.property.clientPort";
 

@@ -75,7 +75,7 @@ public class HBaseConnection implements HasHealthCheck{
     public HBaseConnection(final StroomPropertyService propertyService) {
 
         quorum = propertyService.getPropertyOrThrow(
-                HBaseStatisticConstants.HBASE_ZOOKEEPER_QUORUM_PROPERTY_NAME);
+                HBaseStatisticConstants.HBASE_ZOOKEEPER_QUORUM_HOSTS_PROPERTY_NAME);
         clientPort = propertyService.getPropertyOrThrow(
                 HBaseStatisticConstants.HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME);
         znodeParent = propertyService.getPropertyOrThrow(

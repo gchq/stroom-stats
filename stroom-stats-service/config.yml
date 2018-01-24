@@ -156,7 +156,7 @@ defaultProperties:
     stroom.stats.hbase.config.rpc.timeout: 180000
     stroom.stats.hbase.config.zookeeper.property.clientPort: ${STATS_HBASE_ZK_PORT:- 2181}
     #Comma delimited list of hosts in the ZK quorum, e.g. host1,host2,host3
-    stroom.stats.hbase.config.zookeeper.quorum: ${STATS_HBASE_ZK_QUORUM:- localhost}
+    stroom.stats.hbase.config.zookeeper.quorumHosts: ${STATS_HBASE_ZK_QUORUM_HOSTS:- localhost}
     #The znode in zookeeper for hbase to use as its root
     stroom.stats.hbase.config.zookeeper.znode.parent: ${STATS_HBASE_ZK_ZNODE_PARENT:- /hbase}
     #For VALUE stats (and any other type of stat using a check-and-set approach) this controls the number
