@@ -46,22 +46,20 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.TreeMap;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
@@ -137,11 +135,10 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private Serde<StatEventKey> statKeySerde;
     private Serde<StatAggregate> statAggregateSerde;
 
-    private volatile Queue<Integer> assignedPartitions = new ConcurrentLinkedQueue<>();
-
+    //variables to hold state for the health check
+//    private Queue<Integer> assignedPartitions = new ConcurrentLinkedQueue<>();
+    private Map<Integer, Long> latestPartitionOffsets = new ConcurrentHashMap<>();
     private final LongAdder msgCounter = new LongAdder();
-    //This works on the assumption that we are only subscribed to a single topic
-    private final AtomicLong latestOffset = new AtomicLong();
 
     //The following instance/class vars are there for debugging use
     //    private Map<StatEventKey, StatAggregate> putEventsMap = new HashMap<>();
@@ -336,7 +333,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                         debugRecords(records, recCount);
                     });
 
-                    long latestOffset = -1;
                     if (!records.isEmpty()) {
                         initStatAggregator();
 
@@ -357,18 +353,15 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 //                            });
 
                             statAggregator.add(rec.key(), rec.value());
-                            //use a local long to avoid the overhead of
-                            latestOffset = rec.offset();
+                            //record the latest consumed offsets for each partition
+                            latestPartitionOffsets.put(rec.partition(), rec.offset());
                         }
-
 //                        LOGGER.debug("putEventsMap key count: {}", putEventsMap.size());
                     }
 
                     boolean flushHappened = flushAggregatorIfReady();
                     if (flushHappened && unCommittedRecCount > 0) {
                         kafkaConsumer.commitSync();
-                        //update the latest offset consumed at the end of the batch
-                        this.latestOffset.set(latestOffset);
                         unCommittedRecCount = 0;
                     }
                 } catch (Exception e) {
@@ -551,10 +544,15 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     }
 
     synchronized void setAssignedPartitions(@Nonnull Collection<TopicPartition> assignedPartitions) {
-        this.assignedPartitions.clear();
-        this.assignedPartitions.addAll(Preconditions.checkNotNull(assignedPartitions).stream()
+//        this.assignedPartitions.clear();
+//        this.assignedPartitions.addAll(Preconditions.checkNotNull(assignedPartitions).stream()
+//                .map(TopicPartition::partition)
+//                .collect(Collectors.toList()));
+
+        this.latestPartitionOffsets.clear();
+        Preconditions.checkNotNull(assignedPartitions).stream()
                 .map(TopicPartition::partition)
-                .collect(Collectors.toList()));
+                .forEach(partition -> latestPartitionOffsets.put(partition, -1L));
     }
 
     @Override
@@ -619,9 +617,14 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         statusMap.put("partitionCount",
                 statAggregator == null
                         ? "-"
-                        : Integer.toString(assignedPartitions.size()));
+                        : Integer.toString(latestPartitionOffsets.size()));
         statusMap.put("messageCounter", String.format("%,d", msgCounter.sum()));
-        statusMap.put("latestOffset", String.format("%,d", latestOffset.get()));
+
+        String latestPartitionOffsetsString = latestPartitionOffsets.entrySet().stream()
+                .sorted(Comparator.comparing(Map.Entry::getKey))
+                .map(entry -> entry.getKey() + ":" + (entry.getValue() == -1L ? "-" : entry.getValue()))
+                .collect(Collectors.joining(", "));
+        statusMap.put("latestConsumedPartitionOffsets", latestPartitionOffsetsString);
 
         return statusMap;
     }
