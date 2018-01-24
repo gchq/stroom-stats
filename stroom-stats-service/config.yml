@@ -165,6 +165,7 @@ defaultProperties:
     stroom.stats.hbase.dataStore.maxCheckAndPutRetries: 10
     #The number of row level intervals to retain before they are auto purged
     #See EventStoreTimeIntervalEnum for current row interval sizes
+    stroom.stats.hbase.dataStore.purge.intervalsToRetain.forever: 1
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.day: 6
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.hour: 39
     stroom.stats.hbase.dataStore.purge.intervalsToRetain.minute: 60
