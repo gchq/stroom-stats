@@ -9,7 +9,6 @@ import stroom.stats.StatisticsAggregationService;
 import stroom.stats.hbase.connection.HBaseConnection;
 import stroom.stats.logging.LogLevelInspector;
 import stroom.stats.properties.StroomPropertyServiceHealthCheck;
-import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.ServiceDiscoveryRegistrar;
 import stroom.stats.service.resources.query.v2.QueryResource;
 import stroom.stats.streams.StatisticsFlatMappingService;
@@ -26,7 +25,8 @@ public class HealthChecks {
         register(environment, "QueryResource",
                 () -> injector.getInstance(QueryResource.class));
 
-        register(environment, injector.getInstance(ServiceDiscoverer.class));
+        //TODO no services to discover at the moment
+//        register(environment, injector.getInstance(ServiceDiscoverer.class));
         register(environment, injector.getInstance(ServiceDiscoveryRegistrar.class));
 
         StatisticsFlatMappingService statisticsFlatMappingService = injector.getInstance(StatisticsFlatMappingService.class);

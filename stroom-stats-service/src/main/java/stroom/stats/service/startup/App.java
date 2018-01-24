@@ -36,17 +36,16 @@ import org.glassfish.jersey.logging.LoggingFeature;
 import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.HBaseClient;
+import stroom.stats.StroomStatsServiceModule;
 import stroom.stats.configuration.StroomStatsStoreEntity;
 import stroom.stats.datasource.DataSourceService;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.auth.JwtVerificationFilter;
 import stroom.stats.service.auth.User;
-import stroom.stats.service.resources.query.v2.QueryResource;
-import stroom.stats.HBaseClient;
-import stroom.stats.StroomStatsServiceModule;
 import stroom.stats.service.config.Config;
+import stroom.stats.service.resources.query.v2.QueryResource;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.tasks.StartProcessingTask;
 import stroom.stats.tasks.StopProcessingTask;
@@ -114,7 +113,7 @@ public class App extends Application<Config> {
         environment.jersey().register(new QueryResource(
                 injector.getInstance(HBaseClient.class),
                 injector.getInstance(DataSourceService.class),
-                injector.getInstance(ServiceDiscoverer.class),
+//                injector.getInstance(ServiceDiscoverer.class),
                 injector.getInstance(StroomPropertyService.class)));
     }
 
@@ -132,7 +131,10 @@ public class App extends Application<Config> {
     private void registerManagedObjects(Environment environment) {
         registerManagedObject(environment, StatisticsIngestService.class);
         registerManagedObject(environment, ServiceDiscoveryManager.class);
-        registerManagedObject(environment, ServiceDiscoverer.class);
+
+        //TODO now authentication/authorization services are defined in config we no longer
+        //have an services to discover
+//        registerManagedObject(environment, ServiceDiscoverer.class);
     }
 
     private <T extends Managed> void registerManagedObject(final Environment environment, Class<T> type) {

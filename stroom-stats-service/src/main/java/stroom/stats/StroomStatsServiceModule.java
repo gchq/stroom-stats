@@ -32,13 +32,12 @@ import stroom.stats.configuration.StroomStatsStoreEntityDAO;
 import stroom.stats.configuration.StroomStatsStoreEntityDAOImpl;
 import stroom.stats.properties.ServiceDiscoveryCuratorFramework;
 import stroom.stats.properties.ServiceDiscoveryCuratorFrameworkProvider;
+import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.properties.StroomPropertyServiceCuratorFramework;
 import stroom.stats.properties.StroomPropertyServiceCuratorFrameworkProvider;
-import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.properties.StroomPropertyServiceHealthCheck;
 import stroom.stats.properties.StroomPropertyServiceImpl;
-import stroom.stats.service.ServiceDiscoverer;
-import stroom.stats.service.ServiceDiscovererImpl;
+import stroom.stats.schema.v4.StatisticsMarshaller;
 import stroom.stats.service.ServiceDiscoveryManager;
 import stroom.stats.service.auth.JwtVerificationFilter;
 import stroom.stats.service.auth.JwtVerifier;
@@ -46,7 +45,6 @@ import stroom.stats.service.auth.User;
 import stroom.stats.service.auth.UserAuthenticator;
 import stroom.stats.service.config.Config;
 import stroom.stats.streams.StatisticsIngestService;
-import stroom.stats.schema.v4.StatisticsMarshaller;
 
 public class StroomStatsServiceModule extends AbstractModule {
 
@@ -74,7 +72,8 @@ public class StroomStatsServiceModule extends AbstractModule {
         bind(CuratorFramework.class).annotatedWith(ServiceDiscoveryCuratorFramework.class).toProvider(ServiceDiscoveryCuratorFrameworkProvider.class).asEagerSingleton();
         bind(HBaseClient.class);
         bind(StatisticsIngestService.class).asEagerSingleton();
-        bind(ServiceDiscoverer.class).to(ServiceDiscovererImpl.class);
+        //TODO no services to discover currently
+//        bind(ServiceDiscoverer.class).to(ServiceDiscovererImpl.class);
         bind(ServiceDiscoveryManager.class);
         bind(SessionFactory.class).toInstance(sessionFactory);
         bind(StroomStatsStoreEntityDAO.class).to(StroomStatsStoreEntityDAOImpl.class);

@@ -34,7 +34,6 @@ import stroom.stats.HBaseClient;
 import stroom.stats.datasource.DataSourceService;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.service.ResourcePaths;
-import stroom.stats.service.ServiceDiscoverer;
 import stroom.stats.service.auth.User;
 import stroom.stats.service.resources.AuthorisationRequest;
 import stroom.stats.util.healthchecks.HasHealthCheck;
@@ -68,18 +67,18 @@ public class QueryResource implements HasHealthCheck {
 
     private final HBaseClient hBaseClient;
     private final DataSourceService dataSourceService;
-    private final ServiceDiscoverer serviceDiscoverer;
+//    private final ServiceDiscoverer serviceDiscoverer;
     private final String authorisationServiceUrl;
 
     @Inject
     public QueryResource(final HBaseClient hBaseClient,
                          final DataSourceService dataSourceService,
-                         final ServiceDiscoverer serviceDiscoverer,
+//                         final ServiceDiscoverer serviceDiscoverer,
                          final StroomPropertyService stroomPropertyService) {
 
         this.hBaseClient = hBaseClient;
         this.dataSourceService = dataSourceService;
-        this.serviceDiscoverer = serviceDiscoverer;
+//        this.serviceDiscoverer = serviceDiscoverer;
 
         authorisationServiceUrl = stroomPropertyService.getPropertyOrThrow(AUTHORISATION_SERVICE_URL_PROPERTY);
     }
