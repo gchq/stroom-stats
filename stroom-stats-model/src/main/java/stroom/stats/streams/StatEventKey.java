@@ -261,6 +261,7 @@ public class StatEventKey implements Comparable<StatEventKey> {
 
     @Override
     public int hashCode() {
+        //instance is immutable so cache the hashcode for speed
         return hashCode;
     }
     public int buildHashCode() {

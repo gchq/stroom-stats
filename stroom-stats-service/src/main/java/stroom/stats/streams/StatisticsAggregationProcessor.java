@@ -61,6 +61,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
@@ -139,6 +140,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private volatile Queue<Integer> assignedPartitions = new ConcurrentLinkedQueue<>();
 
     private final LongAdder msgCounter = new LongAdder();
+    //This works on the assumption that we are only subscribed to a single topic
+    private final AtomicLong latestOffset = new AtomicLong();
 
     //The following instance/class vars are there for debugging use
     //    private Map<StatEventKey, StatAggregate> putEventsMap = new HashMap<>();
@@ -330,49 +333,14 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
                     unCommittedRecCount += recCount;
                     LOGGER.ifDebugIsEnabled(() -> {
-                        //TODO refactor all this debug code out into another method/class
-                        ConcurrentMap<UID, AtomicInteger> statNameMap = new ConcurrentHashMap<>();
-
-                        records.forEach(rec ->
-                                statNameMap.computeIfAbsent(
-                                        rec.key().getStatUuid(),
-                                        k -> new AtomicInteger(0)
-                                ).incrementAndGet());
-
-                        if (recCount > 0) {
-                            String breakdown = statNameMap.entrySet().stream()
-                                    .map(entry -> entry.getKey().toString() + "-" + entry.getValue().get())
-                                    .collect(Collectors.joining(","));
-
-                            String distinctPartitions = StreamSupport.stream(records.spliterator(), false)
-                                    .map(rec -> String.valueOf(rec.partition()))
-                                    .distinct()
-                                    .collect(Collectors.joining(","));
-
-                            long minTimestamp = StreamSupport.stream(records.spliterator(), false)
-                                    .mapToLong(ConsumerRecord::timestamp)
-                                    .min()
-                                    .getAsLong();
-
-                            String minTimestampStr = Instant.ofEpochMilli(minTimestamp).toString();
-
-//                            StatisticsAggregationProcessor.minTimestamp.getAndUpdate(currVal ->
-//                                    Math.min(currVal, minTimestamp));
-
-                            //Capture all records received
-//                            records.forEach(rec ->
-//                                    consumerRecords.computeIfAbsent(rec.partition(), k -> new ArrayList<>()).add(rec));
-
-                            LOGGER.debug("Received {} records consisting of {}, on partitions {}, topic {}, min timestamp {}, processor {}",
-                                    recCount, breakdown, distinctPartitions, inputTopic, minTimestampStr, this);
-                        }
+                        debugRecords(records, recCount);
                     });
 
+                    long latestOffset = -1;
                     if (!records.isEmpty()) {
                         initStatAggregator();
 
-                        records.forEach(rec -> {
-
+                        for (ConsumerRecord<StatEventKey, StatAggregate> rec : records) {
 //                            LOGGER.ifDebugIsEnabled(() -> {
 //
 //                                putEventsMap.computeIfPresent(rec.key(), (k, v) -> {
@@ -389,7 +357,9 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 //                            });
 
                             statAggregator.add(rec.key(), rec.value());
-                        });
+                            //use a local long to avoid the overhead of
+                            latestOffset = rec.offset();
+                        }
 
 //                        LOGGER.debug("putEventsMap key count: {}", putEventsMap.size());
                     }
@@ -397,6 +367,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                     boolean flushHappened = flushAggregatorIfReady();
                     if (flushHappened && unCommittedRecCount > 0) {
                         kafkaConsumer.commitSync();
+                        //update the latest offset consumed at the end of the batch
+                        this.latestOffset.set(latestOffset);
                         unCommittedRecCount = 0;
                     }
                 } catch (Exception e) {
@@ -410,6 +382,44 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
             LOGGER.debug("Breaking out of consumer loop, runState {}, interrupted state {} on processor {}",
                     runState, Thread.currentThread().isInterrupted(), this);
             cleanUp(kafkaConsumer, unCommittedRecCount);
+        }
+    }
+
+    private void debugRecords(final ConsumerRecords<StatEventKey, StatAggregate> records, final int recCount) {
+        ConcurrentMap<UID, AtomicInteger> statNameMap = new ConcurrentHashMap<>();
+
+        records.forEach(rec ->
+                statNameMap.computeIfAbsent(
+                        rec.key().getStatUuid(),
+                        k -> new AtomicInteger(0)
+                ).incrementAndGet());
+
+        if (recCount > 0) {
+            String breakdown = statNameMap.entrySet().stream()
+                    .map(entry -> entry.getKey().toString() + "-" + entry.getValue().get())
+                    .collect(Collectors.joining(","));
+
+            String distinctPartitions = StreamSupport.stream(records.spliterator(), false)
+                    .map(rec -> String.valueOf(rec.partition()))
+                    .distinct()
+                    .collect(Collectors.joining(","));
+
+            long minTimestamp = StreamSupport.stream(records.spliterator(), false)
+                    .mapToLong(ConsumerRecord::timestamp)
+                    .min()
+                    .getAsLong();
+
+            String minTimestampStr = Instant.ofEpochMilli(minTimestamp).toString();
+
+//                            StatisticsAggregationProcessor.minTimestamp.getAndUpdate(currVal ->
+//                                    Math.min(currVal, minTimestamp));
+
+            //Capture all records received
+//                            records.forEach(rec ->
+//                                    consumerRecords.computeIfAbsent(rec.partition(), k -> new ArrayList<>()).add(rec));
+
+            LOGGER.debug("Received {} records consisting of {}, on partitions {}, topic {}, min timestamp {}, processor {}",
+                    recCount, breakdown, distinctPartitions, inputTopic, minTimestampStr, this);
         }
     }
 
@@ -611,6 +621,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                         ? "-"
                         : Integer.toString(assignedPartitions.size()));
         statusMap.put("messageCounter", String.format("%,d", msgCounter.sum()));
+        statusMap.put("latestOffset", String.format("%,d", latestOffset.get()));
 
         return statusMap;
     }

@@ -29,6 +29,15 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Essentially a wrapper for a {@link HashMap} of {@link StatEventKey} & {@link StatAggregate} with logic to merge
+ * new {@link StatAggregate} instances in. The aggregator is intended to aggregate lots of kv pairs where the
+ * key has been truncated down to a time interval, e.g. truncated down to the hour. When an aggregate is
+ * added whose key is already in the {@link StatAggregator} then the two {@link StatAggregate} instances will
+ * be merged into the {@link HashMap}. The degree of 'compression' that the aggregator provides depends on
+ * the nature of data been fed to it, e.g. for an HOUR interval, if there are lots of events in that hour
+ * with all other parts of the key the same then the 'compression' will be high.
+ */
 @NotThreadSafe
 class StatAggregator {
 
@@ -75,11 +84,7 @@ class StatAggregator {
         inputCount++;
 
         //aggregate the passed aggregate and key into the existing aggregates
-        buffer.merge(
-                statEventKey,
-                statAggregate,
-                StatAggregate::aggregatePair);
-//                (existingAgg, newAgg) -> existingAgg.aggregate(newAgg));
+        buffer.merge(statEventKey, statAggregate, StatAggregate::aggregatePair);
     }
 
     public int size() {
@@ -121,6 +126,9 @@ class StatAggregator {
         return aggregationInterval;
     }
 
+    /**
+     * @return The underlying {@link HashMap} instance used by the Aggregator. This map must not be mutated.
+     */
     public Map<StatEventKey, StatAggregate> getAggregates() {
         LOGGER.trace(() -> String.format("getAggregates called, return %s events", buffer.size()));
 
