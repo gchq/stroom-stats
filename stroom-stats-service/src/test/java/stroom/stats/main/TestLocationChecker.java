@@ -117,23 +117,24 @@ public class TestLocationChecker {
 //                System.out.println("srcPath [" + srcPath + "]");
 
                 if (Files.isDirectory(srcPath)) {
-                    Files.walk(srcPath)
-                            .parallel()
-                            .filter(Files::isRegularFile)
-                            .filter(fileTest)
-                            .filter(path -> path.getFileName().toString().endsWith(".java"))
-                            .forEach(fileAction);
+                    try (Stream<Path> stream = Files.walk(srcPath)) {
+                        stream.parallel()
+                                .filter(Files::isRegularFile)
+                                .filter(fileTest)
+                                .filter(path -> path.getFileName().toString().endsWith(".java"))
+                                .forEach(fileAction);
+                    }
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         };
 
-        Files.list(PROJECT_ROOT_PATH)
-                .parallel()
-                .filter(Files::isDirectory)
-//                .filter(fileTest)
-                .forEach(processModuleDir);
+        try (Stream<Path> stream = Files.walk(PROJECT_ROOT_PATH)) {
+            stream .parallel()
+                    .filter(Files::isDirectory)
+                    .forEach(processModuleDir);
+        }
 
     }
 
@@ -172,8 +173,8 @@ public class TestLocationChecker {
 //                            .peek(line -> System.out.println("line: [" + line + "]"))
                         .filter(line -> line.matches("^package .*"))
                         .findFirst().orElseThrow(() -> new RuntimeException(String.format("Class %s has no package string", path.toString())))
-                        .replaceAll("^package ","")
-                        .replaceAll(";","");
+                        .replaceAll("^package ", "")
+                        .replaceAll(";", "");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -184,7 +185,7 @@ public class TestLocationChecker {
             this.baseName = fullName.replaceAll("^Test", "")
                     .replaceAll("Test$", "");
             this.path = path;
-            this.module = path.subpath(1,2).toString();
+            this.module = path.subpath(1, 2).toString();
         }
 
         String getBaseName() {
