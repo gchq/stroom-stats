@@ -24,6 +24,7 @@ package stroom.stats.hbase.table;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.BufferedMutator;
@@ -68,7 +69,11 @@ public abstract class HBaseTable implements GenericTable {
             } else {
                 if (getTableConfiguration().isAutoCreateTables()) {
                     LOGGER.info("HBase table '{}' could not be found, so will create it", getDisplayName());
-                    create(admin);
+                    try {
+                        create(admin);
+                    } catch (TableExistsException e) {
+                        LOGGER.warn("Trying to create table {} when it already exists, maybe another thread/service beat us to it.");
+                    }
                     isTableBeingCreated = true;
 
                 } else {
@@ -90,10 +95,12 @@ public abstract class HBaseTable implements GenericTable {
         }
     }
 
-    private void create(final Admin admin) {
+    private void create(final Admin admin) throws TableExistsException {
         try {
             LOGGER.info("Creating table '{}'", getDisplayName());
             admin.createTable(getDesc());
+        } catch (TableExistsException tee) {
+            throw tee;
         } catch (final Exception e) {
             throw new HBaseException(e.getMessage(), e);
         }
