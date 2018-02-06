@@ -90,6 +90,13 @@ logging:
         archivedFileCount: 10
         timeZone: UTC
 
+# This is the zookeeper that stroom-stats/stroom uses for its own purposes (e.g. props, service discovery)
+# as distinct from the zookeeper required for hbase/kafka.
+# The following are valid quorum strings
+# host1:2181
+# host1:2181/myChRoot
+# host1:2181,host2:2181,host3:2181
+# host1:2181,host2:2181,host3:2181/myChRoot
 zookeeper:
     # The quorum of zookeeper hosts to connect to
     # of the form host1:port1,host2:port2 etc.
@@ -155,7 +162,7 @@ defaultProperties:
     stroom.stats.hbase.config.client.write.buffer: 4194304
     stroom.stats.hbase.config.rpc.timeout: 180000
     stroom.stats.hbase.config.zookeeper.property.clientPort: ${STATS_HBASE_ZK_PORT:- 2181}
-    #Comma delimited list of hosts in the ZK quorum, e.g. host1,host2,host3
+    #Comma delimited list of hosts only in the ZK quorum (no port or chroot), e.g. host1,host2,host3
     stroom.stats.hbase.config.zookeeper.quorumHosts: ${STATS_HBASE_ZK_QUORUM_HOSTS:- localhost}
     #The znode in zookeeper for hbase to use as its root
     stroom.stats.hbase.config.zookeeper.znode.parent: ${STATS_HBASE_ZK_ZNODE_PARENT:- /hbase}

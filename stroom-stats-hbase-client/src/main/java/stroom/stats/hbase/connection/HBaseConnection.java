@@ -50,7 +50,7 @@ import java.time.Instant;
 @Singleton
 public class HBaseConnection implements HasHealthCheck{
     private final Configuration configuration;
-    private final String quorum;
+    private final String quorumHosts;
     private final String clientPort;
     private final String znodeParent;
     private final boolean autoCreateTables;
@@ -64,8 +64,13 @@ public class HBaseConnection implements HasHealthCheck{
     private final Connection sharedClusterConnection;
 
     // HBase property names for configuring HBase
+
+    //comma delimted list of hosts only e.g. 'host1,host2,host3'
     private static final String PROP_KEY_HBASE_ZOOKEEPER_QUORUM = "hbase.zookeeper.quorum";
     private static final String PROP_KEY_HBASE_ZOOKEEPER_CLIENT_PORT = "hbase.zookeeper.property.clientPort";
+
+    //The is the ZK znode that all the hbase state is stored under e.g. '/hbase'. This must be consistent with
+    //how hbase has been configured
     private static final String PROP_KEY_HBASE_ZOOKEEPER_ZNODE_PARENT = "zookeeper.znode.parent";
     private static final String PROP_KEY_HBASE_RPC_TIMEOUT_MS = "hbase.rpc.timeout";
 
@@ -74,7 +79,7 @@ public class HBaseConnection implements HasHealthCheck{
     @Inject
     public HBaseConnection(final StroomPropertyService propertyService) {
 
-        quorum = propertyService.getPropertyOrThrow(
+        quorumHosts = propertyService.getPropertyOrThrow(
                 HBaseStatisticConstants.HBASE_ZOOKEEPER_QUORUM_HOSTS_PROPERTY_NAME);
         clientPort = propertyService.getPropertyOrThrow(
                 HBaseStatisticConstants.HBASE_ZOOKEEPER_CLIENT_PORT_PROPERTY_NAME);
@@ -82,11 +87,11 @@ public class HBaseConnection implements HasHealthCheck{
                 HBaseStatisticConstants.HBASE_ZOOKEEPER_ZNODE_PARENT);
 
         LOGGER.info("Initialising HBaseTableConfiguration to quorum: {}, port: {}, znode parent {}",
-                quorum, clientPort, znodeParent);
+                quorumHosts, clientPort, znodeParent);
 
         configuration = HBaseConfiguration.create();
 
-        configuration.set(PROP_KEY_HBASE_ZOOKEEPER_QUORUM, quorum);
+        configuration.set(PROP_KEY_HBASE_ZOOKEEPER_QUORUM, quorumHosts);
         configuration.set(PROP_KEY_HBASE_ZOOKEEPER_CLIENT_PORT, clientPort);
         configuration.set(PROP_KEY_HBASE_ZOOKEEPER_ZNODE_PARENT, znodeParent);
 
@@ -101,7 +106,7 @@ public class HBaseConnection implements HasHealthCheck{
             //tries to connect, hbase will not yet be up so keep retrying for a while then give up
             waitForHBaseConnection(Duration.ofMinutes(2));
         } catch (final Exception e) {
-            LOGGER.error("Error while testing connection to HBase with zookeeper quorum [" + quorum +
+            LOGGER.error("Error while testing connection to HBase with zookeeper quorum [" + quorumHosts +
                     "]. HBase may be down or the configuration may be incorrect", e);
             LOGGER.info("Shutting down the system due to lack of an HBase connection");
             System.exit(1);
@@ -157,7 +162,7 @@ public class HBaseConnection implements HasHealthCheck{
     public HBaseConnection(final Connection connection) {
         this.sharedClusterConnection = connection;
         this.configuration = connection.getConfiguration();
-        this.quorum = connection.getConfiguration().get(PROP_KEY_HBASE_ZOOKEEPER_QUORUM);
+        this.quorumHosts = connection.getConfiguration().get(PROP_KEY_HBASE_ZOOKEEPER_QUORUM);
         this.clientPort = connection.getConfiguration().get(PROP_KEY_HBASE_ZOOKEEPER_CLIENT_PORT);
         this.znodeParent = connection.getConfiguration().get(PROP_KEY_HBASE_ZOOKEEPER_ZNODE_PARENT);
         autoCreateTables = true;
@@ -205,7 +210,7 @@ public class HBaseConnection implements HasHealthCheck{
             return HealthCheck.Result.builder()
                     .healthy()
                     .withMessage("HBase running on:")
-                    .withDetail("quorum", quorum)
+                    .withDetail("quorum", quorumHosts)
                     .withDetail("clientPort", clientPort)
                     .withDetail("znodeParent", znodeParent)
                     .build();
