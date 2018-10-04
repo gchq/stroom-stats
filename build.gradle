@@ -56,7 +56,7 @@ ext.versions = [
     stroomAuth: 'v0.1-alpha.5',
     stroomExpression: 'v1.0.1',
     //same version for both stroom-query-api and stroom-query-common
-    stroomQuery: 'v2.0.0-alpha.18',
+    stroomQuery: 'v2.1.-beta.7',
 
     dropwizard: '1.1.0',
     dropwizardMetrics: '3.2.2', //keep in sync with dropwizard (1.1.0 => 3.2.2)
