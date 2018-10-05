@@ -23,6 +23,9 @@ package stroom.stats.common;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import stroom.dashboard.expression.v1.Val;
+import stroom.dashboard.expression.v1.ValDouble;
+import stroom.dashboard.expression.v1.ValLong;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
@@ -42,15 +45,19 @@ public class ValueStatisticDataPoint implements StatisticDataPoint {
 
     private static final StatisticType STATISTIC_TYPE = StatisticType.VALUE;
 
-    private static final Map<String, Function<ValueStatisticDataPoint, String>> FIELD_VALUE_FUNCTION_MAP;
+    private static final Map<String, Function<ValueStatisticDataPoint, Val>> FIELD_VALUE_FUNCTION_MAP;
 
     static {
         //hold a map of field names to functions that we get a value for that named field, converted to a string
-        FIELD_VALUE_FUNCTION_MAP = ImmutableMap.<String, Function<ValueStatisticDataPoint, String>>builder()
-                .put(StatisticConfiguration.FIELD_NAME_COUNT, dataPoint -> Long.toString(dataPoint.count))
-                .put(StatisticConfiguration.FIELD_NAME_VALUE, dataPoint -> Double.toString(dataPoint.value))
-                .put(StatisticConfiguration.FIELD_NAME_MIN_VALUE, dataPoint -> Double.toString(dataPoint.minValue))
-                .put(StatisticConfiguration.FIELD_NAME_MAX_VALUE, dataPoint -> Double.toString(dataPoint.maxValue))
+        FIELD_VALUE_FUNCTION_MAP = ImmutableMap.<String, Function<ValueStatisticDataPoint, Val>>builder()
+                .put(StatisticConfiguration.FIELD_NAME_COUNT, dataPoint ->
+                        ValLong.create(dataPoint.count))
+                .put(StatisticConfiguration.FIELD_NAME_VALUE, dataPoint ->
+                        ValDouble.create(dataPoint.value))
+                .put(StatisticConfiguration.FIELD_NAME_MIN_VALUE, dataPoint ->
+                        ValDouble.create(dataPoint.minValue))
+                .put(StatisticConfiguration.FIELD_NAME_MAX_VALUE, dataPoint ->
+                        ValDouble.create(dataPoint.maxValue))
                 .build();
     }
 
@@ -137,8 +144,8 @@ public class ValueStatisticDataPoint implements StatisticDataPoint {
     }
 
     @Override
-    public String getFieldValue(final String fieldName) {
-        Function<ValueStatisticDataPoint, String> fieldValueFunction = FIELD_VALUE_FUNCTION_MAP.get(fieldName);
+    public Val getFieldValue(final String fieldName) {
+        Function<ValueStatisticDataPoint, Val> fieldValueFunction = FIELD_VALUE_FUNCTION_MAP.get(fieldName);
 
         if (fieldValueFunction == null) {
             //we don't know what it is so see if the delegate does

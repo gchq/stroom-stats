@@ -19,6 +19,7 @@
 
 package stroom.stats.common;
 
+import stroom.dashboard.expression.v1.Val;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
@@ -55,8 +56,8 @@ public interface StatisticDataPoint {
 
     /**
      * @param fieldName The name of the field to get a value for
-     * @return The value of the named field (or null if it doesn't exist) represented as a string
+     * @return The value of the named field (ValNull if it doesn't have a value)
      */
-    String getFieldValue(final String fieldName);
+    Val getFieldValue(final String fieldName);
 
 }

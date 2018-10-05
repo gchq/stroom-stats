@@ -23,6 +23,8 @@ package stroom.stats.common;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import stroom.dashboard.expression.v1.Val;
+import stroom.dashboard.expression.v1.ValLong;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
@@ -45,12 +47,13 @@ public class CountStatisticDataPoint implements StatisticDataPoint {
     private final BasicStatisticDataPoint delegate;
     private final long count;
 
-    private static final Map<String, Function<CountStatisticDataPoint, String>> FIELD_VALUE_FUNCTION_MAP;
+    private static final Map<String, Function<CountStatisticDataPoint, Val>> FIELD_VALUE_FUNCTION_MAP;
 
     static {
         //hold a map of field names to functions that we get a value for that named field, converted to a string
-        FIELD_VALUE_FUNCTION_MAP = ImmutableMap.<String, Function<CountStatisticDataPoint, String>>builder()
-                .put(StatisticConfiguration.FIELD_NAME_COUNT, dataPoint -> Long.toString(dataPoint.getCount()))
+        FIELD_VALUE_FUNCTION_MAP = ImmutableMap.<String, Function<CountStatisticDataPoint, Val>>builder()
+                .put(StatisticConfiguration.FIELD_NAME_COUNT, dataPoint ->
+                        ValLong.create(dataPoint.getCount()))
                 .build();
     }
 
@@ -101,8 +104,8 @@ public class CountStatisticDataPoint implements StatisticDataPoint {
     }
 
     @Override
-    public String getFieldValue(final String fieldName) {
-        Function<CountStatisticDataPoint, String> fieldValueFunction = FIELD_VALUE_FUNCTION_MAP.get(fieldName);
+    public Val getFieldValue(final String fieldName) {
+        Function<CountStatisticDataPoint, Val> fieldValueFunction = FIELD_VALUE_FUNCTION_MAP.get(fieldName);
 
         if (fieldValueFunction == null) {
             //we don't know what it is so see if the delegate does

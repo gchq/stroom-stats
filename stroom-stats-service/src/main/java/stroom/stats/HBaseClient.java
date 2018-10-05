@@ -22,6 +22,7 @@ package stroom.stats;
 import com.google.common.base.Preconditions;
 import io.dropwizard.lifecycle.Managed;
 import stroom.dashboard.expression.v1.FieldIndexMap;
+import stroom.dashboard.expression.v1.Val;
 import stroom.query.api.v2.DocRef;
 import stroom.query.api.v2.ExpressionItem;
 import stroom.query.api.v2.ExpressionOperator;
@@ -204,10 +205,10 @@ public class HBaseClient implements Managed {
 
         if (!statisticDataSet.isEmpty()) {
 
-            //TODO TableCoprocessor is doing a lot of work to pre-process and aggregate the datas
+            //TODO TableCoprocessor is doing a lot of work to pre-process and aggregate the data
 
             for (StatisticDataPoint statisticDataPoint : statisticDataSet) {
-                String[] dataArray = new String[fieldIndexMap.size()];
+                Val[] dataArray = new Val[fieldIndexMap.size()];
 
                 //TODO should probably drive this off a new fieldIndexMap.getEntries() method or similar
                 //then we only loop round fields we car about

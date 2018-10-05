@@ -21,6 +21,10 @@ package stroom.stats.common;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import stroom.dashboard.expression.v1.Val;
+import stroom.dashboard.expression.v1.ValLong;
+import stroom.dashboard.expression.v1.ValNull;
+import stroom.dashboard.expression.v1.ValString;
 import stroom.stats.api.StatisticTag;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
@@ -34,15 +38,20 @@ import java.util.function.Function;
 
 public class BasicStatisticDataPoint implements StatisticDataPoint {
 
-    private static final Map<String, Function<BasicStatisticDataPoint, String>> FIELD_VALUE_FUNCTION_MAP;
+    private static final Map<String, Function<BasicStatisticDataPoint, Val>> FIELD_VALUE_FUNCTION_MAP;
 
     static {
-        FIELD_VALUE_FUNCTION_MAP = ImmutableMap.<String, Function<BasicStatisticDataPoint, String>>builder()
-                .put(StatisticConfiguration.FIELD_NAME_DATE_TIME, dataPoint -> Long.toString(dataPoint.getTimeMs()))
-                .put(StatisticConfiguration.FIELD_NAME_STATISTIC, dataPoint -> dataPoint.statisticConfiguration.getName())
-                .put(StatisticConfiguration.FIELD_NAME_UUID, dataPoint -> dataPoint.statisticConfiguration.getUuid())
-                .put(StatisticConfiguration.FIELD_NAME_PRECISION, dataPoint -> dataPoint.precision.longName())
-                .put(StatisticConfiguration.FIELD_NAME_PRECISION_MS, dataPoint -> Long.toString(dataPoint.precision.columnInterval()))
+        FIELD_VALUE_FUNCTION_MAP = ImmutableMap.<String, Function<BasicStatisticDataPoint, Val>>builder()
+                .put(StatisticConfiguration.FIELD_NAME_DATE_TIME, dataPoint ->
+                        ValLong.create(dataPoint.getTimeMs()))
+                .put(StatisticConfiguration.FIELD_NAME_STATISTIC, dataPoint ->
+                        ValString.create(dataPoint.statisticConfiguration.getName()))
+                .put(StatisticConfiguration.FIELD_NAME_UUID, dataPoint ->
+                        ValString.create(dataPoint.statisticConfiguration.getUuid()))
+                .put(StatisticConfiguration.FIELD_NAME_PRECISION, dataPoint ->
+                        ValString.create(dataPoint.precision.longName()))
+                .put(StatisticConfiguration.FIELD_NAME_PRECISION_MS, dataPoint ->
+                        ValLong.create(dataPoint.precision.columnInterval()))
                 .build();
     }
 
@@ -108,12 +117,13 @@ public class BasicStatisticDataPoint implements StatisticDataPoint {
     }
 
     @Override
-    public String getFieldValue(final String fieldName) {
-        Function<BasicStatisticDataPoint, String> fieldValueFunction = FIELD_VALUE_FUNCTION_MAP.get(fieldName);
+    public Val getFieldValue(final String fieldName) {
+        Function<BasicStatisticDataPoint, Val> fieldValueFunction = FIELD_VALUE_FUNCTION_MAP.get(fieldName);
 
         if (fieldValueFunction == null) {
             //either it is a tag field or we don't know about this field
-            return tagToValueMap.get(fieldName);
+            String tagValue = tagToValueMap.get(fieldName);
+            return tagValue != null ? ValString.create(tagValue) : ValNull.INSTANCE;
         } else {
             return fieldValueFunction.apply(this);
         }

@@ -1,6 +1,8 @@
 dependencies {
     compile project(':stroom-stats-util')
 
+    compile libs.stroomExpression
+
     compile libs.guava
     compile libs.hbase_shaded_client
     compile libs.find_bugs
