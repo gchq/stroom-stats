@@ -37,6 +37,7 @@ import stroom.stats.service.ResourcePaths;
 import stroom.stats.service.auth.User;
 import stroom.stats.service.resources.AuthorisationRequest;
 import stroom.stats.util.healthchecks.HasHealthCheck;
+import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
 import javax.validation.Valid;
@@ -157,7 +158,16 @@ public class QueryResource implements HasHealthCheck {
                 "%s/isAuthorised",
                 this.authorisationServiceUrl);
 
-        boolean isAuthorised = checkPermissions(authorisationUrl, user, docRef);
+        boolean isAuthorised = false;
+        try {
+            isAuthorised = checkPermissions(authorisationUrl, user, docRef);
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    LambdaLogger.buildMessage(
+                            "Error checking permissions for user: {}, docRef: {} at url: {}",
+                            user, docRef, authorisationUrl), e);
+        }
+
         if (!isAuthorised) {
             return Response
                     .status(Response.Status.UNAUTHORIZED)
