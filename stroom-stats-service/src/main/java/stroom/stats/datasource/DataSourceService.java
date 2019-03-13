@@ -127,7 +127,12 @@ public class DataSourceService {
 
         public DataSourceField toDataSourceField(final String fieldName) {
             Preconditions.checkNotNull(fieldName);
-            return new DataSourceField(fieldType, fieldName, isQueryable, supportedConditions);
+            return new DataSourceField(
+                    fieldType,
+                    StatisticConfiguration.ENTITY_TYPE,
+                    fieldName,
+                    isQueryable,
+                    supportedConditions);
         }
     }
 }
