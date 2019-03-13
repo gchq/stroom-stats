@@ -42,9 +42,9 @@ database:
 
 #If set registers this instance with service discovery using the specified address,
 #else it uses the local hostname or ip address
-advertisedHostNameOrIp: ${STATS_ADVERTISED_HOST_OR_IP:-192.168.10.146}
+advertisedHostNameOrIp: ${STROOM_STATS_ADVERTISED_HOST_OR_IP:-192.168.10.146}
 #As above but for port
-advertisedPort: ${STATS_ADVERTISED_PORT:- }
+advertisedPort: ${STROOM_STATS_ADVERTISED_PORT:- }
 
 # Enabling logRequestsAndResponses will cause all requests and response to be logged.
 # This means the logs will end up containing Authorization headers, i.e. API keys.
