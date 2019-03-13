@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+* Uplift stroom-auth library to v1.0-beta.8
+
 * Uplift stroom-query library to v2.1-beta.21
 
 
