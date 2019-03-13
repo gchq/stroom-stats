@@ -58,7 +58,7 @@ server:
     adminMinThreads: 1
     adminMaxThreads: 10
     adminContextPath: ${ADMIN_CONTEXT_PATH:- /}
-    applicationContextPath: ${APPLICATION_CONTEXT_PATH:- /}
+    applicationContextPath: ${APPLICATION_CONTEXT_PATH:- /statsAdmin}
     applicationConnectors:
       - type: ${APPLICATION_CONNEXTOR_TYPE:- http}
         port: ${APPLICATION_CONNEXTOR_PORT:- 8086}

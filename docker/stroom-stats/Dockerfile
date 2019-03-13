@@ -14,11 +14,20 @@
 # limitations under the License.
 #**********************************************************************
 
-FROM openjdk:8u151-jre-alpine
+# The JDK (rather than JRE) is required for the diagnostic tools like
+# jstat/jmap/jcmd/etc.
+FROM openjdk:8u191-jdk-alpine3.9
 
-ADD build/stroom-stats-service*-all.jar /stroom-stats/stroom-stats-service-all.jar
-ADD build/config.yml /stroom-stats/
-ADD docker-entrypoint.sh /usr/local/bin/
+WORKDIR /stroom-stats
+
+EXPOSE 8086 8087
+
+#run entrypoint script inside tini for better unix process handling, see https://github.com/krallin/tini/issues/8
+ENTRYPOINT ["/sbin/tini", "--", "docker-entrypoint.sh"]
+
+#start the app
+# we want variable expansion of JAVA_OPTS
+CMD ["sh", "-c", "echo \"JAVA_OPTS: [${JAVA_OPTS}]\"; java ${JAVA_OPTS} -jar stroom-stats-service-all.jar server config.yml"]
 
 # If we're using a VPN we'll need to set the proxies
 RUN echo "http_proxy: $http_proxy" && \
@@ -27,18 +36,12 @@ RUN echo "http_proxy: $http_proxy" && \
         bash \
         su-exec \
         tini && \
-    adduser -s /bin/false -D stroomstats && \
-    mkdir -p /stroom-stats
+    addgroup -g 1000 -S stroomstats && \
+    adduser -u 1000 -S -s /bin/false -D -G stroomstats stroomstats && \
+    mkdir -p /stroom-stats && \
+    chown -R stroom:stroom /stroom-stats
 
-WORKDIR /stroom-stats
+ADD docker-entrypoint.sh /usr/local/bin/
+ADD build/config.yml /stroom-stats/
+ADD build/stroom-stats-service*-all.jar /stroom-stats/stroom-stats-service-all.jar
 
-#Make sure all the files are owned by the stroom user
-RUN chown -R stroomstats /stroom-stats
-
-EXPOSE 8086 8087
-
-#run entrypoint script inside tini for better unix process handling, see https://github.com/krallin/tini/issues/8
-ENTRYPOINT ["/sbin/tini", "--", "docker-entrypoint.sh"]
-
-#start the app
-CMD ["java", "-jar", "stroom-stats-service-all.jar", "server", "config.yml"]
