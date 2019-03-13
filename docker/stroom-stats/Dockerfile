@@ -39,7 +39,7 @@ RUN echo "http_proxy: $http_proxy" && \
     addgroup -g 1000 -S stroomstats && \
     adduser -u 1000 -S -s /bin/false -D -G stroomstats stroomstats && \
     mkdir -p /stroom-stats && \
-    chown -R stroom:stroom /stroom-stats
+    chown -R stroomstats:stroomstats /stroom-stats
 
 ADD docker-entrypoint.sh /usr/local/bin/
 ADD build/config.yml /stroom-stats/
