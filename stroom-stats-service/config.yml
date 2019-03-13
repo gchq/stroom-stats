@@ -57,8 +57,8 @@ logRequestsAndResponses: ${LOG_REQUESTS_AND_RESPONSES:- false}
 server:
     adminMinThreads: 1
     adminMaxThreads: 10
-    adminContextPath: ${ADMIN_CONTEXT_PATH:- /}
-    applicationContextPath: ${APPLICATION_CONTEXT_PATH:- /statsAdmin}
+    adminContextPath: ${ADMIN_CONTEXT_PATH:-/statsAdmin}
+    applicationContextPath: ${APPLICATION_CONTEXT_PATH:-/}
     applicationConnectors:
       - type: ${APPLICATION_CONNEXTOR_TYPE:- http}
         port: ${APPLICATION_CONNEXTOR_PORT:- 8086}
