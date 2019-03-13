@@ -37,7 +37,7 @@ import stroom.query.common.v2.CoprocessorSettingsMap;
 import stroom.query.common.v2.DateExpressionParser;
 import stroom.query.common.v2.Payload;
 import stroom.query.common.v2.SearchResponseCreator;
-import stroom.query.common.v2.StoreSize;
+import stroom.query.common.v2.Sizes;
 import stroom.query.common.v2.TableCoprocessor;
 import stroom.query.common.v2.TableCoprocessorSettings;
 import stroom.stats.api.StatisticsService;
@@ -259,12 +259,14 @@ public class HBaseClient implements Managed {
         }
     }
 
-    private List<Integer> getDefaultMaxResultSizes() {
-        return extractValues(stroomPropertyService.getProperty(PROP_KEY_DEFAULT_MAX_RESULTS_SIZES, null));
+    private Sizes getDefaultMaxResultSizes() {
+        return Sizes.create(extractValues(
+                stroomPropertyService.getProperty(PROP_KEY_DEFAULT_MAX_RESULTS_SIZES, null)));
     }
 
-    private StoreSize getStoreSize(){
-        return new StoreSize(extractValues(stroomPropertyService.getProperty(PROP_KEY_STORE_SIZE,null)));
+    private Sizes getStoreSize(){
+        return Sizes.create(extractValues(
+                stroomPropertyService.getProperty(PROP_KEY_STORE_SIZE,null)));
     }
 
     private List<String> getRequestedFields(final StatisticConfiguration statisticConfiguration,

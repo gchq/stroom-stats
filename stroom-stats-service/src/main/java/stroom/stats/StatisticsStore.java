@@ -11,8 +11,8 @@ import stroom.query.common.v2.GroupKey;
 import stroom.query.common.v2.Item;
 import stroom.query.common.v2.Payload;
 import stroom.query.common.v2.ResultStoreCreator;
+import stroom.query.common.v2.Sizes;
 import stroom.query.common.v2.Store;
-import stroom.query.common.v2.StoreSize;
 import stroom.query.common.v2.TableCoprocessorSettings;
 import stroom.query.common.v2.TablePayload;
 
@@ -25,12 +25,12 @@ public class StatisticsStore implements Store {
     private Map<CoprocessorSettingsMap.CoprocessorKey, Coprocessor> coprocessorMap;
     private Map<CoprocessorSettingsMap.CoprocessorKey, Payload> payloadMap;
 
-    private final List<Integer> defaultMaxResultsSizes;
-    private final StoreSize storeSize;
+    private final Sizes defaultMaxResultsSizes;
+    private final Sizes storeSizes;
 
-    public StatisticsStore(final List<Integer> defaultMaxResultsSizes, final StoreSize storeSize) {
+    public StatisticsStore(final Sizes defaultMaxResultsSizes, final Sizes storeSizes) {
         this.defaultMaxResultsSizes = defaultMaxResultsSizes;
-        this.storeSize = storeSize;
+        this.storeSizes = storeSizes;
     }
 
     @Override
@@ -63,7 +63,7 @@ public class StatisticsStore implements Store {
         resultStoreCreator.read(queue);
 
         // Trim the number of results in the store.
-        resultStoreCreator.trim(storeSize);
+        resultStoreCreator.sortAndTrim(storeSizes);
 
         return resultStoreCreator.create(queue.size(), queue.size());
     }
@@ -79,13 +79,13 @@ public class StatisticsStore implements Store {
     }
 
     @Override
-    public List<Integer> getDefaultMaxResultsSizes() {
+    public Sizes getDefaultMaxResultsSizes() {
         return defaultMaxResultsSizes;
     }
 
     @Override
-    public StoreSize getStoreSize() {
-        return storeSize;
+    public Sizes getStoreSize() {
+        return storeSizes;
     }
 
     /**
