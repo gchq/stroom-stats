@@ -131,7 +131,7 @@ public class HBaseConnection implements HasHealthCheck{
 
         while (!connectionEstablished && Instant.now().isBefore(timeoutTime)) {
             try {
-                HBaseAdmin.checkHBaseAvailable(configuration);
+                HBaseAdmin.available(configuration);
                 connectionEstablished = true;
                 LOGGER.info("HBase connection established");
             } catch (Exception e) {
@@ -205,7 +205,7 @@ public class HBaseConnection implements HasHealthCheck{
     @Override
     public HealthCheck.Result getHealth() {
         try {
-            HBaseAdmin.checkHBaseAvailable(configuration);
+            HBaseAdmin.available(configuration);
 
             return HealthCheck.Result.builder()
                     .healthy()

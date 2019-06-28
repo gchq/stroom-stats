@@ -56,14 +56,14 @@ public class StatisticsFlatMappingService implements Startable, Stoppable, HasRu
 
         StatisticsFlatMappingProcessor countStatisticsProcessor = new StatisticsFlatMappingProcessor(
                 stroomPropertyService,
-                statisticsFlatMappingStreamFactory,
+                topicDefinitionFactory, statisticsFlatMappingStreamFactory,
                 StatisticType.COUNT,
                 countStatToAggregateMapper);
         processors.add(countStatisticsProcessor);
 
         StatisticsFlatMappingProcessor valueStatisticsProcessor = new StatisticsFlatMappingProcessor(
                 stroomPropertyService,
-                statisticsFlatMappingStreamFactory,
+                topicDefinitionFactory, statisticsFlatMappingStreamFactory,
                 StatisticType.VALUE,
                 valueStatToAggregateMapper);
         processors.add(valueStatisticsProcessor);

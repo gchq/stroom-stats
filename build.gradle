@@ -62,10 +62,10 @@ ext.versions = [
     dropwizardMetrics: '3.2.2', //keep in sync with dropwizard (1.1.0 => 3.2.2)
     slf4j: '1.7.24', //in line with dropwiz version
     logback: '1.2.1', //in line with dropwiz version
-    hbase: '1.2.0', //CDH5.10 uses hbase 1.2.0
+    hbase: '2.1.5', //CDH6.2 uses hbase 2.1
     //Curator 2.12.0 depends on zookeeper 3.4.8
-    //HBase 1.2.0 depends on zookeeper 3.4.6
-    //CDH5.10 uses zookeeper 3.4.5
+    //HBase 2.1.0 depends on zookeeper 3.4.10
+    //CDH6.2 uses zookeeper 3.4.5
     //It is not clear how a 3.4.6/3.4.8 ZK client will work against a 3.4.5 ZK quorum
 
     //curator 2.12 depends on guava but shades the majority of it so should work with newer guava versions
@@ -74,11 +74,10 @@ ext.versions = [
     jaxb: '2.2.10',
     jersey: '2.25.1',
 
-    //0.10.2.0 is available but seems to have issues with spring_kafka_test
-    kafka: '0.10.0.1', //CDH5.11 uses kafka 0.10.0+kafka2.1
+    kafka: '2.1.1', //CDH6. uses kafka 2.1.0
 
-    //1.1.1.RELEASE is the latest version that runs against kafka 0.10.0.1
-    spring_kafka_test: '1.1.1.RELEASE',
+    //2.2.7.RELEASE runs against kafka 2.0.1
+    spring_kafka_test: '2.2.7.RELEASE',
     zzzDummyzzz: 'Here to make sorting easier'
 ]
 
@@ -153,7 +152,7 @@ ext.libs = [
     objenesis: "org.objenesis:objenesis:2.2", //used with kryo so keep version in sync with that
     saxon: "net.sf.saxon:Saxon-HE:9.6.0-6",
     slf4j_api: "org.slf4j:slf4j-api:$versions.slf4j",
-    spring_kafka_test: "org.springframework.kafka:spring-kafka-test:$versions.spring_kafka_test", //instead of spring_kafka_test could use 'org.apache.kafka:kafka-streams-examples'
+    spring_kafka_test: "org.springframework.kafka:spring-kafka-test:$versions.spring_kafka_test", // TODO change to use TopologyTestDriver
     wiremock: 'com.github.tomakehurst:wiremock:2.12.0',
     xml_apis: "xml-apis:xml-apis:1.0.b2",
     zookeeper: "org.apache.zookeeper:zookeeper:3.4.5",

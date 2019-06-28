@@ -29,6 +29,8 @@ import stroom.stats.StatisticsProcessor;
 import stroom.stats.api.StatisticType;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
+import stroom.stats.streams.topics.TopicDefinition;
+import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.util.HasRunState;
 
 import java.time.Duration;
@@ -45,14 +47,14 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
             "flatMapProcessorAppIdPrefix";
 
     private final StroomPropertyService stroomPropertyService;
+    private final TopicDefinitionFactory topicDefinitionFactory;
     private final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory;
     private final StatisticType statisticType;
     private volatile KafkaStreams kafkaStreams;
     private volatile int streamThreads = 0;
     private final String appId;
-    private final String inputTopic;
-    private final String badEventTopic;
-    private final String permsTopicsPrefix;
+    private final TopicDefinition<String, String> inputTopic;
+    private final TopicDefinition<String, String> badEventTopic;
     private final AbstractStatisticFlatMapper mapper;
     private volatile HasRunState.RunState runState = HasRunState.RunState.STOPPED;
 
@@ -60,11 +62,13 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
     private final Object startStopMonitor = new Object();
 
     public StatisticsFlatMappingProcessor(final StroomPropertyService stroomPropertyService,
+                                          final TopicDefinitionFactory topicDefinitionFactory,
                                           final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory,
                                           final StatisticType statisticType,
                                           final AbstractStatisticFlatMapper mapper) {
 
         this.stroomPropertyService = stroomPropertyService;
+        this.topicDefinitionFactory = topicDefinitionFactory;
         this.statisticsFlatMappingStreamFactory = statisticsFlatMappingStreamFactory;
         this.statisticType = statisticType;
         this.mapper = mapper;
@@ -72,10 +76,13 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
         appId = getName(PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX, statisticType);
         LOGGER.info("Building flat mapping processor {}", appId);
 
-        inputTopic = getName(StatisticsIngestService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX, statisticType);
-        badEventTopic = getName(StatisticsIngestService.PROP_KEY_BAD_STATISTIC_EVENTS_TOPIC_PREFIX, statisticType);
-        permsTopicsPrefix = getName(StatisticsIngestService.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX, statisticType);
+        inputTopic = topicDefinitionFactory.createStatTypedTopic(
+                TopicDefinitionFactory.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX,
+                statisticType);
 
+        badEventTopic = topicDefinitionFactory.createStatTypedTopic(
+                TopicDefinitionFactory.PROP_KEY_BAD_STATISTIC_EVENTS_TOPIC_PREFIX,
+                statisticType);
     }
 
     private KafkaStreams configureStream(final StatisticType statisticType,
@@ -92,9 +99,9 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
 
         KafkaStreams flatMapProcessor = statisticsFlatMappingStreamFactory.buildStream(
                 streamsConfig,
+                statisticType,
                 inputTopic,
                 badEventTopic,
-                permsTopicsPrefix,
                 mapper);
 
         flatMapProcessor.setUncaughtExceptionHandler(buildUncaughtExceptionHandler(appId, statisticType, mapper));
@@ -214,9 +221,8 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
     public Map<String, String> produceHealthCheckSummary() {
         Map<String, String> statusMap = new TreeMap<>();
         statusMap.put("applicationId", appId);
-        statusMap.put("badEventTopic", badEventTopic);
-        statusMap.put("inputTopic", inputTopic);
-        statusMap.put("permsTopicsPrefix", permsTopicsPrefix);
+        statusMap.put("badEventTopic", badEventTopic.getName());
+        statusMap.put("inputTopic", inputTopic.getName());
         statusMap.put("runState", runState.name());
         statusMap.put("streamThreads", Integer.toString(streamThreads));
         return statusMap;

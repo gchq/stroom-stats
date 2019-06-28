@@ -1,13 +1,13 @@
 package stroom.stats.streams;
 
 import org.apache.kafka.common.serialization.Serde;
-import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KStreamBuilder;
 import org.apache.kafka.streams.kstream.Predicate;
+import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.hbase.HBaseStatisticConstants;
@@ -21,6 +21,8 @@ import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatEventKeySerde;
+import stroom.stats.streams.topics.TopicDefinition;
+import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
@@ -66,17 +68,20 @@ public class StatisticsFlatMappingStreamFactory {
     };
 
     private final StatisticConfigurationService statisticConfigurationService;
+    private final TopicDefinitionFactory topicDefinitionFactory;
     private final StroomPropertyService stroomPropertyService;
     private final StatisticsMarshaller statisticsMarshaller;
 
     @Inject
     StatisticsFlatMappingStreamFactory(final StatisticConfigurationService statisticConfigurationService,
+                                       final TopicDefinitionFactory topicDefinitionFactory,
                                        final StroomPropertyService stroomPropertyService,
                                        final StatisticsMarshaller statisticsMarshaller) {
 
         this.statisticConfigurationService = statisticConfigurationService;
         this.stroomPropertyService = stroomPropertyService;
         this.statisticsMarshaller = statisticsMarshaller;
+        this.topicDefinitionFactory = topicDefinitionFactory;
 
         //Construct a list of predicate functions for
 //        intervalPredicates = Arrays.stream(EventStoreTimeIntervalEnum.values())
@@ -85,20 +90,18 @@ public class StatisticsFlatMappingStreamFactory {
 //                .toArray(size -> new Predicate[size]);
     }
 
-    KafkaStreams buildStream(final StreamsConfig streamsConfig, final String inputTopic, final String badEventTopic,
-                             final String intervalTopicPrefix,
+    KafkaStreams buildStream(final StreamsConfig streamsConfig,
+                             final StatisticType statisticType,
+                             final TopicDefinition<String, String> inputTopic,
+                             final TopicDefinition<String, String> badEventTopic,
                              final AbstractStatisticFlatMapper statisticMapper) {
 
-        LOGGER.info("Building stream with input topic {}, badEventTopic {}, intervalTopicPrefix {} and mapper {}",
-                inputTopic, badEventTopic, intervalTopicPrefix, statisticMapper.getClass().getSimpleName());
+        LOGGER.info("Building stream with input topic {}, badEventTopic {}, statisticType {}, and mapper {}",
+                inputTopic, badEventTopic, statisticType, statisticMapper.getClass().getSimpleName());
 
-        Serde<String> stringSerde = Serdes.String();
-        Serde<StatEventKey> statKeySerde = StatEventKeySerde.instance();
-        Serde<StatAggregate> statAggregateSerde = StatAggregateSerde.instance();
-
-        KStreamBuilder builder = new KStreamBuilder();
+        final StreamsBuilder builder = new StreamsBuilder();
         //This is the input to all the processing, key is the uuid of the stat, value is the stat XML
-        KStream<String, String> inputStream = builder.stream(stringSerde, stringSerde, inputTopic);
+        final KStream<String, String> inputStream = builder.stream(inputTopic.getName(), inputTopic.getConsumed());
 
         //currently the stat uuid is both the msg key and in the Statistic object.
         //This does mean duplication but means the msg can exist without the key, without losing meaning
@@ -121,7 +124,7 @@ public class StatisticsFlatMappingStreamFactory {
         // bottom of the XML, albeit as individual events rather than batches
         invalidUnmarshalledXml
                 .mapValues(this::badStatisticWrapperToString)
-                .to(stringSerde, stringSerde, badEventTopic);
+                .to(badEventTopic.getName(), badEventTopic.getProduced());
 
         KStream<String, StatisticWrapper>[] statWrapperForks = validUnmarshalledXml
                 .flatMapValues(unmarshalledXmlWrapper ->
@@ -137,13 +140,13 @@ public class StatisticsFlatMappingStreamFactory {
         // bottom of the XML, albeit as individual events rather than batches
         invalidStatWrappers
                 .mapValues(this::badStatisticWrapperToString)
-                .to(stringSerde, stringSerde, badEventTopic);
+                .to(badEventTopic.getName(), badEventTopic.getProduced());
 
         //build a list of mappings from interval to topic name.  Not done with a Map as we need to
         //access the collection by position. The order of this list does not matter but it must match
         //the order of the intervalPredicates array below so that position N corresponds to the same
         //interval in both collections, else the stream branching will not work
-        List<IntervalTopicPair> intervalTopicPairs = getIntervalTopicPairs(intervalTopicPrefix);
+        List<IntervalTopicPair> intervalTopicPairs = getIntervalTopicPairs(statisticType);
 
         Predicate<StatEventKey, StatAggregate>[] intervalPredicates = getPredicates(intervalTopicPairs);
 
@@ -160,7 +163,7 @@ public class StatisticsFlatMappingStreamFactory {
 //        final ConcurrentMap<EventStoreTimeIntervalEnum, AtomicLong> counters = new ConcurrentHashMap<>();
         //Route each from the stream interval specific branches to the appropriate topic
         for (int i = 0; i < intervalStreams.length; i++) {
-            String topic = intervalTopicPairs.get(i).getTopic();
+            TopicDefinition<StatEventKey, StatAggregate> topic = intervalTopicPairs.get(i).getTopic();
             intervalStreams[i]
                     .filter((key, value) -> {
 //                        This is in effect a peek operation for debugging as it always returns true
@@ -169,10 +172,11 @@ public class StatisticsFlatMappingStreamFactory {
 //                                key.getInterval(), value.getClass().getName(), counters.get(key.getInterval()).get()));
                         return true;
                     })
-                    .to(statKeySerde, statAggregateSerde, StatEventKeyPartitioner.instance(), topic);
+                    .to(topic.getName(), topic.getProduced(StatEventKeyPartitioner.instance()));
         }
 
-        return new KafkaStreams(builder, streamsConfig);
+        // TODO change to use config as props
+        return new KafkaStreams(builder.build(), streamsConfig);
     }
 
     private UnmarshalledXmlWrapper unmarshallXml(final String messageValue) {
@@ -184,10 +188,23 @@ public class StatisticsFlatMappingStreamFactory {
         }
     }
 
-    private List<IntervalTopicPair> getIntervalTopicPairs(final String intervalTopicPrefix) {
+    private List<IntervalTopicPair> getIntervalTopicPairs(final StatisticType statisticType) {
+
+        // Both seredes are stateless so we can share them
+        final Serde<StatEventKey> keySerde = StatEventKeySerde.instance();
+        final Serde<StatAggregate> valueSerde = StatAggregateSerde.instance();
+
         //get a sorted (by interval ms) list of topic|interval pairs so we can branch the kstream
         return Arrays.stream(EventStoreTimeIntervalEnum.values())
-                .map(interval -> new IntervalTopicPair(TopicNameFactory.getIntervalTopicName(intervalTopicPrefix, interval), interval))
+                .map(interval -> {
+                    final TopicDefinition<StatEventKey, StatAggregate> topic = topicDefinitionFactory.getStatTypedIntervalTopic(
+                            TopicDefinitionFactory.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX,
+                            statisticType,
+                            interval,
+                            keySerde,
+                            valueSerde);
+                    return new IntervalTopicPair(topic, interval);
+                })
                 .sorted()
                 .collect(Collectors.toList());
     }
@@ -316,15 +333,16 @@ public class StatisticsFlatMappingStreamFactory {
     }
 
     private static class IntervalTopicPair implements Comparable<IntervalTopicPair> {
-        private final String topic;
+        private final TopicDefinition<StatEventKey, StatAggregate> topic;
         private final EventStoreTimeIntervalEnum interval;
 
-        public IntervalTopicPair(final String topic, final EventStoreTimeIntervalEnum interval) {
+        public IntervalTopicPair(final TopicDefinition<StatEventKey, StatAggregate> topic,
+                                 final EventStoreTimeIntervalEnum interval) {
             this.topic = topic;
             this.interval = interval;
         }
 
-        public String getTopic() {
+        public TopicDefinition<StatEventKey, StatAggregate> getTopic() {
             return topic;
         }
 
