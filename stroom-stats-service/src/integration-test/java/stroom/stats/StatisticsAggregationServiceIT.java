@@ -105,7 +105,7 @@ public class StatisticsAggregationServiceIT {
 
         StatisticsAggregationService statisticsAggregationService = new StatisticsAggregationService(
                 mockStroomPropertyService,
-                mockStatisticsService);
+                topicDefinitionFactory, mockStatisticsService);
 
         statisticsAggregationService.start();
 

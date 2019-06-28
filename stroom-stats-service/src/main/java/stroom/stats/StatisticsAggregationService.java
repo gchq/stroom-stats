@@ -38,6 +38,7 @@ import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatEventKeySerde;
+import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.util.HasRunState;
 import stroom.stats.util.Startable;
 import stroom.stats.util.Stoppable;
@@ -70,6 +71,7 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
     public static final long TIMEOUT_SECS = 120;
 
     private final StroomPropertyService stroomPropertyService;
+    private final TopicDefinitionFactory topicDefinitionFactory;
     private final StatisticsService statisticsService;
 
     private final List<StatisticsAggregationProcessor> processors = Collections.synchronizedList(new ArrayList<>());
@@ -86,7 +88,9 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
 
     @Inject
     public StatisticsAggregationService(final StroomPropertyService stroomPropertyService,
+                                        final TopicDefinitionFactory topicDefinitionFactory,
                                         final StatisticsService statisticsService) {
+        this.topicDefinitionFactory = topicDefinitionFactory;
 
         LOGGER.debug("Initialising {}", this.getClass().getName());
 
@@ -180,6 +184,7 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
                 for (int instanceId = 0; instanceId < instanceCount; instanceId++) {
 
                     StatisticsAggregationProcessor processor = new StatisticsAggregationProcessor(
+                            topicDefinitionFactory,
                             statisticsService,
                             stroomPropertyService,
                             statisticType,

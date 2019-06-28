@@ -23,6 +23,7 @@ import com.codahale.metrics.health.HealthCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
+import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.util.healthchecks.HasHealthCheck;
 import stroom.stats.util.HasRunState;
 import stroom.stats.util.Startable;
@@ -50,20 +51,23 @@ public class StatisticsFlatMappingService implements Startable, Stoppable, HasRu
 
     @Inject
     public StatisticsFlatMappingService(final StroomPropertyService stroomPropertyService,
+                                        final TopicDefinitionFactory topicDefinitionFactory,
                                         final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory,
                                         final CountStatToAggregateFlatMapper countStatToAggregateMapper,
                                         final ValueStatToAggregateFlatMapper valueStatToAggregateMapper) {
 
         StatisticsFlatMappingProcessor countStatisticsProcessor = new StatisticsFlatMappingProcessor(
                 stroomPropertyService,
-                topicDefinitionFactory, statisticsFlatMappingStreamFactory,
+                topicDefinitionFactory,
+                statisticsFlatMappingStreamFactory,
                 StatisticType.COUNT,
                 countStatToAggregateMapper);
         processors.add(countStatisticsProcessor);
 
         StatisticsFlatMappingProcessor valueStatisticsProcessor = new StatisticsFlatMappingProcessor(
                 stroomPropertyService,
-                topicDefinitionFactory, statisticsFlatMappingStreamFactory,
+                topicDefinitionFactory,
+                statisticsFlatMappingStreamFactory,
                 StatisticType.VALUE,
                 valueStatToAggregateMapper);
         processors.add(valueStatisticsProcessor);

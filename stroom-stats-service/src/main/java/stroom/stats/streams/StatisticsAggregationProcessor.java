@@ -38,6 +38,8 @@ import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatEventKeySerde;
+import stroom.stats.streams.topics.TopicDefinition;
+import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.util.HasRunState;
 import stroom.stats.util.logging.LambdaLogger;
 
@@ -109,6 +111,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
     public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECS = 120;
 
+    private final TopicDefinitionFactory topicDefinitionFactory;
     private final StatisticsService statisticsService;
     private final StroomPropertyService stroomPropertyService;
     private final StatisticType statisticType;
@@ -123,10 +126,10 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
     private final ExecutorService executorService;
     private final KafkaProducer<StatEventKey, StatAggregate> kafkaProducer;
-    private final String inputTopic;
+    private final TopicDefinition<StatEventKey, StatAggregate> inputTopic;
     private final String groupId;
     private final Optional<EventStoreTimeIntervalEnum> optNextInterval;
-    private final Optional<String> optNextIntervalTopic;
+    private final Optional<TopicDefinition<StatEventKey, StatAggregate>> optNextIntervalTopic;
 
     private StatAggregator statAggregator;
     //    private Future<?> consumerFuture;
@@ -146,13 +149,15 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 //    public static final ConcurrentMap<Integer, List<ConsumerRecord<StatEventKey, StatAggregate>>> consumerRecords =
 //            new ConcurrentHashMap<>();
 
-    public StatisticsAggregationProcessor(final StatisticsService statisticsService,
+    public StatisticsAggregationProcessor(final TopicDefinitionFactory topicDefinitionFactory,
+                                          final StatisticsService statisticsService,
                                           final StroomPropertyService stroomPropertyService,
                                           final StatisticType statisticType,
                                           final EventStoreTimeIntervalEnum aggregationInterval,
                                           final KafkaProducer<StatEventKey, StatAggregate> kafkaProducer,
                                           final ExecutorService executorService,
                                           final int instanceId) {
+        this.topicDefinitionFactory = topicDefinitionFactory;
 
         this.statisticsService = statisticsService;
         this.stroomPropertyService = stroomPropertyService;
@@ -168,15 +173,24 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         statKeySerde = StatEventKeySerde.instance();
         statAggregateSerde = StatAggregateSerde.instance();
 
-        String topicPrefix = stroomPropertyService.getPropertyOrThrow(
-                StatisticsIngestService.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX);
+        inputTopic = topicDefinitionFactory.getStatTypedIntervalTopic(
+                TopicDefinitionFactory.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX,
+                statisticType,
+                aggregationInterval,
+                statKeySerde,
+                statAggregateSerde);
 
-        inputTopic = TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, aggregationInterval);
         groupId = stroomPropertyService.getPropertyOrThrow(PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX) +
                 "-" + inputTopic;
         optNextInterval = EventStoreTimeIntervalEnum.getNextBiggest(aggregationInterval);
+
         optNextIntervalTopic = optNextInterval.map(newInterval ->
-                TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, newInterval));
+                topicDefinitionFactory.getStatTypedIntervalTopic(
+                        TopicDefinitionFactory.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX,
+                        statisticType,
+                        newInterval,
+                        statKeySerde,
+                        statAggregateSerde));
 
         //start a processor for a stat type and aggregationInterval pair
         //This will improve aggregation as it will only handle data for the same stat types and aggregationInterval sizes
@@ -200,7 +214,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                     this,
                     kafkaConsumer);
 
-            kafkaConsumer.subscribe(Collections.singletonList(inputTopic), rebalanceListener);
+            kafkaConsumer.subscribe(Collections.singletonList(inputTopic.getName()), rebalanceListener);
 
             //Update our collection of partitions for later health check use
 //            assignedPartitions = kafkaConsumer.partitionsFor(inputTopic).stream()
@@ -310,7 +324,10 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
     private void consumerRunnable() {
         LOGGER.info("Starting consumer/producer for {}, {}, {} -> {}",
-                statisticType, aggregationInterval, inputTopic, optNextIntervalTopic.orElse("None"));
+                statisticType, aggregationInterval, inputTopic,
+                optNextIntervalTopic
+                        .map(TopicDefinition::getName)
+                        .orElse("None"));
 
         KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer = buildConsumer();
 
@@ -461,7 +478,11 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                 flushToStatStore(statisticType, statAggregator);
 
                 optNextInterval.ifPresent(nextInterval ->
-                        flushToTopic(statAggregator, optNextIntervalTopic.get(), nextInterval, kafkaProducer));
+                        flushToTopic(
+                                statAggregator,
+                                optNextIntervalTopic.get().getName(),
+                                nextInterval,
+                                kafkaProducer));
                 //null the reference ready for new aggregates
                 statAggregator = null;
 
@@ -595,7 +616,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         Map<String, String> statusMap = new TreeMap<>();
 
         statusMap.put("runState", runState.name());
-        statusMap.put("inputTopic", inputTopic);
+        statusMap.put("inputTopic", inputTopic.getName());
         statusMap.put("groupId", groupId);
         statusMap.put("instanceId", Integer.toString(instanceId));
         statusMap.put("bufferInputCount",
