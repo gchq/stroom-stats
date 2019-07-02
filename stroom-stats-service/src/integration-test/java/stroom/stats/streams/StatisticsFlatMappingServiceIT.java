@@ -49,7 +49,7 @@ import org.junit.runner.Description;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import stroom.stats.StroomStatsEmbeddedOverrideModule;
 import stroom.stats.StroomStatsServiceModule;
@@ -131,7 +131,7 @@ public class StatisticsFlatMappingServiceIT {
 
     //start kafka/ZK before each test and shut it down after the test has finished
     @ClassRule
-    public static EmbeddedKafkaBroker kafkaEmbedded = buildEmbeddedKafka();
+    public static EmbeddedKafkaRule kafkaEmbedded = buildEmbeddedKafka();
 
     private MockStroomPropertyService mockStroomPropertyService = new MockStroomPropertyService();
 
@@ -163,7 +163,7 @@ public class StatisticsFlatMappingServiceIT {
     @Before
     public void setup() {
 //        ThreadUtil.sleepAtLeastIgnoreInterrupts(3_000);
-        KafkaEmbededUtils.deleteAndCreateTopics(kafkaEmbedded, topics.toArray(new String[topics.size()]));
+        KafkaEmbededUtils.deleteAndCreateTopics(kafkaEmbedded.getEmbeddedKafka(), topics.toArray(new String[topics.size()]));
         areConsumersEnabled.set(true);
     }
 
@@ -200,7 +200,7 @@ public class StatisticsFlatMappingServiceIT {
         setAppIdPrefixes("");
         module = initStreamProcessing();
 
-        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
+        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded.getEmbeddedKafka());
         KafkaProducer<String, String> producer = new KafkaProducer<>(senderProps, Serdes.String().serializer(), Serdes.String().serializer());
 
         StatisticType statisticType = StatisticType.COUNT;
@@ -231,7 +231,7 @@ public class StatisticsFlatMappingServiceIT {
         //Set a long purge retention to stop events being bumped up into the next interval
         setPurgeRetention(interval, Integer.MAX_VALUE);
 
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded.getEmbeddedKafka());
         consumerProps.put("auto.offset.reset", "earliest");
 
 //        startAllTopicsConsumer(consumerProps);
@@ -272,7 +272,7 @@ public class StatisticsFlatMappingServiceIT {
     public void test_TwoGoodValueEventsRollUpAll() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
         module = initStreamProcessing();
 
-        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
+        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded.getEmbeddedKafka());
         KafkaProducer<String, String> producer = new KafkaProducer<>(senderProps, Serdes.String().serializer(), Serdes.String().serializer());
 
         StatisticType statisticType = StatisticType.VALUE;
@@ -305,7 +305,7 @@ public class StatisticsFlatMappingServiceIT {
         setPurgeRetention(interval, Integer.MAX_VALUE);
 
 
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded.getEmbeddedKafka());
         consumerProps.put("auto.offset.reset", "earliest");
 
 //        startAllTopicsConsumer(consumerProps);
@@ -349,7 +349,7 @@ public class StatisticsFlatMappingServiceIT {
     public void test_OneGoodEventPerIntervalAndStatType() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
         module = initStreamProcessing();
 
-        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
+        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded.getEmbeddedKafka());
         KafkaProducer<String, String> producer = new KafkaProducer<>(senderProps, Serdes.String().serializer(), Serdes.String().serializer());
 
         for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
@@ -359,7 +359,7 @@ public class StatisticsFlatMappingServiceIT {
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
 
 
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded.getEmbeddedKafka());
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
@@ -473,7 +473,7 @@ public class StatisticsFlatMappingServiceIT {
     public void test_cantUnmarshall() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
         module = initStreamProcessing();
 
-        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
+        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded.getEmbeddedKafka());
         KafkaProducer<String, String> producer = new KafkaProducer<>(senderProps, Serdes.String().serializer(), Serdes.String().serializer());
 
         StatisticType statisticType = StatisticType.COUNT;
@@ -499,7 +499,7 @@ public class StatisticsFlatMappingServiceIT {
         );
 
 
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded.getEmbeddedKafka());
         consumerProps.put("auto.offset.reset", "earliest");
 
         ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
@@ -538,7 +538,7 @@ public class StatisticsFlatMappingServiceIT {
     public void test_oneGoodOneBad() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
         module = initStreamProcessing();
 
-        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
+        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded.getEmbeddedKafka());
         KafkaProducer<String, String> producer = new KafkaProducer<>(senderProps, Serdes.String().serializer(), Serdes.String().serializer());
 
         StatisticType statisticType = StatisticType.COUNT;
@@ -573,7 +573,7 @@ public class StatisticsFlatMappingServiceIT {
                 ));
 
 
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded.getEmbeddedKafka());
         consumerProps.put("auto.offset.reset", "earliest");
 
 //        startAllTopicsConsumer(consumerProps);
@@ -629,7 +629,7 @@ public class StatisticsFlatMappingServiceIT {
     public void test_oneEventOutsideBiggestRetentionOneInside() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
         module = initStreamProcessing();
 
-        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
+        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded.getEmbeddedKafka());
         KafkaProducer<String, String> producer = new KafkaProducer<>(senderProps, Serdes.String().serializer(), Serdes.String().serializer());
 
         for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
@@ -668,7 +668,7 @@ public class StatisticsFlatMappingServiceIT {
         producer.send(buildProducerRecord(topic, GOOD_STAT_UUID, statistics)).get();
         producer.close();
 
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded.getEmbeddedKafka());
         consumerProps.put("auto.offset.reset", "earliest");
 
 //        startAllTopicsConsumer(consumerProps);
@@ -709,7 +709,7 @@ public class StatisticsFlatMappingServiceIT {
     public void test_allEventsBumpedToNextInterval() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
         module = initStreamProcessing();
 
-        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
+        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded.getEmbeddedKafka());
         KafkaProducer<String, String> producer = new KafkaProducer<>(
                 senderProps,
                 Serdes.String().serializer(),
@@ -758,7 +758,7 @@ public class StatisticsFlatMappingServiceIT {
         );
 
 
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded.getEmbeddedKafka());
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
@@ -816,7 +816,7 @@ public class StatisticsFlatMappingServiceIT {
         setNumStreamThreads(4);
         module = initStreamProcessing();
 
-        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
+        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded.getEmbeddedKafka());
         KafkaProducer<String, String> producer = new KafkaProducer<>(senderProps, Serdes.String().serializer(), Serdes.String().serializer());
 
         for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
@@ -899,7 +899,7 @@ public class StatisticsFlatMappingServiceIT {
         LOGGER.info("Sending {} stat events", producerRecords.size());
 
 
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded.getEmbeddedKafka());
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         ConcurrentMap<String, List<ConsumerRecord<StatEventKey, StatAggregate>>> topicToMsgsMap = new ConcurrentHashMap<>();
@@ -1035,7 +1035,7 @@ public class StatisticsFlatMappingServiceIT {
                                                        final int pollIntervalMs) {
 
         String groupId = "consumer-" + statisticType;
-        Map<String, Object> consumerPropsLocal = KafkaTestUtils.consumerProps(groupId, "false", kafkaEmbedded);
+        Map<String, Object> consumerPropsLocal = KafkaTestUtils.consumerProps(groupId, "false", kafkaEmbedded.getEmbeddedKafka());
 //        consumerProps.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 100);
         consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
@@ -1204,7 +1204,7 @@ public class StatisticsFlatMappingServiceIT {
         return new ProducerRecord<>(topic, key, statisticsMarshaller.marshallToXml(statistics));
     }
 
-    private static EmbeddedKafkaBroker buildEmbeddedKafka() {
+    private static EmbeddedKafkaRule buildEmbeddedKafka() {
         //Build a list of all the topics to create and along thw way create a map for each of
         //the topic types
         Arrays.stream(StatisticType.values())
@@ -1231,13 +1231,13 @@ public class StatisticsFlatMappingServiceIT {
 
 //        topics.forEach(topic -> LOGGER.info("Creating topic: {}", topic));
 
-        return new EmbeddedKafkaBroker(1, true, 1);
+        return new EmbeddedKafkaRule(1, true, 1);
     }
 
     private StroomStatsEmbeddedOverrideModule initStreamProcessing() {
         //Set up the properties service so it points to the embedded kafka
-        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
-        String zookeeprConnectStr = kafkaEmbedded.getZookeeperConnectionString();
+        Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded.getEmbeddedKafka());
+        String zookeeprConnectStr = kafkaEmbedded.getEmbeddedKafka().getZookeeperConnectionString();
 
         String bootStrapServersConfig = (String) senderProps.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
         //Override the kafka bootstrap servers prop to point to the embedded kafka rather than the docker one
@@ -1258,7 +1258,7 @@ public class StatisticsFlatMappingServiceIT {
 
         ZookeeperConfig mockZookeeperConfig = Mockito.mock(ZookeeperConfig.class);
         Config mockConfig = Mockito.mock(Config.class);
-        Mockito.when(mockZookeeperConfig.getQuorum()).thenReturn(kafkaEmbedded.getZookeeperConnectionString());
+        Mockito.when(mockZookeeperConfig.getQuorum()).thenReturn(kafkaEmbedded.getEmbeddedKafka().getZookeeperConnectionString());
         Mockito.when(mockZookeeperConfig.getPropertyServicePath()).thenReturn("/propertyService");
         Mockito.when(mockZookeeperConfig.getServiceDiscoveryPath()).thenReturn("/stroom-services");
         Mockito.when(mockConfig.getZookeeperConfig()).thenReturn(mockZookeeperConfig);
