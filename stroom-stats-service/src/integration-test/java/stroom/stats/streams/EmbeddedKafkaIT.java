@@ -28,39 +28,63 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KStreamBuilder;
+import org.apache.kafka.streams.test.ConsumerRecordFactory;
 import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import stroom.stats.streams.topics.TopicDefinition;
 import stroom.stats.test.KafkaEmbededUtils;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class EmbeddedKafkaIT {
     private static final Logger LOGGER = LoggerFactory.getLogger(EmbeddedKafkaIT.class);
     private static final String STREAMS_APP_ID = "TestStreamsApp";
-    public static final String TOPIC_MESSAGES = "messages";
-    public static final String TOPIC_MESSAGES_MAPPED = "messages-mapped";
-    public static final String TOPIC_BRANCH_1 = "branch-1";
-    public static final String TOPIC_BRANCH_2 = "branch-2";
+
+    private final Serde<String> stringSerde = Serdes.String();
+    private static final TopicDefinition<Integer, String> TOPIC_STRING_MESSAGES = TopicDefinition.createTopic(
+            "messages",
+            Serdes.Integer(),
+            Serdes.String());
+    private static final TopicDefinition<Integer, Long> TOPIC_LONG_MESSAGES = TopicDefinition.createTopic(
+            "messages",
+            Serdes.Integer(),
+            Serdes.Long());
+    private static final TopicDefinition<Integer, String> TOPIC_MESSAGES_MAPPED = TopicDefinition.createTopic(
+            "messages-mapped",
+            Serdes.Integer(),
+            Serdes.String());
+    private static final TopicDefinition<Integer, String> TOPIC_BRANCH_1 = TopicDefinition.createTopic(
+            "branch-1",
+            Serdes.Integer(),
+            Serdes.String());
+    private static final TopicDefinition<Integer, String> TOPIC_BRANCH_2 = TopicDefinition.createTopic(
+            "branch-2",
+            Serdes.Integer(),
+            Serdes.String());
 
     @Rule
-    public KafkaEmbedded kafkaEmbedded = new KafkaEmbedded(1, true);
+    public EmbeddedKafkaBroker kafkaEmbedded = new EmbeddedKafkaBroker(1, true);
 
     /**
      * Put some items on the queue and make sure they can be consumed
@@ -68,15 +92,16 @@ public class EmbeddedKafkaIT {
     @Test
     public void noddyProducerConsumerTest() throws ExecutionException, InterruptedException {
 
-        String[] topics = {TOPIC_MESSAGES};
+        String topicName = TOPIC_STRING_MESSAGES.getName();
+        String[] topics = {topicName};
         KafkaEmbededUtils.createTopics(kafkaEmbedded, topics);
 
         Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
         KafkaProducer<Integer, String> producer = new KafkaProducer<>(senderProps);
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 0, "message0")).get();
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 1, "message1")).get();
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 2, "message2")).get();
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 3, "message3")).get();
+        producer.send(new ProducerRecord<>(topicName, 0, 0, "message0")).get();
+        producer.send(new ProducerRecord<>(topicName, 0, 1, "message1")).get();
+        producer.send(new ProducerRecord<>(topicName, 1, 2, "message2")).get();
+        producer.send(new ProducerRecord<>(topicName, 1, 3, "message3")).get();
 
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("noddyProducerConsumerTest-consumer",
                 "false",
@@ -89,7 +114,7 @@ public class EmbeddedKafkaIT {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
             KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
-            kafkaConsumer.subscribe(Collections.singletonList(TOPIC_MESSAGES));
+            kafkaConsumer.subscribe(Collections.singletonList(topicName));
             try {
                 while (true) {
                     ConsumerRecords<Integer, String> records = kafkaConsumer.poll(100);
@@ -122,20 +147,22 @@ public class EmbeddedKafkaIT {
     @Test
     public void noddyStreamsTest() throws ExecutionException, InterruptedException, IOException {
 
-        String[] topics = {TOPIC_MESSAGES, TOPIC_MESSAGES_MAPPED};
+        String[] topics = {
+                TOPIC_STRING_MESSAGES.getName(),
+                TOPIC_MESSAGES_MAPPED.getName()};
         KafkaEmbededUtils.createTopics(kafkaEmbedded, topics);
 
         Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
         KafkaProducer<Integer, String> producer = new KafkaProducer<>(senderProps);
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 0, "message0")).get();
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 1, "message1")).get();
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 2, "message2")).get();
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 3, "message3")).get();
+        producer.send(new ProducerRecord<>(TOPIC_STRING_MESSAGES.getName(), 0, 0, "message0")).get();
+        producer.send(new ProducerRecord<>(TOPIC_STRING_MESSAGES.getName(), 0, 1, "message1")).get();
+        producer.send(new ProducerRecord<>(TOPIC_STRING_MESSAGES.getName(), 1, 2, "message2")).get();
+        producer.send(new ProducerRecord<>(TOPIC_STRING_MESSAGES.getName(), 1, 3, "message3")).get();
 
         Map<String, Object> streamProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         streamProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "noddyStreamsTest");
-        streamProps.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
-        streamProps.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+//        streamProps.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+//        streamProps.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
         streamProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         //We are trying to make a streams config with consumer config props, so need to remove some that
@@ -144,13 +171,13 @@ public class EmbeddedKafkaIT {
 
         StreamsConfig streamsConfig = new StreamsConfig(streamProps);
 
-        KStreamBuilder builder = new KStreamBuilder();
-        KStream<String, String> kafkaInput = builder.stream(TOPIC_MESSAGES);
+        StreamsBuilder builder = new StreamsBuilder();
+        KStream<Integer, String> kafkaInput = builder.stream(TOPIC_STRING_MESSAGES.getName(), TOPIC_STRING_MESSAGES.getConsumed());
         kafkaInput
                 .mapValues(value -> value + "-mapped")
-                .to(Serdes.String(), Serdes.String(), TOPIC_MESSAGES_MAPPED);
+                .to(TOPIC_MESSAGES_MAPPED.getName(), TOPIC_MESSAGES_MAPPED.getProduced());
 
-        KafkaStreams streams = new KafkaStreams(builder, streamsConfig);
+        KafkaStreams streams = new KafkaStreams(builder.build(), streamsConfig);
         streams.start();
 
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("noddyStreamsTest-consumer", "false", kafkaEmbedded);
@@ -162,7 +189,7 @@ public class EmbeddedKafkaIT {
         executorService.execute(() -> {
 
             KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps);
-            kafkaConsumer.subscribe(Collections.singletonList(TOPIC_MESSAGES_MAPPED));
+            kafkaConsumer.subscribe(Collections.singletonList(TOPIC_MESSAGES_MAPPED.getName()));
             try {
                 while (true) {
                     ConsumerRecords<Integer, String> records = kafkaConsumer.poll(100);
@@ -193,7 +220,9 @@ public class EmbeddedKafkaIT {
     @Test
     public void transformerStreamsTest() throws ExecutionException, InterruptedException, IOException {
 
-        String[] topics = {TOPIC_MESSAGES, TOPIC_MESSAGES_MAPPED};
+        String[] topics = {
+                TOPIC_STRING_MESSAGES.getName(),
+                TOPIC_MESSAGES_MAPPED.getName()};
         KafkaEmbededUtils.createTopics(kafkaEmbedded, topics);
 
         Serde<Integer> intSerde = Serdes.Integer();
@@ -202,10 +231,10 @@ public class EmbeddedKafkaIT {
 
         Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
         KafkaProducer<Integer, Long> producer = new KafkaProducer<>(senderProps, intSerde.serializer(), longSerde.serializer());
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 0, 10L)).get();
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 1, 10L)).get();
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 2, 10L)).get();
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 3, 10L)).get();
+        producer.send(new ProducerRecord<>(TOPIC_STRING_MESSAGES.getName(), 0, 0, 10L)).get();
+        producer.send(new ProducerRecord<>(TOPIC_STRING_MESSAGES.getName(), 0, 1, 10L)).get();
+        producer.send(new ProducerRecord<>(TOPIC_STRING_MESSAGES.getName(), 1, 2, 10L)).get();
+        producer.send(new ProducerRecord<>(TOPIC_STRING_MESSAGES.getName(), 1, 3, 10L)).get();
 
         Map<String, Object> streamProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         streamProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "transformerStreamsTest");
@@ -217,13 +246,13 @@ public class EmbeddedKafkaIT {
 
         StreamsConfig streamsConfig = new StreamsConfig(streamProps);
 
-        KStreamBuilder builder = new KStreamBuilder();
-        KStream<Integer, Long> kafkaInput = builder.stream(intSerde, longSerde, TOPIC_MESSAGES);
+        StreamsBuilder builder = new StreamsBuilder();
+        KStream<Integer, Long> kafkaInput = builder.stream(TOPIC_LONG_MESSAGES.getName(), TOPIC_LONG_MESSAGES.getConsumed());
         kafkaInput
                 .mapValues(value -> value + "-mapped")
-                .to(intSerde, stringSerde, TOPIC_MESSAGES_MAPPED);
+                .to(TOPIC_MESSAGES_MAPPED.getName(), TOPIC_MESSAGES_MAPPED.getProduced());
 
-        KafkaStreams streams = new KafkaStreams(builder, streamsConfig);
+        KafkaStreams streams = new KafkaStreams(builder.build(), streamsConfig);
         streams.start();
 
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("transformerStreamsTest-consumer", "false", kafkaEmbedded);
@@ -235,7 +264,7 @@ public class EmbeddedKafkaIT {
         executorService.execute(() -> {
 
             KafkaConsumer<Integer, String> kafkaConsumer = new KafkaConsumer<>(consumerProps, intSerde.deserializer(), stringSerde.deserializer());
-            kafkaConsumer.subscribe(Collections.singletonList(TOPIC_MESSAGES_MAPPED));
+            kafkaConsumer.subscribe(Collections.singletonList(TOPIC_MESSAGES_MAPPED.getName()));
             try {
                 while (true) {
                     ConsumerRecords<Integer, String> records = kafkaConsumer.poll(100);
@@ -269,20 +298,24 @@ public class EmbeddedKafkaIT {
     @Test
     public void branchingStreamsTest() throws ExecutionException, InterruptedException {
 
-        final String[] topics = {TOPIC_MESSAGES, TOPIC_MESSAGES_MAPPED, TOPIC_BRANCH_1, TOPIC_BRANCH_2};
+        final String[] topics = {
+                TOPIC_STRING_MESSAGES.getName(),
+                TOPIC_MESSAGES_MAPPED.getName(),
+                TOPIC_BRANCH_1.getName(),
+                TOPIC_BRANCH_2.getName()};
         KafkaEmbededUtils.createTopics(kafkaEmbedded, topics);
 
         Map<String, Object> senderProps = KafkaTestUtils.producerProps(kafkaEmbedded);
         KafkaProducer<Integer, String> producer = new KafkaProducer<>(senderProps);
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 0, "message0")).get();
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 0, 1, "message1")).get();
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 2, "message2")).get();
-        producer.send(new ProducerRecord<>(TOPIC_MESSAGES, 1, 3, "message3")).get();
+        producer.send(new ProducerRecord<>(TOPIC_STRING_MESSAGES.getName(), 0, 0, "message0")).get();
+        producer.send(new ProducerRecord<>(TOPIC_STRING_MESSAGES.getName(), 0, 1, "message1")).get();
+        producer.send(new ProducerRecord<>(TOPIC_STRING_MESSAGES.getName(), 1, 2, "message2")).get();
+        producer.send(new ProducerRecord<>(TOPIC_STRING_MESSAGES.getName(), 1, 3, "message3")).get();
 
         Map<String, Object> streamProps = KafkaTestUtils.consumerProps("dummyGroup", "false", kafkaEmbedded);
         streamProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "branchingStreamsTest");
-        streamProps.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.Integer().getClass().getName());
-        streamProps.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+//        streamProps.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.Integer().getClass().getName());
+//        streamProps.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
         streamProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         //We are trying to make a streams config with consumer config props, so need to remove some that
@@ -291,22 +324,22 @@ public class EmbeddedKafkaIT {
 
         StreamsConfig streamsConfig = new StreamsConfig(streamProps);
 
-        KStreamBuilder builder = new KStreamBuilder();
-        KStream<Integer, String> kafkaInput = builder.stream(TOPIC_MESSAGES);
+        StreamsBuilder builder = new StreamsBuilder();
+        KStream<Integer, String> kafkaInput = builder.stream(TOPIC_STRING_MESSAGES.getName(), TOPIC_STRING_MESSAGES.getConsumed());
 
         //branch odds and evens to different topics
         KStream<Integer, String>[] branchedStreams = kafkaInput
                 .mapValues(value -> value + "-mapped")
-                .through(Serdes.Integer(), Serdes.String(), TOPIC_MESSAGES_MAPPED)
+                .through(TOPIC_MESSAGES_MAPPED.getName(), TOPIC_MESSAGES_MAPPED.getProduced())
                 .branch(
                         (key, value) -> key % 2 == 0,
                         (key, value) -> key % 2 != 0
                 );
 
-        branchedStreams[0].to(TOPIC_BRANCH_1);
-        branchedStreams[1].to(TOPIC_BRANCH_2);
+        branchedStreams[0].to(TOPIC_BRANCH_1.getName(), TOPIC_BRANCH_1.getProduced());
+        branchedStreams[1].to(TOPIC_BRANCH_2.getName(), TOPIC_BRANCH_2.getProduced());
 
-        KafkaStreams streams = new KafkaStreams(builder, streamsConfig);
+        KafkaStreams streams = new KafkaStreams(builder.build(), streamsConfig);
         streams.start();
 
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("branchingStreamsTest-consumer", "false", kafkaEmbedded);
@@ -344,6 +377,15 @@ public class EmbeddedKafkaIT {
         streams.close();
 
         KafkaEmbededUtils.deleteTopics(kafkaEmbedded, topics);
+    }
+
+    <K,V> void runProcessorTest(final TopicDefinition<K,V> inputTopicDefinition,
+                                final Topology topology,
+                                final Properties streamsConfig,
+                                final BiConsumer<TopologyTestDriver, ConsumerRecordFactory<K,V>> testAction) {
+
+
+
     }
 
     /**

@@ -23,6 +23,7 @@ import com.codahale.metrics.health.HealthCheck;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.Topology;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.StatisticsProcessor;
@@ -35,11 +36,11 @@ import stroom.stats.util.HasRunState;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.TreeMap;
 
-public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
+public class StatisticsFlatMappingProcessor implements StatisticsProcessor, StreamProcessor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsFlatMappingProcessor.class);
 
@@ -88,29 +89,15 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
     private KafkaStreams configureStream(final StatisticType statisticType,
                                          final AbstractStatisticFlatMapper mapper) {
 
-        Map<String, Object> props = new HashMap<>();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, appId);
-
-        //TODO need to specify number of threads in the yml as it could be box specific
-        streamThreads = getStreamThreads();
-        props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, streamThreads);
-
-        StreamsConfig streamsConfig = buildStreamsConfig(appId, props);
-
-        KafkaStreams flatMapProcessor = statisticsFlatMappingStreamFactory.buildStream(
-                streamsConfig,
-                statisticType,
-                inputTopic,
-                badEventTopic,
-                mapper);
+        final KafkaStreams flatMapProcessor = new KafkaStreams(getTopology(), getStreamConfig());
 
         flatMapProcessor.setUncaughtExceptionHandler(buildUncaughtExceptionHandler(appId, statisticType, mapper));
 
         return flatMapProcessor;
     }
 
-    private StreamsConfig buildStreamsConfig(String appId, final Map<String, Object> additionalProps) {
-        Map<String, Object> props = new HashMap<>();
+    private Properties buildStreamsConfig(String appId, final Properties additionalProps) {
+        Properties props = new Properties();
 
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, getKafkaBootstrapServers());
         props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, getStreamsCommitIntervalMs());
@@ -128,7 +115,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
                 LOGGER.info("Setting Kafka Streams property {} for appId {} to [{}]", key, appId, value.toString())
         );
 
-        return new StreamsConfig(props);
+        return props;
     }
 
     private Thread.UncaughtExceptionHandler buildUncaughtExceptionHandler(final String appId,
@@ -199,26 +186,45 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor {
     }
 
     @Override
-    public String getGroupId() {
-        return appId;
-    }
-
-    @Override
     public String getName() {
         return "AggregationProcessor-" + appId;
     }
 
     @Override
-    public HealthCheck.Result getHealth() {
-        switch (runState) {
-            case RUNNING:
-                return HealthCheck.Result.healthy(runState.toString());
-            default:
-                return HealthCheck.Result.unhealthy(runState.toString());
-        }
+    public Topology getTopology() {
+        return statisticsFlatMappingStreamFactory.buildStreamTopology(
+                statisticType,
+                inputTopic,
+                badEventTopic,
+                mapper);
     }
 
-    public Map<String, String> produceHealthCheckSummary() {
+    @Override
+    public Properties getStreamConfig() {
+        Properties props = new Properties();
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, appId);
+
+        //TODO need to specify number of threads in the yml as it could be box specific
+        streamThreads = getStreamThreads();
+        props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, streamThreads);
+
+        return buildStreamsConfig(appId, props);
+    }
+
+    @Override
+    public String getAppId() {
+        return appId;
+    }
+
+    @Override
+    public HealthCheck.Result getHealth() {
+        if (runState == RunState.RUNNING) {
+            return HealthCheck.Result.healthy(runState.toString());
+        }
+        return HealthCheck.Result.unhealthy(runState.toString());
+    }
+
+    Map<String, String> produceHealthCheckSummary() {
         Map<String, String> statusMap = new TreeMap<>();
         statusMap.put("applicationId", appId);
         statusMap.put("badEventTopic", badEventTopic.getName());

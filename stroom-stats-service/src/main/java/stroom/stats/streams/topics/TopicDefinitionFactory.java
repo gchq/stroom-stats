@@ -43,11 +43,11 @@ public class TopicDefinitionFactory {
         return new TopicDefinition<>(topicName, Serdes.String(), Serdes.String());
     }
 
-    public <K,V> TopicDefinition<K, V> getStatTypedIntervalTopic(final String topicPrefixPropKey,
-                                                                 final StatisticType statisticType,
-                                                                 final EventStoreTimeIntervalEnum interval,
-                                                                 final Serde<K> keySerde,
-                                                                 final Serde<V> valueSerde) {
+    public <K,V> TopicDefinition<K, V> createStatTypedIntervalTopic(final String topicPrefixPropKey,
+                                                                    final StatisticType statisticType,
+                                                                    final EventStoreTimeIntervalEnum interval,
+                                                                    final Serde<K> keySerde,
+                                                                    final Serde<V> valueSerde) {
         final String topicPrefix = stroomPropertyService.getPropertyOrThrow(topicPrefixPropKey);
         final String topicName = getIntervalTopicName(getStatisticTypedName(topicPrefix, statisticType), interval);
         return new TopicDefinition<>(topicName, keySerde, valueSerde);

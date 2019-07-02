@@ -143,11 +143,12 @@ ext.libs = [
     junit: "junit:junit:4.12",
     kafka_clients: "org.apache.kafka:kafka-clients:$versions.kafka",
     kafka_streams: "org.apache.kafka:kafka-streams:$versions.kafka",
+    kafka_streams_test_utils: "org.apache.kafka:kafka-streams-test-utils:$versions.kafka",
     kryo: "com.esotericsoftware:kryo-shaded:4.0.0",
     log4j_over_slf4j: "org.slf4j:log4j-over-slf4j:$versions.slf4j",
     logback_classic: "ch.qos.logback:logback-classic:$versions.logback",
     logback_core: "ch.qos.logback:logback-core:$versions.logback",
-    mockito_core: "org.mockito:mockito-core:2.+",
+    mockito_core: "org.mockito:mockito-core:2.28.2",
     mysql_connector: "mysql:mysql-connector-java:5.1.40",
     objenesis: "org.objenesis:objenesis:2.2", //used with kryo so keep version in sync with that
     saxon: "net.sf.saxon:Saxon-HE:9.6.0-6",

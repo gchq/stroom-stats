@@ -101,7 +101,7 @@ public class SerdeUtils {
      * @param obj
      * @param <T>
      */
-    static <T> void verify(final Serde<T> serde, final T obj) {
+    public static <T> void verify(final Serde<T> serde, final T obj) {
         final String dummyTopic = "xxx";
         byte[] bytes = serde.serializer().serialize(dummyTopic, obj);
 

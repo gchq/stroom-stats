@@ -70,8 +70,10 @@ public class TestStatEventKeyPartitioner {
 
     //This constructor works with kafka 0.10.0.1
     private Cluster cluster = new Cluster(
+            "my-cluster",
             Arrays.asList(node0, node1, node2),
             partitions,
+            Collections.emptySet(),
             Collections.emptySet());
 
     private final MockUniqueIdCache mockUniqueIdCache = new MockUniqueIdCache();
@@ -275,7 +277,7 @@ public class TestStatEventKeyPartitioner {
 
     private int getStreamsPartition(StatEventKey statEventKey, int numPartitions) {
         StreamPartitioner<StatEventKey, StatAggregate> partitioner = new StatEventKeyPartitioner();
-        int partition = partitioner.partition(statEventKey, null, numPartitions);
+        int partition = partitioner.partition(topic, statEventKey, null, numPartitions);
         Assertions.assertThat(partition).isNotNegative();
         Assertions.assertThat(partition).isLessThan(numPartitions);
         return partition;

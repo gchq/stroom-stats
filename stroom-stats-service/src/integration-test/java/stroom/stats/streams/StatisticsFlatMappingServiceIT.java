@@ -49,7 +49,7 @@ import org.junit.runner.Description;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import stroom.stats.StroomStatsEmbeddedOverrideModule;
 import stroom.stats.StroomStatsServiceModule;
@@ -131,7 +131,7 @@ public class StatisticsFlatMappingServiceIT {
 
     //start kafka/ZK before each test and shut it down after the test has finished
     @ClassRule
-    public static KafkaEmbedded kafkaEmbedded = buildEmbeddedKafka();
+    public static EmbeddedKafkaBroker kafkaEmbedded = buildEmbeddedKafka();
 
     private MockStroomPropertyService mockStroomPropertyService = new MockStroomPropertyService();
 
@@ -1204,7 +1204,7 @@ public class StatisticsFlatMappingServiceIT {
         return new ProducerRecord<>(topic, key, statisticsMarshaller.marshallToXml(statistics));
     }
 
-    private static KafkaEmbedded buildEmbeddedKafka() {
+    private static EmbeddedKafkaBroker buildEmbeddedKafka() {
         //Build a list of all the topics to create and along thw way create a map for each of
         //the topic types
         Arrays.stream(StatisticType.values())
@@ -1231,8 +1231,7 @@ public class StatisticsFlatMappingServiceIT {
 
 //        topics.forEach(topic -> LOGGER.info("Creating topic: {}", topic));
 
-//        return new KafkaEmbedded(1, true, 1, topics.toArray(new String[topics.size()]));
-        return new KafkaEmbedded(1, true, 1);
+        return new EmbeddedKafkaBroker(1, true, 1);
     }
 
     private StroomStatsEmbeddedOverrideModule initStreamProcessing() {

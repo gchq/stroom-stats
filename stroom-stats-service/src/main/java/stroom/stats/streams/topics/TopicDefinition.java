@@ -24,6 +24,14 @@ public class TopicDefinition<K,V> {
         return new TopicDefinition<>(name, Serdes.String(), Serdes.String());
     }
 
+    public static <K, V> TopicDefinition<K, V> createTopic(
+            final String name,
+            final Serde<K> keySerde,
+            final Serde<V> valueSerde) {
+
+        return new TopicDefinition<>(name, keySerde, valueSerde);
+    }
+
     public String getName() {
         return name;
     }

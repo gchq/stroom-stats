@@ -99,7 +99,7 @@ import java.util.stream.StreamSupport;
  * the next topic and/or to the stat service. The size of the StatAggregator is a trade off between in memory aggregation
  * benefits and the risk of more duplicate data in the stat store
  */
-public class StatisticsAggregationProcessor implements StatisticsProcessor {
+public class StatisticsAggregationProcessor implements StatisticsProcessor, TopicConsumer {
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatisticsAggregationProcessor.class);
 
@@ -111,7 +111,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
     public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECS = 120;
 
-    private final TopicDefinitionFactory topicDefinitionFactory;
     private final StatisticsService statisticsService;
     private final StroomPropertyService stroomPropertyService;
     private final StatisticType statisticType;
@@ -157,7 +156,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                                           final KafkaProducer<StatEventKey, StatAggregate> kafkaProducer,
                                           final ExecutorService executorService,
                                           final int instanceId) {
-        this.topicDefinitionFactory = topicDefinitionFactory;
 
         this.statisticsService = statisticsService;
         this.stroomPropertyService = stroomPropertyService;
@@ -173,7 +171,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         statKeySerde = StatEventKeySerde.instance();
         statAggregateSerde = StatAggregateSerde.instance();
 
-        inputTopic = topicDefinitionFactory.getStatTypedIntervalTopic(
+        inputTopic = topicDefinitionFactory.createStatTypedIntervalTopic(
                 TopicDefinitionFactory.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX,
                 statisticType,
                 aggregationInterval,
@@ -185,7 +183,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         optNextInterval = EventStoreTimeIntervalEnum.getNextBiggest(aggregationInterval);
 
         optNextIntervalTopic = optNextInterval.map(newInterval ->
-                topicDefinitionFactory.getStatTypedIntervalTopic(
+                topicDefinitionFactory.createStatTypedIntervalTopic(
                         TopicDefinitionFactory.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX,
                         statisticType,
                         newInterval,
@@ -309,7 +307,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private void startProcessor() {
         runState = RunState.RUNNING;
 
-//        consumerFuture = executorService.submit(this::consumerRunnable);
         consumerFuture = CompletableFuture.runAsync(this::consumerRunnable, executorService)
                 .whenComplete((aVoid, throwable) -> {
                     if (throwable != null) {
@@ -579,11 +576,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     @Override
     public HasRunState.RunState getRunState() {
         return runState;
-    }
-
-    @Override
-    public String getGroupId() {
-        return groupId;
     }
 
     @Override

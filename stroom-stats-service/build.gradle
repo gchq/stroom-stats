@@ -83,9 +83,11 @@ dependencies {
 
     //deps for integrationTest
     testCompile libs.dropwizard_client
-    testCompile libs.fastClasspathScanner
     testCompile libs.dropwizard_testing
+    testCompile libs.fastClasspathScanner
+    testCompile libs.mockito_core
     testCompile libs.spring_kafka_test
+    testCompile libs.kafka_streams_test_utils
     permitTestUnusedDeclared "${libs.wiremock}"
     testCompile libs.wiremock
     permitTestUnusedDeclared libs.jackson_annotations

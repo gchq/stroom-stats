@@ -48,11 +48,12 @@ import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.StatisticsAggregationProcessor;
 import stroom.stats.streams.StatisticsIngestService;
-import stroom.stats.streams.TopicNameFactory;
 import stroom.stats.streams.aggregation.CountAggregate;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatEventKeySerde;
+import stroom.stats.streams.topics.TopicDefinition;
+import stroom.stats.streams.topics.TopicDefinitionFactory;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -96,6 +97,8 @@ public class StatisticsAggregationServiceIT {
     @Captor
     private ArgumentCaptor<EventStoreTimeIntervalEnum> intervalCaptor;
 
+    private TopicDefinitionFactory topicDefinitionFactory = new TopicDefinitionFactory(mockStroomPropertyService);
+
     @Test
     public void testAggregation() throws InterruptedException {
 
@@ -113,10 +116,12 @@ public class StatisticsAggregationServiceIT {
         //records do to autoOffsetRest being set to latest
         Thread.sleep(1_000);
 
-        String inputTopic = TopicNameFactory.getIntervalTopicName(
-                mockStroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX),
+        TopicDefinition<StatEventKey, StatAggregate> inputTopic = topicDefinitionFactory.createStatTypedIntervalTopic(
+                TopicDefinitionFactory.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX,
                 WORKING_STAT_TYPE,
-                WORKING_INTERVAL);
+                WORKING_INTERVAL,
+                StatEventKeySerde.instance(),
+                StatAggregateSerde.instance());
 
         String statName = "MyStat-" + Instant.now().toString();
         UID statNameUid = mockUniqueIdCache.getOrCreateId(statName);
@@ -134,7 +139,10 @@ public class StatisticsAggregationServiceIT {
         IntStream.rangeClosed(1, iterations)
                 .parallel()
                 .forEach(i -> {
-                    Future<RecordMetadata> future = kafkaProducer.send(buildProducerRecord(inputTopic, statNameUid, baseTime.plus(i, ChronoUnit.MINUTES)));
+                    Future<RecordMetadata> future = kafkaProducer.send(buildProducerRecord(
+                            inputTopic.getName(),
+                            statNameUid,
+                            baseTime.plus(i, ChronoUnit.MINUTES)));
                     futures.add(future);
                     msgPutCounter.increment();
                 });
