@@ -116,12 +116,9 @@ public class StatisticsAggregationServiceIT {
         //records do to autoOffsetRest being set to latest
         Thread.sleep(1_000);
 
-        TopicDefinition<StatEventKey, StatAggregate> inputTopic = topicDefinitionFactory.createStatTypedIntervalTopic(
-                TopicDefinitionFactory.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX,
+        TopicDefinition<StatEventKey, StatAggregate> inputTopic = topicDefinitionFactory.createAggregatesTopic(
                 WORKING_STAT_TYPE,
-                WORKING_INTERVAL,
-                StatEventKeySerde.instance(),
-                StatAggregateSerde.instance());
+                WORKING_INTERVAL);
 
         String statName = "MyStat-" + Instant.now().toString();
         UID statNameUid = mockUniqueIdCache.getOrCreateId(statName);

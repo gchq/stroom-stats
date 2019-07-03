@@ -1,6 +1,5 @@
 package stroom.stats.streams;
 
-import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
@@ -18,8 +17,6 @@ import stroom.stats.schema.v4.StatisticsMarshaller;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
-import stroom.stats.streams.serde.StatAggregateSerde;
-import stroom.stats.streams.serde.StatEventKeySerde;
 import stroom.stats.streams.topics.TopicDefinition;
 import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.util.logging.LambdaLogger;
@@ -187,19 +184,12 @@ public class StatisticsFlatMappingStreamFactory {
 
     private List<IntervalTopicPair> getIntervalTopicPairs(final StatisticType statisticType) {
 
-        // Both seredes are stateless so we can share them
-        final Serde<StatEventKey> keySerde = StatEventKeySerde.instance();
-        final Serde<StatAggregate> valueSerde = StatAggregateSerde.instance();
-
         //get a sorted (by interval ms) list of topic|interval pairs so we can branch the kstream
         return Arrays.stream(EventStoreTimeIntervalEnum.values())
                 .map(interval -> {
-                    final TopicDefinition<StatEventKey, StatAggregate> topic = topicDefinitionFactory.createStatTypedIntervalTopic(
-                            TopicDefinitionFactory.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX,
+                    final TopicDefinition<StatEventKey, StatAggregate> topic = topicDefinitionFactory.createAggregatesTopic(
                             statisticType,
-                            interval,
-                            keySerde,
-                            valueSerde);
+                            interval);
                     return new IntervalTopicPair(topic, interval);
                 })
                 .sorted()

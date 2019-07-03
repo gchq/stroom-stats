@@ -112,10 +112,10 @@ abstract class AbstractStreamProcessorTest {
         return props;
     }
 
-    <K,V> void runProcessorTest(final TopicDefinition<K,V> inputTopicDefinition,
-                                final BiConsumer<TopologyTestDriver, ConsumerRecordFactory<K,V>> testAction) {
 
-        final StreamProcessor streamProcessor = getStreamProcessor();
+    <K,V> void runProcessorTest(final TopicDefinition<K,V> inputTopicDefinition,
+                                final StreamProcessor streamProcessor,
+                                final BiConsumer<TopologyTestDriver, ConsumerRecordFactory<K,V>> testAction) {
 
         deleteStreamsStateDir(streamProcessor);
 
@@ -153,6 +153,4 @@ abstract class AbstractStreamProcessorTest {
             }
         }
     }
-
-    abstract StreamProcessor getStreamProcessor();
 }
