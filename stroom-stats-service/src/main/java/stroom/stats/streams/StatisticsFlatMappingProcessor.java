@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 import stroom.stats.StatisticsProcessor;
 import stroom.stats.api.StatisticType;
 import stroom.stats.properties.StroomPropertyService;
-import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
+import stroom.stats.streams.mapping.StatisticFlatMapper;
 import stroom.stats.streams.topics.TopicDefinition;
 import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.util.HasRunState;
@@ -56,7 +56,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Stre
     private final String appId;
     private final TopicDefinition<String, String> inputTopic;
     private final TopicDefinition<String, String> badEventTopic;
-    private final AbstractStatisticFlatMapper mapper;
+    private final StatisticFlatMapper mapper;
     private volatile HasRunState.RunState runState = HasRunState.RunState.STOPPED;
 
     //used for thread synchronization
@@ -66,7 +66,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Stre
                                           final TopicDefinitionFactory topicDefinitionFactory,
                                           final StatisticsFlatMappingStreamFactory statisticsFlatMappingStreamFactory,
                                           final StatisticType statisticType,
-                                          final AbstractStatisticFlatMapper mapper) {
+                                          final StatisticFlatMapper mapper) {
 
         this.stroomPropertyService = stroomPropertyService;
         this.topicDefinitionFactory = topicDefinitionFactory;
@@ -83,7 +83,7 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Stre
     }
 
     private KafkaStreams configureStream(final StatisticType statisticType,
-                                         final AbstractStatisticFlatMapper mapper) {
+                                         final StatisticFlatMapper mapper) {
 
         final KafkaStreams flatMapProcessor = new KafkaStreams(getTopology(), getStreamConfig());
 
@@ -116,12 +116,12 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Stre
 
     private Thread.UncaughtExceptionHandler buildUncaughtExceptionHandler(final String appId,
                                                                           final StatisticType statisticType,
-                                                                          final AbstractStatisticFlatMapper abstractStatisticFlatMapper) {
+                                                                          final StatisticFlatMapper statisticFlatMapper) {
         return (t, e) ->
                 LOGGER.error("Uncaught exception in stream processor with appId {} type {} and mapper {} in thread {}",
                         appId,
                         statisticType,
-                        abstractStatisticFlatMapper.getClass().getSimpleName(),
+                        statisticFlatMapper.getClass().getSimpleName(),
                         t.getName(),
                         e);
     }

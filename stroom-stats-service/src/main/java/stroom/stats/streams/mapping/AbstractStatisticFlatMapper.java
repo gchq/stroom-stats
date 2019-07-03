@@ -45,11 +45,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public abstract class AbstractStatisticFlatMapper {
+public abstract class AbstractStatisticFlatMapper implements StatisticFlatMapper {
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(AbstractStatisticFlatMapper.class);
-
-    public static final String NULL_VALUE_STRING = "<<<<NULL_VALUE>>>>";
 
     private final UniqueIdCache uniqueIdCache;
     private final StroomPropertyService stroomPropertyService;
@@ -66,8 +64,6 @@ public abstract class AbstractStatisticFlatMapper {
         rolledUpValue = uniqueIdCache.getOrCreateId(RollUpBitMask.ROLL_UP_TAG_VALUE);
     }
 
-
-    public abstract Iterable<KeyValue<StatEventKey, StatAggregate>> flatMap(String statUuid, StatisticWrapper statisticWrapper);
 
     private TagValue buildTagValue(String tag, Optional<String> value) {
 
@@ -105,18 +101,6 @@ public abstract class AbstractStatisticFlatMapper {
         }
     }
 
-    public static boolean isInsidePurgeRetention(final StatisticWrapper statisticWrapper,
-                                                 final EventStoreTimeIntervalEnum interval,
-                                                 final int retentionRowIntervals) {
-
-        // round start time down to the last row key interval
-        final long rowInterval = interval.rowKeyInterval();
-        final long roundedNow = ((long) (System.currentTimeMillis() / rowInterval)) * rowInterval;
-        final long cutOffTime = roundedNow - (rowInterval * retentionRowIntervals);
-
-        return statisticWrapper.getTimeMs() >= cutOffTime;
-    }
-
     private EventStoreTimeIntervalEnum computeInterval(final StatisticWrapper statisticWrapper) {
 
         //Start with the smallest precision defined in the stat config and iterate up from there
@@ -133,7 +117,7 @@ public abstract class AbstractStatisticFlatMapper {
                     + currentInterval.get().name().toLowerCase();
             final int retentionRowIntervals = stroomPropertyService.getIntPropertyOrThrow(purgeRetentionPeriodsPropertyKey);
 
-            if (isInsidePurgeRetention(statisticWrapper, currentInterval.get(), retentionRowIntervals)) {
+            if (StatisticFlatMapper.isInsidePurgeRetention(statisticWrapper, currentInterval.get(), retentionRowIntervals)) {
                 //stat is fine to go into this interval, so drop out
                 break;
             }

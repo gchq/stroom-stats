@@ -1,5 +1,6 @@
 package stroom.stats.streams;
 
+import org.apache.kafka.streams.KeyValue;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.slf4j.Logger;
@@ -9,8 +10,9 @@ import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.schema.v4.StatisticsMarshaller;
-import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
+import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.mapping.CountStatToAggregateFlatMapper;
+import stroom.stats.streams.mapping.StatisticFlatMapper;
 import stroom.stats.streams.mapping.ValueStatToAggregateFlatMapper;
 import stroom.stats.streams.topics.TopicDefinition;
 import stroom.stats.streams.topics.TopicDefinitionFactory;
@@ -76,7 +78,7 @@ class TestStatisticsFlatMappingProcessor extends AbstractStreamProcessorTest {
         );
 
         // TODO create a mock of this that does a noddy flat mapping as we already have tests for these impls
-        AbstractStatisticFlatMapper statisticFlatMapper = statisticType.equals(StatisticType.COUNT)
+        StatisticFlatMapper statisticFlatMapper = statisticType.equals(StatisticType.COUNT)
                 ? new CountStatToAggregateFlatMapper(mockUniqueIdCache, mockStroomPropertyService)
                 : new ValueStatToAggregateFlatMapper(mockUniqueIdCache, mockStroomPropertyService);
 
@@ -86,6 +88,19 @@ class TestStatisticsFlatMappingProcessor extends AbstractStreamProcessorTest {
                 statisticsFlatMappingStreamFactory,
                 statisticType,
                 statisticFlatMapper);
+    }
+
+    private static class MockStatisticFlatMapper implements StatisticFlatMapper{
+
+        @Override
+        public Iterable<KeyValue<StatEventKey, StatAggregate>> flatMap(
+                final String statUuid,
+                final StatisticWrapper statisticWrapper) {
+
+            // TODO fill in method
+
+            return null;
+        }
     }
 
 }

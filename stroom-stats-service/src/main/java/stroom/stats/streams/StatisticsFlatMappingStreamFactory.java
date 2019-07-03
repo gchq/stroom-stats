@@ -16,7 +16,7 @@ import stroom.stats.schema.v4.Statistics;
 import stroom.stats.schema.v4.StatisticsMarshaller;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.StatAggregate;
-import stroom.stats.streams.mapping.AbstractStatisticFlatMapper;
+import stroom.stats.streams.mapping.StatisticFlatMapper;
 import stroom.stats.streams.topics.TopicDefinition;
 import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.util.logging.LambdaLogger;
@@ -89,7 +89,7 @@ public class StatisticsFlatMappingStreamFactory {
     Topology buildStreamTopology(final StatisticType statisticType,
                                  final TopicDefinition<String, String> inputTopic,
                                  final TopicDefinition<String, String> badEventTopic,
-                                 final AbstractStatisticFlatMapper statisticMapper) {
+                                 final StatisticFlatMapper statisticMapper) {
 
         LOGGER.info("Building stream with input topic {}, badEventTopic {}, statisticType {}, and mapper {}",
                 inputTopic, badEventTopic, statisticType, statisticMapper.getClass().getSimpleName());
@@ -304,7 +304,7 @@ public class StatisticsFlatMappingStreamFactory {
 
         final int retentionRowIntervals = stroomPropertyService.getIntPropertyOrThrow(purgeRetentionPeriodsPropertyKey);
 
-        boolean result = AbstractStatisticFlatMapper.isInsidePurgeRetention(statisticWrapper, biggestInterval, retentionRowIntervals);
+        boolean result = StatisticFlatMapper.isInsidePurgeRetention(statisticWrapper, biggestInterval, retentionRowIntervals);
         LOGGER.trace("isInsideLargestPurgeRetention == {}", result);
         return result;
     }
