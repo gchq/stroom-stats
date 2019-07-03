@@ -1,5 +1,6 @@
 apply plugin: 'com.github.johnrengelman.shadow' 
-apply plugin: 'net.ltgt.errorprone' 
+//errorprone plugin now needs jdk9 or above
+//apply plugin: 'net.ltgt.errorprone' 
 
 def jarName = "stroom-stats-service-${version}.jar"
 def fatJarName = "stroom-stats-service-${version}-all.jar"
@@ -145,7 +146,7 @@ configurations {
 
 // This task lets us run the actual integration tests.
 task integrationTest(type: Test) {
-    testClassesDir = sourceSets.integrationTest.output.classesDir
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
     classpath = sourceSets.integrationTest.runtimeClasspath
 }
 
