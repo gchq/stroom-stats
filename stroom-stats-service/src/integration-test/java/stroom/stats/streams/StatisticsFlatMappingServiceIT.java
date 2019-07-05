@@ -642,7 +642,6 @@ public class StatisticsFlatMappingServiceIT {
         StatisticType statisticType = StatisticType.COUNT;
         String topic = INPUT_TOPICS_MAP.get(statisticType);
 
-
         EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.DAY;
 
         addStatConfig(module.getMockStatisticConfigurationService(),
@@ -701,9 +700,10 @@ public class StatisticsFlatMappingServiceIT {
      * Event time and purge retention on each interval size means each event will
      * get bumped up to the next interval size
      * SEC -> MIN
-     * SEC -> HOUR
-     * SEC -> DAY
-     * SEC -> ignored
+     * MIN -> HOUR
+     * HOUR -> DAY
+     * DAY -> FOREVER
+     * FOREVER -> ????
      */
     @Test
     public void test_allEventsBumpedToNextInterval() throws ExecutionException, InterruptedException, DatatypeConfigurationException {

@@ -4,7 +4,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.test.ConsumerRecordFactory;
-import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +28,7 @@ import stroom.stats.streams.topics.TopicDefinition;
 import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.test.StatisticsHelper;
 
+import javax.xml.datatype.DatatypeConfigurationException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -37,8 +37,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class TestStatisticsFlatMappingProcessor extends AbstractStreamProcessorTest {
 
@@ -70,7 +73,7 @@ public class TestStatisticsFlatMappingProcessor extends AbstractStreamProcessorT
 
 
     @Test
-    public void twoGoodCountEvents() {
+    public void test_twoGoodCountEvents() {
 
         final StatisticType statisticType = StatisticType.COUNT;
 
@@ -90,7 +93,7 @@ public class TestStatisticsFlatMappingProcessor extends AbstractStreamProcessorT
     }
 
     @Test
-    public void twoGoodValueEvents() {
+    public void test_twoGoodValueEvents() {
 
         final StatisticType statisticType = StatisticType.VALUE;
 
@@ -109,6 +112,179 @@ public class TestStatisticsFlatMappingProcessor extends AbstractStreamProcessorT
 
         doSimpleSingleIntervalTest(statisticType, statistics);
     }
+
+    @Test
+    public void test_OneGoodEventPerInterval_Count() {
+
+        final StatisticType statisticType = StatisticType.COUNT;
+
+        final TopicDefinition<String, String> statEventsTopic = topicDefinitionFactory.getStatisticEventsTopic(statisticType);
+        final TopicDefinition<String, String> badStatEventsTopic = topicDefinitionFactory.getBadStatisticEventsTopic(statisticType);
+        final EventStoreTimeIntervalEnum precisionInterval = EventStoreTimeIntervalEnum.MINUTE;
+
+        final TopicDefinition<StatEventKey, StatAggregate> expectedOutputTopic = topicDefinitionFactory.getAggregatesTopic(
+                statisticType, precisionInterval);
+
+        final StreamProcessor streamProcessor = buildStreamProcessor(statisticType);
+
+        int expectedTopicCount = EventStoreTimeIntervalEnum.values().length;
+        int expectedPermsPerMsg = ROLLUPS_PER_STAT;
+//        int expectedGoodMsgCountPerTopic = expectedTopicCount * expectedPermsPerMsg;
+//        int expectedBadMsgCount = 0;
+
+        final ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
+
+
+        runProcessorTest(statEventsTopic, streamProcessor, (testDriver, consumerRecordFactory) -> {
+            for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
+                //stat name == topic name
+                String statName = TopicNameFactory.getIntervalTopicName(
+                        STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX,
+                        statisticType,
+                        interval);
+                String statUuid = StatisticsHelper.getUuidKey(statName);
+
+                String tag1 = TopicNameFactory.getIntervalTopicName("tag1", statisticType, interval);
+                String tag2 = TopicNameFactory.getIntervalTopicName("tag2", statisticType, interval);
+
+                addStatConfig(mockStatisticConfigurationService,
+                        statUuid,
+                        statName,
+                        statisticType,
+                        Arrays.asList(tag1, tag2),
+                        interval);
+
+                Statistics statistics;
+                if (statisticType.equals(StatisticType.COUNT)) {
+                    statistics = StatisticsHelper.buildStatistics(
+                            StatisticsHelper.buildCountStatistic(time, 1L,
+                                    StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
+                                    StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                            )
+                    );
+                } else {
+                    statistics = StatisticsHelper.buildStatistics(
+                            StatisticsHelper.buildValueStatistic(time, 1.5,
+                                    StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
+                                    StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+                            )
+                    );
+                }
+                dumpStatistics(statistics);
+                LOGGER.info("Sending to {} stat events to topic {}", statistics.getStatistic().size(), statEventsTopic);
+                sendStatistics(testDriver, consumerRecordFactory, statUuid, statistics);
+            }
+
+            TopicDefinition<StatEventKey, StatAggregate>[] expectedOutputTopics = topicDefinitionFactory.getAggregateTopicsMap()
+                    .entrySet()
+                    .stream()
+                    .filter(entry -> entry.getKey()._1().equals(statisticType))
+                    .map(Map.Entry::getValue)
+                    .toArray(TopicDefinition[]::new);
+
+            final Map<TopicDefinition<StatEventKey, StatAggregate>, List<ProducerRecord<StatEventKey, StatAggregate>>>
+                    topicToAggregatesMap = getAndAssertOutputAggregates(testDriver, expectedPermsPerMsg, expectedOutputTopics);
+
+            getAndAssertBadEvents(testDriver, 0);
+        });
+    }
+
+    @Test
+    public void test_cantUnmarshall() throws ExecutionException, InterruptedException, DatatypeConfigurationException {
+        final StatisticType statisticType = StatisticType.COUNT;
+        final TopicDefinition<String, String> statEventsTopic = topicDefinitionFactory.getStatisticEventsTopic(statisticType);
+        final TopicDefinition<String, String> badStatEventsTopic = topicDefinitionFactory.getBadStatisticEventsTopic(statisticType);
+        final EventStoreTimeIntervalEnum precisionInterval = EventStoreTimeIntervalEnum.MINUTE;
+
+        final StreamProcessor streamProcessor = buildStreamProcessor(statisticType);
+
+        final ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
+        Statistics statistics = StatisticsHelper.buildStatistics(
+                StatisticsHelper.buildCountStatistic(time, 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
+                ),
+                StatisticsHelper.buildCountStatistic(time.plusDays(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
+                )
+        );
+
+        addStatConfig(mockStatisticConfigurationService,
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
+                statisticType,
+                Arrays.asList(TAG_1, TAG_2),
+                precisionInterval);
+
+        runProcessorTest(statEventsTopic, streamProcessor, (testDriver, consumerRecordFactory) -> {
+
+            String msgValue = statisticsMarshaller.marshallToXml(statistics)
+                    .replaceAll("statistic", "badElementName");
+
+            super.sendMessage(testDriver, consumerRecordFactory, GOOD_STAT_UUID, msgValue);
+
+            getAndAssertOutputAggregates(testDriver, 0);
+
+            final Map<TopicDefinition<String, String>, List<ProducerRecord<String, String>>> badEvents =
+                    getAndAssertBadEvents(testDriver, 1, badStatEventsTopic);
+
+            assertThat(badEvents.values().stream().flatMap(List::stream).map(ProducerRecord::value).findFirst().get())
+                    .contains(StatisticsFlatMappingStreamFactory.UNMARSHALLING_ERROR_TEXT);
+        });
+    }
+
+    @Test
+    public void test_oneGoodOneBad() {
+        final StatisticType statisticType = StatisticType.COUNT;
+        final TopicDefinition<String, String> statEventsTopic = topicDefinitionFactory.getStatisticEventsTopic(statisticType);
+        final TopicDefinition<String, String> badStatEventsTopic = topicDefinitionFactory.getBadStatisticEventsTopic(statisticType);
+        final EventStoreTimeIntervalEnum precisionInterval = EventStoreTimeIntervalEnum.MINUTE;
+
+        final TopicDefinition<StatEventKey, StatAggregate> expectedOutputTopic = topicDefinitionFactory.getAggregatesTopic(
+                statisticType, precisionInterval);
+
+        final StreamProcessor streamProcessor = buildStreamProcessor(statisticType);
+
+        final String badStatName = "badStatName";
+        final String badStatUuid = StatisticsHelper.getUuidKey("badStatName");
+
+        final ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
+
+        Statistics statisticsGood = StatisticsHelper.buildStatistics(
+                //the good
+                StatisticsHelper.buildCountStatistic(time, 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
+                ));
+
+        Statistics statisticsBad = StatisticsHelper.buildStatistics(
+                //the bad
+                StatisticsHelper.buildCountStatistic(time.plusHours(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
+                ));
+
+        addStatConfig(mockStatisticConfigurationService,
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
+                statisticType,
+                Arrays.asList(TAG_1, TAG_2),
+                precisionInterval);
+
+        runProcessorTest(statEventsTopic, streamProcessor, (testDriver, consumerRecordFactory) -> {
+
+            sendStatistics(testDriver, consumerRecordFactory, GOOD_STAT_UUID, statisticsGood);
+            sendStatistics(testDriver, consumerRecordFactory, badStatUuid, statisticsBad);
+
+            getAndAssertOutputAggregates(testDriver, ROLLUPS_PER_STAT, expectedOutputTopic);
+
+            getAndAssertBadEvents(testDriver, 1, badStatEventsTopic);
+        });
+    }
+
+    
+
 
     private void doSimpleSingleIntervalTest(final StatisticType statisticType, Statistics inputStatistics) {
         final TopicDefinition<String, String> statEventsTopic = topicDefinitionFactory.getStatisticEventsTopic(statisticType);
@@ -132,65 +308,54 @@ public class TestStatisticsFlatMappingProcessor extends AbstractStreamProcessorT
             sendStatistics(testDriver, consumerRecordFactory, GOOD_STAT_UUID, inputStatistics);
 
             int expectedAggregateRecordCount = inputStatistics.getStatistic().size() * ROLLUPS_PER_STAT;
-            List<ProducerRecord<StatEventKey, StatAggregate>> aggregateRecords = getAndAssertOutputAggregates(
-                    testDriver, expectedAggregateRecordCount, 0, expectedOutputTopic);
+            getAndAssertOutputAggregates(testDriver, expectedAggregateRecordCount, expectedOutputTopic);
 
-            List<ProducerRecord<String, String>> badRecords = getAndAssertBadEvents(
-                    testDriver, 0, 0, badStatEventsTopic);
+            getAndAssertBadEvents(testDriver, 0);
         });
     }
 
-    private List<ProducerRecord<String, String>> getAndAssertBadEvents(
+    private Map<TopicDefinition<String, String>, List<ProducerRecord<String, String>>> getAndAssertBadEvents(
             final TopologyTestDriver testDriver,
             final int expectedCountInDesiredTopic,
-            final int expectedCountInOtherTopics,
-            final TopicDefinition<String, String> expectedTopic) {
+            final TopicDefinition<String, String>... expectedTopics) {
 
         final Map<TopicDefinition<String, String>, List<ProducerRecord<String, String>>> outputRecordsMap =
                 super.readAllProducerRecords(
                         topicDefinitionFactory.getBadStatisticEventTopicsMap().values(),
                         testDriver);
 
+        assertThat(outputRecordsMap.keySet())
+                .contains(expectedTopics);
+
         outputRecordsMap.forEach((topicDef, producerRecord) -> {
+
             // only expecting output in one topic
-            if (topicDef.equals(expectedTopic)) {
-                Assertions
-                        .assertThat(outputRecordsMap.get(topicDef))
+                assertThat(outputRecordsMap.get(topicDef))
                         .hasSize(expectedCountInDesiredTopic);
-            } else {
-                Assertions
-                        .assertThat(outputRecordsMap.get(topicDef))
-                        .hasSize(expectedCountInOtherTopics);
-            }
         });
-        return outputRecordsMap.get(expectedTopic);
+        return outputRecordsMap;
     }
 
 
-    private List<ProducerRecord<StatEventKey, StatAggregate>> getAndAssertOutputAggregates(
+    private Map<TopicDefinition<StatEventKey, StatAggregate>, List<ProducerRecord<StatEventKey, StatAggregate>>> getAndAssertOutputAggregates(
             final TopologyTestDriver testDriver,
             final int expectedCountInDesiredTopic,
-            final int expectedCountInOtherTopics,
-            final TopicDefinition<StatEventKey, StatAggregate> expectedOutputTopic) {
+            final TopicDefinition<StatEventKey, StatAggregate>... expectedOutputTopics) {
 
         final Map<TopicDefinition<StatEventKey, StatAggregate>, List<ProducerRecord<StatEventKey, StatAggregate>>> outputRecordsMap =
                 super.readAllProducerRecords(
                         topicDefinitionFactory.getAggregateTopicsMap().values(),
                         testDriver);
 
+        assertThat(outputRecordsMap.keySet())
+                .contains(expectedOutputTopics);
+
         outputRecordsMap.forEach((topicDef, producerRecord) -> {
             // only expecting output in one topic
-            if (topicDef.equals(expectedOutputTopic)) {
-                Assertions
-                        .assertThat(outputRecordsMap.get(topicDef))
+                assertThat(outputRecordsMap.get(topicDef))
                         .hasSize(expectedCountInDesiredTopic);
-            } else {
-                Assertions
-                        .assertThat(outputRecordsMap.get(topicDef))
-                        .hasSize(expectedCountInOtherTopics);
-            }
         });
-        return outputRecordsMap.get(expectedOutputTopic);
+        return outputRecordsMap;
     }
 
     private void sendStatistics(final TopologyTestDriver testDriver,
@@ -245,6 +410,21 @@ public class TestStatisticsFlatMappingProcessor extends AbstractStreamProcessorT
                 statConfig.getPrecision());
 
         mockStatisticConfigurationService.addStatisticConfiguration(statConfig);
+    }
+
+    private void dumpStatistics(Statistics statisticsObj) {
+        if (LOGGER.isTraceEnabled()) {
+            statisticsObj.getStatistic().forEach(statistic -> {
+                String tagValues = statistic.getTags().getTag().stream()
+                        .map(tagValue -> tagValue.getName() + "|" + tagValue.getValue())
+                        .collect(Collectors.joining(","));
+                LOGGER.trace("Stat: {} {} {} {}",
+                        statistic.getTime(),
+                        tagValues,
+                        statistic.getValue(),
+                        statistic.getIdentifiers());
+            });
+        }
     }
 
     private static class MockStatisticFlatMapper implements StatisticFlatMapper{

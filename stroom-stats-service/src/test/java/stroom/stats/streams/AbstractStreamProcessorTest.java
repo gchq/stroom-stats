@@ -66,7 +66,7 @@ abstract class AbstractStreamProcessorTest {
 
     /**
      * Reads all messages on the supplied topics into a map, assuming all topics have the same
-     * KV types.
+     * KV types.  A topic will only be included in the map if there are records for that topic.
      */
     <K,V> Map<TopicDefinition<K,V>, List<ProducerRecord<K,V>>> readAllProducerRecords(
             final Collection<TopicDefinition<K, V>> topicDefinitions,
@@ -76,7 +76,9 @@ abstract class AbstractStreamProcessorTest {
 
         topicDefinitions.forEach(topicDefinition -> {
             List<ProducerRecord<K,V>> records = readAllProducerRecords(topicDefinition, testDriver);
-            map.put(topicDefinition, records);
+            if (!records.isEmpty()) {
+                map.put(topicDefinition, records);
+            }
         });
         return map;
     }
