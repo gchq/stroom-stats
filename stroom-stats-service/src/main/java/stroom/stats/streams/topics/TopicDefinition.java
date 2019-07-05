@@ -44,11 +44,9 @@ public class TopicDefinition<K,V> {
         return valueSerde;
     }
 
-
     public Consumed<K,V> getConsumed() {
         return Consumed.with(keySerde, valueSerde);
     }
-
 
     public Produced<K,V> getProduced() {
         return Produced.with(keySerde, valueSerde);

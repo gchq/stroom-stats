@@ -171,14 +171,14 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
         statKeySerde = StatEventKeySerde.instance();
         statAggregateSerde = StatAggregateSerde.instance();
 
-        inputTopic = topicDefinitionFactory.createAggregatesTopic(statisticType, aggregationInterval);
+        inputTopic = topicDefinitionFactory.getAggregatesTopic(statisticType, aggregationInterval);
 
         groupId = stroomPropertyService.getPropertyOrThrow(PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX) +
                 "-" + inputTopic;
         optNextInterval = EventStoreTimeIntervalEnum.getNextBiggest(aggregationInterval);
 
         optNextIntervalTopic = optNextInterval.map(newInterval ->
-                topicDefinitionFactory.createAggregatesTopic(statisticType, newInterval));
+                topicDefinitionFactory.getAggregatesTopic(statisticType, newInterval));
 
         //start a processor for a stat type and aggregationInterval pair
         //This will improve aggregation as it will only handle data for the same stat types and aggregationInterval sizes

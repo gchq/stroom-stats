@@ -61,7 +61,8 @@ public class CountStatToAggregateFlatMapper extends AbstractStatisticFlatMapper 
         Preconditions.checkNotNull(statUuid);
         Preconditions.checkNotNull(statisticWrapper);
 
-        int maxEventIds = stroomPropertyService.getIntProperty(StatAggregate.PROP_KEY_MAX_AGGREGATED_EVENT_IDS, Integer.MAX_VALUE);
+        int maxEventIds = stroomPropertyService.getIntProperty(
+                StatAggregate.PROP_KEY_MAX_AGGREGATED_EVENT_IDS, Integer.MAX_VALUE);
         Statistics.Statistic statistic = Preconditions.checkNotNull(statisticWrapper.getStatistic());
 
         List<MultiPartIdentifier> eventIds = convertEventIds(statistic, maxEventIds);

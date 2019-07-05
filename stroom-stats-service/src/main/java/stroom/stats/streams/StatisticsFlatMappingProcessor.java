@@ -77,9 +77,9 @@ public class StatisticsFlatMappingProcessor implements StatisticsProcessor, Stre
         appId = getName(PROP_KEY_FLAT_MAP_PROCESSOR_APP_ID_PREFIX, statisticType);
         LOGGER.info("Building flat mapping processor {}", appId);
 
-        inputTopic = topicDefinitionFactory.createStatisticEventsTopic(statisticType);
+        inputTopic = topicDefinitionFactory.getStatisticEventsTopic(statisticType);
 
-        badEventTopic = topicDefinitionFactory.createBadStatisticEventsTopic(statisticType);
+        badEventTopic = topicDefinitionFactory.getBadStatisticEventsTopic(statisticType);
     }
 
     private KafkaStreams configureStream(final StatisticType statisticType,

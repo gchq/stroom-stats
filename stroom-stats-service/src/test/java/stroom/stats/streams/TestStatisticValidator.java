@@ -73,7 +73,7 @@ public class TestStatisticValidator {
 
         StatisticWrapper statisticWrapper = buildBasicStatWrapper();
 
-        statisticWrapper = new StatisticWrapper(statisticWrapper.getStatistic(), Optional.empty());
+        statisticWrapper = new StatisticWrapper(statisticWrapper.getStatistic());
 
         assertThat(StatisticValidator.validate(statUuid, statisticWrapper).value.isValid()).isFalse();
     }

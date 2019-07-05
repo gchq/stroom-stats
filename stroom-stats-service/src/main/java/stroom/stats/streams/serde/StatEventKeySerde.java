@@ -22,6 +22,9 @@ package stroom.stats.streams.serde;
 import org.apache.kafka.common.serialization.Serde;
 import stroom.stats.streams.StatEventKey;
 
+import javax.annotation.concurrent.ThreadSafe;
+
+@ThreadSafe // stateless serde
 public class StatEventKeySerde {
 
     private StatEventKeySerde() {

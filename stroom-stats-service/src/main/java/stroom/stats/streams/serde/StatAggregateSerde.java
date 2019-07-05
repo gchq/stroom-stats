@@ -34,12 +34,14 @@ import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
 import stroom.stats.util.logging.LambdaLogger;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+@ThreadSafe // serde is stateless apart from use of the kryo pool which is threadsafe
 public class StatAggregateSerde implements Serde<StatAggregate>,
         Serializer<StatAggregate>,
         Deserializer<StatAggregate> {

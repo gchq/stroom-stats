@@ -116,7 +116,7 @@ public class StatisticsAggregationServiceIT {
         //records do to autoOffsetRest being set to latest
         Thread.sleep(1_000);
 
-        TopicDefinition<StatEventKey, StatAggregate> inputTopic = topicDefinitionFactory.createAggregatesTopic(
+        TopicDefinition<StatEventKey, StatAggregate> inputTopic = topicDefinitionFactory.getAggregatesTopic(
                 WORKING_STAT_TYPE,
                 WORKING_INTERVAL);
 

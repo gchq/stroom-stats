@@ -55,7 +55,6 @@ import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -100,7 +99,7 @@ public class TestCountStatToAggregateFlatMapper {
 
 
         Statistics.Statistic statistic = buildStatistic();
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.empty());
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic);
 
         //will throw a RTE as there is no StatConfig
         countStatToAggregateMapper.flatMap("unknownUuid", statisticWrapper);
@@ -122,7 +121,7 @@ public class TestCountStatToAggregateFlatMapper {
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
 
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, statisticConfiguration);
 
         //will throw a RTE as there is no StatConfig
         Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statUuid, statisticWrapper);
@@ -160,7 +159,7 @@ public class TestCountStatToAggregateFlatMapper {
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
 
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, statisticConfiguration);
 
         Instant start = Instant.now();
         Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statUuid, statisticWrapper);
@@ -213,7 +212,7 @@ public class TestCountStatToAggregateFlatMapper {
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
 
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, statisticConfiguration);
 
         //will throw a RTE as there is no StatConfig
         Instant start = Instant.now();
@@ -262,7 +261,7 @@ public class TestCountStatToAggregateFlatMapper {
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
 
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, statisticConfiguration);
 
         Instant start = Instant.now();
         Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statUuid, statisticWrapper);

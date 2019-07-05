@@ -36,8 +36,10 @@ public class StatisticWrapper implements HasValidity {
     private final long timeMs;
     private final Optional<String> validationErrorMessage;
 
-    private StatisticWrapper(final Statistics.Statistic statistic, final Optional<StatisticConfiguration> optStatConfig,
-                            final long timeMs, final Optional<String> validationErrorMessage) {
+    private StatisticWrapper(final Statistics.Statistic statistic,
+                             final Optional<StatisticConfiguration> optStatConfig,
+                             final long timeMs,
+                             final Optional<String> validationErrorMessage) {
         Preconditions.checkNotNull(statistic);
         this.statistic = statistic;
         this.optStatConfig = optStatConfig;
@@ -45,9 +47,31 @@ public class StatisticWrapper implements HasValidity {
         this.validationErrorMessage = validationErrorMessage;
     }
 
-    public StatisticWrapper(final Statistics.Statistic statistic, final Optional<StatisticConfiguration> optStatConfig) {
+    public StatisticWrapper(final Statistics.Statistic statistic) {
         //hold the converted time to save doing the conversion again
-        this(statistic, optStatConfig, statistic.getTime().toGregorianCalendar().getTimeInMillis(), Optional.empty());
+        this(statistic, Optional.empty(), statistic.getTime().toGregorianCalendar().getTimeInMillis(), Optional.empty());
+    }
+
+    public StatisticWrapper(
+            final Statistics.Statistic statistic,
+            final Optional<StatisticConfiguration> optStatisticConfiguration) {
+
+        //hold the converted time to save doing the conversion again
+        this(statistic,
+                optStatisticConfiguration,
+                statistic.getTime().toGregorianCalendar().getTimeInMillis(),
+                Optional.empty());
+    }
+
+    public StatisticWrapper(
+            final Statistics.Statistic statistic,
+            final StatisticConfiguration statisticConfiguration) {
+
+        //hold the converted time to save doing the conversion again
+        this(statistic,
+                Optional.of(statisticConfiguration),
+                statistic.getTime().toGregorianCalendar().getTimeInMillis(),
+                Optional.empty());
     }
 
     public Statistics.Statistic getStatistic() {

@@ -5,11 +5,12 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Predicate;
+import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.processor.TopicNameExtractor;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.hbase.HBaseStatisticConstants;
-import stroom.stats.partitions.StatEventKeyPartitioner;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.v4.ObjectFactory;
 import stroom.stats.schema.v4.Statistics;
@@ -17,18 +18,18 @@ import stroom.stats.schema.v4.StatisticsMarshaller;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.mapping.StatisticFlatMapper;
+import stroom.stats.streams.serde.StatAggregateSerde;
+import stroom.stats.streams.serde.StatEventKeySerde;
 import stroom.stats.streams.topics.TopicDefinition;
 import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
 import javax.xml.bind.UnmarshalException;
-import java.util.Arrays;
-import java.util.List;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public class StatisticsFlatMappingStreamFactory {
 
@@ -39,9 +40,8 @@ public class StatisticsFlatMappingStreamFactory {
 
     //private final Predicate<StatEventKey, StatAggregate>[] intervalPredicates;
 
-    private interface InterValToPredicateMapper extends Function<IntervalTopicPair, Predicate<StatEventKey, StatAggregate>> {
-    }
-
+//    private interface InterValToPredicateMapper extends Function<IntervalTopicPair, Predicate<StatEventKey, StatAggregate>> {
+//    }
 
     //Defined to avoid 'generic array creation' compiler warnings
     private interface UnmarshalledXmlWrapperPredicate extends Predicate<String, UnmarshalledXmlWrapper> {
@@ -141,34 +141,40 @@ public class StatisticsFlatMappingStreamFactory {
         //access the collection by position. The order of this list does not matter but it must match
         //the order of the intervalPredicates array below so that position N corresponds to the same
         //interval in both collections, else the stream branching will not work
-        List<IntervalTopicPair> intervalTopicPairs = getIntervalTopicPairs(statisticType);
+//        List<IntervalTopicPair> intervalTopicPairs = getIntervalTopicPairs(statisticType);
 
-        Predicate<StatEventKey, StatAggregate>[] intervalPredicates = getPredicates(intervalTopicPairs);
+//        Predicate<StatEventKey, StatAggregate>[] intervalPredicates = getPredicates(intervalTopicPairs);
+
+        final Map<EventStoreTimeIntervalEnum, String> intervalToTopicNameMap = getIntervalToTopicNameMap(statisticType);
+
+        TopicNameExtractor<StatEventKey, StatAggregate> topicNameExtractor = (key, value, recordContext) ->
+                intervalToTopicNameMap.get(key.getInterval());
 
         //Ignore any events that are outside the retention period as they would just get deleted in the next
         // purge otherwise. Flatmap each statistic event to a set of statKey/statAggregate pairs,
         //one for each roll up permutation. Then branch the stream into multiple streams, one stream per interval
         //i.e. events with hour granularity go to hour stream (and ultimately topic)
-        KStream<StatEventKey, StatAggregate>[] intervalStreams = validStatWrappers
+        validStatWrappers
                 .filter(this::isInsideLargestPurgeRetention) //ignore too old events
                 .flatMap(statisticMapper::flatMap) //map to StatEventKey/StatAggregate pair
-                .branch(intervalPredicates);
+                // Fork the messages onto different topics based on the key's interval
+                .to(topicNameExtractor, Produced.with(StatEventKeySerde.instance(), StatAggregateSerde.instance()));
 
         //Following line if uncommented can be useful for debugging
 //        final ConcurrentMap<EventStoreTimeIntervalEnum, AtomicLong> counters = new ConcurrentHashMap<>();
         //Route each from the stream interval specific branches to the appropriate topic
-        for (int i = 0; i < intervalStreams.length; i++) {
-            TopicDefinition<StatEventKey, StatAggregate> topic = intervalTopicPairs.get(i).getTopic();
-            intervalStreams[i]
-                    .filter((key, value) -> {
-//                        This is in effect a peek operation for debugging as it always returns true
-//                        counters.computeIfAbsent(key.getInterval(), interval -> new AtomicLong(0)).incrementAndGet();
-//                        LOGGER.info(String.format("interval %s class %s cumCount %s",
-//                                key.getInterval(), value.getClass().getName(), counters.get(key.getInterval()).get()));
-                        return true;
-                    })
-                    .to(topic.getName(), topic.getProduced(StatEventKeyPartitioner.instance()));
-        }
+//        for (int i = 0; i < intervalStreams.length; i++) {
+//            TopicDefinition<StatEventKey, StatAggregate> topic = intervalTopicPairs.get(i).getTopic();
+//            intervalStreams[i]
+//                    .filter((key, value) -> {
+////                        This is in effect a peek operation for debugging as it always returns true
+////                        counters.computeIfAbsent(key.getInterval(), interval -> new AtomicLong(0)).incrementAndGet();
+////                        LOGGER.info(String.format("interval %s class %s cumCount %s",
+////                                key.getInterval(), value.getClass().getName(), counters.get(key.getInterval()).get()));
+//                        return true;
+//                    })
+//                    .to(topic.getName(), topic.getProduced(StatEventKeyPartitioner.instance()));
+//        }
 
         return builder.build();
     }
@@ -182,35 +188,48 @@ public class StatisticsFlatMappingStreamFactory {
         }
     }
 
-    private List<IntervalTopicPair> getIntervalTopicPairs(final StatisticType statisticType) {
+//    private List<IntervalTopicPair> getIntervalTopicPairs(final StatisticType statisticType) {
+//
+//        //get a sorted (by interval ms) list of topic|interval pairs so we can branch the kstream
+//        return Arrays.stream(EventStoreTimeIntervalEnum.values())
+//                .map(interval -> {
+//                    final TopicDefinition<StatEventKey, StatAggregate> topic = topicDefinitionFactory.createAggregatesTopic(
+//                            statisticType,
+//                            interval);
+//                    return new IntervalTopicPair(topic, interval);
+//                })
+//                .sorted()
+//                .collect(Collectors.toList());
+//    }
 
-        //get a sorted (by interval ms) list of topic|interval pairs so we can branch the kstream
-        return Arrays.stream(EventStoreTimeIntervalEnum.values())
-                .map(interval -> {
-                    final TopicDefinition<StatEventKey, StatAggregate> topic = topicDefinitionFactory.createAggregatesTopic(
-                            statisticType,
-                            interval);
-                    return new IntervalTopicPair(topic, interval);
-                })
-                .sorted()
-                .collect(Collectors.toList());
+    private Map<EventStoreTimeIntervalEnum, String> getIntervalToTopicNameMap(final StatisticType statisticType) {
+
+        Map<EventStoreTimeIntervalEnum, String> map = new EnumMap<>(EventStoreTimeIntervalEnum.class);
+
+        for (final EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
+            final TopicDefinition<StatEventKey, StatAggregate> topic = topicDefinitionFactory.getAggregatesTopic(
+                    statisticType,
+                    interval);
+            map.put(interval, topic.getName());
+        }
+        return map;
     }
 
-    private Predicate<StatEventKey, StatAggregate>[] getPredicates(final List<IntervalTopicPair> intervalTopicPairs) {
-        //map the topic|Interval pair to an array of predicates that tests for equality with each interval, i.e.
-        //[
-        //  statkey interval == SECOND,
-        //  statkey interval == MINUTE,
-        //  statkey interval == HOUR,
-        //  statkey interval == DAY,
-        //  ...
-        //]
-        return intervalTopicPairs.stream()
-                .sequential()
-                .map((InterValToPredicateMapper) pair ->
-                        (StatEventKey statEventKey, StatAggregate statAggregate) -> statEventKey.equalsIntervalPart(pair.getInterval()))
-                .toArray(size -> new Predicate[size]);
-    }
+//    private Predicate<StatEventKey, StatAggregate>[] getPredicates(final List<IntervalTopicPair> intervalTopicPairs) {
+//        //map the topic|Interval pair to an array of predicates that tests for equality with each interval, i.e.
+//        //[
+//        //  statkey interval == SECOND,
+//        //  statkey interval == MINUTE,
+//        //  statkey interval == HOUR,
+//        //  statkey interval == DAY,
+//        //  ...
+//        //]
+//        return intervalTopicPairs.stream()
+//                .sequential()
+//                .map((InterValToPredicateMapper) pair ->
+//                        (StatEventKey statEventKey, StatAggregate statAggregate) -> statEventKey.equalsIntervalPart(pair.getInterval()))
+//                .toArray(size -> new Predicate[size]);
+//    }
 
     private Statistics wrapStatisticWithStatistics(final Statistics.Statistic statistic) {
         Statistics statistics = new ObjectFactory().createStatistics();
@@ -269,7 +288,10 @@ public class StatisticsFlatMappingStreamFactory {
                 .toString();
     }
 
-    private KeyValue<String, StatisticWrapper> buildStatisticWrapper(final String key, final Statistics.Statistic statistic) {
+    private KeyValue<String, StatisticWrapper> buildStatisticWrapper(
+            final String key,
+            final Statistics.Statistic statistic) {
+
         StatisticWrapper wrapper;
         if (key != null) {
             Optional<StatisticConfiguration> optStatConfig =
@@ -278,7 +300,7 @@ public class StatisticsFlatMappingStreamFactory {
             wrapper = new StatisticWrapper(statistic, optStatConfig);
         } else {
             LOGGER.warn("Statistic with no UUID");
-            wrapper = new StatisticWrapper(statistic, Optional.empty());
+            wrapper = new StatisticWrapper(statistic);
         }
         return new KeyValue<>(key, wrapper);
     }
@@ -304,7 +326,8 @@ public class StatisticsFlatMappingStreamFactory {
 
         final int retentionRowIntervals = stroomPropertyService.getIntPropertyOrThrow(purgeRetentionPeriodsPropertyKey);
 
-        boolean result = StatisticFlatMapper.isInsidePurgeRetention(statisticWrapper, biggestInterval, retentionRowIntervals);
+        boolean result = StatisticFlatMapper.isInsidePurgeRetention(
+                statisticWrapper, biggestInterval, retentionRowIntervals);
         LOGGER.trace("isInsideLargestPurgeRetention == {}", result);
         return result;
     }
