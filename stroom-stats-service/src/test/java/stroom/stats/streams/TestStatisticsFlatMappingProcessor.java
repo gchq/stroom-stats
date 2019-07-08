@@ -283,7 +283,7 @@ public class TestStatisticsFlatMappingProcessor extends AbstractStreamProcessorT
         });
     }
 
-    
+
 
 
     private void doSimpleSingleIntervalTest(final StatisticType statisticType, Statistics inputStatistics) {
