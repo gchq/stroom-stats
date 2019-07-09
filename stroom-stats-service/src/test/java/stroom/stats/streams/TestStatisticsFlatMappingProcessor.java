@@ -64,14 +64,10 @@ public class TestStatisticsFlatMappingProcessor extends AbstractStreamProcessorT
 
     private static final int ROLLUPS_PER_STAT = 2;
 
-
-
-
     private final MockStatisticConfigurationService mockStatisticConfigurationService = new MockStatisticConfigurationService();
     private final MockStroomPropertyService mockStroomPropertyService = new MockStroomPropertyService();
     private final TopicDefinitionFactory topicDefinitionFactory = new TopicDefinitionFactory(mockStroomPropertyService);
     private final StatisticsMarshaller statisticsMarshaller = new StatisticsMarshaller();
-
 
     @Test
     public void test_twoGoodCountEvents() {

@@ -19,6 +19,7 @@
 
 package stroom.stats.streams;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
@@ -33,10 +34,10 @@ public class StatisticsAggregationRebalanceListener implements ConsumerRebalance
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatisticsAggregationRebalanceListener.class);
 
     private final StatisticsAggregationProcessor statisticsAggregationProcessor;
-    private final KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer;
+    private final Consumer<StatEventKey, StatAggregate> kafkaConsumer;
 
     public StatisticsAggregationRebalanceListener(final StatisticsAggregationProcessor statisticsAggregationProcessor,
-                                                  final KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer) {
+                                                  final Consumer<StatEventKey, StatAggregate> kafkaConsumer) {
 
         this.statisticsAggregationProcessor = statisticsAggregationProcessor;
         this.kafkaConsumer = kafkaConsumer;

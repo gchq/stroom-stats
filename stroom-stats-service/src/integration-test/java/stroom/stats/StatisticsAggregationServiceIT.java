@@ -45,6 +45,8 @@ import stroom.stats.partitions.StatEventKeyPartitioner;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.streams.ConsumerFactory;
+import stroom.stats.streams.ConsumerFactoryImpl;
 import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.StatisticsAggregationProcessor;
 import stroom.stats.streams.StatisticsIngestService;
@@ -98,6 +100,7 @@ public class StatisticsAggregationServiceIT {
     private ArgumentCaptor<EventStoreTimeIntervalEnum> intervalCaptor;
 
     private TopicDefinitionFactory topicDefinitionFactory = new TopicDefinitionFactory(mockStroomPropertyService);
+    private ConsumerFactory consumerFactory = new ConsumerFactoryImpl(mockStroomPropertyService);
 
     @Test
     public void testAggregation() throws InterruptedException {
@@ -106,9 +109,11 @@ public class StatisticsAggregationServiceIT {
 
         setProperties();
 
-        StatisticsAggregationService statisticsAggregationService = new StatisticsAggregationService(
+        final StatisticsAggregationService statisticsAggregationService = new StatisticsAggregationService(
                 mockStroomPropertyService,
-                topicDefinitionFactory, mockStatisticsService);
+                topicDefinitionFactory,
+                mockStatisticsService,
+                consumerFactory);
 
         statisticsAggregationService.start();
 
@@ -116,21 +121,21 @@ public class StatisticsAggregationServiceIT {
         //records do to autoOffsetRest being set to latest
         Thread.sleep(1_000);
 
-        TopicDefinition<StatEventKey, StatAggregate> inputTopic = topicDefinitionFactory.getAggregatesTopic(
+        final TopicDefinition<StatEventKey, StatAggregate> inputTopic = topicDefinitionFactory.getAggregatesTopic(
                 WORKING_STAT_TYPE,
                 WORKING_INTERVAL);
 
-        String statName = "MyStat-" + Instant.now().toString();
-        UID statNameUid = mockUniqueIdCache.getOrCreateId(statName);
-        ZonedDateTime baseTime = ZonedDateTime.now(ZoneOffset.UTC);
+        final String statName = "MyStat-" + Instant.now().toString();
+        final UID statNameUid = mockUniqueIdCache.getOrCreateId(statName);
+        final ZonedDateTime baseTime = ZonedDateTime.now(ZoneOffset.UTC);
 
         final KafkaProducer<StatEventKey, StatAggregate> kafkaProducer = buildKafkaProducer(mockStroomPropertyService);
 
         int iterations = 50_000;
 
-        LongAdder msgPutCounter = new LongAdder();
+        final LongAdder msgPutCounter = new LongAdder();
 
-        List<Future<RecordMetadata>> futures = Collections.synchronizedList(new ArrayList<>());
+        final List<Future<RecordMetadata>> futures = Collections.synchronizedList(new ArrayList<>());
 
         //send all the msgs to kafka (async)
         IntStream.rangeClosed(1, iterations)
@@ -145,7 +150,7 @@ public class StatisticsAggregationServiceIT {
                 });
 
         //wait for all send ops to complete
-        List<RecordMetadata> metas = futures.stream()
+        final List<RecordMetadata> metas = futures.stream()
                 .map(future -> {
                     try {
                         return future.get();
@@ -158,7 +163,7 @@ public class StatisticsAggregationServiceIT {
                 .collect(Collectors.toList());
 
         //Capture offset summaries by partition
-        Map<Integer, LongSummaryStatistics> summary = metas.stream()
+        final Map<Integer, LongSummaryStatistics> summary = metas.stream()
                 .collect(Collectors.groupingBy(
                         RecordMetadata::partition,
                         Collectors.summarizingLong(RecordMetadata::offset)));

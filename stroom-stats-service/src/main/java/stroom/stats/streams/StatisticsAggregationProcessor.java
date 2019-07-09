@@ -21,11 +21,10 @@ package stroom.stats.streams;
 
 import com.codahale.metrics.health.HealthCheck;
 import com.google.common.base.Preconditions;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serde;
@@ -49,7 +48,6 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
@@ -107,7 +105,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
     public static final String PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE = "stroom.stats.aggregation.minBatchSize";
     public static final String PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS = "stroom.stats.aggregation.maxFlushIntervalMs";
     public static final String PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS = "stroom.stats.aggregation.pollTimeoutMs";
-    public static final String PROP_KEY_AGGREGATOR_POLL_RECORDS = "stroom.stats.aggregation.pollRecords";
 
     public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECS = 120;
 
@@ -115,6 +112,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
     private final StroomPropertyService stroomPropertyService;
     private final StatisticType statisticType;
     private final EventStoreTimeIntervalEnum aggregationInterval;
+    private final ConsumerFactory consumerFactory;
     private final int instanceId;
     private final AtomicReference<String> consumerThreadName = new AtomicReference<>();
 
@@ -124,7 +122,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
     private final Object startStopMonitor = new Object();
 
     private final ExecutorService executorService;
-    private final KafkaProducer<StatEventKey, StatAggregate> kafkaProducer;
+    private final Producer<StatEventKey, StatAggregate> kafkaProducer;
     private final TopicDefinition<StatEventKey, StatAggregate> inputTopic;
     private final String groupId;
     private final Optional<EventStoreTimeIntervalEnum> optNextInterval;
@@ -153,8 +151,9 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
                                           final StroomPropertyService stroomPropertyService,
                                           final StatisticType statisticType,
                                           final EventStoreTimeIntervalEnum aggregationInterval,
-                                          final KafkaProducer<StatEventKey, StatAggregate> kafkaProducer,
+                                          final Producer<StatEventKey, StatAggregate> kafkaProducer,
                                           final ExecutorService executorService,
+                                          final ConsumerFactory consumerFactory,
                                           final int instanceId) {
 
         this.statisticsService = statisticsService;
@@ -164,6 +163,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
         this.instanceId = instanceId;
         this.kafkaProducer = kafkaProducer;
         this.executorService = executorService;
+        this.consumerFactory = consumerFactory;
 
         LOGGER.info("Building {} - {} aggregation processor, with instance id {}",
                 statisticType, aggregationInterval, instanceId);
@@ -184,59 +184,31 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
         //This will improve aggregation as it will only handle data for the same stat types and aggregationInterval sizes
     }
 
-    private KafkaConsumer<StatEventKey, StatAggregate> buildConsumer() {
+    private Consumer<StatEventKey, StatAggregate> buildConsumer() {
+        try{
+            LOGGER.debug("Starting aggregation consumer [{}]", instanceId);
 
-        try {
-            Map<String, Object> props = getConsumerProps();
-            LOGGER.debug(() ->
-                "Starting aggregation consumer [" + instanceId + "] with properties:\n" + props.entrySet().stream()
-                        .map(entry -> "    " + entry.getKey() + ": " + entry.getValue().toString())
-                        .collect(Collectors.joining("\n"))
-            );
-            KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer = new KafkaConsumer<>(
-                    props,
-                    statKeySerde.deserializer(),
-                    statAggregateSerde.deserializer());
+            final Consumer<StatEventKey, StatAggregate> consumer = consumerFactory.createConsumer(
+                    groupId, statKeySerde, statAggregateSerde);
 
-            StatisticsAggregationRebalanceListener rebalanceListener = new StatisticsAggregationRebalanceListener(
+            final StatisticsAggregationRebalanceListener rebalanceListener = new StatisticsAggregationRebalanceListener(
                     this,
-                    kafkaConsumer);
+                    consumer);
 
-            kafkaConsumer.subscribe(Collections.singletonList(inputTopic.getName()), rebalanceListener);
+            consumer.subscribe(Collections.singletonList(inputTopic.getName()), rebalanceListener);
 
             //Update our collection of partitions for later health check use
 //            assignedPartitions = kafkaConsumer.partitionsFor(inputTopic).stream()
 //                    .map(PartitionInfo::partition)
 //                    .collect(Collectors.toList());
-            setAssignedPartitions(kafkaConsumer.assignment());
-
-            return kafkaConsumer;
+            setAssignedPartitions(consumer.assignment());
+            return consumer;
         } catch (Exception e) {
             LOGGER.error(String.format("Error building consumer for topic %s on processor %s", inputTopic, this), e);
             throw e;
         }
     }
 
-    private Map<String, Object> getConsumerProps() {
-
-        Map<String, Object> consumerProps = new HashMap<>();
-
-        //ensure the session timeout is bigger than the flush timeout so our session doesn't expire
-        //before we try to commit after a flush
-        //Also ensure it isn't less than the default of 10s
-        int sessionTimeoutMs = Math.max(10_000, (int) (getFlushIntervalMs() * 1.2));
-
-        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
-        consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        consumerProps.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, getPollRecords());
-        consumerProps.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, sessionTimeoutMs);
-        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, getAutoOffsetReset());
-//        consumerProps.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, RoundRobinAssignor.class.getName());
-
-        return consumerProps;
-    }
 
 
     /**
@@ -268,7 +240,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
     private void flushToTopic(final StatAggregator statAggregator,
                               final String topic,
                               final EventStoreTimeIntervalEnum newInterval,
-                              final KafkaProducer<StatEventKey, StatAggregate> producer) {
+                              final Producer<StatEventKey, StatAggregate> producer) {
 
         Preconditions.checkNotNull(statAggregator);
         Preconditions.checkNotNull(producer);
@@ -316,7 +288,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
                         .map(TopicDefinition::getName)
                         .orElse("None"));
 
-        KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer = buildConsumer();
+        Consumer<StatEventKey, StatAggregate> kafkaConsumer = buildConsumer();
 
         consumerThreadName.set(Thread.currentThread().getName());
 
@@ -326,7 +298,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
             //loop forever unless the thread is processing is stopped from outside
             while (runState.equals(RunState.RUNNING) && !Thread.currentThread().isInterrupted()) {
                 try {
-                    ConsumerRecords<StatEventKey, StatAggregate> records = kafkaConsumer.poll(getPollTimeoutMs());
+                    ConsumerRecords<StatEventKey, StatAggregate> records = kafkaConsumer.poll(
+                            Duration.ofMillis(getPollTimeoutMs()));
 
                     int recCount = records.count();
                     //TODO should hook this in as a DropWiz metric
@@ -429,7 +402,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
         }
     }
 
-    private void cleanUp(KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer, int unCommittedRecCount) {
+    private void cleanUp(Consumer<StatEventKey, StatAggregate> kafkaConsumer, int unCommittedRecCount) {
 
         //force a flush of anything in the aggregator
         if (statAggregator != null) {
@@ -479,7 +452,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
         return false;
     }
 
-    void flush(final KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer) {
+    void flush(final Consumer<StatEventKey, StatAggregate> kafkaConsumer) {
 
         flushAggregator();
         kafkaConsumer.commitSync();
@@ -640,9 +613,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
         return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS, 100);
     }
 
-    private int getPollRecords() {
-        return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_POLL_RECORDS, 1000);
-    }
 
     private int getMinBatchSize() {
         return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000);
@@ -652,9 +622,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
         return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 60_000);
     }
 
-    private String getAutoOffsetReset() {
-        return stroomPropertyService.getProperty(StatisticsIngestService.PROP_KEY_KAFKA_AUTO_OFFSET_RESET, "latest");
-    }
 
     @Override
     public String toString() {

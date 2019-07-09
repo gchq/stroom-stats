@@ -32,6 +32,7 @@ import stroom.stats.api.StatisticsService;
 import stroom.stats.partitions.StatEventKeyPartitioner;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.streams.ConsumerFactory;
 import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.StatisticsAggregationProcessor;
 import stroom.stats.streams.StatisticsIngestService;
@@ -73,6 +74,7 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
     private final StroomPropertyService stroomPropertyService;
     private final TopicDefinitionFactory topicDefinitionFactory;
     private final StatisticsService statisticsService;
+    private final ConsumerFactory consumerFactory;
 
     private final List<StatisticsAggregationProcessor> processors = Collections.synchronizedList(new ArrayList<>());
 
@@ -88,13 +90,15 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
     @Inject
     public StatisticsAggregationService(final StroomPropertyService stroomPropertyService,
                                         final TopicDefinitionFactory topicDefinitionFactory,
-                                        final StatisticsService statisticsService) {
+                                        final StatisticsService statisticsService,
+                                        final ConsumerFactory consumerFactory) {
         this.topicDefinitionFactory = topicDefinitionFactory;
 
         LOGGER.debug("Initialising {}", this.getClass().getName());
 
         this.stroomPropertyService = stroomPropertyService;
         this.statisticsService = statisticsService;
+        this.consumerFactory = consumerFactory;
     }
 
     @Override
@@ -188,6 +192,7 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
                             interval,
                             kafkaProducer,
                             executorService,
+                            consumerFactory,
                             instanceId);
 
                     processors.add(processor);
