@@ -312,22 +312,26 @@ public class StatisticsFlatMappingStreamFactory {
     private boolean isInsideLargestPurgeRetention(
             @SuppressWarnings("unused") final String statName,
             final StatisticWrapper statisticWrapper) {
-        //TODO get smallest interval from stat config, get purge retention for that interval
-        //check it is inside it. May want to cache retention periods by interval
+        // TODO get smallest interval from stat config, get purge retention for that interval
+        // check it is inside it. May want to cache retention periods by interval
 
-        EventStoreTimeIntervalEnum biggestInterval = EventStoreTimeIntervalEnum.getLargestInterval();
+        EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.getLargestInterval();
+        // Forever is a special case with an eternal purge interval so we have to discount it
+        if (interval.equals(EventStoreTimeIntervalEnum.FOREVER)) {
+            interval = EventStoreTimeIntervalEnum.getNextSmallest(interval).orElse(interval);
+        }
 
         //TODO probably ought to cache this to save computing it each time
         //i.e. a cache of ESTIE:Integer with a short retention, e.g. a few mins
         //TODO this makes the assumption that the biggest interval has the longest retention
         //may be reasonable, maybe not
         String purgeRetentionPeriodsPropertyKey = HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX
-                + biggestInterval.name().toLowerCase();
+                + interval.name().toLowerCase();
 
         final int retentionRowIntervals = stroomPropertyService.getIntPropertyOrThrow(purgeRetentionPeriodsPropertyKey);
 
         boolean result = StatisticFlatMapper.isInsidePurgeRetention(
-                statisticWrapper, biggestInterval, retentionRowIntervals);
+                statisticWrapper, interval, retentionRowIntervals);
         LOGGER.trace("isInsideLargestPurgeRetention == {}", result);
         return result;
     }

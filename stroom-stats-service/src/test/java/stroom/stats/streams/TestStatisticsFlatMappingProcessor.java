@@ -15,6 +15,7 @@ import stroom.stats.configuration.MockStatisticConfigurationService;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
 import stroom.stats.configuration.StatisticRollUpType;
+import stroom.stats.hbase.HBaseStatisticConstants;
 import stroom.stats.hbase.uid.UID;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.schema.v4.Statistics;
@@ -283,7 +284,54 @@ public class TestStatisticsFlatMappingProcessor extends AbstractStreamProcessorT
         });
     }
 
+    @Test
+    public void test_oneEventOutsideBiggestRetentionOneInside() {
+        final StatisticType statisticType = StatisticType.COUNT;
+        final EventStoreTimeIntervalEnum precisionInterval = EventStoreTimeIntervalEnum.DAY;
+        final TopicDefinition<String, String> statEventsTopic = topicDefinitionFactory.getStatisticEventsTopic(statisticType);
+        final TopicDefinition<String, String> badStatEventsTopic = topicDefinitionFactory.getBadStatisticEventsTopic(statisticType);
+        final TopicDefinition<StatEventKey, StatAggregate> expectedOutputTopic = topicDefinitionFactory.getAggregatesTopic(
+                statisticType, precisionInterval);
+        final StreamProcessor streamProcessor = buildStreamProcessor(statisticType);
 
+        for (EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
+            //one row interval for DAY is 52wks
+            setPurgeRetention(interval, 1);
+        }
+
+        ZonedDateTime timeNow = ZonedDateTime.now(ZoneOffset.UTC);
+
+        addStatConfig(mockStatisticConfigurationService,
+                GOOD_STAT_UUID,
+                GOOD_STAT_NAME,
+                statisticType,
+                Arrays.asList(TAG_1, TAG_2),
+                precisionInterval);
+
+        Statistics statistics = StatisticsHelper.buildStatistics(
+                StatisticsHelper.buildCountStatistic(timeNow, 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
+                ),
+                // Event time is 2 years ago so will be outside all purge retention thresholds
+                // and thus will be filtered out
+                StatisticsHelper.buildCountStatistic(timeNow.minusYears(2), 1L,
+                        StatisticsHelper.buildTagType(TAG_1, TAG_1 + "val1"),
+                        StatisticsHelper.buildTagType(TAG_2, TAG_2 + "val1")
+                )
+        );
+
+        runProcessorTest(statEventsTopic, streamProcessor, (testDriver, consumerRecordFactory) -> {
+            sendStatistics(testDriver, consumerRecordFactory, GOOD_STAT_UUID, statistics);
+            getAndAssertOutputAggregates(testDriver, ROLLUPS_PER_STAT, expectedOutputTopic);
+        });
+    }
+
+    private void setPurgeRetention(final EventStoreTimeIntervalEnum interval, final int newValue) {
+        mockStroomPropertyService.setProperty(
+                HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX +
+                        interval.name().toLowerCase(), newValue);
+    }
 
 
     private void doSimpleSingleIntervalTest(final StatisticType statisticType, Statistics inputStatistics) {

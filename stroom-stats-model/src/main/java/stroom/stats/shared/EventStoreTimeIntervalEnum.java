@@ -115,6 +115,17 @@ public enum EventStoreTimeIntervalEnum {
         return Optional.ofNullable(reverseSortedSet.lower(interval));
     }
 
+    /**
+     * Works out what the next smallest (i.e. more coarse grained) interval is
+     * after this object. If this is the smallest then it will return an empty optional
+     *
+     * @return The next smallest interval or an empty Optional
+     */
+    public static Optional<EventStoreTimeIntervalEnum> getNextSmallest(final EventStoreTimeIntervalEnum interval) {
+        // set is in reverse order so use lower to get the next smallest
+        return Optional.ofNullable(reverseSortedSet.higher(interval));
+    }
+
     public static EventStoreTimeIntervalEnum getSmallestInterval() {
         // set is reverse sorted
         return SMALLEST_INTERVAL;

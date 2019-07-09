@@ -106,7 +106,8 @@ public abstract class AbstractStatisticFlatMapper implements StatisticFlatMapper
         //Start with the smallest precision defined in the stat config and iterate up from there
         Optional<EventStoreTimeIntervalEnum> currentInterval = Optional.of(
                 statisticWrapper.getOptionalStatisticConfiguration()
-                        .orElseThrow(() -> new RuntimeException("Statistic configuration should never be null here as it has already been through validation"))
+                        .orElseThrow(() -> new RuntimeException(
+                                "Statistic configuration should never be null here as it has already been through validation"))
                         .getPrecision()
         );
 
@@ -129,7 +130,7 @@ public abstract class AbstractStatisticFlatMapper implements StatisticFlatMapper
         //if the interval is not present it means we were inside the purge retention earlier in the processing and
         //have just fallen out of it.  This is very unlikely to happen, so just assign the largest interval and
         //let it go through knowing it will get purged shortly.
-        return currentInterval.orElseGet(() -> EventStoreTimeIntervalEnum.getLargestInterval());
+        return currentInterval.orElseGet(EventStoreTimeIntervalEnum::getLargestInterval);
     }
 
     protected KeyValue<StatEventKey, StatAggregate> buildKeyValue(final String statUuid,
