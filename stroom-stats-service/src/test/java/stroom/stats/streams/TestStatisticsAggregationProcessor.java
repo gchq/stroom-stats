@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import stroom.stats.api.StatisticType;
 import stroom.stats.api.StatisticsService;
+import stroom.stats.hbase.uid.UID;
 import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.CountAggregate;
@@ -37,21 +38,24 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TestStatisticsAggregationProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(TestStatisticsAggregationProcessor.class);
+    private static final long DEFAULT_WAIT_TIME = 300L;
 
     private final MockStroomPropertyService mockStroomPropertyService = new MockStroomPropertyService();
     private final TopicDefinitionFactory topicDefinitionFactory = new TopicDefinitionFactory(mockStroomPropertyService);
+
 
     @Mock
     private StatisticsService mockStatisticsService;
@@ -78,11 +82,13 @@ public class TestStatisticsAggregationProcessor {
                 StatisticsAggregationProcessor.PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, flushIntervalMs);
     }
 
+    /**
+     * MINUTE -> HOUR
+     */
     @Test
     public void testAggregation_sameKey() throws InterruptedException {
         StatisticType statisticType = StatisticType.COUNT;
         EventStoreTimeIntervalEnum processorInterval = EventStoreTimeIntervalEnum.MINUTE;
-        EventStoreTimeIntervalEnum nextInterval = EventStoreTimeIntervalEnum.getNextBiggest(processorInterval).get();
         final LocalDateTime localDateTime = LocalDateTime.now();
 
         final List<KeyValue<StatEventKey, StatAggregate>> inputRecords = IntStream.rangeClosed(1, 5)
@@ -95,6 +101,7 @@ public class TestStatisticsAggregationProcessor {
         doAggregationTest(statisticType,
                 processorInterval,
                 inputRecords,
+                DEFAULT_WAIT_TIME,
                 producerRecords -> {
 
                     Assertions.assertThat(producerRecords)
@@ -104,32 +111,176 @@ public class TestStatisticsAggregationProcessor {
 
                     Assertions.assertThat(countAggregate.getAggregatedCount())
                             .isEqualTo(inputRecords.size());
-                    // The aggregate should be put on a topic for the next interval
-                    Assertions.assertThat(statEventKey.getInterval())
-                            .isEqualTo(nextInterval);
-
-                    Assertions.assertThat(producerRecords.get(0).topic())
-                            .isEqualTo(topicDefinitionFactory.getAggregatesTopic(statisticType, nextInterval).getName());
                 });
 
-        verify(mockStatisticsService, times(1))
-                .putAggregatedEvents(
-                        Mockito.eq(StatisticType.COUNT),
-                        Mockito.eq(processorInterval),
-                        aggregatesMapCator.capture());
-
+        // all input aggs for same key so only one output agg
         Assertions.assertThat(aggregatesMapCator.getValue()).hasSize(1);
+    }
+
+    /**
+     * FOREVER -> -
+     */
+    @Test
+    public void testAggregation_sameKeyLastInterval() throws InterruptedException {
+        StatisticType statisticType = StatisticType.COUNT;
+        EventStoreTimeIntervalEnum processorInterval = EventStoreTimeIntervalEnum.LARGEST_INTERVAL;
+        final LocalDateTime localDateTime = LocalDateTime.now();
+
+        final List<KeyValue<StatEventKey, StatAggregate>> inputRecords = IntStream.rangeClosed(1, 5)
+                .boxed()
+                .map(i ->
+                        new KeyValue<>(StatEventKeyHelper.buildStatKey(localDateTime, processorInterval),
+                                (StatAggregate) new CountAggregate(1L)))
+                .collect(Collectors.toList());
+
+        doAggregationTest(statisticType,
+                processorInterval,
+                inputRecords,
+                DEFAULT_WAIT_TIME,
+                producerRecords -> {
+                    // Input aggs are at largest interval so nothing put on a topic
+                    Assertions.assertThat(producerRecords)
+                            .hasSize(0);
+                });
+
+        // all input aggs for same key so only one output agg
+        Assertions.assertThat(aggregatesMapCator.getValue()).hasSize(1);
+    }
+
+    @Test
+    public void testAggregation_multipleKeys() throws InterruptedException {
+        StatisticType statisticType = StatisticType.COUNT;
+        EventStoreTimeIntervalEnum processorInterval = EventStoreTimeIntervalEnum.MINUTE;
+        int aggregatesPerKey = 3;
+        int keyCount = 5;
+        int expectedOutputMsgCount = keyCount;
+        int expectedAggregatesSentToService = keyCount;
+        final LocalDateTime localDateTime = LocalDateTime.now();
+
+        // build input data
+        final List<KeyValue<StatEventKey, StatAggregate>> inputRecords = IntStream.rangeClosed(1, keyCount)
+                .boxed()
+                .flatMap(i -> {
+                    final StatEventKey statEventKey = StatEventKeyHelper.buildStatKey(
+                            UID.from(new byte[]{3, 0, 0, i.byteValue()}), localDateTime, processorInterval);
+
+                    return IntStream.rangeClosed(1, aggregatesPerKey)
+                            .boxed()
+                            .map(j ->
+                                    new KeyValue<>(
+                                            statEventKey,
+                                            (StatAggregate) new CountAggregate(1L)));
+
+                })
+                .collect(Collectors.toList());
+
+        doAggregationTest(statisticType,
+                processorInterval,
+                inputRecords,
+                DEFAULT_WAIT_TIME,
+                producerRecords -> {
+
+                    Assertions.assertThat(producerRecords)
+                            .hasSize(expectedOutputMsgCount);
+                    StatEventKey statEventKey = producerRecords.get(0).key();
+                    producerRecords.forEach(record -> {
+                        CountAggregate countAggregate = (CountAggregate) record.value();
+
+                        Assertions.assertThat(countAggregate.getAggregatedCount())
+                                .isEqualTo(aggregatesPerKey);
+                    });
+                });
+
+        // all input aggs for same key so only one output agg
+        Assertions.assertThat(aggregatesMapCator.getValue())
+                .hasSize(expectedAggregatesSentToService);
+    }
+
+    @Test
+    public void testAggregation_multipleKeys_multipleFlushes() throws InterruptedException {
+        // short flush interval so we get multiple flushes
+        setFlushIntervalMs(10);
+
+        StatisticType statisticType = StatisticType.COUNT;
+        EventStoreTimeIntervalEnum processorInterval = EventStoreTimeIntervalEnum.MINUTE;
+        int aggregatesPerKey = 20;
+        int keyCount = 10;
+        int expectedMinOutputMsgCount = keyCount;
+        int expectedAggregatesSentToService = keyCount;
+        long expectedTotalAggregate = aggregatesPerKey * keyCount;
+        final LocalDateTime localDateTime = LocalDateTime.now();
+
+        // build input data
+        final List<KeyValue<StatEventKey, StatAggregate>> inputRecords = IntStream.rangeClosed(1, keyCount)
+                .boxed()
+                .flatMap(i -> {
+                    final StatEventKey statEventKey = StatEventKeyHelper.buildStatKey(
+                            UID.from(new byte[]{3, 0, 0, i.byteValue()}), localDateTime, processorInterval);
+
+                    return IntStream.rangeClosed(1, aggregatesPerKey)
+                            .boxed()
+                            .map(j ->
+                                    new KeyValue<>(
+                                            statEventKey,
+                                            (StatAggregate) new CountAggregate(1L)));
+
+                })
+                .collect(Collectors.toList());
+
+        doAggregationTest(statisticType,
+                processorInterval,
+                inputRecords,
+                1_000L,
+                producerRecords -> {
+
+                    Assertions.assertThat(producerRecords.size())
+                            .isGreaterThanOrEqualTo(expectedMinOutputMsgCount);
+                    StatEventKey statEventKey = producerRecords.get(0).key();
+
+                    Assertions.assertThat(producerRecords.stream()
+                            .mapToLong(rec -> ((CountAggregate) rec.value()).getAggregatedCount())
+                            .sum())
+                            .isEqualTo(expectedTotalAggregate);
+
+                    Assertions
+                            .assertThat(producerRecords.stream()
+                                    .map(ProducerRecord::key)
+                                    .distinct()
+                                    .count())
+                            .isEqualTo(keyCount);
+                });
+
+        // all input aggs for same key so only one output agg
+        Assertions
+                .assertThat(aggregatesMapCator.getAllValues().stream()
+                        .flatMap(map ->
+                                map.keySet().stream())
+                        .distinct()
+                        .count())
+                .isEqualTo(keyCount);
+
+        Assertions
+                .assertThat(aggregatesMapCator.getAllValues().stream()
+                        .mapToLong(map ->
+                                map.values().stream()
+                                        .mapToLong(agg ->
+                                                ((CountAggregate) agg).getAggregatedCount())
+                                        .sum())
+                        .sum())
+                .isEqualTo(expectedTotalAggregate);
     }
 
     private void doAggregationTest(final StatisticType statisticType,
                                    final EventStoreTimeIntervalEnum processorInterval,
                                    final List<KeyValue<StatEventKey, StatAggregate>> inputRecords,
+                                   final long waitTimeMs,
                                    final java.util.function.Consumer<List<ProducerRecord<StatEventKey, StatAggregate>>> outputRecordsConsumer)
             throws InterruptedException {
 
         TopicDefinition<StatEventKey, StatAggregate> aggregatesTopic = topicDefinitionFactory.getAggregatesTopic(
                 statisticType,
                 processorInterval);
+        Optional<EventStoreTimeIntervalEnum> optNextInterval = EventStoreTimeIntervalEnum.getNextBiggest(processorInterval);
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final StatisticsAggregationProcessor statisticsAggregationProcessor = new StatisticsAggregationProcessor(
@@ -164,6 +315,9 @@ public class TestStatisticsAggregationProcessor {
 
         statisticsAggregationProcessor.start();
 
+        // tiny sleep to give the processor a chance to subscribe to the topic
+        Thread.sleep(50);
+
         LOGGER.info("Health {}", statisticsAggregationProcessor.getHealth());
         mockConsumer.updateBeginningOffsets(partitionsBeginningMap);
         mockConsumer.updateEndOffsets(partitionsEndMap);
@@ -183,7 +337,8 @@ public class TestStatisticsAggregationProcessor {
                     mockConsumer.addRecord(record);
                 });
 
-        Thread.sleep(500);
+        // Sleep long enough for the polls to happen and for the aggregator to be flushed
+        Thread.sleep(waitTimeMs);
 
         // Ensure any unflushed aggregates are dealt with
         statisticsAggregationProcessor.stop();
@@ -193,6 +348,30 @@ public class TestStatisticsAggregationProcessor {
                 .forEach(record -> {
                     LOGGER.info("Seen record {}", record);
                 });
+
+        // if there is a next bigger interval then check the messages on the topic are for the correct
+        // interval
+        if (optNextInterval.isPresent()) {
+            final TopicDefinition<StatEventKey, StatAggregate> nextIntervalTopic = topicDefinitionFactory.getAggregatesTopic(
+                    statisticType,
+                    optNextInterval.get());
+
+            Assertions.assertThat(mockProducer.history().stream().map(record -> record.key().getInterval()))
+                    .containsOnly(optNextInterval.get());
+
+            Assertions.assertThat(mockProducer.history().stream().map(ProducerRecord::topic))
+                    .containsOnly(nextIntervalTopic.getName());
+
+        } else {
+            // no next bigger interval so no msgs on topic
+            Assertions.assertThat(mockProducer.history()).hasSize(0);
+        }
+
+        verify(mockStatisticsService, atLeastOnce())
+                .putAggregatedEvents(
+                        Mockito.eq(StatisticType.COUNT),
+                        Mockito.eq(processorInterval),
+                        aggregatesMapCator.capture());
 
         outputRecordsConsumer.accept(mockProducer.history());
     }
