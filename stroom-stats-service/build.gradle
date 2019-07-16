@@ -83,8 +83,8 @@ dependencies {
     testCompile libs.junit
 
     //deps for integrationTest
-    testCompile libs.dropwizard_client
-    testCompile libs.dropwizard_testing
+    //testCompile libs.dropwizard_client
+    //testCompile libs.dropwizard_testing
     testCompile libs.fastClasspathScanner
     testCompile libs.mockito_core
     //testCompile libs.spring_kafka_test
