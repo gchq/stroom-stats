@@ -95,10 +95,10 @@ dependencies {
     testCompile libs.jackson_annotations
 
     //TODO gradle-dependency-analyze doesn't understand about integrationTest so says these libs are unused
-    permitTestUnusedDeclared libs.dropwizard_testing
+    //permitTestUnusedDeclared libs.dropwizard_testing
     permitTestUnusedDeclared libs.mockito_core
     //permitTestUnusedDeclared libs.spring_kafka_test
-    permitTestUnusedDeclared libs.dropwizard_client
+    //permitTestUnusedDeclared libs.dropwizard_client
     permitTestUnusedDeclared libs.fastClasspathScanner
     permitTestUnusedDeclared libs.objenesis //TODO Not sure why gradle-dependency-analyze is moaning about this
 
