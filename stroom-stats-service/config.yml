@@ -42,7 +42,9 @@ database:
 
 #If set registers this instance with service discovery using the specified address,
 #else it uses the local hostname or ip address
-advertisedHostNameOrIp: ${STROOM_STATS_ADVERTISED_HOST_OR_IP:-192.168.10.146}
+# localhost will not work if the client of stroom-stats, i.e. stroom is in a docker container
+# If that is the case you will need an IP here
+advertisedHostNameOrIp: ${STROOM_STATS_ADVERTISED_HOST_OR_IP:-localhost}
 #As above but for port
 advertisedPort: ${STROOM_STATS_ADVERTISED_PORT:- }
 
