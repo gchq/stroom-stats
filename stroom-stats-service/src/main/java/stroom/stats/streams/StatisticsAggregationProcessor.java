@@ -108,6 +108,9 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
 
     public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECS = 120;
 
+    private static final long PROPERTY_CHECK_INTERVAL_MS = 30_000;
+
+
     private final StatisticsService statisticsService;
     private final StroomPropertyService stroomPropertyService;
     private final StatisticType statisticType;
@@ -139,6 +142,14 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
 //    private Queue<Integer> assignedPartitions = new ConcurrentLinkedQueue<>();
     private Map<Integer, Long> latestPartitionOffsets = new ConcurrentHashMap<>();
     private final LongAdder msgCounter = new LongAdder();
+
+    private long pollTimeOutLastFetchMs = 0;
+    private long minBatchSizeLastFetchMs = 0;
+    private long maxFlushIntervalLastFetchMs = 0;
+
+    private int pollTimeOutLastValue = -1;
+    private int minBatchSizeLastValue = -1;
+    private int maxFlushIntervalLastValue = -1;
 
     //The following instance/class vars are there for debugging use
     //    private Map<StatEventKey, StatAggregate> putEventsMap = new HashMap<>();
@@ -208,8 +219,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
             throw e;
         }
     }
-
-
 
     /**
      * Drain the aggregator and pass all aggregated events to the stat service to persist to the event store
@@ -288,7 +297,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
                         .map(TopicDefinition::getName)
                         .orElse("None"));
 
-        Consumer<StatEventKey, StatAggregate> kafkaConsumer = buildConsumer();
+        final Consumer<StatEventKey, StatAggregate> kafkaConsumer = buildConsumer();
 
         consumerThreadName.set(Thread.currentThread().getName());
 
@@ -356,7 +365,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
     }
 
     private void debugRecords(final ConsumerRecords<StatEventKey, StatAggregate> records, final int recCount) {
-        ConcurrentMap<UID, AtomicInteger> statNameMap = new ConcurrentHashMap<>();
+        final ConcurrentMap<UID, AtomicInteger> statNameMap = new ConcurrentHashMap<>();
 
         records.forEach(rec ->
                 statNameMap.computeIfAbsent(
@@ -379,7 +388,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
                     .min()
                     .getAsLong();
 
-            String minTimestampStr = Instant.ofEpochMilli(minTimestamp).toString();
+            final String minTimestampStr = Instant.ofEpochMilli(minTimestamp).toString();
 
 //                            StatisticsAggregationProcessor.minTimestamp.getAndUpdate(currVal ->
 //                                    Math.min(currVal, minTimestamp));
@@ -404,7 +413,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
 
     private void cleanUp(Consumer<StatEventKey, StatAggregate> kafkaConsumer, int unCommittedRecCount) {
 
-        //force a flush of anything in the aggregator
+        // force a flush of anything in the aggregator
         if (statAggregator != null) {
             LOGGER.debug("Forcing a flush of aggregator {} on processor {}", statAggregator, this);
             flushAggregator();
@@ -429,8 +438,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
     }
 
     private boolean flushAggregator() {
-        //flush all the aggregated stats down to the StatStore and onto the next biggest aggregationInterval topic
-        //(if there is one) for coarser aggregation
+        // flush all the aggregated stats down to the StatStore and onto the next biggest aggregationInterval topic
+        // (if there is one) for coarser aggregation
         if (statAggregator != null) {
             if (!statAggregator.isEmpty()) {
                 LOGGER.trace("Flushing aggregator {}", statAggregator);
@@ -453,7 +462,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
     }
 
     void flush(final Consumer<StatEventKey, StatAggregate> kafkaConsumer) {
-
         flushAggregator();
         kafkaConsumer.commitSync();
     }
@@ -610,18 +618,34 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
     }
 
     private int getPollTimeoutMs() {
-        return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS, 100);
+        // This method is called a lot so this an optimisation of an already cached value
+        if (System.currentTimeMillis() > (pollTimeOutLastFetchMs + PROPERTY_CHECK_INTERVAL_MS)) {
+            pollTimeOutLastFetchMs = System.currentTimeMillis();
+            pollTimeOutLastValue = stroomPropertyService.getIntProperty(
+                    PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS, 100);
+        }
+        return pollTimeOutLastValue;
     }
 
-
     private int getMinBatchSize() {
-        return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000);
+        // This method is called a lot so this an optimisation of an already cached value
+        if (System.currentTimeMillis() > (minBatchSizeLastFetchMs + PROPERTY_CHECK_INTERVAL_MS)) {
+            minBatchSizeLastFetchMs = System.currentTimeMillis();
+            minBatchSizeLastValue = stroomPropertyService.getIntProperty(
+                    PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000);
+        }
+        return minBatchSizeLastValue;
     }
 
     private int getFlushIntervalMs() {
-        return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 60_000);
+        // This method is called a lot so this an optimisation of an already cached value
+        if (System.currentTimeMillis() > (maxFlushIntervalLastFetchMs + PROPERTY_CHECK_INTERVAL_MS)) {
+            maxFlushIntervalLastFetchMs = System.currentTimeMillis();
+            maxFlushIntervalLastValue = stroomPropertyService.getIntProperty(
+                    PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 60_000);
+        }
+        return maxFlushIntervalLastValue;
     }
-
 
     @Override
     public String toString() {
@@ -633,5 +657,4 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
                 ", " + runState +
                 '}';
     }
-
 }
