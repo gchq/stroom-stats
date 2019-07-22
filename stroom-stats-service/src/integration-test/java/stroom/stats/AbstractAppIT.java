@@ -48,6 +48,7 @@ public abstract class AbstractAppIT {
     @ClassRule
     public static final DropwizardAppRule<Config> RULE = new DropwizardAppRule<>(App.class, "config.yml");
 
+    // This is to mock stroom's authorisation service, won't work if stroom is running and listening on 8080
     @ClassRule
     public static WireMockClassRule wireMockRule = new WireMockClassRule(
             WireMockConfiguration.options().port(8080));
