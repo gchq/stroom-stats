@@ -223,6 +223,7 @@ subprojects {
     // This bit makes all sub projects have access to the BOMs for the dependency versions
     dependencies {
         compile platform(libs.dropwizard_bom)
+        testCompile platform(libs.dropwizard_bom)
     }
     
     configurations {

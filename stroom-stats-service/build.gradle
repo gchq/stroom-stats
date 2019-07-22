@@ -9,6 +9,12 @@ apply plugin: 'application'
 
 mainClassName = 'stroom.stats.service.startup.App'
 
+configurations {
+    // This means our integration tests get all the dependencies from our tests and we don't need to specify them twice.
+    integrationTestCompile.extendsFrom testCompile
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
 dependencies {
     //--------Project----------
     compile project(':stroom-stats-schema')
@@ -74,34 +80,26 @@ dependencies {
     runtime libs.mysql_connector
     runtime libs.saxon
 
+    // deps for pure junits
     testCompile project(':stroom-stats-mocks')
 
     testCompile libs.hamcrest_core
     testCompile libs.assertj
-    permitTestUnusedDeclared libs.jose4j
-    testCompile libs.jose4j
     testCompile libs.junit
-
-    //deps for integrationTest
-    //testCompile libs.dropwizard_client
-    //testCompile libs.dropwizard_testing
-    testCompile libs.fastClasspathScanner
     testCompile libs.mockito_core
-    //testCompile libs.spring_kafka_test
     testCompile libs.kafka_streams_test_utils
-    permitTestUnusedDeclared "${libs.wiremock}"
-    testCompile libs.wiremock
-    permitTestUnusedDeclared libs.jackson_annotations
-    testCompile libs.jackson_annotations
 
-    //TODO gradle-dependency-analyze doesn't understand about integrationTest so says these libs are unused
-    //permitTestUnusedDeclared libs.dropwizard_testing
-    permitTestUnusedDeclared libs.mockito_core
-    //permitTestUnusedDeclared libs.spring_kafka_test
-    //permitTestUnusedDeclared libs.dropwizard_client
-    permitTestUnusedDeclared libs.fastClasspathScanner
-    permitTestUnusedDeclared libs.objenesis //TODO Not sure why gradle-dependency-analyze is moaning about this
+    // deps for integrationTest (integrationTestCompile extends from testCompile)
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // Bring in all the dropwizard bom version info
+    integrationTestCompile platform(libs.dropwizard_bom)
 
+    integrationTestCompile libs.dropwizard_client
+    integrationTestCompile libs.dropwizard_testing
+    integrationTestCompile libs.fastClasspathScanner
+    integrationTestCompile libs.jose4j
+    integrationTestCompile libs.wiremock
+    integrationTestCompile libs.jackson_annotations
 }
 
 jar {
@@ -137,12 +135,6 @@ sourceSets {
     }
 }
 
-
-configurations {
-    // This means our integration tests get all the dependencies from our tests and we don't need to specify them twice.
-    integrationTestCompile.extendsFrom testCompile
-    integrationTestRuntime.extendsFrom testRuntime
-}
 
 // This task lets us run the actual integration tests.
 task integrationTest(type: Test) {
