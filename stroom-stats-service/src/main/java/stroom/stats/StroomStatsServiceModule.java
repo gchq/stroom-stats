@@ -44,6 +44,8 @@ import stroom.stats.service.auth.JwtVerifier;
 import stroom.stats.service.auth.User;
 import stroom.stats.service.auth.UserAuthenticator;
 import stroom.stats.service.config.Config;
+import stroom.stats.streams.ConsumerFactory;
+import stroom.stats.streams.ConsumerFactoryImpl;
 import stroom.stats.streams.StatisticsIngestService;
 
 public class StroomStatsServiceModule extends AbstractModule {
@@ -67,6 +69,7 @@ public class StroomStatsServiceModule extends AbstractModule {
         bind(CacheManager.class)
                 .toProvider(() -> CacheManagerBuilder.newCacheManagerBuilder().build(true))
                 .asEagerSingleton();
+        bind(ConsumerFactory.class).to(ConsumerFactoryImpl.class);
         //Singleton as this holds the connection to Zookeeper
         bind(CuratorFramework.class).annotatedWith(StroomPropertyServiceCuratorFramework.class).toProvider(StroomPropertyServiceCuratorFrameworkProvider.class).asEagerSingleton();
         bind(CuratorFramework.class).annotatedWith(ServiceDiscoveryCuratorFramework.class).toProvider(ServiceDiscoveryCuratorFrameworkProvider.class).asEagerSingleton();
