@@ -95,27 +95,33 @@ public class StatisticsFlatMappingStreamFactory {
                 inputTopic, badEventTopic, statisticType, statisticMapper.getClass().getSimpleName());
 
         final StreamsBuilder builder = new StreamsBuilder();
-        //This is the input to all the processing, key is the uuid of the stat, value is the stat XML
-        final KStream<String, String> inputStream = builder.stream(inputTopic.getName(), inputTopic.getConsumed());
+        // This is the input to all the processing, key is the uuid of the stat, value is the stat XML
+        KStream<String, String> inputStream = builder.stream(inputTopic.getName(), inputTopic.getConsumed());
 
-        //currently the stat uuid is both the msg key and in the Statistic object.
-        //This does mean duplication but means the msg can exist without the key, without losing meaning
-        //TODO In future if we have msgs conforming to different versions of the schema then we may have to inspect the
-        //namespace in the msg and use the appropriate unMarshaller for that version
+        // doing it this way means we can't just turn trace on mid processing, you would need to bounce the
+        // app for it to take affect but tracing like this in prod would be pretty extreme.
+        if (LOGGER.isTraceEnabled()) {
+            inputStream = inputStream
+                    .filter((key, value) -> {
+                        //like a peek function
+                        //use with caution as the messages could be very frequent and large
+                        LOGGER.trace("Received {} : {}", key, value);
+                        return true;
+                    });
+        }
+
+        // currently the stat uuid is both the msg key and in the Statistic object.
+        // This does mean duplication but means the msg can exist without the key, without losing meaning
+        // TODO In future if we have msgs conforming to different versions of the schema then we may have to inspect the
+        // namespace in the msg and use the appropriate unMarshaller for that version
         KStream<String, UnmarshalledXmlWrapper>[] unmarshallingForks = inputStream
-                .filter((key, value) -> {
-                    //like a peek function
-                    //use with caution as the messages could be very frequent and large
-                    LOGGER.trace("Received {} : {}", key, value);
-                    return true;
-                })
                 .mapValues(this::unmarshallXml) //attempt to unmarshal the xml string to classes
                 .branch(VALID_INVALID_XML_WRAPPER_BRANCHING_PREDICATES); //split out the ones that failed unmarshalling
 
         KStream<String, UnmarshalledXmlWrapper> validUnmarshalledXml = unmarshallingForks[0];
         KStream<String, UnmarshalledXmlWrapper> invalidUnmarshalledXml = unmarshallingForks[1];
 
-        //Send the bad events out to a bad topic as the original xml with the error message attached to the
+        // Send the bad events out to a bad topic as the original xml with the error message attached to the
         // bottom of the XML, albeit as individual events rather than batches
         invalidUnmarshalledXml
                 .mapValues(this::badStatisticWrapperToString)
@@ -131,50 +137,31 @@ public class StatisticsFlatMappingStreamFactory {
         KStream<String, StatisticWrapper> validStatWrappers = statWrapperForks[0];
         KStream<String, StatisticWrapper> invalidStatWrappers = statWrapperForks[1];
 
-        //Send the bad events out to a bad topic as the original xml with the error message attached to the
+        // Send the bad events out to a bad topic as the original xml with the error message attached to the
         // bottom of the XML, albeit as individual events rather than batches
         invalidStatWrappers
                 .mapValues(this::badStatisticWrapperToString)
                 .to(badEventTopic.getName(), badEventTopic.getProduced());
 
-        //build a list of mappings from interval to topic name.  Not done with a Map as we need to
-        //access the collection by position. The order of this list does not matter but it must match
-        //the order of the intervalPredicates array below so that position N corresponds to the same
-        //interval in both collections, else the stream branching will not work
-//        List<IntervalTopicPair> intervalTopicPairs = getIntervalTopicPairs(statisticType);
-
-//        Predicate<StatEventKey, StatAggregate>[] intervalPredicates = getPredicates(intervalTopicPairs);
+        // build a list of mappings from interval to topic name.  Not done with a Map as we need to
+        // access the collection by position. The order of this list does not matter but it must match
+        // the order of the intervalPredicates array below so that position N corresponds to the same
+        // interval in both collections, else the stream branching will not work
 
         final Map<EventStoreTimeIntervalEnum, String> intervalToTopicNameMap = getIntervalToTopicNameMap(statisticType);
 
         TopicNameExtractor<StatEventKey, StatAggregate> topicNameExtractor = (key, value, recordContext) ->
                 intervalToTopicNameMap.get(key.getInterval());
 
-        //Ignore any events that are outside the retention period as they would just get deleted in the next
+        // Ignore any events that are outside the retention period as they would just get deleted in the next
         // purge otherwise. Flatmap each statistic event to a set of statKey/statAggregate pairs,
-        //one for each roll up permutation. Then branch the stream into multiple streams, one stream per interval
-        //i.e. events with hour granularity go to hour stream (and ultimately topic)
+        // one for each roll up permutation. Then branch the stream into multiple streams, one stream per interval
+        // i.e. events with hour granularity go to hour stream (and ultimately topic)
         validStatWrappers
                 .filter(this::isInsideLargestPurgeRetention) //ignore too old events
                 .flatMap(statisticMapper::flatMap) //map to StatEventKey/StatAggregate pair
                 // Fork the messages onto different topics based on the key's interval
                 .to(topicNameExtractor, Produced.with(StatEventKeySerde.instance(), StatAggregateSerde.instance()));
-
-        //Following line if uncommented can be useful for debugging
-//        final ConcurrentMap<EventStoreTimeIntervalEnum, AtomicLong> counters = new ConcurrentHashMap<>();
-        //Route each from the stream interval specific branches to the appropriate topic
-//        for (int i = 0; i < intervalStreams.length; i++) {
-//            TopicDefinition<StatEventKey, StatAggregate> topic = intervalTopicPairs.get(i).getTopic();
-//            intervalStreams[i]
-//                    .filter((key, value) -> {
-////                        This is in effect a peek operation for debugging as it always returns true
-////                        counters.computeIfAbsent(key.getInterval(), interval -> new AtomicLong(0)).incrementAndGet();
-////                        LOGGER.info(String.format("interval %s class %s cumCount %s",
-////                                key.getInterval(), value.getClass().getName(), counters.get(key.getInterval()).get()));
-//                        return true;
-//                    })
-//                    .to(topic.getName(), topic.getProduced(StatEventKeyPartitioner.instance()));
-//        }
 
         return builder.build();
     }
@@ -188,20 +175,6 @@ public class StatisticsFlatMappingStreamFactory {
         }
     }
 
-//    private List<IntervalTopicPair> getIntervalTopicPairs(final StatisticType statisticType) {
-//
-//        //get a sorted (by interval ms) list of topic|interval pairs so we can branch the kstream
-//        return Arrays.stream(EventStoreTimeIntervalEnum.values())
-//                .map(interval -> {
-//                    final TopicDefinition<StatEventKey, StatAggregate> topic = topicDefinitionFactory.createAggregatesTopic(
-//                            statisticType,
-//                            interval);
-//                    return new IntervalTopicPair(topic, interval);
-//                })
-//                .sorted()
-//                .collect(Collectors.toList());
-//    }
-
     private Map<EventStoreTimeIntervalEnum, String> getIntervalToTopicNameMap(final StatisticType statisticType) {
 
         Map<EventStoreTimeIntervalEnum, String> map = new EnumMap<>(EventStoreTimeIntervalEnum.class);
@@ -214,22 +187,6 @@ public class StatisticsFlatMappingStreamFactory {
         }
         return map;
     }
-
-//    private Predicate<StatEventKey, StatAggregate>[] getPredicates(final List<IntervalTopicPair> intervalTopicPairs) {
-//        //map the topic|Interval pair to an array of predicates that tests for equality with each interval, i.e.
-//        //[
-//        //  statkey interval == SECOND,
-//        //  statkey interval == MINUTE,
-//        //  statkey interval == HOUR,
-//        //  statkey interval == DAY,
-//        //  ...
-//        //]
-//        return intervalTopicPairs.stream()
-//                .sequential()
-//                .map((InterValToPredicateMapper) pair ->
-//                        (StatEventKey statEventKey, StatAggregate statAggregate) -> statEventKey.equalsIntervalPart(pair.getInterval()))
-//                .toArray(size -> new Predicate[size]);
-//    }
 
     private Statistics wrapStatisticWithStatistics(final Statistics.Statistic statistic) {
         Statistics statistics = new ObjectFactory().createStatistics();
