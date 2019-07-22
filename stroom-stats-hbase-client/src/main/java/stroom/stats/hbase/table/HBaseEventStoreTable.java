@@ -24,9 +24,9 @@ package stroom.stats.hbase.table;
 import javaslang.Tuple2;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
+import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
@@ -36,6 +36,8 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.client.TableDescriptor;
+import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
@@ -256,17 +258,21 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     }
 
     @Override
-    public HTableDescriptor getDesc() {
-        final HTableDescriptor desc = new HTableDescriptor(getName());
+    public TableDescriptor getDesc() {
+        final ColumnFamilyDescriptor countsColDesc = ColumnFamilyDescriptorBuilder.newBuilder(EventStoreColumnFamily.COUNTS.asByteArray())
+                .setMaxVersions(1)
+                .build();
 
-        final HColumnDescriptor countsColDesc = new HColumnDescriptor(EventStoreColumnFamily.COUNTS.asByteArray());
-        countsColDesc.setMaxVersions(1);
+        final ColumnFamilyDescriptor valuesColDesc = ColumnFamilyDescriptorBuilder.newBuilder(EventStoreColumnFamily.VALUES.asByteArray())
+                .setMaxVersions(1)
+                .build();
 
-        final HColumnDescriptor valuesColDesc = new HColumnDescriptor(EventStoreColumnFamily.VALUES.asByteArray());
-        valuesColDesc.setMaxVersions(1);
-        desc.addFamily(countsColDesc);
-        desc.addFamily(valuesColDesc);
-        return desc;
+        final TableDescriptor tableDescriptor = TableDescriptorBuilder.newBuilder(getName())
+                .setColumnFamily(countsColDesc)
+                .setColumnFamily(valuesColDesc)
+                .build();
+
+        return tableDescriptor;
     }
 
     private void addMultipleCounts(final Map<RowKey, List<CountCellIncrementHolder>> rowChanges) {

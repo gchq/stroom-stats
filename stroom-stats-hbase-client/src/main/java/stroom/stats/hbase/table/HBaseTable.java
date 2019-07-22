@@ -23,7 +23,6 @@ package stroom.stats.hbase.table;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
@@ -38,10 +37,11 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
-import stroom.stats.hbase.connection.HBaseConnection;
-import stroom.stats.hbase.exception.HBaseException;
+import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.hbase.connection.HBaseConnection;
+import stroom.stats.hbase.exception.HBaseException;
 
 import java.util.List;
 
@@ -396,7 +396,7 @@ public abstract class HBaseTable implements GenericTable {
     @Override
     public abstract String getDisplayName();
 
-    public abstract HTableDescriptor getDesc();
+    public abstract TableDescriptor getDesc();
 
     void tableSpecificCreationProcessing() {
         // Do nothing in here as this is designed to be overridden by
