@@ -37,6 +37,7 @@ import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.v4.Statistics;
 import stroom.stats.schema.v4.TagType;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.test.StatMessage;
 import stroom.stats.test.StroomStatsStoreEntityHelper;
 import stroom.stats.test.StatisticsHelper;
@@ -79,7 +80,7 @@ public class FullEndToEndIT extends AbstractAppIT {
 
         List<StatMessage> statistics = createDummyStatistics(
                 statisticConfigurations,
-                stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX),
+                stroomPropertyService.getPropertyOrThrow(TopicDefinitionFactory.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX),
                 startTime);
 
 

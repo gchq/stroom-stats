@@ -70,9 +70,8 @@ public class StatisticConfigurationServiceImpl implements StatisticConfiguration
     public Optional<StatisticConfiguration> fetchStatisticConfigurationByUuid(final String uuid) {
         LOGGER.trace("fetchStatisticConfigurationByUuid called for uuid {}", uuid);
 
-        return executeInSession(() ->
-                Optional.ofNullable(keyByUuidCache.get(uuid))
-        );
+        // DB session is managed inside the loader writer
+        return Optional.ofNullable(keyByUuidCache.get(uuid));
     }
 
     private <T> T executeInSession(Supplier<T> task) {

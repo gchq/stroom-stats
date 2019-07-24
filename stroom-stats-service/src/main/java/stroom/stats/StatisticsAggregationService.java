@@ -32,12 +32,14 @@ import stroom.stats.api.StatisticsService;
 import stroom.stats.partitions.StatEventKeyPartitioner;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
+import stroom.stats.streams.ConsumerFactory;
 import stroom.stats.streams.StatEventKey;
 import stroom.stats.streams.StatisticsAggregationProcessor;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatEventKeySerde;
+import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.util.HasRunState;
 import stroom.stats.util.Startable;
 import stroom.stats.util.Stoppable;
@@ -70,14 +72,15 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
     public static final long TIMEOUT_SECS = 120;
 
     private final StroomPropertyService stroomPropertyService;
+    private final TopicDefinitionFactory topicDefinitionFactory;
     private final StatisticsService statisticsService;
+    private final ConsumerFactory consumerFactory;
 
     private final List<StatisticsAggregationProcessor> processors = Collections.synchronizedList(new ArrayList<>());
 
     //producer is thread safe so hold a single instance and share it with all processors
     //this assumes all processor instances have the same producer config
     private volatile KafkaProducer<StatEventKey, StatAggregate> kafkaProducer;
-    private volatile ExecutorService executorService;
 
     private HasRunState.RunState runState = HasRunState.RunState.STOPPED;
 
@@ -86,12 +89,16 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
 
     @Inject
     public StatisticsAggregationService(final StroomPropertyService stroomPropertyService,
-                                        final StatisticsService statisticsService) {
+                                        final TopicDefinitionFactory topicDefinitionFactory,
+                                        final StatisticsService statisticsService,
+                                        final ConsumerFactory consumerFactory) {
+        this.topicDefinitionFactory = topicDefinitionFactory;
 
         LOGGER.debug("Initialising {}", this.getClass().getName());
 
         this.stroomPropertyService = stroomPropertyService;
         this.statisticsService = statisticsService;
+        this.consumerFactory = consumerFactory;
     }
 
     @Override
@@ -104,9 +111,7 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
             //shared by all processors
             kafkaProducer = buildProducer();
 
-            //hold an instance of the executorService in case we want to query it for a health check
-            //build processors on start so we can start/stop to later the processor counts if we need to
-            executorService = buildProcessors();
+            buildProcessors();
 
             runOnAllProcessorsAsyncThenWait("start", StatisticsAggregationProcessor::start);
 
@@ -157,7 +162,7 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
         }
     }
 
-    private ExecutorService buildProcessors() {
+    private void buildProcessors() {
 
         //TODO currently each processor will spawn a thread to consume from the appropriate topic,
         //so 8 threads.  Long term we will want finer control, e.g. more threads for Count stats
@@ -165,14 +170,14 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
 
         //TODO configure the instance count on a per type and interval basis as some intervals/types will need
         //more processing than others
-        int instanceCount = stroomPropertyService.getIntProperty(PROP_KEY_THREADS_PER_INTERVAL_AND_TYPE, 1);
+        final int instanceCount = stroomPropertyService.getIntProperty(PROP_KEY_THREADS_PER_INTERVAL_AND_TYPE, 1);
 
-        int processorCount = StatisticType.values().length * EventStoreTimeIntervalEnum.values().length * instanceCount;
+        final int processorCount = StatisticType.values().length * EventStoreTimeIntervalEnum.values().length * instanceCount;
 
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+        final ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("agg-proc-thread-%d")
                 .build();
-        ExecutorService executorService = Executors.newFixedThreadPool(processorCount, namedThreadFactory);
+        final ExecutorService executorService = Executors.newFixedThreadPool(processorCount, namedThreadFactory);
 
         //create all the processor instances and hold their references
         for (StatisticType statisticType : StatisticType.values()) {
@@ -180,19 +185,20 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
                 for (int instanceId = 0; instanceId < instanceCount; instanceId++) {
 
                     StatisticsAggregationProcessor processor = new StatisticsAggregationProcessor(
+                            topicDefinitionFactory,
                             statisticsService,
                             stroomPropertyService,
                             statisticType,
                             interval,
                             kafkaProducer,
                             executorService,
+                            consumerFactory,
                             instanceId);
 
                     processors.add(processor);
                 }
             }
         }
-        return executorService;
     }
 
     private KafkaProducer<StatEventKey, StatAggregate> buildProducer() {
@@ -213,8 +219,9 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
                 String props = producerProps.entrySet().stream()
                         .map(entry -> "  " + entry.getKey() + "=" + entry.getValue())
                         .collect(Collectors.joining("\n"));
-                LOGGER.error("Error initialising kafka producer with props:\n{}",props, e);
+                LOGGER.error("Error initialising kafka producer with props:\n{}", props, e);
             } catch (Exception e1) {
+                // if we fail to nicely log the props then we still log the exception below.
             }
             LOGGER.error("Error initialising kafka producer, unable to dump property values ", e);
             throw e;
@@ -259,9 +266,7 @@ public class StatisticsAggregationService implements Startable, Stoppable, HasRu
     }
 
     public List<HasHealthCheck> getHealthCheckProviders() {
-        List<HasHealthCheck> healthCheckProviders = new ArrayList<>();
-        processors.forEach(healthCheckProviders::add);
-        return healthCheckProviders;
+        return new ArrayList<>(processors);
     }
 
     @Override

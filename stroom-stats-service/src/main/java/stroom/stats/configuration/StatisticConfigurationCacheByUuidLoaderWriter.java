@@ -20,6 +20,9 @@
 package stroom.stats.configuration;
 
 import org.ehcache.spi.loaderwriter.CacheLoaderWriter;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.context.internal.ManagedSessionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,10 +35,13 @@ public class StatisticConfigurationCacheByUuidLoaderWriter implements CacheLoade
 
 
     private final StroomStatsStoreEntityDAO stroomStatsStoreEntityDAO;
+    private final SessionFactory sessionFactory;
 
     @Inject
-    public StatisticConfigurationCacheByUuidLoaderWriter(final StroomStatsStoreEntityDAO stroomStatsStoreEntityDAO) {
+    public StatisticConfigurationCacheByUuidLoaderWriter(final StroomStatsStoreEntityDAO stroomStatsStoreEntityDAO,
+                                                         final SessionFactory sessionFactory) {
         this.stroomStatsStoreEntityDAO = stroomStatsStoreEntityDAO;
+        this.sessionFactory = sessionFactory;
     }
 
     @Override
@@ -43,10 +49,16 @@ public class StatisticConfigurationCacheByUuidLoaderWriter implements CacheLoade
         LOGGER.trace("load called for key {}", key);
         //EHCache doesn't cache null values so if we can't find a stat config for this uuid,
         //just return null
-        StatisticConfiguration statisticConfiguration = stroomStatsStoreEntityDAO.loadByUuid(key).orElse(null);
+        try (Session session = sessionFactory.openSession()) {
+            ManagedSessionContext.bind(session);
+            session.beginTransaction();
+            StatisticConfiguration statisticConfiguration = stroomStatsStoreEntityDAO.loadByUuid(key).orElse(null);
 
-        LOGGER.trace("Returning statisticConfiguration {}", statisticConfiguration);
-        return statisticConfiguration;
+            LOGGER.trace("Returning statisticConfiguration {}", statisticConfiguration);
+            return statisticConfiguration;
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("Error loading stat store entity by uuid %s", key), e);
+        }
     }
 
     @Override

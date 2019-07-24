@@ -32,8 +32,8 @@ import java.util.List;
 
 public class StatEventKeyHelper {
 
-    static UID statUuidUid = UID.from(new byte[] {9,0,0,1});
-    static RollUpBitMask rollUpBitMask = RollUpBitMask.ZERO_MASK;
+    static UID STAT_UUID_UID = UID.from(new byte[] {9,0,0,1});
+    static RollUpBitMask ROLLUP_BIT_MASK = RollUpBitMask.ZERO_MASK;
     static EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.MINUTE;
     static LocalDateTime time = LocalDateTime.of(2016, 2, 22, 23, 55, 40);
 
@@ -41,12 +41,18 @@ public class StatEventKeyHelper {
     }
 
     public static StatEventKey buildStatKey(final LocalDateTime time, final EventStoreTimeIntervalEnum interval) {
+        return buildStatKey(STAT_UUID_UID, time, interval);
+    }
+
+    public static StatEventKey buildStatKey(final UID statUuidUid,
+                                            final LocalDateTime time,
+                                            final EventStoreTimeIntervalEnum interval) {
         long timeMs = time.toInstant(ZoneOffset.UTC).toEpochMilli();
         List<TagValue> tagValues = new ArrayList<>();
         tagValues.add(new TagValue(UID.from(new byte[] {9,0,1,1}), UID.from(new byte[] {9,0,1,1})));
         tagValues.add(new TagValue(UID.from(new byte[] {9,0,2,1}), UID.from(new byte[] {9,0,2,2})));
         tagValues.add(new TagValue(UID.from(new byte[] {9,0,3,1}), UID.from(new byte[] {9,0,3,2})));
 
-        return new StatEventKey(statUuidUid, rollUpBitMask, interval, timeMs, tagValues);
+        return new StatEventKey(statUuidUid, ROLLUP_BIT_MASK, interval, timeMs, tagValues);
     }
 }

@@ -23,7 +23,6 @@ package stroom.stats.hbase.table;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
@@ -38,10 +37,11 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
-import stroom.stats.hbase.connection.HBaseConnection;
-import stroom.stats.hbase.exception.HBaseException;
+import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import stroom.stats.hbase.connection.HBaseConnection;
+import stroom.stats.hbase.exception.HBaseException;
 
 import java.util.List;
 
@@ -180,6 +180,30 @@ public abstract class HBaseTable implements GenericTable {
             throw new HBaseException(e.getMessage(), e);
         }
     }
+    boolean doPutIfNotExists(final Table tableInterface,
+                             final byte[] row,
+                             final byte[] family,
+                             final byte[] qualifier,
+                             final Put put) {
+        boolean result;
+        try {
+            result = tableInterface.checkAndMutate(row, family)
+                    .qualifier(qualifier)
+                    .ifNotExists()
+                    .thenPut(put);
+        } catch (final Exception e) {
+            closeTable(tableInterface);
+            throw new HBaseException(e.getMessage(), e);
+        }
+        return result;
+
+    }
+
+    boolean doPutIfNotExists(final byte[] row, final byte[] family, final byte[] qualifier, final Put put) {
+        boolean result;
+        final Table tableInterface = getTable();
+        return doPutIfNotExists(tableInterface, row, family, qualifier, put);
+    }
 
     boolean doCheckAndPut(final byte[] row, final byte[] family, final byte[] qualifier, final byte[] value,
             final Put put) {
@@ -197,7 +221,10 @@ public abstract class HBaseTable implements GenericTable {
             final byte[] qualifier, final byte[] value, final Put put) {
         boolean result;
         try {
-            result = tableInterface.checkAndPut(row, family, qualifier, value, put);
+            result = tableInterface.checkAndMutate(row, family)
+                    .qualifier(qualifier)
+                    .ifEquals(value)
+                    .thenPut(put);
         } catch (final Exception e) {
             closeTable(tableInterface);
             throw new HBaseException(e.getMessage(), e);
@@ -221,7 +248,10 @@ public abstract class HBaseTable implements GenericTable {
             final byte[] qualifier, final byte[] value, final Delete delete) {
         boolean result;
         try {
-            result = tableInterface.checkAndDelete(row, family, qualifier, value, delete);
+            result = tableInterface.checkAndMutate(row, family)
+                    .qualifier(qualifier)
+                    .ifEquals(value)
+                    .thenDelete(delete);
         } catch (final Exception e) {
             closeTable(tableInterface);
             throw new HBaseException(e.getMessage(), e);
@@ -287,6 +317,16 @@ public abstract class HBaseTable implements GenericTable {
             closeTable(tableInterface);
             throw new HBaseException(e.getMessage(), e);
         }
+    }
+
+    /**
+     * Wraps a HBase batch call. Gets the Table for this table, calls batch then
+     * closes the Table
+     */
+    void doBatch(final List<? extends Row> actions) {
+        // If we don't care about the results then we can pass a null and it
+        // will check for that
+        doBatch(actions, null);
     }
 
     /**
@@ -396,7 +436,7 @@ public abstract class HBaseTable implements GenericTable {
     @Override
     public abstract String getDisplayName();
 
-    public abstract HTableDescriptor getDesc();
+    public abstract TableDescriptor getDesc();
 
     void tableSpecificCreationProcessing() {
         // Do nothing in here as this is designed to be overridden by

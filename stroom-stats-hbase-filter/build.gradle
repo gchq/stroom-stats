@@ -46,7 +46,7 @@ task copyFilesForDockerBuild() {
         //Copy the fat jar
         copy {
             from "${project.buildDir}/libs/"
-            include "stroom-stats-hbase-filter*-all.jar"
+            include "stroom-stats-hbase-filter*.jar"
             into stroomStatsHbaseDockerBuildDir
         }
     }

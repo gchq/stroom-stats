@@ -13,7 +13,7 @@ docker build \
   ./docker/stroom-stats
 
 docker build \
-  --tag=gchq/stroom-stats-hbase:local-SNAPSHOT_hbase-v1.2.0 \
+  --tag=gchq/stroom-stats-hbase:local-SNAPSHOT_hbase-v2.1 \
   --build-arg http_proxy=$http_proxy \
   --build-arg https_proxy=$https_proxy \
   ./docker/stroom-stats-hbase

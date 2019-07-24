@@ -30,13 +30,8 @@ import stroom.stats.api.StatisticType;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.MockCustomRollupMask;
 import stroom.stats.configuration.MockStatisticConfiguration;
-import stroom.stats.configuration.MockStatisticConfigurationService;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.hbase.uid.MockUniqueIdCache;
-import stroom.stats.hbase.uid.UID;
-import stroom.stats.hbase.uid.UniqueIdCache;
-import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.schema.v4.Statistics;
 import stroom.stats.schema.v4.TagType;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -55,52 +50,38 @@ import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class TestValueStatToAggregateFlatMapper {
+public class TestValueStatToAggregateFlatMapper extends AbstractAggregateFlatMapperTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TestValueStatToAggregateFlatMapper.class);
 
-    private MockStatisticConfigurationService mockStatisticConfigurationService;
-    private MockStroomPropertyService mockStroomPropertyService;
     private ValueStatToAggregateFlatMapper valueStatToAggregateMapper;
-    private UniqueIdCache uniqueIdCache = new MockUniqueIdCache();
-
-    private String statName = "MyStat";
-    private String statUuid = UUID.randomUUID().toString();
-    private String tag1 = "tag1";
-    private String tag2 = "tag2";
-    String tag1val1 = tag1 + "val1";
-    String tag2val1 = tag2 + "val1";
-    UID statNameUid = uniqueIdCache.getOrCreateId("MyStat");
-    UID tag1Uid = uniqueIdCache.getOrCreateId(tag1);
-    UID tag2Uid = uniqueIdCache.getOrCreateId(tag2);
-    UID tag1val1Uid = uniqueIdCache.getOrCreateId(tag1val1);
-    UID tag2val1Uid = uniqueIdCache.getOrCreateId(tag2val1);
-    UID rolledUpUid = uniqueIdCache.getOrCreateId(RollUpBitMask.ROLL_UP_TAG_VALUE);
-    private long id1part1 = 5001L;
-    private long id1part2 = 1001L;
-    private long id2part1 = 5002L;
-    private long id2part2 = 1002L;
 
     @Before
     public void setup() {
-        mockStatisticConfigurationService = new MockStatisticConfigurationService();
-        mockStroomPropertyService = new MockStroomPropertyService();
+//        super.setup();
         valueStatToAggregateMapper = new ValueStatToAggregateFlatMapper(uniqueIdCache, mockStroomPropertyService);
     }
 
+    @Override
+    AbstractStatisticFlatMapper getFlatMapper() {
+        return valueStatToAggregateMapper;
+    }
+
+    @Override
+    StatisticType getStatisticType() {
+        return StatisticType.VALUE;
+    }
 
     @Test(expected = RuntimeException.class)
     public void flatMap_noStatConfig() throws Exception {
 
 
         Statistics.Statistic statistic = buildStatistic();
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.empty());
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic);
 
         //will throw a RTE as there is no StatConfig
         valueStatToAggregateMapper.flatMap("unknownUuid", statisticWrapper);
@@ -122,7 +103,7 @@ public class TestValueStatToAggregateFlatMapper {
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
 
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, statisticConfiguration);
 
         Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statUuid, statisticWrapper);
         List<KeyValue<StatEventKey, StatAggregate>> keyValues = (List<KeyValue<StatEventKey, StatAggregate>>) iterable;
@@ -159,7 +140,7 @@ public class TestValueStatToAggregateFlatMapper {
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
 
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, statisticConfiguration);
 
         Instant start = Instant.now();
         Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statUuid, statisticWrapper);
@@ -213,7 +194,7 @@ public class TestValueStatToAggregateFlatMapper {
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
 
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, statisticConfiguration);
 
         Instant start = Instant.now();
         Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statUuid, statisticWrapper);
@@ -253,7 +234,7 @@ public class TestValueStatToAggregateFlatMapper {
         StatisticConfiguration statisticConfiguration = new MockStatisticConfiguration()
                 .setUuid(statUuid)
                 .setName(statName)
-                .setStatisticType(StatisticType.COUNT)
+                .setStatisticType(getStatisticType())
                 .setRollUpType(StatisticRollUpType.ALL)
                 .addFieldNames(tag1, tag2)
                 .setPrecision(EventStoreTimeIntervalEnum.SECOND);
@@ -261,7 +242,7 @@ public class TestValueStatToAggregateFlatMapper {
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
 
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, statisticConfiguration);
 
         Instant start = Instant.now();
         Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = valueStatToAggregateMapper.flatMap(statUuid, statisticWrapper);
@@ -332,6 +313,14 @@ public class TestValueStatToAggregateFlatMapper {
         StatisticsHelper.addIdentifier(statistic, id2part1, id2part2);
 
         return statistic;
+    }
+
+    @Override
+    Statistics.Statistic buildStatistic(final Duration age) {
+        return StatisticsHelper.buildValueStatistic(ZonedDateTime.now().minus(age), 1.0,
+                StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
+                StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+        );
     }
 
 }

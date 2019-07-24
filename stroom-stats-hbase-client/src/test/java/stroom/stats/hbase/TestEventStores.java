@@ -24,12 +24,15 @@ package stroom.stats.hbase;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
+import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.MockitoJUnitRunner;
-import stroom.stats.api.StatisticType;
 import stroom.stats.common.CommonStatisticConstants;
+import stroom.stats.common.Period;
+import stroom.stats.common.SearchStatisticsCriteria;
+import stroom.stats.configuration.StatisticConfiguration;
+import stroom.stats.configuration.StatisticRollUpType;
 import stroom.stats.hbase.table.EventStoreTable;
 import stroom.stats.hbase.table.EventStoreTableFactory;
 import stroom.stats.hbase.uid.MockUniqueIdCache;
@@ -37,18 +40,25 @@ import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.EnumMap;
+import java.util.Map;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TestEventStores {
     private EventStores eventStores;
 
 
-    @Captor
-    private ArgumentCaptor<StatisticType> statisticTypeCaptor;
 
     private final MockStroomPropertyService mockPropertyService = new MockStroomPropertyService();
 
-    private final MockEventStoreTableFactory mockTableFactory = new MockEventStoreTableFactory();
+    @Mock
+    private EventStoreTableFactory mockTableFactory;
+
+    private final Map<EventStoreTimeIntervalEnum, EventStoreTable> eventStoreTableMap = new EnumMap<>(EventStoreTimeIntervalEnum.class);
+
+    private int maxIntervalsInPeriod = 5;
 
     @Before
     public void setup() throws IOException {
@@ -59,10 +69,19 @@ public class TestEventStores {
 
         mockPropertyService
                 .setProperty(HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX
-                        + EventStoreTimeIntervalEnum.HOUR.name().toLowerCase(), "1");
+                        + EventStoreTimeIntervalEnum.SECOND.name().toLowerCase(), "2");
         mockPropertyService
                 .setProperty(HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX
-                        + EventStoreTimeIntervalEnum.DAY.name().toLowerCase(), "1");
+                        + EventStoreTimeIntervalEnum.MINUTE.name().toLowerCase(), "2");
+        mockPropertyService
+                .setProperty(HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX
+                        + EventStoreTimeIntervalEnum.HOUR.name().toLowerCase(), "2");
+        mockPropertyService
+                .setProperty(HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX
+                        + EventStoreTimeIntervalEnum.DAY.name().toLowerCase(), "2");
+
+        mockPropertyService
+                .setProperty(HBaseStatisticConstants.SEARCH_MAX_INTERVALS_IN_PERIOD_PROPERTY_NAME, maxIntervalsInPeriod);
 
         mockPropertyService.setProperty(CommonStatisticConstants.STROOM_STATISTIC_ENGINES_PROPERTY_NAME,
                 HBaseStatisticsService.ENGINE_NAME);
@@ -72,7 +91,153 @@ public class TestEventStores {
         // mockTableFactory, mockPropertyService, null,
         // mockEventStoreScheduler);
 
+        for (final EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
+            EventStoreTable eventStoreTable = Mockito.mock(EventStoreTable.class, interval.longName());
+            eventStoreTableMap.put(interval, eventStoreTable);
+
+            Mockito.when(mockTableFactory.getEventStoreTable(Mockito.eq(interval)))
+                    .thenReturn(eventStoreTable);
+        }
+
         eventStores = new EventStores(new MockUniqueIdCache(), mockTableFactory, mockPropertyService);
+    }
+
+    @Test
+    public void testGetStatisticsData_noPeriod() {
+        EventStoreTimeIntervalEnum finestInterval = EventStoreTimeIntervalEnum.MINUTE;
+        EventStoreTimeIntervalEnum expectedInterval = EventStoreTimeIntervalEnum.FOREVER;
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(
+                Period.createNullPeriod(), "myuuid")
+                .build();
+
+        eventStores.getStatisticsData(criteria, buildStatisticConfiguration(finestInterval));
+
+        assertIntervalQueried(expectedInterval);
+    }
+
+    @Test
+    public void testGetStatisticsData_forcePrecision() {
+
+        EventStoreTimeIntervalEnum forcedInterval = EventStoreTimeIntervalEnum.HOUR;
+        EventStoreTimeIntervalEnum finestInterval = EventStoreTimeIntervalEnum.MINUTE;
+        EventStoreTimeIntervalEnum expectedInterval = forcedInterval;
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(
+                Period.createNullPeriod(), "myuuid")
+                .setInterval(forcedInterval)
+                .build();
+
+        eventStores.getStatisticsData(criteria, buildStatisticConfiguration(finestInterval));
+
+        assertIntervalQueried(expectedInterval);
+    }
+
+    @Test
+    public void testGetStatisticsData_tinyPeriod() {
+
+        EventStoreTimeIntervalEnum finestInterval = EventStoreTimeIntervalEnum.SECOND;
+        EventStoreTimeIntervalEnum expectedInterval = EventStoreTimeIntervalEnum.SECOND;
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(
+                new Period(Instant.now().minus(2, ChronoUnit.SECONDS).toEpochMilli(),
+                        Instant.now().toEpochMilli()), "myuuid")
+                .build();
+
+        eventStores.getStatisticsData(criteria, buildStatisticConfiguration(finestInterval));
+
+        assertIntervalQueried(expectedInterval);
+    }
+
+    @Test
+    public void testGetStatisticsData_tinyPeriodBumpedUpToFinestInterval() {
+
+        // stat config is a min of MIN, so
+        EventStoreTimeIntervalEnum finestInterval = EventStoreTimeIntervalEnum.MINUTE;
+        EventStoreTimeIntervalEnum expectedInterval = EventStoreTimeIntervalEnum.MINUTE;
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(
+                new Period(Instant.now().minus(2, ChronoUnit.SECONDS).toEpochMilli(),
+                        Instant.now().toEpochMilli()), "myuuid")
+                .build();
+
+        eventStores.getStatisticsData(criteria, buildStatisticConfiguration(finestInterval));
+
+        assertIntervalQueried(expectedInterval);
+    }
+
+    @Test
+    public void testGetStatisticsData_tinyPeriodOutsidePurgeRetention() {
+
+        // Period is v small but it is a long way in the past so out side purge retention
+        // for SECOND
+        EventStoreTimeIntervalEnum finestInterval = EventStoreTimeIntervalEnum.SECOND;
+        EventStoreTimeIntervalEnum expectedInterval = EventStoreTimeIntervalEnum.MINUTE;
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(
+                new Period(
+                        Instant.now()
+                                .minus(2, ChronoUnit.SECONDS)
+                                .minusMillis(EventStoreTimeIntervalEnum.SECOND.rowKeyInterval() * 3)
+                                .toEpochMilli(),
+                        Instant.now()
+                                .minusMillis(EventStoreTimeIntervalEnum.SECOND.rowKeyInterval() * 3)
+                                .toEpochMilli()), "myuuid")
+                .build();
+
+        eventStores.getStatisticsData(criteria, buildStatisticConfiguration(finestInterval));
+
+        assertIntervalQueried(expectedInterval);
+    }
+
+    @Test
+    public void testGetStatisticsData_bigPeriod() {
+
+        EventStoreTimeIntervalEnum finestInterval = EventStoreTimeIntervalEnum.SECOND;
+        EventStoreTimeIntervalEnum expectedInterval = EventStoreTimeIntervalEnum.DAY;
+
+        SearchStatisticsCriteria criteria = SearchStatisticsCriteria.builder(
+                new Period(Instant.now().minusMillis(EventStoreTimeIntervalEnum.HOUR.columnInterval() * (maxIntervalsInPeriod + 1)).toEpochMilli(),
+                        Instant.now().toEpochMilli()), "myuuid")
+                .build();
+
+        eventStores.getStatisticsData(criteria, buildStatisticConfiguration(finestInterval));
+
+        assertIntervalQueried(expectedInterval);
+    }
+
+    private StatisticConfiguration buildStatisticConfiguration(final EventStoreTimeIntervalEnum finestINterval) {
+
+        StatisticConfiguration statisticConfiguration = Mockito.mock(StatisticConfiguration.class);
+        Mockito.when(statisticConfiguration.getPrecision())
+                .thenReturn(finestINterval);
+        Mockito.when(statisticConfiguration.getRollUpType())
+                .thenReturn(StatisticRollUpType.NONE);
+        return statisticConfiguration;
+    }
+
+
+    private void assertIntervalQueried(final EventStoreTimeIntervalEnum expectedInterval) {
+        EventStoreTable expectedEventStoreTable = eventStoreTableMap.get(expectedInterval);
+
+        for (final EventStoreTimeIntervalEnum interval : EventStoreTimeIntervalEnum.values()) {
+            if (!interval.equals(expectedInterval)) {
+                EventStoreTable eventStoreTable = eventStoreTableMap.get(interval);
+
+                Mockito.verify(eventStoreTable, Mockito.never()).getStatisticsData(
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any(),
+                        Mockito.any());
+            }
+        }
+
+        // Now override the verify for the one we expect
+        Mockito.verify(expectedEventStoreTable).getStatisticsData(
+                Mockito.any(),
+                Mockito.any(),
+                Mockito.any(),
+                Mockito.any());
     }
 
     @Test
@@ -159,11 +324,5 @@ public class TestEventStores {
 //        return rolledUpStatisticEvent;
 //    }
 
-    public static class MockEventStoreTableFactory implements EventStoreTableFactory {
-        @Override
-        public EventStoreTable getEventStoreTable(final EventStoreTimeIntervalEnum timeinterval) {
-            return null;
-        }
-    }
 
 }

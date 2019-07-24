@@ -1,5 +1,6 @@
 apply plugin: 'com.github.johnrengelman.shadow' 
-apply plugin: 'net.ltgt.errorprone' 
+//errorprone plugin now needs jdk9 or above
+//apply plugin: 'net.ltgt.errorprone' 
 
 def jarName = "stroom-stats-service-${version}.jar"
 def fatJarName = "stroom-stats-service-${version}-all.jar"
@@ -7,6 +8,12 @@ def fatJarName = "stroom-stats-service-${version}-all.jar"
 apply plugin: 'application'
 
 mainClassName = 'stroom.stats.service.startup.App'
+
+configurations {
+    // This means our integration tests get all the dependencies from our tests and we don't need to specify them twice.
+    integrationTestCompile.extendsFrom testCompile
+    integrationTestRuntime.extendsFrom testRuntime
+}
 
 dependencies {
     //--------Project----------
@@ -73,31 +80,32 @@ dependencies {
     runtime libs.mysql_connector
     runtime libs.saxon
 
+    // deps for pure junits
     testCompile project(':stroom-stats-mocks')
 
     testCompile libs.hamcrest_core
     testCompile libs.assertj
-    permitTestUnusedDeclared libs.jose4j
-    testCompile libs.jose4j
     testCompile libs.junit
+    testCompile libs.mockito_core
+    testCompile libs.kafka_streams_test_utils
 
-    //deps for integrationTest
-    testCompile libs.dropwizard_client
-    testCompile libs.fastClasspathScanner
-    testCompile libs.dropwizard_testing
-    testCompile libs.spring_kafka_test
-    permitTestUnusedDeclared "${libs.wiremock}"
-    testCompile libs.wiremock
-    permitTestUnusedDeclared libs.jackson_annotations
-    testCompile libs.jackson_annotations
+    //the following logging libs are needed when running junits outside dropwizard
+    testRuntime libs.jcl_over_slf4j
+    testRuntime libs.logback_classic
+    testRuntime libs.log4j_over_slf4j
+    testRuntime libs.logback_core
 
-    //TODO gradle-dependency-analyze doesn't understand about integrationTest so says these libs are unused
-    permitTestUnusedDeclared libs.dropwizard_testing
-    permitTestUnusedDeclared libs.spring_kafka_test
-    permitTestUnusedDeclared libs.dropwizard_client
-    permitTestUnusedDeclared libs.fastClasspathScanner
-    permitTestUnusedDeclared libs.objenesis //TODO Not sure why gradle-dependency-analyze is moaning about this
+    // deps for integrationTest (integrationTestCompile extends from testCompile)
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // Bring in all the dropwizard bom version info
+    integrationTestCompile platform(libs.dropwizard_bom)
 
+    integrationTestCompile libs.dropwizard_client
+    integrationTestCompile libs.dropwizard_testing
+    integrationTestCompile libs.fastClasspathScanner
+    integrationTestCompile libs.jose4j
+    integrationTestCompile libs.wiremock
+    integrationTestCompile libs.jackson_annotations
 }
 
 jar {
@@ -134,15 +142,9 @@ sourceSets {
 }
 
 
-configurations {
-    // This means our integration tests get all the dependencies from our tests and we don't need to specify them twice.
-    integrationTestCompile.extendsFrom testCompile
-    integrationTestRuntime.extendsFrom testRuntime
-}
-
 // This task lets us run the actual integration tests.
 task integrationTest(type: Test) {
-    testClassesDir = sourceSets.integrationTest.output.classesDir
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
     classpath = sourceSets.integrationTest.runtimeClasspath
 }
 

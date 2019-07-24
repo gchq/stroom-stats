@@ -30,13 +30,8 @@ import stroom.stats.api.StatisticType;
 import stroom.stats.common.rollup.RollUpBitMask;
 import stroom.stats.configuration.MockCustomRollupMask;
 import stroom.stats.configuration.MockStatisticConfiguration;
-import stroom.stats.configuration.MockStatisticConfigurationService;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticRollUpType;
-import stroom.stats.hbase.uid.MockUniqueIdCache;
-import stroom.stats.hbase.uid.UID;
-import stroom.stats.hbase.uid.UniqueIdCache;
-import stroom.stats.properties.MockStroomPropertyService;
 import stroom.stats.schema.v4.Statistics;
 import stroom.stats.schema.v4.TagType;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
@@ -55,52 +50,38 @@ import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class TestCountStatToAggregateFlatMapper {
+public class TestCountStatToAggregateFlatMapper extends AbstractAggregateFlatMapperTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TestCountStatToAggregateFlatMapper.class);
 
-    private MockStatisticConfigurationService mockStatisticConfigurationService;
-    private MockStroomPropertyService mockStroomPropertyService;
     private CountStatToAggregateFlatMapper countStatToAggregateMapper;
-    private UniqueIdCache uniqueIdCache = new MockUniqueIdCache();
-
-    private String statName = "MyStat";
-    private String statUuid = UUID.randomUUID().toString();
-    private String tag1 = "tag1";
-    private String tag2 = "tag2";
-    String tag1val1 = tag1 + "val1";
-    String tag2val1 = tag2 + "val1";
-    UID statNameUid = uniqueIdCache.getOrCreateId("MyStat");
-    UID tag1Uid = uniqueIdCache.getOrCreateId(tag1);
-    UID tag2Uid = uniqueIdCache.getOrCreateId(tag2);
-    UID tag1val1Uid = uniqueIdCache.getOrCreateId(tag1val1);
-    UID tag2val1Uid = uniqueIdCache.getOrCreateId(tag2val1);
-    UID rolledUpUid = uniqueIdCache.getOrCreateId(RollUpBitMask.ROLL_UP_TAG_VALUE);
-    private long id1part1 = 5001L;
-    private long id1part2 = 1001L;
-    private long id2part1 = 5002L;
-    private long id2part2 = 1002L;
 
     @Before
     public void setup() {
-        mockStatisticConfigurationService = new MockStatisticConfigurationService();
-        mockStroomPropertyService = new MockStroomPropertyService();
+//        super.setup();
         countStatToAggregateMapper = new CountStatToAggregateFlatMapper(uniqueIdCache, mockStroomPropertyService);
     }
 
+    @Override
+    AbstractStatisticFlatMapper getFlatMapper() {
+        return countStatToAggregateMapper;
+    }
+
+    @Override
+    StatisticType getStatisticType() {
+        return StatisticType.COUNT;
+    }
 
     @Test(expected = RuntimeException.class)
     public void flatMap_noStatConfig() throws Exception {
 
 
         Statistics.Statistic statistic = buildStatistic();
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.empty());
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic);
 
         //will throw a RTE as there is no StatConfig
         countStatToAggregateMapper.flatMap("unknownUuid", statisticWrapper);
@@ -122,7 +103,7 @@ public class TestCountStatToAggregateFlatMapper {
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
 
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, statisticConfiguration);
 
         //will throw a RTE as there is no StatConfig
         Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statUuid, statisticWrapper);
@@ -160,7 +141,7 @@ public class TestCountStatToAggregateFlatMapper {
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
 
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, statisticConfiguration);
 
         Instant start = Instant.now();
         Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statUuid, statisticWrapper);
@@ -213,7 +194,7 @@ public class TestCountStatToAggregateFlatMapper {
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
 
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, statisticConfiguration);
 
         //will throw a RTE as there is no StatConfig
         Instant start = Instant.now();
@@ -262,7 +243,7 @@ public class TestCountStatToAggregateFlatMapper {
 
         mockStatisticConfigurationService.addStatisticConfiguration(statisticConfiguration);
 
-        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, Optional.of(statisticConfiguration));
+        StatisticWrapper statisticWrapper = new StatisticWrapper(statistic, statisticConfiguration);
 
         Instant start = Instant.now();
         Iterable<KeyValue<StatEventKey, StatAggregate>> iterable = countStatToAggregateMapper.flatMap(statUuid, statisticWrapper);
@@ -276,7 +257,27 @@ public class TestCountStatToAggregateFlatMapper {
 
     }
 
-    private void assertOnKeyValue(KeyValue<StatEventKey, StatAggregate> keyValue, Statistics.Statistic statistic, StatisticConfiguration statisticConfiguration) {
+
+    protected Statistics.Statistic buildStatistic() throws DatatypeConfigurationException {
+
+        //use system time as class under test has logic based on system time
+        ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
+
+        Statistics.Statistic statistic = StatisticsHelper.buildCountStatistic(
+                time,
+                10L,
+                StatisticsHelper.buildTagType(tag1, tag1val1),
+                StatisticsHelper.buildTagType(tag2, tag2val1)
+        );
+        StatisticsHelper.addIdentifier(statistic, id1part1, id1part2);
+        StatisticsHelper.addIdentifier(statistic, id2part1, id2part2);
+
+        return statistic;
+    }
+
+    protected void assertOnKeyValue(final KeyValue<StatEventKey, StatAggregate> keyValue,
+                                    final Statistics.Statistic statistic,
+                                    final StatisticConfiguration statisticConfiguration) {
         StatEventKey statEventKey = keyValue.key;
         StatAggregate statAggregate = keyValue.value;
         assertThat(statEventKey).isNotNull();
@@ -303,25 +304,7 @@ public class TestCountStatToAggregateFlatMapper {
         assertThat(id2.getValue()).contains(id2part1, id2part2);
     }
 
-
-    private Statistics.Statistic buildStatistic() throws DatatypeConfigurationException {
-
-        //use system time as class under test has logic based on system time
-        ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
-
-        Statistics.Statistic statistic = StatisticsHelper.buildCountStatistic(
-                time,
-                10L,
-                StatisticsHelper.buildTagType(tag1, tag1val1),
-                StatisticsHelper.buildTagType(tag2, tag2val1)
-        );
-        StatisticsHelper.addIdentifier(statistic, id1part1, id1part2);
-        StatisticsHelper.addIdentifier(statistic, id2part1, id2part2);
-
-        return statistic;
-    }
-
-    private Statistics.Statistic buildStatisticNoTags() throws DatatypeConfigurationException {
+    protected Statistics.Statistic buildStatisticNoTags() throws DatatypeConfigurationException {
 
         //use system time as class under test has logic based on system time
         ZonedDateTime time = ZonedDateTime.now(ZoneOffset.UTC);
@@ -334,4 +317,11 @@ public class TestCountStatToAggregateFlatMapper {
         return statistic;
     }
 
+    @Override
+    Statistics.Statistic buildStatistic(final Duration age) {
+        return StatisticsHelper.buildCountStatistic(ZonedDateTime.now().minus(age), 1L,
+                StatisticsHelper.buildTagType(tag1, tag1 + "val1"),
+                StatisticsHelper.buildTagType(tag2, tag2 + "val1")
+        );
+    }
 }

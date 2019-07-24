@@ -34,12 +34,14 @@ import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.aggregation.ValueAggregate;
 import stroom.stats.util.logging.LambdaLogger;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+@ThreadSafe // serde is stateless apart from use of the kryo pool which is threadsafe
 public class StatAggregateSerde implements Serde<StatAggregate>,
         Serializer<StatAggregate>,
         Deserializer<StatAggregate> {
@@ -52,17 +54,18 @@ public class StatAggregateSerde implements Serde<StatAggregate>,
             LOGGER.debug(() -> String.format("Initialising Kryo on thread %s",
                     Thread.currentThread().getName()));
 
-            kryo.register(ValueAggregate.class);
-            kryo.register(CountAggregate.class);
-            kryo.register(StatAggregate.class);
-            kryo.register(MultiPartIdentifier.class);
-            kryo.register(List.class);
-            kryo.register(ArrayList.class);
-            kryo.register(Collections.EMPTY_LIST.getClass());
-            kryo.register(byte[].class);
-            kryo.register(Object[].class);
-            kryo.register(Double.class);
-            kryo.register(Integer.class);
+            kryo.register(ValueAggregate.class, 11);
+            kryo.register(CountAggregate.class, 12);
+            kryo.register(StatAggregate.class, 13);
+            kryo.register(MultiPartIdentifier.class, 14);
+            kryo.register(List.class, 15);
+            kryo.register(ArrayList.class, 16);
+            kryo.register(Collections.EMPTY_LIST.getClass(), 17);
+            kryo.register(byte[].class, 18);
+            kryo.register(Object[].class, 19);
+            kryo.register(Double.class, 20);
+            kryo.register(Integer.class, 21);
+
             ((Kryo.DefaultInstantiatorStrategy) kryo.getInstantiatorStrategy()).setFallbackInstantiatorStrategy(
                     new StdInstantiatorStrategy());
             kryo.setRegistrationRequired(true);

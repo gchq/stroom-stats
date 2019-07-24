@@ -24,9 +24,9 @@ package stroom.stats.hbase.table;
 import javaslang.Tuple2;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
+import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
@@ -36,6 +36,8 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.client.TableDescriptor;
+import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
@@ -83,9 +85,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable {
+
+    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(HBaseEventStoreTable.class);
+
+    private static final long PURGE_RETENTION_SETTING_CHECK_INTERVAL_MS = 60_000;
+
     private final String displayName;
     private final TableName tableName;
     private final EventStoreTimeIntervalEnum timeInterval;
@@ -96,23 +104,27 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     private static final String DISPLAY_NAME_POSTFIX = " EventStore";
     private static final String TABLE_NAME_POSTFIX = "es";
 
-
     // counters to track how many cell puts we do for the
     private final Map<StatisticType, LongAdder> putCounterMap = new EnumMap<>(StatisticType.class);
 
-    private static final LambdaLogger LOGGER = LambdaLogger.getLogger(HBaseEventStoreTable.class);
-
 //    private Map<StatEventKey, StatAggregate> putEventsMap = new HashMap<>();
+
+    private long purgeRetentionIntervalsLastFetchTimeMs = 0;
+    private int purgeRetentionIntervalsLastValue = 0;
+//    private final EventStoreTimeIntervalEnum effectiveIntervalForPurgeRetention;
+    
+    private final Predicate<StatEventKey> isInsidePurgeRetentionPredicate;
 
     /**
      * Private constructor
      */
-    private HBaseEventStoreTable(final EventStoreTimeIntervalEnum timeInterval,
-                                 final StroomPropertyService propertyService,
-                                 final HBaseConnection hBaseConnection,
-                                 final UniqueIdCache uniqueIdCache,
-                                 final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory) {
+    HBaseEventStoreTable(final EventStoreTimeIntervalEnum timeInterval,
+                         final StroomPropertyService propertyService,
+                         final HBaseConnection hBaseConnection,
+                         final UniqueIdCache uniqueIdCache,
+                         final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory) {
         super(hBaseConnection);
+        LOGGER.debug("Initialising HBaseEventStoreTable for interval {}", timeInterval);
         this.displayName = timeInterval.longName() + DISPLAY_NAME_POSTFIX;
         this.tableName = TableName.valueOf(Bytes.toBytes(timeInterval.shortName() + TABLE_NAME_POSTFIX));
         this.timeInterval = timeInterval;
@@ -124,26 +136,23 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
             putCounterMap.put(statisticType, new LongAdder());
         }
 
+//        // Forever is a special case with an eternal purge interval so we have to apply the purge settings
+//        // for the next smallest interval, else we would keep everything.
+//        if (timeInterval.equals(EventStoreTimeIntervalEnum.FOREVER)) {
+//            effectiveIntervalForPurgeRetention = EventStoreTimeIntervalEnum.getNextSmallest(timeInterval).orElseThrow(() ->
+//                    new RuntimeException("Expecting to find an interval that is smaller than FOREVER"));
+//        } else {
+//            effectiveIntervalForPurgeRetention = timeInterval;
+//        }
+        if (timeInterval.isEligibleForPurge()) {
+            isInsidePurgeRetentionPredicate = this::isInsidePurgeRetention;
+        } else {
+            LOGGER.debug("Using allwaysInsidePurgeRetention predicate");
+            isInsidePurgeRetentionPredicate = this::allwaysInsidePurgeRetention;
+        }
+
         init();
     }
-
-
-    /**
-     * Static constructor
-     */
-    public static HBaseEventStoreTable getInstance(final EventStoreTimeIntervalEnum timeInterval,
-                                                   final StroomPropertyService propertyService,
-                                                   final HBaseConnection hBaseConnection,
-                                                   final UniqueIdCache uniqueIdCache,
-                                                   final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory) {
-
-        return new HBaseEventStoreTable(timeInterval,
-                propertyService,
-                hBaseConnection,
-                uniqueIdCache,
-                statisticDataPointAdapterFactory);
-    }
-
 
     @Override
     public EventStoreTimeIntervalEnum getInterval() {
@@ -202,9 +211,11 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         //meaning hbase can lock a row and make multiple changes to it at once.
         //Tuple2 is (RowKey, CountCellIncrementHolder)
         Map<RowKey, List<CountCellIncrementHolder>> rowData = aggregatedEvents.entrySet().stream()
+                .filter(entry ->
+                        isInsidePurgeRetentionPredicate.test(entry.getKey()))
                 .map(entry -> {
-                    CellQualifier cellQualifier = rowKeyBuilder.buildCellQualifier(entry.getKey());
-                    long countIncrement = ((CountAggregate) entry.getValue()).getAggregatedCount();
+                    final CellQualifier cellQualifier = rowKeyBuilder.buildCellQualifier(entry.getKey());
+                    final long countIncrement = ((CountAggregate) entry.getValue()).getAggregatedCount();
                     return new Tuple2<>(
                             cellQualifier.getRowKey(),
                             new CountCellIncrementHolder(cellQualifier.getColumnQualifier(), countIncrement));
@@ -221,21 +232,25 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         //TODO ValueCellValue and ValueAggregate are essentially the same thing. Should probably keep Value Aggregate
         //and put any additional code from VCV into it.
         aggregatedEvents.forEach((statKey, statAggregate) -> {
-            CellQualifier cellQualifier = rowKeyBuilder.buildCellQualifier(statKey);
-            ValueAggregate valueAggregate;
-            try {
-                valueAggregate = (ValueAggregate) statAggregate;
-            } catch (Exception e) {
-                throw new IllegalArgumentException(String.format("StatAggregate %s is of the wrong type",
-                        statAggregate.getClass().getName()));
-            }
-            ValueCellValue valueCellValue = new ValueCellValue(
-                    valueAggregate.getCount(),
-                    valueAggregate.getAggregatedValue(),
-                    valueAggregate.getMinValue(),
-                    valueAggregate.getMaxValue());
+            if (isInsidePurgeRetentionPredicate.test(statKey)) {
+                final CellQualifier cellQualifier = rowKeyBuilder.buildCellQualifier(statKey);
+                ValueAggregate valueAggregate;
+                try {
+                    valueAggregate = (ValueAggregate) statAggregate;
+                } catch (Exception e) {
+                    throw new IllegalArgumentException(String.format("StatAggregate %s is of the wrong type",
+                            statAggregate.getClass().getName()));
+                }
+                final ValueCellValue valueCellValue = new ValueCellValue(
+                        valueAggregate.getCount(),
+                        valueAggregate.getAggregatedValue(),
+                        valueAggregate.getMinValue(),
+                        valueAggregate.getMaxValue());
 
-            addValue(cellQualifier, valueCellValue);
+                addValue(cellQualifier, valueCellValue);
+            } else {
+                LOGGER.trace("Ignoring statKey {} as it is too old", statKey);
+            }
         });
     }
 
@@ -256,17 +271,21 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     }
 
     @Override
-    public HTableDescriptor getDesc() {
-        final HTableDescriptor desc = new HTableDescriptor(getName());
+    public TableDescriptor getDesc() {
+        final ColumnFamilyDescriptor countsColDesc = ColumnFamilyDescriptorBuilder.newBuilder(EventStoreColumnFamily.COUNTS.asByteArray())
+                .setMaxVersions(1)
+                .build();
 
-        final HColumnDescriptor countsColDesc = new HColumnDescriptor(EventStoreColumnFamily.COUNTS.asByteArray());
-        countsColDesc.setMaxVersions(1);
+        final ColumnFamilyDescriptor valuesColDesc = ColumnFamilyDescriptorBuilder.newBuilder(EventStoreColumnFamily.VALUES.asByteArray())
+                .setMaxVersions(1)
+                .build();
 
-        final HColumnDescriptor valuesColDesc = new HColumnDescriptor(EventStoreColumnFamily.VALUES.asByteArray());
-        valuesColDesc.setMaxVersions(1);
-        desc.addFamily(countsColDesc);
-        desc.addFamily(valuesColDesc);
-        return desc;
+        final TableDescriptor tableDescriptor = TableDescriptorBuilder.newBuilder(getName())
+                .setColumnFamily(countsColDesc)
+                .setColumnFamily(valuesColDesc)
+                .build();
+
+        return tableDescriptor;
     }
 
     private void addMultipleCounts(final Map<RowKey, List<CountCellIncrementHolder>> rowChanges) {
@@ -274,21 +293,20 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
         // create an action for each row we have data for
         final List<Mutation> actions = rowChanges.entrySet().stream()
-                .map(entry -> createIncrementOperation(entry.getKey(), entry.getValue()))
+                .map(entry ->
+                        createIncrementOperation(entry.getKey(), entry.getValue()))
                 .collect(Collectors.toList());
 
-        final Object[] results = null;
         // don't care about what is written to results as we are doing puts send the mutations to HBase
 
         // long startTime = System.currentTimeMillis();
-        doBatch(actions, results);
+        doBatch(actions);
         LOGGER.trace(() -> String.format("%s puts sent to HBase", actions.size()));
 
         // LOGGER.info("Sent %s ADDs to HBase from thread %s in %s ms",
         // cellQualifiersFromBuffer.size(),
         // Thread.currentThread().getName(), (System.currentTimeMillis() -
         // startTime));
-
     }
 
     /**
@@ -307,29 +325,27 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
         final Increment increment = new Increment(rowKey.asByteArray());
 
-        // TODO HBase 2.0 has Increment.setReturnResults to allow you to prevent
-        // the return of the new
-        // value to improve performance. In our case we don't care about the new
-        // value so when we
-        // upgrade to HBase 2.0 we need to add this line in.
-        // increment.setReturnResults(false);
+        // Slight saving in network IO by preventing the increment result coming back, which we don't care about.
+        increment.setReturnResults(false);
 
-        //if we have multiple CCIHs for the same rowKey/colQual then hbase seems to only process one of them
-        //Due to the way the data is passed through to this method we should not get multiple increments for the
-        //same rowKey/colQual so we will not check for it due to the cost of doing that.
+        // If we have multiple CCIHs for the same rowKey/colQual then hbase seems to only process one of them.
+        // Due to the way the data is passed through to this method we should not get multiple increments for the
+        // same rowKey/colQual so we will not check for it due to the cost of doing that.
         for (final CountCellIncrementHolder cell : cells) {
-            increment.addColumn(EventStoreColumnFamily.COUNTS.asByteArray(), cell.getColumnQualifier().getBytes(),
+            increment.addColumn(
+                    EventStoreColumnFamily.COUNTS.asByteArray(),
+                    cell.getColumnQualifier().getBytes(),
                     cell.getCellIncrementValue());
         }
         return increment;
     }
 
     private void addValue(final CellQualifier cellQualifier, final ValueCellValue valueCellValue) {
-        //TODO need some means of handling the event identifiers, possibly use the HBase append method to keep
-        //adding ID into a cell (in another col fam), however this would make it difficult to control the number of ids
-        //being put into the cell, though maybe that doesn't matter if we try and limit a bit during streams aggregation.
-        //An alternative is to use a coprocessor to handle the checkAndPut of the ValueCellValue and the identifiers in one go,
-        //thus saving any round trips.
+        // TODO need some means of handling the event identifiers, possibly use the HBase append method to keep
+        // adding ID into a cell (in another col fam), however this would make it difficult to control the number of ids
+        // being put into the cell, though maybe that doesn't matter if we try and limit a bit during streams aggregation.
+        // An alternative is to use a coprocessor to handle the checkAndPut of the ValueCellValue and the identifiers in one go,
+        // thus saving any round trips.
         LOGGER.trace("addValue called for cellQualifier: {}, valueCellValue: {}", cellQualifier, valueCellValue);
 
         final int maxAttemptsAtCheckAndPut = getCheckAndPutRetryCount();
@@ -337,7 +353,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         // we cannot buffer the adding of values due to the two step get-and-set
         // nature of it. This makes value
         // statistics much more expensive than count statistics
-
+        // TODO we probably want to use a coprocessor for this to remove the network round trips
         int retryCounter = maxAttemptsAtCheckAndPut;
         boolean hasPutSucceeded = false;
 
@@ -369,7 +385,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                     newCellValue = currCellValue.addAggregatedValues(valueCellValue);
                     LOGGER.trace("Aggregating, currCellValue: {}, newCellValue: {}", currCellValue, newCellValue);
                 } else {
-                    //nothing there for this rowKey/colQual so just use our value as is
+                    // nothing there for this rowKey/colQual so just use our value as is
                     currCellValue = null;
                     newCellValue = valueCellValue;
                     LOGGER.trace("Cell is empty, newCellValue: {}", newCellValue);
@@ -384,12 +400,22 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                 // do a check and put - atomic operation to only do the put if
                 // the cell value still looks like
                 // currCellValue. If it fails go round again for another go
-                hasPutSucceeded = doCheckAndPut(
-                        tableInterface,
-                        bRowKey,
-                        bColumnFamily, bColumnQualifier,
-                        (currCellValue == null ? null : currCellValue.asByteArray()),
-                        put);
+                if (currCellValue == null) {
+                    hasPutSucceeded = doPutIfNotExists(
+                            bRowKey,
+                            bColumnFamily,
+                            bColumnQualifier,
+                            put);
+
+                } else {
+                    hasPutSucceeded = doCheckAndPut(
+                            tableInterface,
+                            bRowKey,
+                            bColumnFamily,
+                            bColumnQualifier,
+                            currCellValue.asByteArray(),
+                            put);
+                }
 
                 if (hasPutSucceeded) {
                     // put worked so no need to retry
@@ -562,19 +588,19 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
             //partial timestamp of the row key. While this isn't actually an exclusive stop key we
             //will never get close to the last partial timestamp in this system's lifetime.
             byte[] bStopKey = rowKeyBuilder.buildEndKeyBytes(statUuid, rollUpBitMask);
-            scan.setStopRow(bStopKey);
+            scan.withStopRow(bStopKey);
 
         } else if (!period.hasFrom() && period.hasTo()) {
             // ----> To
             byte[] bStartKey = rowKeyBuilder.buildStartKeyBytes(statUuid, rollUpBitMask);
-            scan.setStartRow(bStartKey);
+            scan.withStartRow(bStartKey);
             optEndRowKeyExclusive.map(RowKey::asByteArray).ifPresent(scan::setStopRow);
         } else {
             //No time bounds at all so set a row prefix
             scan.setRowPrefixFilter(rowKeyBuilder.buildStartKeyBytes(statUuid, rollUpBitMask));
         }
 
-        scan.setMaxVersions(1); //we should only be storing 1 version but setting anyway
+        scan.readVersions(1); //we should only be storing 1 version but setting anyway
         //TODO make a prop in the prop service
         scan.setCaching(1_000);
 
@@ -683,24 +709,11 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      */
     @Override
     public void shutdown() {
-//        flushPutBuffer();
 
-    }
-
-    private int getPutBufferSize() {
-        return propertyService.getIntPropertyOrThrow(HBaseStatisticConstants.DATA_STORE_PUT_BUFFER_MAX_SIZE_PROPERTY_NAME);
-    }
-
-    private int getPutTakeCount() {
-        return propertyService.getIntPropertyOrThrow(HBaseStatisticConstants.DATA_STORE_PUT_BUFFER_TAKE_COUNT_PROPERTY_NAME);
     }
 
     private int getCheckAndPutRetryCount() {
         return propertyService.getIntPropertyOrThrow(HBaseStatisticConstants.DATA_STORE_MAX_CHECK_AND_PUT_RETRIES_PROPERTY_NAME);
-    }
-
-    private int getMaxConcurrentBatchPutTasks() {
-        return propertyService.getIntPropertyOrThrow(HBaseStatisticConstants.DATA_STORE_PURGE_MAX_BATCH_PUT_TASKS);
     }
 
     @Override
@@ -732,12 +745,12 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         LOGGER.debug("Using start key:       " + rowKeyBuilder.toPlainTextString(startRowKey));
         LOGGER.debug("Using end key (excl.): " + rowKeyBuilder.toPlainTextString(endRowKeyExclusive));
 
-        //TODO probably can use buildBasicScan() here
-        final Scan scan = new Scan(startRowKey.asByteArray(), endRowKeyExclusive.asByteArray());
-        scan.setMaxVersions(1);
-
-        // TODO make this a global prop
-        scan.setCaching(1_000);
+        // TODO probably can use buildBasicScan() here
+        final Scan scan = new Scan()
+                .withStartRow(startRowKey.asByteArray())
+                .withStopRow(endRowKeyExclusive.asByteArray())
+                .readVersions(1)
+                .setCaching(1_000); // TODO make this a global prop
 
         // add a keyOnlyFilter so we only get back the keys and not the data
         final FilterList filters = new FilterList(new KeyOnlyFilter());
@@ -824,7 +837,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                     finalRowCount, minDate, maxDate, statisticName, rollUpBitMask.asHexString(), timeInterval.longName(),
                     (double) runTime / (double) 1000));
         }
-
     }
 
     @Override
@@ -843,11 +855,9 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
         final Scan scan = new Scan()
                 .setRowPrefixFilter(bRowKey)
-                .setMaxVersions(1)
-                .setFilter(filters);
-
-        // TODO make this a global prop
-        scan.setCaching(1_000);
+                .readVersions(1)
+                .setFilter(filters)
+                .setCaching(1_000); // TODO make this a global prop
 
         int rowCount = 0;
         final Table tableInterface = getTable();
@@ -898,4 +908,26 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         }
     }
 
+    private void refreshPurgeRetentionIntervalValue() {
+        final String purgeRetentionPeriodsPropertyKey = HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX
+                + timeInterval.name().toLowerCase();
+        purgeRetentionIntervalsLastValue = propertyService.getIntPropertyOrThrow(purgeRetentionPeriodsPropertyKey);
+        purgeRetentionIntervalsLastFetchTimeMs = System.currentTimeMillis();
+    }
+
+    private boolean isInsidePurgeRetention(final StatEventKey statEventKey) {
+        if (System.currentTimeMillis() > (purgeRetentionIntervalsLastFetchTimeMs + PURGE_RETENTION_SETTING_CHECK_INTERVAL_MS)) {
+            refreshPurgeRetentionIntervalValue();
+        }
+        
+        final long rowInterval = timeInterval.rowKeyInterval();
+        final long roundedNow = ((long) (System.currentTimeMillis() / rowInterval)) * rowInterval;
+        final long cutOffTime = roundedNow - (rowInterval * purgeRetentionIntervalsLastValue);
+
+        return statEventKey.getTimeMs() >= cutOffTime;
+    }
+    
+    private boolean allwaysInsidePurgeRetention(final StatEventKey statEventKey) {
+        return true;
+    }
 }

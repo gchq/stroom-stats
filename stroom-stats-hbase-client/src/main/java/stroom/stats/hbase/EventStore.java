@@ -54,7 +54,7 @@ public class EventStore {
     private final String purgeRetentionPeriodsPropertyKey;
 
     private int purgeIntervalsPropertyVal = -1;
-    private final String purgeIntervalsPropertyValStr = null;
+    private String purgeIntervalsPropertyValStr = null;
 
     /**
      * Create an event store to store events with the event time rounded to a
@@ -237,7 +237,9 @@ public class EventStore {
      * @return true if it exists
      */
     public boolean doesStatisticExist(final UniqueIdCache uniqueIdCache,
-                                      final StatisticConfiguration statisticConfiguration, final RollUpBitMask rollUpBitMask, final Period period) {
+                                      final StatisticConfiguration statisticConfiguration,
+                                      final RollUpBitMask rollUpBitMask,
+                                      final Period period) {
         // work out the limit of the retained data, assuming purge has just run
         final long purgeUpToTimeMs = calculatePurgeUpToTimeMs(System.currentTimeMillis());
 
@@ -368,6 +370,7 @@ public class EventStore {
             return purgeIntervalsPropertyVal;
         } else {
             purgeIntervalsPropertyVal = Integer.parseInt(newPropValString);
+            purgeIntervalsPropertyValStr = newPropValString;
             return purgeIntervalsPropertyVal;
         }
     }

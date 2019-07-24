@@ -35,9 +35,6 @@ public class StatisticsIngestService implements Startable, Stoppable, HasRunStat
     public static final String PROP_KEY_KAFKA_AUTO_OFFSET_RESET = PROP_KEY_PREFIX_KAFKA + "auto.offset.reset";
 
 
-    public static final String PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX = "stroom.stats.topics.statisticEventsPrefix";
-    public static final String PROP_KEY_BAD_STATISTIC_EVENTS_TOPIC_PREFIX = "stroom.stats.topics.badStatisticEventsPrefix";
-    public static final String PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX = "stroom.stats.topics.statisticRollupPermsPrefix";
 
     private final StatisticsFlatMappingService statisticsFlatMappingService;
     private final StatisticsAggregationService statisticsAggregationService;

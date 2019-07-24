@@ -19,13 +19,12 @@
 
 package stroom.stats;
 
-import stroom.stats.mixins.HasGroupId;
-import stroom.stats.util.healthchecks.HasHealthCheck;
 import stroom.stats.util.HasRunState;
 import stroom.stats.util.Startable;
 import stroom.stats.util.Stoppable;
+import stroom.stats.util.healthchecks.HasHealthCheck;
 
-public interface StatisticsProcessor extends Stoppable, Startable, HasRunState, HasGroupId, HasHealthCheck {
+public interface StatisticsProcessor extends Stoppable, Startable, HasRunState, HasHealthCheck {
 
 }
 

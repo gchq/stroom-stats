@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+* Uplift HBase to 2.1.5 and refactor code accordingly
+
+* Uplift Kafka to 2.1.1 and refactor code accordingly
+
+* Fix creation of DB session for cached lookups
+
 
 ## [v0.6.0-alpha.6] - 2019-03-13
 

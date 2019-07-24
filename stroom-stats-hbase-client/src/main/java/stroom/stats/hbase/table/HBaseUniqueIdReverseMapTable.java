@@ -21,14 +21,16 @@
 
 package stroom.stats.hbase.table;
 
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
+import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.client.TableDescriptor;
+import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,16 +94,21 @@ public class HBaseUniqueIdReverseMapTable extends HBaseTable implements UniqueId
     }
 
     @Override
-    public HTableDescriptor getDesc() {
-        final HTableDescriptor desc = new HTableDescriptor(getName());
-        final HColumnDescriptor colDesc = new HColumnDescriptor(NAME_FAMILY);
-        colDesc.setMaxVersions(1);
-        desc.addFamily(colDesc);
-        return desc;
+    public TableDescriptor getDesc() {
+        final ColumnFamilyDescriptor columnFamilyDescriptor = ColumnFamilyDescriptorBuilder
+                .newBuilder(NAME_FAMILY)
+                .setMaxVersions(1)
+                .build();
+
+        final TableDescriptor tableDescriptor = TableDescriptorBuilder.newBuilder(getName())
+                .setColumnFamily(columnFamilyDescriptor)
+                .build();
+
+        return tableDescriptor;
     }
 
     @Override
-    public boolean checkAndPutName(final byte[] bNewUid, final byte[] name) {
+    public boolean putNameIfNotExists(final byte[] bNewUid, final byte[] name) {
         if (LOGGER.isTraceEnabled()) {
             final String rowKeyStr = ByteArrayUtils.byteArrayToHex(bNewUid);
 
@@ -117,7 +124,7 @@ public class HBaseUniqueIdReverseMapTable extends HBaseTable implements UniqueId
 
         // pass null as the expected value to ensure we only put if it didn't
         // exist before
-        result = doCheckAndPut(bNewUid, NAME_FAMILY, NAME_COL_QUALIFIER, null, put);
+        result = doPutIfNotExists(bNewUid, NAME_FAMILY, NAME_COL_QUALIFIER, put);
 
         return result;
     }

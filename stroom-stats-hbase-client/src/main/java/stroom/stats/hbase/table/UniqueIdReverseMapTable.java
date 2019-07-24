@@ -29,7 +29,11 @@ import java.util.Optional;
  * Table that maps a UID byte array to a String
  */
 public interface UniqueIdReverseMapTable extends GenericTable {
-    boolean checkAndPutName(final byte[] newUid, final byte[] name);
+
+    /**
+     * @return True if the put succeeded, false if the name already existed
+     */
+    boolean putNameIfNotExists(final byte[] newUid, final byte[] name);
 
     long nextId();
 

@@ -13,6 +13,7 @@ import stroom.stats.schema.v4.StatisticsMarshaller;
 import stroom.stats.streams.FullEndToEndIT;
 import stroom.stats.streams.StatisticsIngestService;
 import stroom.stats.streams.TopicNameFactory;
+import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.test.StatMessage;
 import stroom.stats.util.logging.LambdaLogger;
 
@@ -32,7 +33,7 @@ public class StatisticSender {
 
         StroomPropertyService stroomPropertyService = injector.getInstance(StroomPropertyService.class);
         StatisticsMarshaller statisticsMarshaller = injector.getInstance(StatisticsMarshaller.class);
-        String topicPrefix = stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX);
+        String topicPrefix = stroomPropertyService.getPropertyOrThrow(TopicDefinitionFactory.PROP_KEY_STATISTIC_EVENTS_TOPIC_PREFIX);
         String topic = TopicNameFactory.getStatisticTypedName(topicPrefix, statisticType);
         StatMessage statMessage = new StatMessage(topic, statUuid, statistics);
         StatisticSender.sendStatistics(

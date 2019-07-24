@@ -21,11 +21,10 @@ package stroom.stats.streams;
 
 import com.codahale.metrics.health.HealthCheck;
 import com.google.common.base.Preconditions;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serde;
@@ -38,6 +37,8 @@ import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.streams.aggregation.StatAggregate;
 import stroom.stats.streams.serde.StatAggregateSerde;
 import stroom.stats.streams.serde.StatEventKeySerde;
+import stroom.stats.streams.topics.TopicDefinition;
+import stroom.stats.streams.topics.TopicDefinitionFactory;
 import stroom.stats.util.HasRunState;
 import stroom.stats.util.logging.LambdaLogger;
 
@@ -47,7 +48,6 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
@@ -97,7 +97,7 @@ import java.util.stream.StreamSupport;
  * the next topic and/or to the stat service. The size of the StatAggregator is a trade off between in memory aggregation
  * benefits and the risk of more duplicate data in the stat store
  */
-public class StatisticsAggregationProcessor implements StatisticsProcessor {
+public class StatisticsAggregationProcessor implements StatisticsProcessor, TopicConsumer {
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatisticsAggregationProcessor.class);
 
@@ -105,14 +105,17 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     public static final String PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE = "stroom.stats.aggregation.minBatchSize";
     public static final String PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS = "stroom.stats.aggregation.maxFlushIntervalMs";
     public static final String PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS = "stroom.stats.aggregation.pollTimeoutMs";
-    public static final String PROP_KEY_AGGREGATOR_POLL_RECORDS = "stroom.stats.aggregation.pollRecords";
 
     public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECS = 120;
+
+    private static final long PROPERTY_CHECK_INTERVAL_MS = 30_000;
+
 
     private final StatisticsService statisticsService;
     private final StroomPropertyService stroomPropertyService;
     private final StatisticType statisticType;
     private final EventStoreTimeIntervalEnum aggregationInterval;
+    private final ConsumerFactory consumerFactory;
     private final int instanceId;
     private final AtomicReference<String> consumerThreadName = new AtomicReference<>();
 
@@ -122,11 +125,11 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private final Object startStopMonitor = new Object();
 
     private final ExecutorService executorService;
-    private final KafkaProducer<StatEventKey, StatAggregate> kafkaProducer;
-    private final String inputTopic;
+    private final Producer<StatEventKey, StatAggregate> kafkaProducer;
+    private final TopicDefinition<StatEventKey, StatAggregate> inputTopic;
     private final String groupId;
     private final Optional<EventStoreTimeIntervalEnum> optNextInterval;
-    private final Optional<String> optNextIntervalTopic;
+    private final Optional<TopicDefinition<StatEventKey, StatAggregate>> optNextIntervalTopic;
 
     private StatAggregator statAggregator;
     //    private Future<?> consumerFuture;
@@ -140,18 +143,28 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private Map<Integer, Long> latestPartitionOffsets = new ConcurrentHashMap<>();
     private final LongAdder msgCounter = new LongAdder();
 
+    private long pollTimeOutLastFetchMs = 0;
+    private long minBatchSizeLastFetchMs = 0;
+    private long maxFlushIntervalLastFetchMs = 0;
+
+    private Duration pollTimeOutLastValue = Duration.ofSeconds(3);
+    private int minBatchSizeLastValue = 100;
+    private int maxFlushIntervalLastValue = 10_000;
+
     //The following instance/class vars are there for debugging use
     //    private Map<StatEventKey, StatAggregate> putEventsMap = new HashMap<>();
 //    public static final AtomicLong minTimestamp = new AtomicLong(Long.MAX_VALUE);
 //    public static final ConcurrentMap<Integer, List<ConsumerRecord<StatEventKey, StatAggregate>>> consumerRecords =
 //            new ConcurrentHashMap<>();
 
-    public StatisticsAggregationProcessor(final StatisticsService statisticsService,
+    public StatisticsAggregationProcessor(final TopicDefinitionFactory topicDefinitionFactory,
+                                          final StatisticsService statisticsService,
                                           final StroomPropertyService stroomPropertyService,
                                           final StatisticType statisticType,
                                           final EventStoreTimeIntervalEnum aggregationInterval,
-                                          final KafkaProducer<StatEventKey, StatAggregate> kafkaProducer,
+                                          final Producer<StatEventKey, StatAggregate> kafkaProducer,
                                           final ExecutorService executorService,
+                                          final ConsumerFactory consumerFactory,
                                           final int instanceId) {
 
         this.statisticsService = statisticsService;
@@ -161,6 +174,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         this.instanceId = instanceId;
         this.kafkaProducer = kafkaProducer;
         this.executorService = executorService;
+        this.consumerFactory = consumerFactory;
 
         LOGGER.info("Building {} - {} aggregation processor, with instance id {}",
                 statisticType, aggregationInterval, instanceId);
@@ -168,74 +182,43 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         statKeySerde = StatEventKeySerde.instance();
         statAggregateSerde = StatAggregateSerde.instance();
 
-        String topicPrefix = stroomPropertyService.getPropertyOrThrow(
-                StatisticsIngestService.PROP_KEY_STATISTIC_ROLLUP_PERMS_TOPIC_PREFIX);
+        inputTopic = topicDefinitionFactory.getAggregatesTopic(statisticType, aggregationInterval);
 
-        inputTopic = TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, aggregationInterval);
         groupId = stroomPropertyService.getPropertyOrThrow(PROP_KEY_AGGREGATION_PROCESSOR_APP_ID_PREFIX) +
                 "-" + inputTopic;
         optNextInterval = EventStoreTimeIntervalEnum.getNextBiggest(aggregationInterval);
+
         optNextIntervalTopic = optNextInterval.map(newInterval ->
-                TopicNameFactory.getIntervalTopicName(topicPrefix, statisticType, newInterval));
+                topicDefinitionFactory.getAggregatesTopic(statisticType, newInterval));
 
         //start a processor for a stat type and aggregationInterval pair
         //This will improve aggregation as it will only handle data for the same stat types and aggregationInterval sizes
     }
 
-    private KafkaConsumer<StatEventKey, StatAggregate> buildConsumer() {
+    private Consumer<StatEventKey, StatAggregate> buildConsumer() {
+        try{
+            LOGGER.debug("Starting aggregation consumer [{}]", instanceId);
 
-        try {
-            Map<String, Object> props = getConsumerProps();
-            LOGGER.debug(() ->
-                "Starting aggregation consumer [" + instanceId + "] with properties:\n" + props.entrySet().stream()
-                        .map(entry -> "    " + entry.getKey() + ": " + entry.getValue().toString())
-                        .collect(Collectors.joining("\n"))
-            );
-            KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer = new KafkaConsumer<>(
-                    props,
-                    statKeySerde.deserializer(),
-                    statAggregateSerde.deserializer());
+            final Consumer<StatEventKey, StatAggregate> consumer = consumerFactory.createConsumer(
+                    groupId, statKeySerde, statAggregateSerde);
 
-            StatisticsAggregationRebalanceListener rebalanceListener = new StatisticsAggregationRebalanceListener(
+            final StatisticsAggregationRebalanceListener rebalanceListener = new StatisticsAggregationRebalanceListener(
                     this,
-                    kafkaConsumer);
+                    consumer);
 
-            kafkaConsumer.subscribe(Collections.singletonList(inputTopic), rebalanceListener);
+            consumer.subscribe(Collections.singletonList(inputTopic.getName()), rebalanceListener);
 
             //Update our collection of partitions for later health check use
 //            assignedPartitions = kafkaConsumer.partitionsFor(inputTopic).stream()
 //                    .map(PartitionInfo::partition)
 //                    .collect(Collectors.toList());
-            setAssignedPartitions(kafkaConsumer.assignment());
-
-            return kafkaConsumer;
+            setAssignedPartitions(consumer.assignment());
+            return consumer;
         } catch (Exception e) {
             LOGGER.error(String.format("Error building consumer for topic %s on processor %s", inputTopic, this), e);
             throw e;
         }
     }
-
-    private Map<String, Object> getConsumerProps() {
-
-        Map<String, Object> consumerProps = new HashMap<>();
-
-        //ensure the session timeout is bigger than the flush timeout so our session doesn't expire
-        //before we try to commit after a flush
-        //Also ensure it isn't less than the default of 10s
-        int sessionTimeoutMs = Math.max(10_000, (int) (getFlushIntervalMs() * 1.2));
-
-        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                stroomPropertyService.getPropertyOrThrow(StatisticsIngestService.PROP_KEY_KAFKA_BOOTSTRAP_SERVERS));
-        consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        consumerProps.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, getPollRecords());
-        consumerProps.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, sessionTimeoutMs);
-        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, getAutoOffsetReset());
-//        consumerProps.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, RoundRobinAssignor.class.getName());
-
-        return consumerProps;
-    }
-
 
     /**
      * Drain the aggregator and pass all aggregated events to the stat service to persist to the event store
@@ -266,7 +249,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private void flushToTopic(final StatAggregator statAggregator,
                               final String topic,
                               final EventStoreTimeIntervalEnum newInterval,
-                              final KafkaProducer<StatEventKey, StatAggregate> producer) {
+                              final Producer<StatEventKey, StatAggregate> producer) {
 
         Preconditions.checkNotNull(statAggregator);
         Preconditions.checkNotNull(producer);
@@ -295,7 +278,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     private void startProcessor() {
         runState = RunState.RUNNING;
 
-//        consumerFuture = executorService.submit(this::consumerRunnable);
         consumerFuture = CompletableFuture.runAsync(this::consumerRunnable, executorService)
                 .whenComplete((aVoid, throwable) -> {
                     if (throwable != null) {
@@ -310,22 +292,26 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 
     private void consumerRunnable() {
         LOGGER.info("Starting consumer/producer for {}, {}, {} -> {}",
-                statisticType, aggregationInterval, inputTopic, optNextIntervalTopic.orElse("None"));
+                statisticType, aggregationInterval, inputTopic,
+                optNextIntervalTopic
+                        .map(TopicDefinition::getName)
+                        .orElse("None"));
 
-        KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer = buildConsumer();
+        final Consumer<StatEventKey, StatAggregate> kafkaConsumer = buildConsumer();
 
         consumerThreadName.set(Thread.currentThread().getName());
 
         int unCommittedRecCount = 0;
 
         try {
-            //loop forever unless the thread is processing is stopped from outside
+            //loop forever unless the thread that is processing is stopped/interrupted from outside
             while (runState.equals(RunState.RUNNING) && !Thread.currentThread().isInterrupted()) {
                 try {
-                    ConsumerRecords<StatEventKey, StatAggregate> records = kafkaConsumer.poll(getPollTimeoutMs());
+                    final ConsumerRecords<StatEventKey, StatAggregate> records = kafkaConsumer.poll(getPollTimeoutMs());
 
                     int recCount = records.count();
-                    //TODO should hook this in as a DropWiz metric
+                    // TODO should hook this in as a DropWiz metric
+                    // Used in the healthcheck to give an indication of how much work this processor is doing
                     msgCounter.add(recCount);
 
                     unCommittedRecCount += recCount;
@@ -359,6 +345,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
 //                        LOGGER.debug("putEventsMap key count: {}", putEventsMap.size());
                     }
 
+                    // Only checking if a flush is needed on each poll rather than on each msg
                     boolean flushHappened = flushAggregatorIfReady();
                     if (flushHappened && unCommittedRecCount > 0) {
                         kafkaConsumer.commitSync();
@@ -379,7 +366,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     }
 
     private void debugRecords(final ConsumerRecords<StatEventKey, StatAggregate> records, final int recCount) {
-        ConcurrentMap<UID, AtomicInteger> statNameMap = new ConcurrentHashMap<>();
+        final ConcurrentMap<UID, AtomicInteger> statNameMap = new ConcurrentHashMap<>();
 
         records.forEach(rec ->
                 statNameMap.computeIfAbsent(
@@ -402,7 +389,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                     .min()
                     .getAsLong();
 
-            String minTimestampStr = Instant.ofEpochMilli(minTimestamp).toString();
+            final String minTimestampStr = Instant.ofEpochMilli(minTimestamp).toString();
 
 //                            StatisticsAggregationProcessor.minTimestamp.getAndUpdate(currVal ->
 //                                    Math.min(currVal, minTimestamp));
@@ -425,9 +412,9 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         }
     }
 
-    private void cleanUp(KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer, int unCommittedRecCount) {
+    private void cleanUp(Consumer<StatEventKey, StatAggregate> kafkaConsumer, int unCommittedRecCount) {
 
-        //force a flush of anything in the aggregator
+        // force a flush of anything in the aggregator
         if (statAggregator != null) {
             LOGGER.debug("Forcing a flush of aggregator {} on processor {}", statAggregator, this);
             flushAggregator();
@@ -452,8 +439,8 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     }
 
     private boolean flushAggregator() {
-        //flush all the aggregated stats down to the StatStore and onto the next biggest aggregationInterval topic
-        //(if there is one) for coarser aggregation
+        // flush all the aggregated stats down to the StatStore and onto the next biggest aggregationInterval topic
+        // (if there is one) for coarser aggregation
         if (statAggregator != null) {
             if (!statAggregator.isEmpty()) {
                 LOGGER.trace("Flushing aggregator {}", statAggregator);
@@ -461,7 +448,11 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                 flushToStatStore(statisticType, statAggregator);
 
                 optNextInterval.ifPresent(nextInterval ->
-                        flushToTopic(statAggregator, optNextIntervalTopic.get(), nextInterval, kafkaProducer));
+                        flushToTopic(
+                                statAggregator,
+                                optNextIntervalTopic.get().getName(),
+                                nextInterval,
+                                kafkaProducer));
                 //null the reference ready for new aggregates
                 statAggregator = null;
 
@@ -471,12 +462,10 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         return false;
     }
 
-    void flush(final KafkaConsumer<StatEventKey, StatAggregate> kafkaConsumer) {
-
+    void flush(final Consumer<StatEventKey, StatAggregate> kafkaConsumer) {
         flushAggregator();
         kafkaConsumer.commitSync();
     }
-
 
     @Override
     public void stop() {
@@ -561,11 +550,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
     }
 
     @Override
-    public String getGroupId() {
-        return groupId;
-    }
-
-    @Override
     public String getName() {
         return groupId + "-" + instanceId;
     }
@@ -595,7 +579,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         Map<String, String> statusMap = new TreeMap<>();
 
         statusMap.put("runState", runState.name());
-        statusMap.put("inputTopic", inputTopic);
+        statusMap.put("inputTopic", inputTopic.getName());
         statusMap.put("groupId", groupId);
         statusMap.put("instanceId", Integer.toString(instanceId));
         statusMap.put("bufferInputCount",
@@ -633,24 +617,34 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
         return instanceId;
     }
 
-    private int getPollTimeoutMs() {
-        return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS, 100);
-    }
-
-    private int getPollRecords() {
-        return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_POLL_RECORDS, 1000);
+    private Duration getPollTimeoutMs() {
+        // This method is called a lot so this an optimisation of an already cached value
+        if (System.currentTimeMillis() > (pollTimeOutLastFetchMs + PROPERTY_CHECK_INTERVAL_MS)) {
+            pollTimeOutLastFetchMs = System.currentTimeMillis();
+            pollTimeOutLastValue = Duration.ofMillis(stroomPropertyService.getIntProperty(
+                    PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS, 100));
+        }
+        return pollTimeOutLastValue;
     }
 
     private int getMinBatchSize() {
-        return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000);
+        // This method is called a lot so this an optimisation of an already cached value
+        if (System.currentTimeMillis() > (minBatchSizeLastFetchMs + PROPERTY_CHECK_INTERVAL_MS)) {
+            minBatchSizeLastFetchMs = System.currentTimeMillis();
+            minBatchSizeLastValue = stroomPropertyService.getIntProperty(
+                    PROP_KEY_AGGREGATOR_MIN_BATCH_SIZE, 10_000);
+        }
+        return minBatchSizeLastValue;
     }
 
     private int getFlushIntervalMs() {
-        return stroomPropertyService.getIntProperty(PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 60_000);
-    }
-
-    private String getAutoOffsetReset() {
-        return stroomPropertyService.getProperty(StatisticsIngestService.PROP_KEY_KAFKA_AUTO_OFFSET_RESET, "latest");
+        // This method is called a lot so this an optimisation of an already cached value
+        if (System.currentTimeMillis() > (maxFlushIntervalLastFetchMs + PROPERTY_CHECK_INTERVAL_MS)) {
+            maxFlushIntervalLastFetchMs = System.currentTimeMillis();
+            maxFlushIntervalLastValue = stroomPropertyService.getIntProperty(
+                    PROP_KEY_AGGREGATOR_MAX_FLUSH_INTERVAL_MS, 60_000);
+        }
+        return maxFlushIntervalLastValue;
     }
 
     @Override
@@ -663,5 +657,4 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor {
                 ", " + runState +
                 '}';
     }
-
 }

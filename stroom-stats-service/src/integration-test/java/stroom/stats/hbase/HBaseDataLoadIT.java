@@ -390,7 +390,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         Query query = new Query(
                 new DocRef(StatisticConfiguration.ENTITY_TYPE, statisticConfiguration.getUuid()),
-                new ExpressionOperator(true, ExpressionOperator.Op.AND));
+                new ExpressionOperator(true, ExpressionOperator.Op.AND, precisionTerm));
 
         //all records should come back
         runQuery(statisticsService, wrapQuery(query, statisticConfiguration), statisticConfiguration, times.size());
@@ -405,7 +405,7 @@ public class HBaseDataLoadIT extends AbstractAppIT {
 
         Query query = new Query(
                 new DocRef(StatisticConfiguration.ENTITY_TYPE, statisticConfiguration.getUuid()),
-                new ExpressionOperator(true, ExpressionOperator.Op.AND));
+                new ExpressionOperator(true, ExpressionOperator.Op.AND, precisionTerm));
 
         //only put the static fields in the table settings so we will expect it to roll up all the tags
         SearchRequest searchRequest = QueryApiHelper.wrapQuery(query, StatisticConfiguration.STATIC_FIELDS_MAP.get(StatisticType.COUNT));

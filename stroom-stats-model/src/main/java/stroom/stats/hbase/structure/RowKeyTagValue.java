@@ -30,14 +30,15 @@ import java.util.List;
 public class RowKeyTagValue implements TagValueFilterTreeNode, Comparable<RowKeyTagValue> {
     public static final int TAG_AND_VALUE_ARRAY_LENGTH = UID.UID_ARRAY_LENGTH * 2;
 
-    private UID tag;
+    private final UID tag;
 
-    private UID value;
+    private final UID value;
 
-    private byte[] concatenatedByteArray;
+    private volatile byte[] concatenatedByteArray;
 
     private final Object privateLock = new Object();
 
+    private volatile int hashCode = 0;
 
     public RowKeyTagValue(final UID tag, final UID value) {
         Preconditions.checkNotNull(tag);
@@ -181,6 +182,13 @@ public class RowKeyTagValue implements TagValueFilterTreeNode, Comparable<RowKey
 
     @Override
     public int hashCode() {
+        if (hashCode == 0) {
+            hashCode = buildHashCode();
+        }
+        return hashCode;
+    }
+
+    public int buildHashCode() {
         final int prime = 31;
         int result = 1;
         result = prime * result + tag.hashCode();

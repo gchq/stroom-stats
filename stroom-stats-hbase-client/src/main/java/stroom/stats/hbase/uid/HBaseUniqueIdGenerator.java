@@ -128,7 +128,7 @@ public class HBaseUniqueIdGenerator implements UniqueIdGenerator {
                     // create the KV.
                     LOGGER.trace("Adding reverse mapping for ID={} for {}", newId, name);
 
-                    if (!reverseMapTable.checkAndPutName(bNewId, bName)) {
+                    if (!reverseMapTable.putNameIfNotExists(bNewId, bName)) {
                         // a name already exists for this UID, which should
                         // never happen as each thread would get
                         // a unique UID from the the call to nextId

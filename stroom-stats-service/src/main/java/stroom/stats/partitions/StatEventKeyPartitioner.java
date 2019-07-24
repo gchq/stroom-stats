@@ -67,7 +67,10 @@ public class StatEventKeyPartitioner implements Partitioner, StreamPartitioner<S
     }
 
     @Override
-    public Integer partition(final StatEventKey key, final StatAggregate value, final int numPartitions) {
+    public Integer partition(final String topic,
+                             final StatEventKey key,
+                             final StatAggregate value,
+                             final int numPartitions) {
         int partition = partition(key, numPartitions);
         LOGGER.trace("partition called for key {}, numPartitions {}, returning {}", key, numPartitions, partition);
 
