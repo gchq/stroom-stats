@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Fix creation of DB session for cached lookups
 
+* Change purge retention logic to allow for FOREVER interval.
+
+* Fix best fit interval sellection to allow for FOREVER interval.
+
+* Optimise some high use code following profiling
+
 
 ## [v0.6.0-alpha.6] - 2019-03-13
 
