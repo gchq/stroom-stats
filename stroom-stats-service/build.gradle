@@ -89,6 +89,12 @@ dependencies {
     testCompile libs.mockito_core
     testCompile libs.kafka_streams_test_utils
 
+    //the following logging libs are needed when running junits outside dropwizard
+    testRuntime libs.jcl_over_slf4j
+    testRuntime libs.logback_classic
+    testRuntime libs.log4j_over_slf4j
+    testRuntime libs.logback_core
+
     // deps for integrationTest (integrationTestCompile extends from testCompile)
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // Bring in all the dropwizard bom version info
