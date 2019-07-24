@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+
+## [v1.0-alpha.1] - 2019-07-24
+
 * Uplift HBase to 2.1.5 and refactor code accordingly
 
 * Uplift Kafka to 2.1.1 and refactor code accordingly
@@ -24,6 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [v0.6.0-alpha.5] - 2019-02-20
 
-[Unreleased]: https://github.com/gchq/stroom-stats/compare/v0.6.0-alpha.6...master
+[Unreleased]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.1...master
+[v1.0-alpha.1]: https://github.com/gchq/stroom-stats/compare/v0.6.0-alpha.6...v1.0-alpha.1
 [v0.6.0-alpha.6]: https://github.com/gchq/stroom-stats/compare/v0.6.0-alpha.5...v0.6.0-alpha.6
 [v0.6.0-alpha.5]: https://github.com/gchq/stroom-stats/compare/v0.6.0-alpha.4...v0.6.0-alpha.5
