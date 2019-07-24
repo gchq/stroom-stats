@@ -41,7 +41,7 @@ public class TimeAgnosticRowKey {
     private final byte[] rollUpBitMask;
     private final List<RowKeyTagValue> sortedTagValuePairs;
 
-    private final int hashCode;
+    private volatile int hashCode = 0;
 
     public static final int UID_ARRAY_LENGTH = UID.UID_ARRAY_LENGTH;
     public static final int ROLL_UP_BIT_MASK_LENGTH = 2;
@@ -62,7 +62,6 @@ public class TimeAgnosticRowKey {
             tempList.add(rowKeyTagValue.shallowCopy());
         }
         this.sortedTagValuePairs = Collections.unmodifiableList(tempList);
-        hashCode = buildHashCode();
     }
 
     public UID getTypeId() {
@@ -110,6 +109,9 @@ public class TimeAgnosticRowKey {
 
     @Override
     public int hashCode() {
+        if (hashCode == 0) {
+            hashCode = buildHashCode();
+        }
         return hashCode;
     }
 

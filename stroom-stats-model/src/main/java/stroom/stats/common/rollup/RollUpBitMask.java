@@ -92,6 +92,8 @@ public class RollUpBitMask implements Comparable<RollUpBitMask> {
     public static final String ROLL_UP_TAG_VALUE = "<<<<ROLLED_UP>>>>";
     public static final int BYTE_VALUE_LENGTH = Short.BYTES;
 
+    private volatile int hashCode = 0;
+
     static {
         // add the case of no rollups to the map
         positionListToObjectMap.put(new TreeSet<>(), ZERO_MASK);
@@ -442,10 +444,16 @@ public class RollUpBitMask implements Comparable<RollUpBitMask> {
 
     @Override
     public int hashCode() {
+        if (hashCode == 0) {
+            hashCode = buildHashCode();
+        }
+        return hashCode;
+    }
+
+    public int buildHashCode() {
         final int prime = 31;
         int result = 1;
         result = prime * result + mask;
-        result = prime * result + Arrays.hashCode(maskAsBytes);
         return result;
     }
 
@@ -459,8 +467,6 @@ public class RollUpBitMask implements Comparable<RollUpBitMask> {
             return false;
         final RollUpBitMask other = (RollUpBitMask) obj;
         if (mask != other.mask)
-            return false;
-        if (!Arrays.equals(maskAsBytes, other.maskAsBytes))
             return false;
         return true;
     }

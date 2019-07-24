@@ -94,7 +94,7 @@ public class EventStores {
     /**
      * Flushes all events down to the datastore
      */
-    public void flushAllEvents() {
+    void flushAllEvents() {
 
         LOGGER.debug("flushAllEvents called");
         for (final EventStore eventStore : eventStoreMap.values()) {
@@ -113,9 +113,9 @@ public class EventStores {
      * Puts a list of aggregated events into the appropriate event stores.
      * All aggregatedEvents must be for the same statisticType and interval.
      */
-    public void putAggregatedEvents(final StatisticType statisticType,
-                                    final EventStoreTimeIntervalEnum interval,
-                                    final Map<StatEventKey, StatAggregate> aggregatedEvents) {
+    void putAggregatedEvents(final StatisticType statisticType,
+                             final EventStoreTimeIntervalEnum interval,
+                             final Map<StatEventKey, StatAggregate> aggregatedEvents) {
 
         eventStoreMap.get(interval)
                 .putAggregatedEvents(statisticType, aggregatedEvents);
@@ -128,7 +128,8 @@ public class EventStores {
      * data for that stat over that period. Null if there is no data in
      * any store for that period
      */
-    private EventStore findBestFit(final SearchStatisticsCriteria criteria, final StatisticConfiguration statisticConfiguration) {
+    private EventStore findBestFit(final SearchStatisticsCriteria criteria,
+                                   final StatisticConfiguration statisticConfiguration) {
         // Try to determine which store holds the data precision we will need to
         // serve this query.
         EventStoreTimeIntervalEnum bestFitInterval;
@@ -137,16 +138,17 @@ public class EventStores {
 
         final long periodMillis = effectivePeriod.duration();
 
-        if (periodMillis == 0) {
-            throw new RuntimeException(String.format("Not possible to calculate a best fit store for a zero length time period"));
+        if (periodMillis != 0) {
+            // Work out which store to pull data from based on the period requested
+            // and an optimum number of data points
+
+            final int maxTimeIntervalsInPeriod = propertyService.getIntPropertyOrThrow(
+                    HBaseStatisticConstants.SEARCH_MAX_INTERVALS_IN_PERIOD_PROPERTY_NAME);
+            bestFitInterval = EventStoreTimeIntervalHelper.getBestFit(periodMillis, maxTimeIntervalsInPeriod);
+        } else {
+            bestFitInterval = EventStoreTimeIntervalEnum.FOREVER;
         }
 
-        // Work out which store to pull data from based on the period requested
-        // and an optimum number of data points
-
-        final int maxTimeIntervalsInPeriod = propertyService.getIntPropertyOrThrow(HBaseStatisticConstants.SEARCH_MAX_INTERVALS_IN_PERIOD_PROPERTY_NAME);
-
-        bestFitInterval = EventStoreTimeIntervalHelper.getBestFit(periodMillis, maxTimeIntervalsInPeriod);
         final EventStoreTimeIntervalEnum bestFitBasedOnPeriod = bestFitInterval;
 
         // the optimum may be finer than that configured for the data source so
@@ -166,9 +168,12 @@ public class EventStores {
         // that the purge has not run or the purge retention has changed but
         // there is not a lot we can do to allow for
         // that. To support queries with no date term we will always return the largest store as a last resort
-        //irrespective of the purge retention
-        while (bestFitStore.isTimeInsidePurgeRetention(effectivePeriod.getFrom()) == false) {
-            EventStore nextBiggestStore = eventStoreMap.get(EventStoreTimeIntervalEnum.getNextBiggest(bestFitStore.getTimeInterval()));
+        // irrespective of the purge retention
+        while (!bestFitStore.isTimeInsidePurgeRetention(effectivePeriod.getFrom())) {
+
+            EventStore nextBiggestStore = EventStoreTimeIntervalEnum.getNextBiggest(bestFitStore.getTimeInterval())
+                    .map(eventStoreMap::get)
+                    .orElse(null);
 
             if (nextBiggestStore == null) {
                 // there is no next biggest so no point continuing
@@ -179,8 +184,10 @@ public class EventStores {
         final EventStoreTimeIntervalEnum bestFitBasedOnRetention = bestFitStore != null ? bestFitStore.getTimeInterval() : null;
         bestFitInterval = bestFitBasedOnRetention;
 
-        LOGGER.info("Using event store [{}] for search.  Best fit based on: period - [{}], data source - [{}] & retention - [{}]",
+        LOGGER.info("Using event store [{}] for search.  Period: [{}]." +
+                        "Best fit based on: period - [{}], data source - [{}] & retention - [{}]",
                 nullSafePrintInterval(bestFitInterval),
+                criteria.getPeriod(),
                 nullSafePrintInterval(bestFitBasedOnPeriod),
                 nullSafePrintInterval(bestFitBasedOnDataSource),
                 nullSafePrintInterval(bestFitBasedOnRetention));
@@ -200,14 +207,19 @@ public class EventStores {
      * If parts are missing from the period then constrain it using the epoch and/or now
      */
     private Period buildEffectivePeriod(final SearchStatisticsCriteria criteria) {
-        Long from = criteria.getPeriod().getFrom();
-        Long to = criteria.getPeriod().getTo();
-        return new Period(from != null ? from : 0, to != null ? to : Instant.now().toEpochMilli());
-
+        if (criteria.getPeriod() != null) {
+            Long from = criteria.getPeriod().getFrom();
+            Long to = criteria.getPeriod().getTo();
+            return new Period(
+                    from != null ? from : 0,
+                    to != null ? to : Instant.now().toEpochMilli());
+        } else {
+            return new Period(0L, Instant.now().toEpochMilli());
+        }
     }
 
-    public StatisticDataSet getStatisticsData(final SearchStatisticsCriteria criteria,
-                                              final StatisticConfiguration statisticConfiguration) {
+    StatisticDataSet getStatisticsData(final SearchStatisticsCriteria criteria,
+                                       final StatisticConfiguration statisticConfiguration) {
 
         LOGGER.debug("Searching statistics store with criteria: {}", criteria);
         // Make sure a period has been requested.

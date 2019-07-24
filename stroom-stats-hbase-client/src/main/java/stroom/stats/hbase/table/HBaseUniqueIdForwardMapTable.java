@@ -122,7 +122,7 @@ public class HBaseUniqueIdForwardMapTable extends HBaseTable implements UniqueId
 
         boolean result;
 
-        result = doCheckAndPut(nameKey, ID_FAMILY, ID_COL_QUALIFIER, null, put);
+        result = doPutIfNotExists(nameKey, ID_FAMILY, ID_COL_QUALIFIER, put);
 
         return result;
     }

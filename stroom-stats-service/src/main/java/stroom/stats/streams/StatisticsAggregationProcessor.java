@@ -147,9 +147,9 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
     private long minBatchSizeLastFetchMs = 0;
     private long maxFlushIntervalLastFetchMs = 0;
 
-    private int pollTimeOutLastValue = -1;
-    private int minBatchSizeLastValue = -1;
-    private int maxFlushIntervalLastValue = -1;
+    private Duration pollTimeOutLastValue = Duration.ofSeconds(3);
+    private int minBatchSizeLastValue = 100;
+    private int maxFlushIntervalLastValue = 10_000;
 
     //The following instance/class vars are there for debugging use
     //    private Map<StatEventKey, StatAggregate> putEventsMap = new HashMap<>();
@@ -304,14 +304,14 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
         int unCommittedRecCount = 0;
 
         try {
-            //loop forever unless the thread is processing is stopped from outside
+            //loop forever unless the thread that is processing is stopped/interrupted from outside
             while (runState.equals(RunState.RUNNING) && !Thread.currentThread().isInterrupted()) {
                 try {
-                    ConsumerRecords<StatEventKey, StatAggregate> records = kafkaConsumer.poll(
-                            Duration.ofMillis(getPollTimeoutMs()));
+                    final ConsumerRecords<StatEventKey, StatAggregate> records = kafkaConsumer.poll(getPollTimeoutMs());
 
                     int recCount = records.count();
-                    //TODO should hook this in as a DropWiz metric
+                    // TODO should hook this in as a DropWiz metric
+                    // Used in the healthcheck to give an indication of how much work this processor is doing
                     msgCounter.add(recCount);
 
                     unCommittedRecCount += recCount;
@@ -345,6 +345,7 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
 //                        LOGGER.debug("putEventsMap key count: {}", putEventsMap.size());
                     }
 
+                    // Only checking if a flush is needed on each poll rather than on each msg
                     boolean flushHappened = flushAggregatorIfReady();
                     if (flushHappened && unCommittedRecCount > 0) {
                         kafkaConsumer.commitSync();
@@ -465,7 +466,6 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
         flushAggregator();
         kafkaConsumer.commitSync();
     }
-
 
     @Override
     public void stop() {
@@ -617,12 +617,12 @@ public class StatisticsAggregationProcessor implements StatisticsProcessor, Topi
         return instanceId;
     }
 
-    private int getPollTimeoutMs() {
+    private Duration getPollTimeoutMs() {
         // This method is called a lot so this an optimisation of an already cached value
         if (System.currentTimeMillis() > (pollTimeOutLastFetchMs + PROPERTY_CHECK_INTERVAL_MS)) {
             pollTimeOutLastFetchMs = System.currentTimeMillis();
-            pollTimeOutLastValue = stroomPropertyService.getIntProperty(
-                    PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS, 100);
+            pollTimeOutLastValue = Duration.ofMillis(stroomPropertyService.getIntProperty(
+                    PROP_KEY_AGGREGATOR_POLL_TIMEOUT_MS, 100));
         }
         return pollTimeOutLastValue;
     }

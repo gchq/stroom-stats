@@ -84,12 +84,12 @@ public class HBaseEventStoreTableFactory implements EventStoreTableFactory {
                                     final UniqueIdCache uniqueIdCache,
                                     final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory) {
 
-        eventStoreTables.put(timeInterval,
-                HBaseEventStoreTable.getInstance(timeInterval,
-                        propertyService,
-                        hBaseConnection,
-                        uniqueIdCache,
-                        statisticDataPointAdapterFactory));
+        eventStoreTables.put(timeInterval, new HBaseEventStoreTable(
+                timeInterval,
+                propertyService,
+                hBaseConnection,
+                uniqueIdCache,
+                statisticDataPointAdapterFactory));
     }
 
 

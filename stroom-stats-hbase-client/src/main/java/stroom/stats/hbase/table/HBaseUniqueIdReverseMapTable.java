@@ -108,7 +108,7 @@ public class HBaseUniqueIdReverseMapTable extends HBaseTable implements UniqueId
     }
 
     @Override
-    public boolean checkAndPutName(final byte[] bNewUid, final byte[] name) {
+    public boolean putNameIfNotExists(final byte[] bNewUid, final byte[] name) {
         if (LOGGER.isTraceEnabled()) {
             final String rowKeyStr = ByteArrayUtils.byteArrayToHex(bNewUid);
 
@@ -124,7 +124,7 @@ public class HBaseUniqueIdReverseMapTable extends HBaseTable implements UniqueId
 
         // pass null as the expected value to ensure we only put if it didn't
         // exist before
-        result = doCheckAndPut(bNewUid, NAME_FAMILY, NAME_COL_QUALIFIER, null, put);
+        result = doPutIfNotExists(bNewUid, NAME_FAMILY, NAME_COL_QUALIFIER, put);
 
         return result;
     }

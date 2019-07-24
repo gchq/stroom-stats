@@ -43,7 +43,7 @@ public class RowKey {
     private final byte[] partialTimestamp;
 
     // cache of the hashcode as this object is immutable
-    private final int hashCodeValue;
+    private volatile int hashCodeValue = 0;
 
     public static final int PARTIAL_TIMESTAMP_ARRAY_LENGTH = 4;
 
@@ -57,9 +57,6 @@ public class RowKey {
                   final List<RowKeyTagValue> sortedTagValuePairs) {
         this.timeAgnosticRowKey = new TimeAgnosticRowKey(typeId, rollUpBitMask, sortedTagValuePairs);
         this.partialTimestamp = partialTimestamp;
-
-        // cache the hascode to save it being calculated each time
-        hashCodeValue = buildHashCode();
     }
 
     public RowKey(final TimeAgnosticRowKey timeAgnosticRowKey, final byte[] partialTimestamp) {
@@ -153,7 +150,7 @@ public class RowKey {
         return sb.toString();
     }
 
-    public int buildHashCode() {
+    private int buildHashCode() {
         final int prime = 31;
         int result = 1;
         result = prime * result + Arrays.hashCode(partialTimestamp);
@@ -182,6 +179,9 @@ public class RowKey {
 
     @Override
     public int hashCode() {
+        if (hashCodeValue == 0) {
+            hashCodeValue = buildHashCode();
+        }
         return hashCodeValue;
     }
 

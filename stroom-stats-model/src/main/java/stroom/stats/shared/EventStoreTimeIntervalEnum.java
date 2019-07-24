@@ -39,48 +39,83 @@ import java.util.TreeSet;
  * the column interval is too small relative to the row key interval then you
  * will end up with too many columns.
  */
-public enum EventStoreTimeIntervalEnum {
+public enum EventStoreTimeIntervalEnum implements Comparable<EventStoreTimeIntervalEnum> {
+
+    // TODO This really ought to be changed to configurable value in config or in the database
+
     // IMPORTANT - Each interval must be exactly divisible into the next
     // largest. This is to allow us to roll up the
     // times from one store to the next without knowing the original exact time
 
     // Hourly row key with 3600 1sec column intervals
-    SECOND(3_600_000L, 1_000L, "Second", "s", EventStoreTimeIntervalEnum::truncateTimeToInterval),
+    SECOND(
+            3_600_000L,
+            1_000L,
+            "Second",
+            "s",
+            true,
+            EventStoreTimeIntervalEnum::truncateTimeToInterval),
     // Daily row key with 1440 1min column intervals
-    MINUTE(86_400_000L, 60_000L, "Minute", "m", EventStoreTimeIntervalEnum::truncateTimeToInterval),
+    MINUTE(
+            86_400_000L,
+            60_000L,
+            "Minute",
+            "m",
+            true,
+            EventStoreTimeIntervalEnum::truncateTimeToInterval),
     // Four Weekly row key with 672 1hour column intervals
-    HOUR(2_419_200_000L, 3_600_000L, "Hour", "h", EventStoreTimeIntervalEnum::truncateTimeToInterval),
+    HOUR(
+            2_419_200_000L,
+            3_600_000L,
+            "Hour",
+            "h",
+            true,
+            EventStoreTimeIntervalEnum::truncateTimeToInterval),
     // Fifty two Weekly row key with 364 1day column intervals
-    DAY(31_449_600_000L, 86_400_000L, "Day", "d", EventStoreTimeIntervalEnum::truncateTimeToInterval),
+    DAY(
+            31_449_600_000L,
+            86_400_000L,
+            "Day",
+            "d",
+            true,
+            EventStoreTimeIntervalEnum::truncateTimeToInterval),
     // Single row with one cell representing all time past and present
-    FOREVER(Long.MAX_VALUE, Long.MAX_VALUE, "Forever", "f", EventStoreTimeIntervalEnum::truncateToForever);
+    FOREVER(
+            Long.MAX_VALUE,
+            Long.MAX_VALUE,
+            "Forever",
+            "f",
+            false,
+            EventStoreTimeIntervalEnum::truncateToForever);
 
     public static final int BYTE_VALUE_LENGTH = Long.BYTES;
     public static final EventStoreTimeIntervalEnum LARGEST_INTERVAL;
     public static final EventStoreTimeIntervalEnum SMALLEST_INTERVAL;
-    public static final Comparator<EventStoreTimeIntervalEnum> comparator =
+    public static final Comparator<EventStoreTimeIntervalEnum> COLUMN_INTERVAL_COMPARATOR =
             Comparator.comparingLong(EventStoreTimeIntervalEnum::columnInterval);
 
-    private static final TreeSet<EventStoreTimeIntervalEnum> reverseSortedSet = new TreeSet<>(comparator.reversed());
+    private static final TreeSet<EventStoreTimeIntervalEnum> REVERSE_SORTED_SET = new TreeSet<>(COLUMN_INTERVAL_COMPARATOR.reversed());
+
     private final long rowKeyInterval;
     private final long columnInterval;
     private final String longName;
     private final String shortName;
     private final byte[] byteVal;
+    private final boolean isEligibleForPurge;
     private final TruncateFunction truncateFunction;
 
     private static final Map<Long, EventStoreTimeIntervalEnum> fromColumnIntervalMap = new HashMap<>();
-    private static final Map<String, EventStoreTimeIntervalEnum> fromShortnameMap = new HashMap<>();
+    private static final Map<String, EventStoreTimeIntervalEnum> fromShortNameMap = new HashMap<>();
 
     static {
         for (final EventStoreTimeIntervalEnum interval : values()) {
             fromColumnIntervalMap.put(interval.columnInterval, interval);
-            fromShortnameMap.put(interval.shortName, interval);
+            fromShortNameMap.put(interval.shortName, interval);
         }
-        reverseSortedSet.addAll(Arrays.asList(EventStoreTimeIntervalEnum.values()));
+        REVERSE_SORTED_SET.addAll(Arrays.asList(EventStoreTimeIntervalEnum.values()));
         //set is reverse sorted
-        LARGEST_INTERVAL = EventStoreTimeIntervalEnum.reverseSortedSet.first();
-        SMALLEST_INTERVAL = EventStoreTimeIntervalEnum.reverseSortedSet.last();
+        LARGEST_INTERVAL = EventStoreTimeIntervalEnum.REVERSE_SORTED_SET.first();
+        SMALLEST_INTERVAL = EventStoreTimeIntervalEnum.REVERSE_SORTED_SET.last();
     }
 
     /**
@@ -95,12 +130,14 @@ public enum EventStoreTimeIntervalEnum {
                                final long columnInterval,
                                final String longName,
                                final String shortName,
+                               final boolean isEligibleForPurge,
                                final TruncateFunction truncateFunction) {
         this.rowKeyInterval = rowKeyInterval;
         this.columnInterval = columnInterval;
         this.longName = longName;
         this.shortName = shortName;
         this.byteVal = Bytes.toBytes(columnInterval);
+        this.isEligibleForPurge = isEligibleForPurge;
         this.truncateFunction = truncateFunction;
     }
 
@@ -112,7 +149,7 @@ public enum EventStoreTimeIntervalEnum {
      */
     public static Optional<EventStoreTimeIntervalEnum> getNextBiggest(final EventStoreTimeIntervalEnum interval) {
         // set is in reverse order so use lower to get the next biggest
-        return Optional.ofNullable(reverseSortedSet.lower(interval));
+        return Optional.ofNullable(REVERSE_SORTED_SET.lower(interval));
     }
 
     /**
@@ -123,7 +160,7 @@ public enum EventStoreTimeIntervalEnum {
      */
     public static Optional<EventStoreTimeIntervalEnum> getNextSmallest(final EventStoreTimeIntervalEnum interval) {
         // set is in reverse order so use lower to get the next smallest
-        return Optional.ofNullable(reverseSortedSet.higher(interval));
+        return Optional.ofNullable(REVERSE_SORTED_SET.higher(interval));
     }
 
     public static EventStoreTimeIntervalEnum getSmallestInterval() {
@@ -137,12 +174,9 @@ public enum EventStoreTimeIntervalEnum {
     }
 
     public static SortedSet<EventStoreTimeIntervalEnum> getReverseSortedSet() {
-        return reverseSortedSet;
+        return REVERSE_SORTED_SET;
     }
 
-    private static interface TruncateFunction {
-        long truncate(final long timestampMillis, final long intervalMillis);
-    }
 
 
     public static EventStoreTimeIntervalEnum fromColumnInterval(final long columnInterval) {
@@ -156,7 +190,7 @@ public enum EventStoreTimeIntervalEnum {
 
     public static EventStoreTimeIntervalEnum fromShortName(final String shortName) {
         try {
-            return fromShortnameMap.get(shortName);
+            return fromShortNameMap.get(shortName);
         } catch (final Exception e) {
             throw new IllegalArgumentException(
                     "The provided shortName [" + shortName + "] is not a valid name for an event store", e);
@@ -231,6 +265,13 @@ public enum EventStoreTimeIntervalEnum {
         return timeIntervalToString(rowKeyInterval);
     }
 
+    /**
+     * @return True if old data for this interval can be purged, e.g. removing data that is over a year old.
+     */
+    public boolean isEligibleForPurge() {
+        return isEligibleForPurge;
+    }
+
     private String timeIntervalToString(final long timeMs) {
         final double seconds = timeMs / 1000;
         final double mintes = timeMs / (1000 * 60);
@@ -277,5 +318,11 @@ public enum EventStoreTimeIntervalEnum {
 
     public boolean isSmallerThan(final EventStoreTimeIntervalEnum other) {
         return this.columnInterval < other.columnInterval;
+    }
+
+
+
+    private interface TruncateFunction {
+        long truncate(final long timestampMillis, final long intervalMillis);
     }
 }

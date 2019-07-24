@@ -46,17 +46,19 @@ public class TagValueFilterTreeSerialiser {
             LOGGER.debug(() -> String.format("Initialising Kryo on thread %s",
                     Thread.currentThread().getName()));
 
-            kryo.register(TagValueFilterTree.class);
-            kryo.register(TagValueFilterTreeNode.class);
-            kryo.register(TagValueOperatorNode.class);
-            kryo.register(FilterOperationMode.class);
-            kryo.register(List.class);
-            kryo.register(ArrayList.class);
-            kryo.register(RowKeyTagValue.class);
-            kryo.register(UID.class);
-            kryo.register(byte[].class);
-            kryo.register(Object.class);
-            kryo.register(Integer.class);
+            // The IDs are used to link the serialised for to their type
+            // If they are changed existing serialised data will no longer be de-serialisable
+            kryo.register(TagValueFilterTree.class, 11);
+            kryo.register(TagValueFilterTreeNode.class, 12);
+            kryo.register(TagValueOperatorNode.class, 13);
+            kryo.register(FilterOperationMode.class, 14);
+            kryo.register(List.class, 15);
+            kryo.register(ArrayList.class, 16);
+            kryo.register(RowKeyTagValue.class, 17);
+            kryo.register(UID.class, 18);
+            kryo.register(byte[].class, 19);
+            kryo.register(Object.class, 20);
+            kryo.register(Integer.class, 21);
 
             ((Kryo.DefaultInstantiatorStrategy) kryo.getInstantiatorStrategy()).setFallbackInstantiatorStrategy(
                     new StdInstantiatorStrategy());

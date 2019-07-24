@@ -9,9 +9,9 @@ import stroom.stats.streams.aggregation.StatAggregate;
 public interface StatisticFlatMapper {
     String NULL_VALUE_STRING = "<<<<NULL_VALUE>>>>";
 
-    static boolean isInsidePurgeRetention(StatisticWrapper statisticWrapper,
-                                          EventStoreTimeIntervalEnum interval,
-                                          int retentionRowIntervals) {
+    static boolean isInsidePurgeRetention(final StatisticWrapper statisticWrapper,
+                                          final EventStoreTimeIntervalEnum interval,
+                                          final int retentionRowIntervals) {
 
         // round start time down to the last row key interval
         final long rowInterval = interval.rowKeyInterval();

@@ -78,8 +78,7 @@ public class StatEventKey implements Comparable<StatEventKey> {
     private long timeMs;
     private final List<TagValue> tagValues;
 
-    private int hashCode;
-
+    private volatile int hashCode = 0;
 
     private enum TimeTruncation {
         TRUNCATE,
@@ -112,8 +111,6 @@ public class StatEventKey implements Comparable<StatEventKey> {
             default:
                 throw new IllegalArgumentException(String.format("Unexpected value for timeTruncation: %s", timeTruncation));
         }
-        //cache the hashcode to save repeated calculation
-        this.hashCode = buildHashCode();
     }
 
     public StatEventKey(final UID statUuid,
@@ -261,9 +258,13 @@ public class StatEventKey implements Comparable<StatEventKey> {
 
     @Override
     public int hashCode() {
-        //instance is immutable so cache the hashcode for speed
+        //instance is immutable so lazily cache the hashcode for speed
+        if (hashCode == 0) {
+            hashCode = buildHashCode();
+        }
         return hashCode;
     }
+
     public int buildHashCode() {
         int result = statUuid.hashCode();
         result = 31 * result + rollupMask.hashCode();
@@ -288,5 +289,4 @@ public class StatEventKey implements Comparable<StatEventKey> {
     public int compareTo(final StatEventKey that) {
         return COMPARATOR.compare(this, that);
     }
-
 }

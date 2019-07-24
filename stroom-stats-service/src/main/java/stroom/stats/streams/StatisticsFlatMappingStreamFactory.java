@@ -10,8 +10,6 @@ import org.apache.kafka.streams.processor.TopicNameExtractor;
 import stroom.stats.api.StatisticType;
 import stroom.stats.configuration.StatisticConfiguration;
 import stroom.stats.configuration.StatisticConfigurationService;
-import stroom.stats.hbase.HBaseStatisticConstants;
-import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.schema.v4.ObjectFactory;
 import stroom.stats.schema.v4.Statistics;
 import stroom.stats.schema.v4.StatisticsMarshaller;
@@ -33,15 +31,10 @@ import java.util.function.Supplier;
 
 public class StatisticsFlatMappingStreamFactory {
 
-    public static final String VALIDATION_ERROR_TEXT = "VALIDATION_ERROR";
-    public static final String UNMARSHALLING_ERROR_TEXT = "UNMARSHALLING_ERROR";
-
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatisticsFlatMappingStreamFactory.class);
 
-    //private final Predicate<StatEventKey, StatAggregate>[] intervalPredicates;
-
-//    private interface InterValToPredicateMapper extends Function<IntervalTopicPair, Predicate<StatEventKey, StatAggregate>> {
-//    }
+    public static final String VALIDATION_ERROR_TEXT = "VALIDATION_ERROR";
+    public static final String UNMARSHALLING_ERROR_TEXT = "UNMARSHALLING_ERROR";
 
     //Defined to avoid 'generic array creation' compiler warnings
     private interface UnmarshalledXmlWrapperPredicate extends Predicate<String, UnmarshalledXmlWrapper> {
@@ -65,25 +58,16 @@ public class StatisticsFlatMappingStreamFactory {
 
     private final StatisticConfigurationService statisticConfigurationService;
     private final TopicDefinitionFactory topicDefinitionFactory;
-    private final StroomPropertyService stroomPropertyService;
     private final StatisticsMarshaller statisticsMarshaller;
 
     @Inject
     StatisticsFlatMappingStreamFactory(final StatisticConfigurationService statisticConfigurationService,
                                        final TopicDefinitionFactory topicDefinitionFactory,
-                                       final StroomPropertyService stroomPropertyService,
                                        final StatisticsMarshaller statisticsMarshaller) {
 
         this.statisticConfigurationService = statisticConfigurationService;
-        this.stroomPropertyService = stroomPropertyService;
         this.statisticsMarshaller = statisticsMarshaller;
         this.topicDefinitionFactory = topicDefinitionFactory;
-
-        //Construct a list of predicate functions for
-//        intervalPredicates = Arrays.stream(EventStoreTimeIntervalEnum.values())
-//                .map((InterValToPredicateMapper) interval ->
-//                        (StatEventKey statKey, StatAggregate statAggregate) -> statKey.equalsIntervalPart(interval))
-//                .toArray(size -> new Predicate[size]);
     }
 
     Topology buildStreamTopology(final StatisticType statisticType,
@@ -153,12 +137,12 @@ public class StatisticsFlatMappingStreamFactory {
         TopicNameExtractor<StatEventKey, StatAggregate> topicNameExtractor = (key, value, recordContext) ->
                 intervalToTopicNameMap.get(key.getInterval());
 
-        // Ignore any events that are outside the retention period as they would just get deleted in the next
-        // purge otherwise. Flatmap each statistic event to a set of statKey/statAggregate pairs,
+        // Flatmap each statistic event to a set of statKey/statAggregate pairs,
         // one for each roll up permutation. Then branch the stream into multiple streams, one stream per interval
-        // i.e. events with hour granularity go to hour stream (and ultimately topic)
+        // i.e. events with hour granularity go to hour stream (and ultimately topic).
+        // There is no point in filtering out events that our outside purge retentions as we have the
+        // forever bucket so all events would qualify for that.
         validStatWrappers
-                .filter(this::isInsideLargestPurgeRetention) //ignore too old events
                 .flatMap(statisticMapper::flatMap) //map to StatEventKey/StatAggregate pair
                 // Fork the messages onto different topics based on the key's interval
                 .to(topicNameExtractor, Produced.with(StatEventKeySerde.instance(), StatAggregateSerde.instance()));
@@ -262,38 +246,6 @@ public class StatisticsFlatMappingStreamFactory {
         return new KeyValue<>(key, wrapper);
     }
 
-
-    /**
-     * Method signature to match {@link Predicate}<{@link String}, {@link StatisticWrapper}>
-     */
-    private boolean isInsideLargestPurgeRetention(
-            @SuppressWarnings("unused") final String statName,
-            final StatisticWrapper statisticWrapper) {
-        // TODO get smallest interval from stat config, get purge retention for that interval
-        // check it is inside it. May want to cache retention periods by interval
-
-        EventStoreTimeIntervalEnum interval = EventStoreTimeIntervalEnum.getLargestInterval();
-        // Forever is a special case with an eternal purge interval so we have to discount it
-        if (interval.equals(EventStoreTimeIntervalEnum.FOREVER)) {
-            interval = EventStoreTimeIntervalEnum.getNextSmallest(interval).orElse(interval);
-        }
-
-        //TODO probably ought to cache this to save computing it each time
-        //i.e. a cache of ESTIE:Integer with a short retention, e.g. a few mins
-        //TODO this makes the assumption that the biggest interval has the longest retention
-        //may be reasonable, maybe not
-        String purgeRetentionPeriodsPropertyKey = HBaseStatisticConstants.DATA_STORE_PURGE_INTERVALS_TO_RETAIN_PROPERTY_NAME_PREFIX
-                + interval.name().toLowerCase();
-
-        final int retentionRowIntervals = stroomPropertyService.getIntPropertyOrThrow(purgeRetentionPeriodsPropertyKey);
-
-        boolean result = StatisticFlatMapper.isInsidePurgeRetention(
-                statisticWrapper, interval, retentionRowIntervals);
-        LOGGER.trace("isInsideLargestPurgeRetention == {}", result);
-        return result;
-    }
-
-
     /**
      * A catchall predicate for allowing everything through, used for clarity
      */
@@ -301,30 +253,6 @@ public class StatisticsFlatMappingStreamFactory {
             @SuppressWarnings("unused") final Object key,
             @SuppressWarnings("unused") final Object value) {
         return true;
-    }
-
-    private static class IntervalTopicPair implements Comparable<IntervalTopicPair> {
-        private final TopicDefinition<StatEventKey, StatAggregate> topic;
-        private final EventStoreTimeIntervalEnum interval;
-
-        public IntervalTopicPair(final TopicDefinition<StatEventKey, StatAggregate> topic,
-                                 final EventStoreTimeIntervalEnum interval) {
-            this.topic = topic;
-            this.interval = interval;
-        }
-
-        public TopicDefinition<StatEventKey, StatAggregate> getTopic() {
-            return topic;
-        }
-
-        public EventStoreTimeIntervalEnum getInterval() {
-            return interval;
-        }
-
-        @Override
-        public int compareTo(final IntervalTopicPair that) {
-            return Long.compare(this.interval.columnInterval(), that.interval.columnInterval());
-        }
     }
 
 }

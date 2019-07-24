@@ -43,7 +43,7 @@ class StatAggregator {
 
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(StatAggregator.class);
 
-    private Map<StatEventKey, StatAggregate> buffer;
+    private final Map<StatEventKey, StatAggregate> buffer;
     private final int minSize;
     private final Instant expiryTime;
     private final EventStoreTimeIntervalEnum aggregationInterval;
