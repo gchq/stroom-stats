@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-## [v1.0-alpha.1] - 2019-07-24
+## [v1.0-alpha.2] - 2019-07-24
 
 * Fix hbase version suffix in the travis build script.
 
