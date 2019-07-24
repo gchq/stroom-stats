@@ -44,7 +44,6 @@ ch.qos.logback            | logback-core         | 1.1.8               | EPL 1.0
 org.mockito               | mockito-core         | 2.+                 | MIT
 mysql                     | mysql-connector-java | 5.1.40              | GPL (Exceptions apply)
 org.reflections           | reflections          | 0.9.10              |
-org.springframework.kafka | spring-kafka-test    | 1.1.3.RELEASE       |
 com.beust                 | jcommander           | 1.48                |
 
 \* The mysql-client-connector is distributed under a GPL license but has exceptions that allow it to be distributed with OSS without requiring the GPL license to be applied to the OSS. See [http://www.mysql.com/about/legal/licensing/foss-exception/](http://www.mysql.com/about/legal/licensing/foss-exception/) for details.

@@ -26,16 +26,12 @@ import stroom.stats.hbase.structure.StatisticDataPointAdapterFactory;
 import stroom.stats.hbase.uid.UniqueIdCache;
 import stroom.stats.properties.StroomPropertyService;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
-import stroom.stats.task.api.TaskManager;
 import stroom.stats.util.logging.LambdaLogger;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 @Singleton
 public class HBaseEventStoreTableFactory implements EventStoreTableFactory {
@@ -43,26 +39,18 @@ public class HBaseEventStoreTableFactory implements EventStoreTableFactory {
     private static final LambdaLogger LOGGER = LambdaLogger.getLogger(HBaseEventStoreTableFactory.class);
 
     private final Map<EventStoreTimeIntervalEnum, HBaseEventStoreTable> eventStoreTables;
-    private final TaskManager taskManager;
     private final StroomPropertyService propertyService;
 
     private final HBaseConnection hBaseConnection;
 
-    // A list of functions (provided by tables this factory produces) to be
-    // called when Stroom shuts down. This is needed as the tables are not spring
-    // beans and therefore can't have the shutdown hook
-    private final List<Consumer<HBaseConnection>> shutdownFunctions = new ArrayList<>();
-
     @Inject
-    public HBaseEventStoreTableFactory(final TaskManager taskManager,
-                                       final StroomPropertyService propertyService,
+    public HBaseEventStoreTableFactory(final StroomPropertyService propertyService,
                                        final HBaseConnection hBaseConnection,
                                        final UniqueIdCache uniqueIdCache,
-                                        final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory) {
+                                       final StatisticDataPointAdapterFactory statisticDataPointAdapterFactory) {
 
         LOGGER.debug(() -> String.format("Initialising: %s", this.getClass().getCanonicalName()));
 
-        this.taskManager = taskManager;
         this.propertyService = propertyService;
         this.hBaseConnection = hBaseConnection;
 
@@ -92,16 +80,8 @@ public class HBaseEventStoreTableFactory implements EventStoreTableFactory {
                 statisticDataPointAdapterFactory));
     }
 
-
-    public void regsiterShutdownFunction(final Consumer<HBaseConnection> shutdownFunction) {
-        this.shutdownFunctions.add(shutdownFunction);
-    }
-
     //TODO Implement alternative scheduling
-//    @StroomShutdown
     public void shutdown() {
-        // Call each of the registered shutdown functions
-        shutdownFunctions.forEach((shutdownFunc) -> shutdownFunc.accept(hBaseConnection));
     }
 
 }

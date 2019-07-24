@@ -600,7 +600,7 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
             scan.setRowPrefixFilter(rowKeyBuilder.buildStartKeyBytes(statUuid, rollUpBitMask));
         }
 
-        scan.setMaxVersions(1); //we should only be storing 1 version but setting anyway
+        scan.readVersions(1); //we should only be storing 1 version but setting anyway
         //TODO make a prop in the prop service
         scan.setCaching(1_000);
 
@@ -709,24 +709,11 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
      */
     @Override
     public void shutdown() {
-//        flushPutBuffer();
 
-    }
-
-    private int getPutBufferSize() {
-        return propertyService.getIntPropertyOrThrow(HBaseStatisticConstants.DATA_STORE_PUT_BUFFER_MAX_SIZE_PROPERTY_NAME);
-    }
-
-    private int getPutTakeCount() {
-        return propertyService.getIntPropertyOrThrow(HBaseStatisticConstants.DATA_STORE_PUT_BUFFER_TAKE_COUNT_PROPERTY_NAME);
     }
 
     private int getCheckAndPutRetryCount() {
         return propertyService.getIntPropertyOrThrow(HBaseStatisticConstants.DATA_STORE_MAX_CHECK_AND_PUT_RETRIES_PROPERTY_NAME);
-    }
-
-    private int getMaxConcurrentBatchPutTasks() {
-        return propertyService.getIntPropertyOrThrow(HBaseStatisticConstants.DATA_STORE_PURGE_MAX_BATCH_PUT_TASKS);
     }
 
     @Override
@@ -758,12 +745,12 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
         LOGGER.debug("Using start key:       " + rowKeyBuilder.toPlainTextString(startRowKey));
         LOGGER.debug("Using end key (excl.): " + rowKeyBuilder.toPlainTextString(endRowKeyExclusive));
 
-        //TODO probably can use buildBasicScan() here
-        final Scan scan = new Scan(startRowKey.asByteArray(), endRowKeyExclusive.asByteArray());
-        scan.setMaxVersions(1);
-
-        // TODO make this a global prop
-        scan.setCaching(1_000);
+        // TODO probably can use buildBasicScan() here
+        final Scan scan = new Scan()
+                .withStartRow(startRowKey.asByteArray())
+                .withStopRow(endRowKeyExclusive.asByteArray())
+                .readVersions(1)
+                .setCaching(1_000); // TODO make this a global prop
 
         // add a keyOnlyFilter so we only get back the keys and not the data
         final FilterList filters = new FilterList(new KeyOnlyFilter());
@@ -850,7 +837,6 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
                     finalRowCount, minDate, maxDate, statisticName, rollUpBitMask.asHexString(), timeInterval.longName(),
                     (double) runTime / (double) 1000));
         }
-
     }
 
     @Override
@@ -869,11 +855,9 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
 
         final Scan scan = new Scan()
                 .setRowPrefixFilter(bRowKey)
-                .setMaxVersions(1)
-                .setFilter(filters);
-
-        // TODO make this a global prop
-        scan.setCaching(1_000);
+                .readVersions(1)
+                .setFilter(filters)
+                .setCaching(1_000); // TODO make this a global prop
 
         int rowCount = 0;
         final Table tableInterface = getTable();
@@ -946,5 +930,4 @@ public class HBaseEventStoreTable extends HBaseTable implements EventStoreTable 
     private boolean allwaysInsidePurgeRetention(final StatEventKey statEventKey) {
         return true;
     }
-
 }
