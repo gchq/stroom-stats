@@ -15,7 +15,7 @@ SNAPSHOT_FLOATING_TAG=""
 MAJOR_VER_FLOATING_TAG=""
 MINOR_VER_FLOATING_TAG=""
 
-HBASE_VERSION_SUFFIX="_hbase-v1.2.0" #TODO ideally we should pick this up dynamically so it is only defined in the gradle build
+HBASE_VERSION_SUFFIX="_hbase-v2.1" #TODO ideally we should pick this up dynamically so it is only defined in the gradle build
 #This is a whitelist of branches to produce docker builds for
 BRANCH_WHITELIST_REGEX='(^dev$|^master$|^v[0-9].*$)'
 RELEASE_VERSION_REGEX='^v[0-9]+\.[0-9]+\.[0-9].*$'
