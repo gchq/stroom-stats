@@ -49,7 +49,7 @@
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ IMPORTANT ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
     -->
 
-    <logger name="stroom.stats" level="debug" />
+    <logger name="stroom" level="debug" />
 
     <root level="warn">
         <appender-ref ref="STDOUT" />

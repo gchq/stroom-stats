@@ -72,7 +72,7 @@ logging:
     level: WARN
     loggers:
         org.hibernate.SQL: WARN
-        stroom.stats: ${STATS_LOGGING_LEVEL:- INFO}
+        stroom: ${STATS_LOGGING_LEVEL:- INFO}
 #        stroom.stats.hbase.uid: TRACE
 #        stroom.stats.configuration: TRACE
 #        stroom.stats.streams.StatisticsAggregationProcessor: TRACE
