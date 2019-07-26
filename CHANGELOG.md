@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+
+## [v1.0-alpha.3] - 2019-07-26
+
+* Set hbase.rootDir in hbase docker image
+
+* Add volumes for hbase state to dockerfile
+
 ## [v1.0-alpha.2] - 2019-07-24
 
 * Fix hbase version suffix in the travis build script.
@@ -37,7 +44,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [v0.6.0-alpha.5] - 2019-02-20
 
-[Unreleased]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.2...master
+[Unreleased]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.3...master
+[v1.0-alpha.3]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.2...v1.0-alpha.3
 [v1.0-alpha.2]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.1...v1.0-alpha.2
 [v1.0-alpha.1]: https://github.com/gchq/stroom-stats/compare/v0.6.0-alpha.6...v1.0-alpha.1
 [v0.6.0-alpha.6]: https://github.com/gchq/stroom-stats/compare/v0.6.0-alpha.5...v0.6.0-alpha.6
