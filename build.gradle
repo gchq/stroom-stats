@@ -77,7 +77,9 @@ ext.versions = [
     jaxb:              '2.2.10',
     jersey:            '2.25.1',
 
-    kafka:             '2.1.1', //CDH6. uses kafka 2.1.0
+    // see https://docs.cloudera.com/documentation/enterprise/6/release-notes/topics/rg_cdh_63_maven_artifacts.html
+    // for details of cdh component versions
+    kafka:             '2.2.1', //CDH6.3 uses kafka 2.2.1
 
     //2.2.7.RELEASE runs against kafka 2.0.1
     zookeeper:         '3.4.8', // Roughly pegged to the server version used by Cloudera, see links above. This version is forced below.
@@ -170,6 +172,11 @@ ext.libs = [
 def dockerDir = "${rootProject.projectDir}/docker"
 ext.stroomStatsDockerBuildDir = "${dockerDir}/stroom-stats/build"
 ext.stroomStatsHbaseDockerBuildDir = "${dockerDir}/stroom-stats-hbase/build"
+
+// Make sure we are running under the right version of JVM
+if (!JavaVersion.current().isJava8()) {
+    throw new GradleException("This build must be run with Java 8 (current = " + JavaVersion.current() + ")")
+}
 
 allprojects {
     group "stroom"
