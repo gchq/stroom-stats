@@ -228,7 +228,7 @@ else
     #Do the gradle build
     #TODO need to find a way of running the int tests that doesn't blow the memory limit
     ./gradlew \
-        "-Pversion=${TRAVIS_TAG}" \
+        -Pversion="${TRAVIS_TAG}" \
         clean \
         build \
         -x integrationTest \
