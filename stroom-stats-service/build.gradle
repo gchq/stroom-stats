@@ -15,6 +15,16 @@ configurations {
     integrationTestRuntime.extendsFrom testRuntime
 }
 
+
+// afterEvaluate as analyzeIntegrationTestClassesDependencies does exist until
+// the project has been evauluated
+afterEvaluate {
+    analyzeIntegrationTestClassesDependencies {
+        // TODO figure out why we have all the warnings
+        justWarn = true
+    }
+}
+
 dependencies {
     //--------Project----------
     compile project(':stroom-stats-schema')
@@ -33,6 +43,8 @@ dependencies {
     compile libs.stroomAuthApi
 
     //--------3rd party--------
+    compile platform(libs.dropwizard_bom) // Get the DW BOM versions
+
     compile libs.curator_client
     compile libs.curator_framework
     compile libs.curator_recipies

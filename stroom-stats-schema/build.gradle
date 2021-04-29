@@ -12,6 +12,7 @@ def xmlSchemas = [
 
 def schemasDir = "${buildDir}/schemas"
 def generatedDir = "src-generated"
+project.ext.pomDescription = "JAXB model for the statistics v4.0.0 XML schema"
 
 sourceSets.main.java.srcDir new File(projectDir, 'src-generated/main/java')
 idea {
