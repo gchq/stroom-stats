@@ -23,13 +23,16 @@ CRON_TAG_SUFFIX="DAILY"
 LATEST_SUFFIX="-LATEST"
 doDockerBuild=false
 
-#Shell Colour constants for use in 'echo -e'
-#e.g.  echo -e "My message ${GREEN}with just this text in green${NC}"
-RED='\033[1;31m'
-GREEN='\033[1;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[1;34m'
-NC='\033[0m' # No Colour 
+# shellcheck disable=SC2034
+{
+    #Shell Colour constants for use in 'echo -e'
+    #e.g.  echo -e "My message ${GREEN}with just this text in green${NC}"
+    RED='\033[1;31m'
+    GREEN='\033[1;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[1;34m'
+    NC='\033[0m' # No Colour 
+}
 
 createGitTag() {
     tagName=$1
@@ -37,24 +40,32 @@ createGitTag() {
     git config --global user.email "builds@travis-ci.com"
     git config --global user.name "Travis CI"
 
-    echo -e "Tagging commit [${GREEN}${TRAVIS_COMMIT}${NC}] with tag [${GREEN}${tagName}${NC}]"
-    git tag -a ${tagName} ${TRAVIS_COMMIT} -m "Automated Travis build $TRAVIS_BUILD_NUMBER" 
+    echo -e "Tagging commit [${GREEN}${TRAVIS_COMMIT}${NC}]" \
+        "with tag [${GREEN}${tagName}${NC}]"
+    git tag \
+        -a \
+        "${tagName}" \
+        "${TRAVIS_COMMIT}" \
+        -m "Automated Travis build $TRAVIS_BUILD_NUMBER" 
     #TAGPERM is a travis encrypted github token, see 'env' section in .travis.yml
-    git push -q https://$TAGPERM@github.com/${GITHUB_REPO} ${tagName}
+    git push -q "https://$TAGPERM@github.com/${GITHUB_REPO}" "${tagName}"
 }
 
 isCronBuildRequired() {
     #GH_USER_AND_TOKEN is set in env section of .travis.yml
     if [ "x${GH_USER_AND_TOKEN}" = "x" ]; then 
         #no token so do it unauthenticated
-        authArgs=""
+        authArgs=()
     else
         echo "Using authentication with curl"
-        authArgs="--user ${GH_USER_AND_TOKEN}"
+        authArgs=(
+            "--user" 
+            "${GH_USER_AND_TOKEN}"
+        )
     fi
     #query the github api for the latest cron release tag name
     #redirect stderr to dev/null to protect api token
-    latestTagName=$(curl -s ${authArgs} ${GITHUB_API_URL} | \
+    latestTagName=$(curl -s "${authArgs[@]}" "${GITHUB_API_URL}" | \
         jq -r "[.[] | select(.tag_name | test(\"${TRAVIS_BRANCH}.*${CRON_TAG_SUFFIX}\"))][0].tag_name" 2>/dev/null)
     echo -e "Latest release ${CRON_TAG_SUFFIX} tag: [${GREEN}${latestTagName}${NC}]"
 
@@ -95,24 +106,25 @@ releaseToDockerHub() {
     #shift the the args so we can loop round the open ended list of tags, $1 is now the first tag
     shift 2
 
-    allTagArgs=""
+    allTagArgs=()
 
     for tagVersionPart in "$@"; do
         if [ "x${tagVersionPart}" != "x" ]; then
             #echo -e "Adding docker tag [${GREEN}${tagVersionPart}${NC}]"
-            allTagArgs="${allTagArgs} --tag=${dockerRepo}:${tagVersionPart}"
+            allTagArgs+=( "--tag=${dockerRepo}:${tagVersionPart}" )
         fi
     done
 
-    echo -e "Building and releasing a docker image to ${GREEN}${dockerRepo}${NC} with tags: ${GREEN}${allTagArgs}${NC}"
+    echo -e "Building and releasing a docker image to" \
+        "${GREEN}${dockerRepo}${NC} with tags: ${GREEN}${allTagArgs[*]}${NC}"
     echo -e "dockerRepo:  [${GREEN}${dockerRepo}${NC}]"
     echo -e "contextRoot: [${GREEN}${contextRoot}${NC}]"
 
     #The username and password are configured in the travis gui
     docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" >/dev/null 2>&1
 
-    docker build ${allTagArgs} ${contextRoot} >/dev/null 2>&1
-    docker push ${dockerRepo} >/dev/null 2>&1
+    docker build "${allTagArgs[@]}" "${contextRoot}" >/dev/null 2>&1
+    docker push "${dockerRepo}" >/dev/null 2>&1
 }
 
 #establish what version of stroom-stats we are building
@@ -167,11 +179,11 @@ if [ "$TRAVIS_EVENT_TYPE" = "cron" ]; then
         DATE_ONLY="$(date +%Y%m%d)"
         gitTag="${STROOM_STATS_VERSION}-${DATE_ONLY}-${CRON_TAG_SUFFIX}"
         
-        createGitTag ${gitTag}
+        createGitTag "${gitTag}"
     fi
 else
     #Normal commit/PR/tag build
-    extraBuildArgs=""
+    extraBuildArgs=()
 
     if [ -n "$TRAVIS_TAG" ]; then
         doDockerBuild=true
@@ -193,7 +205,12 @@ else
 
         if [[ "$TRAVIS_BRANCH" =~ ${RELEASE_VERSION_REGEX} ]]; then
             echo "This is a release version so add gradle arg for publishing libs to Bintray"
-            extraBuildArgs="bintrayUpload"
+            extraBuildArgs=( 
+                "signMavenJavaPublication"
+                "publishToSonatype"
+                "closeSonatypeStagingRepository"
+                #"closeAndReleaseSonatypeStagingRepository"
+            )
         fi
             
     elif [[ "$TRAVIS_BRANCH" =~ $BRANCH_WHITELIST_REGEX ]]; then
@@ -202,7 +219,7 @@ else
     fi
 
     echo -e "doDockerBuild:                 [${GREEN}${doDockerBuild}${NC}]"
-    echo -e "extraBuildArgs:                [${GREEN}${extraBuildArgs}${NC}]"
+    echo -e "extraBuildArgs:                [${GREEN}${extraBuildArgs[*]}${NC}]"
     echo -e "VERSION FIXED DOCKER TAG:      [${GREEN}${VERSION_FIXED_TAG}${NC}]"
     echo -e "SNAPSHOT FLOATING DOCKER TAG:  [${GREEN}${SNAPSHOT_FLOATING_TAG}${NC}]"
     echo -e "MAJOR VER FLOATING DOCKER TAG: [${GREEN}${MAJOR_VER_FLOATING_TAG}${NC}]"
@@ -210,26 +227,47 @@ else
 
     #Do the gradle build
     #TODO need to find a way of running the int tests that doesn't blow the memory limit
-    ./gradlew -Pversion=$TRAVIS_TAG clean build -x integrationTest ${extraBuildArgs}
+    ./gradlew \
+        "-Pversion=${TRAVIS_TAG}" \
+        clean \
+        build \
+        -x integrationTest \
+        "${extraBuildArgs[@]}"
 
     #Don't do a docker build for pull requests
     if [ "$doDockerBuild" = true ] && [ "$TRAVIS_PULL_REQUEST" = "false" ] ; then
 
-        allStatsTags="${VERSION_FIXED_TAG} ${SNAPSHOT_FLOATING_TAG} ${MAJOR_VER_FLOATING_TAG} ${MINOR_VER_FLOATING_TAG}"
+        allStatsTags=(
+            "${VERSION_FIXED_TAG}"
+            "${SNAPSHOT_FLOATING_TAG}"
+            "${MAJOR_VER_FLOATING_TAG}"
+            "${MINOR_VER_FLOATING_TAG}"
+        )
 
         #build and release the stroom-stats image to dockerhub
-        releaseToDockerHub "${STROOM_STATS_DOCKER_REPO}" "${STROOM_STATS_DOCKER_CONTEXT_ROOT}" ${allStatsTags}
+        releaseToDockerHub \
+            "${STROOM_STATS_DOCKER_REPO}" \
+            "${STROOM_STATS_DOCKER_CONTEXT_ROOT}" \
+            "${allStatsTags[@]}"
 
         #build all the docker tags for the hbase image
-        allHbaseTags=""
-        [ -n "${VERSION_FIXED_TAG}" ] && allHbaseTags="${allHbaseTags} ${VERSION_FIXED_TAG}${HBASE_VERSION_SUFFIX}"
-        [ -n "${SNAPSHOT_FLOATING_TAG}" ] && allHbaseTags="${allHbaseTags} ${SNAPSHOT_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
-        [ -n "${MAJOR_VER_FLOATING_TAG}" ] && allHbaseTags="${allHbaseTags} ${MAJOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
-        [ -n "${MINOR_VER_FLOATING_TAG}" ] && allHbaseTags="${allHbaseTags} ${MINOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}"
+        allHbaseTags=()
+        [ -n "${VERSION_FIXED_TAG}" ] \
+            && allHbaseTags+=( "${VERSION_FIXED_TAG}${HBASE_VERSION_SUFFIX}" )
+        [ -n "${SNAPSHOT_FLOATING_TAG}" ] \
+            && allHbaseTags+=( "${SNAPSHOT_FLOATING_TAG}${HBASE_VERSION_SUFFIX}" )
+        [ -n "${MAJOR_VER_FLOATING_TAG}" ] \
+            && allHbaseTags+=( "${MAJOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}" )
+        [ -n "${MINOR_VER_FLOATING_TAG}" ] \
+            && allHbaseTags+=( "${MINOR_VER_FLOATING_TAG}${HBASE_VERSION_SUFFIX}" )
 
         #Build and release the hbase image to dockerhub with the stroom-stats filter already in it
-        releaseToDockerHub "${STROOM_STATS_HBASE_DOCKER_REPO}" "${STROOM_STATS_HBASE_DOCKER_CONTEXT_ROOT}" ${allHbaseTags}
+        releaseToDockerHub \
+            "${STROOM_STATS_HBASE_DOCKER_REPO}" \
+            "${STROOM_STATS_HBASE_DOCKER_CONTEXT_ROOT}" \
+            "${allHbaseTags[@]}"
     fi
 fi
 
 exit 0
+# vim: set tabstop=4 shiftwidth=4 expandtab:
