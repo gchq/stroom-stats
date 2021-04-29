@@ -157,8 +157,8 @@ public class TestFlatResultCorrelator {
         List<List<Object>> rowList = new ArrayList<>(rows);
 
         List<Field> structure = Arrays.asList(
-                new Field("User", "${user}", null, null, null, null),
-                new Field("Door", "${door}", null, null, null, null));
+                new Field("1", "User", "${user}", null, null, null, null),
+                new Field("2", "Door", "${door}", null, null, null, null));
 
         return new FlatResult("Unknown", structure, rowList, (long) rows.size(), "");
     }

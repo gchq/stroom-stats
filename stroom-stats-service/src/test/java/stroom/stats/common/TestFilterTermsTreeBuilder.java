@@ -239,10 +239,10 @@ public class TestFilterTermsTreeBuilder {
     public void testDisabledTerms() {
         final ExpressionTerm term1 = new ExpressionTerm(StatisticConfiguration.FIELD_NAME_DATE_TIME,
                 Condition.BETWEEN, "1,2");
-        final ExpressionTerm term2 = new ExpressionTerm(true, "term2field", Condition.IN, "2", null, null);
-        final ExpressionTerm term3 = new ExpressionTerm(false, "term3field", Condition.IN, "3", null, null);
-        final ExpressionTerm term4 = new ExpressionTerm(true, "term4field", Condition.IN, "4", null, null);
-        final ExpressionTerm term5 = new ExpressionTerm(false, "term5field", Condition.IN, "5", null, null);
+        final ExpressionTerm term2 = new ExpressionTerm(true, "term2field", Condition.IN, "2", null);
+        final ExpressionTerm term3 = new ExpressionTerm(false, "term3field", Condition.IN, "3", null);
+        final ExpressionTerm term4 = new ExpressionTerm(true, "term4field", Condition.IN, "4", null);
+        final ExpressionTerm term5 = new ExpressionTerm(false, "term5field", Condition.IN, "5", null);
 
         final ExpressionOperator op1 = new ExpressionOperator(true, Op.AND, term1, term2, term3, term4, term5);
 

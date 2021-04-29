@@ -57,6 +57,7 @@ import stroom.stats.service.config.Config;
 import stroom.stats.shared.EventStoreTimeIntervalEnum;
 import stroom.stats.util.logging.LambdaLogger;
 import stroom.util.shared.HasTerminate;
+import stroom.util.shared.HasTerminateImpl;
 
 import javax.inject.Inject;
 import java.time.ZonedDateTime;
@@ -251,7 +252,8 @@ public class HBaseClient implements Managed {
             // we'll just get it straight from the config.
 
             SearchResponseCreator searchResponseCreator = new SearchResponseCreator(store);
-            SearchResponse searchResponse = searchResponseCreator.create(searchRequest);
+            final HasTerminate hasTerminate = new HasTerminateImpl();
+            SearchResponse searchResponse = searchResponseCreator.create(searchRequest, hasTerminate);
 
             return searchResponse;
         } else {

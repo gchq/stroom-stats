@@ -3,7 +3,6 @@ package stroom.stats;
 import stroom.mapreduce.v2.UnsafePairQueue;
 import stroom.query.api.v2.TableSettings;
 import stroom.query.common.v2.CompiledSorter;
-import stroom.query.common.v2.CompletionListener;
 import stroom.query.common.v2.Coprocessor;
 import stroom.query.common.v2.CoprocessorSettingsMap;
 import stroom.query.common.v2.Data;
@@ -18,6 +17,7 @@ import stroom.query.common.v2.TablePayload;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class StatisticsStore implements Store {
 
@@ -40,6 +40,11 @@ public class StatisticsStore implements Store {
 
     @Override
     public boolean isComplete() {
+        return true;
+    }
+
+    @Override
+    public boolean awaitCompletion(final long timeout, final TimeUnit unit) throws InterruptedException {
         return true;
     }
 
@@ -88,15 +93,15 @@ public class StatisticsStore implements Store {
         return storeSizes;
     }
 
-    /**
-     * Register a listener to be informed when the store is deemed complete
-     *
-     * @param completionListener The listener to inform
-     */
-    @Override
-    public void registerCompletionListener(final CompletionListener completionListener) {
-
-    }
+//    /**
+//     * Register a listener to be informed when the store is deemed complete
+//     *
+//     * @param completionListener The listener to inform
+//     */
+//    @Override
+//    public void registerCompletionListener(final CompletionListener completionListener) {
+//
+//    }
 
     public void process(CoprocessorSettingsMap coprocessorSettingsMap) {
         this.coprocessorSettingsMap = coprocessorSettingsMap;

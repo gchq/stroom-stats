@@ -27,36 +27,40 @@ public class DataSourceService {
             ExpressionTerm.Condition.LESS_THAN,
             ExpressionTerm.Condition.LESS_THAN_OR_EQUAL_TO);
 
-    private static final FieldDefinition FIELD_DEF_NON_QUERYABLE_FIELD = FieldDefinition.of(
-            DataSourceField.DataSourceFieldType.FIELD,
+    private static final FieldDefinition FIELD_DEF_NON_QUERYABLE_TEXT_FIELD = FieldDefinition.of(
+            DataSourceField.DataSourceFieldType.TEXT_FIELD,
             false);
 
-    private static final FieldDefinition FIELD_DEF_NON_QUERYABLE_NUMERIC = FieldDefinition.of(
-            DataSourceField.DataSourceFieldType.NUMERIC_FIELD,
+    private static final FieldDefinition FIELD_DEF_NON_QUERYABLE_LONG = FieldDefinition.of(
+            DataSourceField.DataSourceFieldType.LONG_FIELD,
+            false);
+
+    private static final FieldDefinition FIELD_DEF_NON_QUERYABLE_DOUBLE = FieldDefinition.of(
+            DataSourceField.DataSourceFieldType.DOUBLE_FIELD,
             false);
 
     private static final FieldDefinition FIELD_DEF_PRECISION = FieldDefinition.of(
-            DataSourceField.DataSourceFieldType.FIELD,
+            DataSourceField.DataSourceFieldType.LONG_FIELD,
             true,
             ExpressionTerm.Condition.EQUALS);
 
     private static final FieldDefinition FIELD_DEF_TAGS = FieldDefinition.of(
-            DataSourceField.DataSourceFieldType.FIELD,
+            DataSourceField.DataSourceFieldType.TEXT_FIELD,
             true,
             ExpressionTerm.Condition.EQUALS,
             ExpressionTerm.Condition.IN);
 
     private static final ImmutableMap<String, FieldDefinition> FIELD_DEFINITION_MAP =
             ImmutableMap.<String, FieldDefinition>builder()
-                    .put(StatisticConfiguration.FIELD_NAME_UUID, FIELD_DEF_NON_QUERYABLE_FIELD)
-                    .put(StatisticConfiguration.FIELD_NAME_STATISTIC, FIELD_DEF_NON_QUERYABLE_FIELD)
+                    .put(StatisticConfiguration.FIELD_NAME_UUID, FIELD_DEF_NON_QUERYABLE_TEXT_FIELD)
+                    .put(StatisticConfiguration.FIELD_NAME_STATISTIC, FIELD_DEF_NON_QUERYABLE_TEXT_FIELD)
                     .put(StatisticConfiguration.FIELD_NAME_DATE_TIME, FIELD_DEF_DATE_TIME)
-                    .put(StatisticConfiguration.FIELD_NAME_COUNT, FIELD_DEF_NON_QUERYABLE_NUMERIC)
-                    .put(StatisticConfiguration.FIELD_NAME_VALUE, FIELD_DEF_NON_QUERYABLE_NUMERIC)
-                    .put(StatisticConfiguration.FIELD_NAME_MIN_VALUE, FIELD_DEF_NON_QUERYABLE_NUMERIC)
-                    .put(StatisticConfiguration.FIELD_NAME_MAX_VALUE, FIELD_DEF_NON_QUERYABLE_NUMERIC)
+                    .put(StatisticConfiguration.FIELD_NAME_COUNT, FIELD_DEF_NON_QUERYABLE_LONG)
+                    .put(StatisticConfiguration.FIELD_NAME_VALUE, FIELD_DEF_NON_QUERYABLE_DOUBLE)
+                    .put(StatisticConfiguration.FIELD_NAME_MIN_VALUE, FIELD_DEF_NON_QUERYABLE_DOUBLE)
+                    .put(StatisticConfiguration.FIELD_NAME_MAX_VALUE, FIELD_DEF_NON_QUERYABLE_DOUBLE)
                     .put(StatisticConfiguration.FIELD_NAME_PRECISION, FIELD_DEF_PRECISION)
-                    .put(StatisticConfiguration.FIELD_NAME_PRECISION_MS, FIELD_DEF_NON_QUERYABLE_NUMERIC)
+                    .put(StatisticConfiguration.FIELD_NAME_PRECISION_MS, FIELD_DEF_NON_QUERYABLE_LONG)
                     .build();
 
     private final StatisticConfigurationService statisticConfigurationService;
@@ -88,7 +92,7 @@ public class DataSourceService {
         if (fieldDefinition == null && statisticConfiguration.isDynamicField(fieldName)) {
             fieldDefinition = FIELD_DEF_TAGS;
         }
-        Preconditions.checkNotNull(fieldDefinition,"No field definition found for field %s", fieldName);
+        Preconditions.checkNotNull(fieldDefinition, "No field definition found for field %s", fieldName);
         return fieldDefinition.toDataSourceField(fieldName);
     }
 

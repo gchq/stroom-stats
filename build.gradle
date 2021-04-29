@@ -1,17 +1,10 @@
 buildscript {
     repositories {
         mavenLocal()
-        jcenter()
+        mavenCentral()
     }
     dependencies {
         classpath 'ca.cutterslade.gradle:gradle-dependency-analyze:1.3.1'
-
-        //this httpclient dep seems to be needed for the 'de.undercouch.download' plugin
-        //to work, elses it gives a NoClassDefFound, possibly due to a conflict with the Bintray plugin
-        //See https://github.com/michel-kraemer/gradle-download-task/issues/58
-        //classpath 'org.apache.httpcomponents:httpclient:4.5.2'
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.4'
-
     }
 }
 
@@ -43,21 +36,17 @@ ext.getPropertyOrDefault = { propName, defaultValue ->
     return val;
 }
 
-
-apply plugin: 'com.jfrog.bintray'
 apply plugin: 'idea'
-
 
 ext.versions = [
     //----------Stroom-Stats-----------
     stroomStats:       getPropertyOrDefault('version', 'SNAPSHOT'),
 
     //------Stroom-libs---------------
-    eventLogging:      'v3.1.2_schema-v3.1.2',
-    stroomAuth:        'v1.0-beta.8',
-    stroomExpression:  'v1.4.3',
-    //same version for both stroom-query-api and stroom-query-common
-    stroomQuery:       'v2.1-beta.21',
+    eventLogging:      '3.3.0_schema-v3.3.1',
+    stroomAuth:        '6.0.32',
+    stroomExpression:  '1.5.15',
+    stroomQuery:       '2.2.24', // Same version for both stroom-query-api and stroom-query-common
 
     dropwizard:        '1.3.12', // used to set the dropwizard-bom version, that controls lots of dependency versions
     dropwizardMetrics: '3.2.2', //keep in sync with dropwizard (1.1.0 => 3.2.2)
@@ -83,7 +72,6 @@ ext.versions = [
 
     //2.2.7.RELEASE runs against kafka 2.0.1
     zookeeper:         '3.4.8', // Roughly pegged to the server version used by Cloudera, see links above. This version is forced below.
-    zzzDummyzzz:       'Here to make sorting easier'
 ]
 
 // 3rd Party libs
@@ -93,11 +81,12 @@ ext.versions = [
 // search for 'platform'.
 ext.libs = [
     //------Stroom-libs---------------
-    eventLogging:                    "event-logging:event-logging:$versions.eventLogging",
-    stroomAuthApi:                   "stroom:stroom-auth-service-api:$versions.stroomAuth",
-    stroomExpression:                "stroom:stroom-expression:$versions.stroomExpression",
-    stroomQueryApi:                  "stroom:stroom-query-api:$versions.stroomQuery",
-    stroomQueryCommon:               "stroom:stroom-query-common:$versions.stroomQuery",
+    eventLogging:                    "uk.gov.gchq.eventlogging:event-logging:$versions.eventLogging",
+    stroomAuthApi:                   "uk.gov.gchq.stroom.auth:stroom-auth-service-api:$versions.stroomAuth",
+    stroomQueryApi:                  "uk.gov.gchq.stroom.query:stroom-query-api:$versions.stroomQuery",
+    stroomQueryAudit:                "uk.gov.gchq.stroom.query:stroom-query-audit:$versions.stroomQuery",
+    stroomQueryCommon:               "uk.gov.gchq.stroom.query:stroom-query-common:$versions.stroomQuery",
+    stroomExpression:                "uk.gov.gchq.stroom.expression:stroom-expression:$versions.stroomExpression",
 
     //------------3rd-party------------
     assertj:                         "org.assertj:assertj-core:3.6.2",
@@ -198,10 +187,8 @@ subprojects {
     targetCompatibility = 1.8
 
     repositories {
-        jcenter()
+        mavenCentral()
         mavenLocal()
-        maven { url "https://dl.bintray.com/stroom/event-logging" }
-        maven { url "https://dl.bintray.com/stroom/stroom" }
 
         //Not currently using the cloudera hbase client as they don't publish a shaded version that can play nice
         //with dropwizard
@@ -242,10 +229,10 @@ subprojects {
 }
 
 
-//defines a list of gradle projects that we will publish with maven/bintray
+//defines a list of gradle projects that we will publish with maven/sonatype
 def projectsToBePublished = subprojects.findAll { project ->
     project.path in [
-            ':stroom-stats-schema'
+        ':stroom-stats-schema'
     ]
 }
 
@@ -256,7 +243,6 @@ configure(projectsToBePublished) {
 
     apply plugin: 'maven'
     apply plugin: 'maven-publish'
-    apply plugin: 'com.jfrog.bintray'
 
     group = 'stroom'
     version = versions.stroomStats
@@ -313,39 +299,6 @@ configure(projectsToBePublished) {
         publications {
             mavenJava(MavenPublication) {
                 from components.java
-            }
-        }
-    }
-
-    //configuration for the bintray plugin for uploading maven artefacts to bintray
-    //see https://github.com/bintray/gradle-bintray-plugin
-    //run task bintrayUpload to push the files, assuming BINTRAY_USER/KEY are set as env vars
-    bintray {
-        //Must never write these to log or system out
-        user = System.getenv('BINTRAY_USER') //set in Travis UI
-        key = System.getenv('BINTRAY_KEY') //set in Travis UI
-
-        //The maven plugin publications to push to bintray
-        publications = ['mavenJava']
-
-        //immediately make the artefacts public
-        publish = true
-
-        pkg {
-            repo = 'stroom'
-            name = 'stroom-stats'
-            userOrg = 'stroom'
-            licenses = ['Apache-2.0']
-            vcsUrl = 'https://github.com/gchq/stroom-stats.git'
-            version {
-                name = "${versions.stroomStats}"
-                desc = "stroom-stats-${versions.stroomStats}"
-                released  = new Date()
-                vcsTag = "${versions.stroomStats}"
-                gpg {
-                    //Bintray will self-sign the files
-                    sign = true //Determines whether to GPG sign the files. The default is false
-                }
             }
         }
     }
