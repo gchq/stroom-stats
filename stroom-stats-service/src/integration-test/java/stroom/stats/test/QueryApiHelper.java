@@ -442,8 +442,8 @@ public class QueryApiHelper {
         SearchRequest searchRequest = wrapQuery(query, Arrays.asList("heading1", "h2"));
 
         List<Field> fields = Arrays.asList(
-                new Field("heading1", "", null, null, null, null),
-                new Field("h2", "", null, null, null, null));
+                new Field("1", "heading1", "", null, null, null, null),
+                new Field("2", "h2", "", null, null, null, null));
 
         List<List<Object>> values = ImmutableList.of(
                 ImmutableList.of("123", "45678"),

@@ -2,6 +2,8 @@ apply plugin: 'com.github.johnrengelman.shadow'
 
 dependencies {
 
+    compile platform(libs.dropwizard_bom) // Get the DW BOM versions
+
     compile (project(':stroom-stats-model')) {
         //ignore any transitive dependencies to avoid adding unwant classes into the fat jar
         transitive = false
@@ -25,6 +27,7 @@ dependencies {
         exclude group:'ch.qos.logback'
     }
     compile libs.objenesis //used for Kryo strategies
+    //permitUnusedDeclared libs.objenesis
 
     testCompile project(':stroom-stats-util') 
     testCompile project(':stroom-stats-model') 

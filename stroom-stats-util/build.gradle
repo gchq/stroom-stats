@@ -1,4 +1,6 @@
 dependencies {
+    compile platform(libs.dropwizard_bom) // Get the DW BOM versions
+
     compile libs.dropwizard_metrics_healthchecks
     compile libs.guava
     compile libs.javaslang
