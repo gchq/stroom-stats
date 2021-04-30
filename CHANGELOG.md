@@ -6,12 +6,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v1.0-alpha.4] - 2021-04-30
+
+* Change maven group ID to `uk.gov.gchq.stroom.stats`.
+
+* Change build to publish to nexus.
+
 
 ## [v1.0-alpha.3] - 2019-07-26
 
 * Set hbase.rootDir in hbase docker image
 
 * Add volumes for hbase state to dockerfile
+
 
 ## [v1.0-alpha.2] - 2019-07-24
 
@@ -44,7 +51,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [v0.6.0-alpha.5] - 2019-02-20
 
-[Unreleased]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.3...master
+[Unreleased]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.4...master
+[v1.0-alpha.4]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.3...v1.0-alpha.4
 [v1.0-alpha.3]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.2...v1.0-alpha.3
 [v1.0-alpha.2]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.1...v1.0-alpha.2
 [v1.0-alpha.1]: https://github.com/gchq/stroom-stats/compare/v0.6.0-alpha.6...v1.0-alpha.1
