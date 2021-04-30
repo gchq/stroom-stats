@@ -210,8 +210,8 @@ else
             extraBuildArgs=( 
                 "signMavenJavaPublication"
                 "publishToSonatype"
-                "closeSonatypeStagingRepository"
-                #"closeAndReleaseSonatypeStagingRepository"
+                #"closeSonatypeStagingRepository"
+                "closeAndReleaseSonatypeStagingRepository"
             )
         fi
             
