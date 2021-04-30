@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v1.0-alpha.5] - 2021-04-30
+
+* Fix build script
+
+
 ## [v1.0-alpha.4] - 2021-04-30
 
 * Change maven group ID to `uk.gov.gchq.stroom.stats`.
@@ -51,7 +56,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [v0.6.0-alpha.5] - 2019-02-20
 
-[Unreleased]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.4...master
+[Unreleased]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.5...master
+[v1.0-alpha.5]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.4...v1.0-alpha.5
 [v1.0-alpha.4]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.3...v1.0-alpha.4
 [v1.0-alpha.3]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.2...v1.0-alpha.3
 [v1.0-alpha.2]: https://github.com/gchq/stroom-stats/compare/v1.0-alpha.1...v1.0-alpha.2
